@@ -1,5 +1,5 @@
 const fail=(message,status=400,code='INVALID_REQUEST')=>Object.assign(new Error(message),{status,code});
-import {validateCourse} from './model.mjs';
+import {validateCourse,referencedAssets} from './model.mjs';
 
 // Content packages have no operational escape hatch. Keep this allowlist alongside
 // the shared model: new editorial fields need an intentional contract change.
@@ -17,7 +17,7 @@ const optionalTypes={
  course:{sourceEdition:v=>typeof v==='boolean'},
  lesson:{sourceEdition:v=>typeof v==='boolean',accent:v=>typeof v==='string'&&v.length<=100,moduleId:v=>typeof v==='string'&&v.length<=180,journal:v=>typeof v==='boolean'},
  section:{sourceKey:v=>typeof v==='string'&&v.length<=1000,sourcePages:v=>Array.isArray(v)&&v.length<=1000&&v.every(page=>Number.isSafeInteger(page)&&page>=1&&page<=100000)},
- block:{sourceKey:v=>typeof v==='string'&&v.length<=1000,sourcePage:v=>Number.isSafeInteger(v)&&v>=1&&v<=100000,legacyNoteKey:v=>typeof v==='string'&&v.length<=1000}
+ block:{aside:v=>typeof v==='boolean',sourceKey:v=>typeof v==='string'&&v.length<=1000,sourcePage:v=>Number.isSafeInteger(v)&&v>=1&&v<=100000,legacyNoteKey:v=>typeof v==='string'&&v.length<=1000}
 };
 function object(value,kind){
  if(!value||typeof value!=='object'||Array.isArray(value))throw fail('Check the website content settings.');
@@ -34,6 +34,7 @@ export function validatePackage(document,{review=false}={}){
  for(const theme of document.home.themes||[])object(theme,'theme');
  for(const lesson of document.lessons||[]){object(lesson,'lesson');for(const section of lesson.sections||[]){object(section,'section');for(const block of section.blocks||[])object(block,'block');}}
  for(const file of document.materials.files||[])object(file,'file');
+ const refs=referencedAssets(document);if(refs.length>100||refs.some(ref=>!/^[-A-Za-z0-9_:]{1,180}$/.test(ref)))throw fail('Choose up to 100 valid website asset references.');
  noMeetingLinks(document);
  return errors;
 }
