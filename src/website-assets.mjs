@@ -3,6 +3,14 @@ import {referencedAssets} from '../public/shared/model.mjs';
 const fields='x.attachment_id,x.asset_id,x.lesson_id,o.filename name,o.mime_type type,o.byte_size size,x.title';
 const urls=rows=>rows.map(row=>({...row,url:'/api/media/'+row.attachment_id}));
 
+export async function assertWebsiteAssets(store,websiteId,document){
+ const refs=referencedAssets(document);if(refs.length>100)throw fail('Keep up to 100 website assets.');refs.forEach(id);
+ if(refs.length){const missing=await store.first(`SELECT r.value FROM json_each(?) r WHERE NOT EXISTS(
+   SELECT 1 FROM attachments a WHERE a.website_id=? AND a.asset_id=r.value AND a.audience='WEBSITE') LIMIT 1`,[JSON.stringify(refs),websiteId]);
+  if(missing)throw fail('A website file needs an attachment to this website.');}
+ return refs;
+}
+
 export async function editionAssets(store,websiteId,document,{draft=false}={}){
  const refs=document?referencedAssets(document):[];
  if(refs.length>100)throw fail('This edition needs an asset-reference review.',503,'EDITION_ASSET_LIMIT');

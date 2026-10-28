@@ -1,6 +1,6 @@
 import {fail,id,text,month,sha256,bodyJSON} from './protocol.mjs';
-import {referencedAssets} from '../public/shared/model.mjs';
 import {validatePackage} from './content-package.mjs';
+import {assertWebsiteAssets} from './website-assets.mjs';
 export async function objectJSON(bucket,key,limit=1_500_000){const object=await bucket.get(key);if(!object||object.size>limit)throw fail('The saved edition is unavailable.',503);return bodyJSON(object.body,limit);}
 export async function saveContent(env,document,websiteId=document.id){const encoded=JSON.stringify(document);if(new TextEncoder().encode(encoded).length>1_500_000)throw fail('This website edition is too large.',413);const hash=await sha256(encoded),key='websites/'+encodeURIComponent(websiteId)+'/versions/'+hash+'.json';await env.CONTENT.put(key,encoded,{httpMetadata:{contentType:'application/json'}});return key;}
 export async function websiteAccess(store,actor,websiteId,{admin=false}={}){
@@ -22,17 +22,18 @@ export async function editWebsite(env,store,actor,websiteId,input){
  const revision=website.revision+1,statements=[];let historyKey=website.draft_key;
  if(input.action==='save'){
   const document=structuredClone(input.document);const errors=validatePackage(document);if(errors.length)throw fail(errors.join(' '));
-  const refs=referencedAssets(document);if(refs.length>100)throw fail('Keep up to 100 website assets.');
-  for(const assetId of refs)id(assetId);
-  if(refs.length){const linked=await store.all("SELECT DISTINCT asset_id FROM attachments WHERE website_id=? AND audience='WEBSITE' AND asset_id IN(SELECT value FROM json_each(?))",[websiteId,JSON.stringify(refs)]),accepted=new Set(linked.map(row=>row.asset_id));if(refs.some(ref=>!accepted.has(ref)))throw fail('A website file needs an attachment to this website.');}
+  await assertWebsiteAssets(store,websiteId,document);
   const key=await saveContent(env,document,websiteId);historyKey=key;statements.push(store.statement('UPDATE websites SET draft_key=?,revision=? WHERE website_id=?',[key,revision,websiteId]));
  }else if(input.action==='publish'){
   if(!website.draft_key)throw fail('Save a draft first.');const document=await objectJSON(env.CONTENT,website.draft_key);const errors=validatePackage(document,{review:true});if(errors.length)throw fail(errors.join(' '));
-  const refs=referencedAssets(document);const linked=await store.all("SELECT asset_id FROM attachments WHERE website_id=? AND audience='WEBSITE' AND asset_id IN(SELECT value FROM json_each(?))",[websiteId,JSON.stringify(refs)]);
-  if(refs.some(ref=>!linked.some(row=>row.asset_id===ref)))throw fail('A referenced website asset is no longer attached.');
+  const refs=await assertWebsiteAssets(store,websiteId,document);
   statements.push(store.statement('DELETE FROM published_assets WHERE website_id=?',[websiteId]));
   for(const assetId of refs)statements.push(store.statement('INSERT INTO published_assets VALUES(?,?)',[websiteId,assetId]));
-  statements.push(store.statement("UPDATE attachments SET published=1 WHERE website_id=? AND audience='WEBSITE' AND asset_id IN(SELECT value FROM json_each(?))",[websiteId,JSON.stringify(refs)]));
+  // One delivery attachment per asset is sufficient. Keep duplicate drafts
+  // private, prefer an already-published attachment, and never rewrite history.
+  statements.push(store.statement(`UPDATE attachments SET published=1 WHERE published=0 AND attachment_id IN(
+   SELECT (SELECT a.attachment_id FROM attachments a WHERE a.website_id=? AND a.asset_id=r.value AND a.audience='WEBSITE'
+    ORDER BY a.published DESC,a.attachment_id LIMIT 1) FROM json_each(?) r)`,[websiteId,JSON.stringify(refs)]));
   statements.push(store.statement('UPDATE websites SET published_key=draft_key,enabled=1,revision=? WHERE website_id=?',[revision,websiteId]));
  }else if(input.action==='withdraw'){historyKey=website.published_key;statements.push(store.statement('UPDATE websites SET enabled=0,revision=? WHERE website_id=?',[revision,websiteId]));}
  else if(input.action==='restore'){
