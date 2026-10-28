@@ -63,6 +63,8 @@ CREATE TABLE attachments (
 CREATE INDEX attachments_website ON attachments(website_id,attachment_id);
 CREATE INDEX attachments_edition ON attachments(website_id,asset_id,audience,published DESC,attachment_id);
 CREATE INDEX attachments_website_picker ON attachments(website_id,audience,attachment_id);
+CREATE INDEX attachments_offering_picker ON attachments(offering_id,audience,attachment_id);
+CREATE INDEX attachments_offering_file ON attachments(offering_id,audience,asset_id,published DESC,attachment_id);
 CREATE INDEX attachments_offering ON attachments(offering_id,attachment_id);
 CREATE INDEX attachments_asset ON attachments(asset_id,website_id);
 CREATE INDEX attachments_feed ON attachments(offering_id,audience,published,attachment_id);
@@ -76,6 +78,7 @@ CREATE TABLE timetable (
  zoom_url TEXT, cancelled INTEGER NOT NULL DEFAULT 0 CHECK(cancelled IN(0,1)), revision INTEGER NOT NULL
 );
 CREATE INDEX timetable_offering ON timetable(offering_id,starts_at,session_id);
+CREATE INDEX timetable_public_offering ON timetable(offering_id,cancelled,starts_at,session_id);
 CREATE INDEX timetable_upcoming ON timetable(starts_at);
 CREATE TABLE cards (
  offering_id TEXT PRIMARY KEY REFERENCES offerings(offering_id), title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',

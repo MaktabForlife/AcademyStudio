@@ -34,3 +34,11 @@ export async function attachedWebsiteAssets(store,websiteId,{assetId,after=''}={
   WHERE x.website_id=? AND x.audience='WEBSITE' AND x.attachment_id>? ORDER BY x.attachment_id LIMIT 51`,[websiteId,after]);
  const page=rows.slice(0,50),more=rows.length>50;return {assets:urls(page),more,nextCursor:more?page.at(-1).attachment_id:null};
 }
+
+export async function offeringWebsiteAssets(store,offeringId,{assetId,after=''}={}){
+ const select='SELECT x.attachment_id,x.asset_id,x.website_id,x.lesson_id,x.lesson_date,x.cohort,x.title,x.audience,o.filename,o.mime_type,o.byte_size FROM attachments x JOIN objects o USING(asset_id)';
+ if(assetId){const assets=await store.all(`${select} WHERE x.offering_id=? AND x.audience='WEBSITE' AND x.asset_id=? ORDER BY x.published DESC,x.attachment_id LIMIT 1`,[offeringId,id(assetId)]);return {assets,more:false,nextCursor:null};}
+ if(after)id(after);
+ const rows=await store.all(`${select} WHERE x.offering_id=? AND x.audience='WEBSITE' AND x.attachment_id>? ORDER BY x.attachment_id LIMIT 51`,[offeringId,after]);
+ const assets=rows.slice(0,50),more=rows.length>50;return {assets,more,nextCursor:more?assets.at(-1).attachment_id:null};
+}

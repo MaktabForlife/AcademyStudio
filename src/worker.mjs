@@ -8,7 +8,7 @@ import {requestEnrolment,beginProvision,resumeProvision} from './enrolment.mjs';
 import {academyCommand} from './academy-client.mjs';
 import {publishSchedule} from './public-schedule.mjs';
 import {contentVersion} from './content-package.mjs';
-import {editionAssets,attachedWebsiteAssets} from './website-assets.mjs';
+import {editionAssets,attachedWebsiteAssets,offeringWebsiteAssets} from './website-assets.mjs';
 
 async function forwardSignIn(request,env,store,input,fetcher){
  if(!safeToken(input.challenge)||!safeToken(input.state))throw fail('Reopen sign-in from the homepage.');
@@ -20,7 +20,9 @@ async function route(request,env,store,fetcher){
  const url=new URL(request.url),path=url.pathname,method=request.method;
  if(path==='/api/public/home'&&method==='GET'){
   const object=await env.CONTENT.get('public/home.json');if(!object)return json({title:'Umm Abbad Academy',cards:[],sessions:[],announcements:[]});
-  const home=await bodyJSON(object.body),schedule=await env.CONTENT.get('public/schedule.json');if(schedule){const facts=await bodyJSON(schedule.body),visible=new Set(home.cards.map(c=>c.offering_id));home.sessions=Object.entries(facts.offerings).filter(([key])=>visible.has(key)).flatMap(([,value])=>value.sessions).filter(s=>!s.cancelled&&s.ends_at>Date.now()).sort((a,b)=>a.starts_at-b.starts_at).slice(0,300);}
+  const home=await bodyJSON(object.body),schedule=await env.CONTENT.get('public/schedule.json'),visible=new Set(home.cards.map(c=>c.offering_id));
+  const facts=schedule?await bodyJSON(schedule.body):null,sessions=facts?Object.entries(facts.offerings).filter(([key])=>visible.has(key)).flatMap(([,value])=>value.sessions):home.sessions||[];
+  home.sessions=sessions.filter(s=>visible.has(s.offering_id)&&!s.cancelled&&s.ends_at>Date.now()).sort((a,b)=>a.starts_at-b.starts_at).slice(0,300);
   return json(home,200,{'Cache-Control':'public, max-age=60'});
  }
  if(path==='/internal/academy/events'&&method==='POST'){const result=await receive(request,env,store);if(result.changedOffering)await publishSchedule(env,store,result.changedOffering);return json(result);}
@@ -84,6 +86,7 @@ async function route(request,env,store,fetcher){
  }
  match=path.match(/^\/api\/admin\/([-A-Za-z0-9_:]+)(?:\/(files|recording))?$/);
  if(match){const offeringId=id(match[1]),sub=match[2];await store.scope(actor,offeringId,{admin:true});
+  if(method==='GET'&&sub==='files')return json({offeringId,...await offeringWebsiteAssets(store,offeringId,{assetId:url.searchParams.get('assetId'),after:url.searchParams.get('after')||''})});
   if(method==='PUT'&&sub==='files')return json(await upload(env,store,actor,offeringId,request));
   if(sub==='recording'&&method==='PUT')return json(await recording(env,store,actor,offeringId,{action:'part',assetId:url.searchParams.get('assetId'),partNumber:Number(url.searchParams.get('partNumber'))},request));
   if(sub==='recording'&&method==='POST')return json(await recording(env,store,actor,offeringId,await bodyJSON(request.body,1_000_000),request));

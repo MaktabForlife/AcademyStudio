@@ -7,7 +7,12 @@ function label(){if(record?.document)$('selected-course-name').textContent=recor
 function session(){return createWebsiteEditSession({websiteId,owner:()=>identity.account?.accountId,request:(action,input)=>action==='open'?api(endpoint()):api(endpoint(),{body:input})});}
 const endpoint=()=>'/api/websites/'+encodeURIComponent(websiteId)+'/edit';
 const metadata=row=>({id:row.asset_id,name:row.name,type:row.type,size:row.size||0,source:row.type.startsWith('image/')?'IMAGE':'PLATFORM',offeringId:record.offeringId,attachmentId:row.attachment_id,lessonId:row.lesson_id,url:row.url});
-async function reload(){record=await api(endpoint());record.assets=record.assets.map(metadata);label();return record;}
+async function attachedAsset(assetId,{optional=false}={}){
+ const captured=epoch,data=await api('/api/websites/'+encodeURIComponent(websiteId)+'/assets?'+new URLSearchParams({assetId}));
+ if(captured!==epoch||!record)throw new DOMException('Account changed.','AbortError');
+ const row=data.assets.find(asset=>asset.asset_id===assetId);if(!row){if(optional)return null;throw Error('The attached file is unavailable. Reopen the file picker to retry.');}
+ const asset=metadata(row),index=record.assets.findIndex(item=>item.id===assetId);if(index<0)record.assets.push(asset);else record.assets[index]=asset;return asset;
+}
 previous.onclick=async()=>{
  if(studio.hasUnsavedChanges()||editing.pending){$('save-status').textContent='Save or export unsaved work and finish any retry before restoring a previous edition.';return;}
  const captured=epoch;let before='';$('dialog-title').textContent='Previous website editions';$('dialog-body').innerHTML='<p>Restore an edition as a private draft. Learners keep seeing the published edition until you publish.</p><div data-editions></div><button data-history-more>Load editions</button><p data-history-status role="status"></p>';
@@ -19,18 +24,19 @@ function end(){epoch++;editing?.clear();studio?.clearRemote();record=null;$('web
 window.addEventListener('website-session-ended',end);window.addEventListener('website-account-changed',end);
 async function attach(source){
  if(!source||source.audience!=='WEBSITE'||!['application/pdf','image/png','image/jpeg','image/webp'].includes(source.mime_type))throw Error('Choose an authorised website PDF or image. Lesson recordings and their notes retain their original access rules.');
+ const existing=record.assets.find(asset=>asset.id===source.asset_id)||await attachedAsset(source.asset_id,{optional:true});if(existing)return existing;
  const attachmentId='website-'+websiteId+'-'+source.asset_id;
  await mutate('/api/admin/'+record.offeringId,{action:'attachment',attachmentId,assetId:source.asset_id,websiteId,lessonId:source.lesson_id,lessonDate:source.lesson_date,cohort:source.cohort,title:source.title,audience:'WEBSITE',published:false});
- await reload();return record.assets.find(a=>a.id===source.asset_id);
+ return attachedAsset(source.asset_id);
 }
 async function reusableFiles(){
  const captured=epoch,rows=new Map();let after='';
  $('dialog-title').textContent='Reuse a website PDF or image';
  $('dialog-body').innerHTML='<p>Files are linked by reference. Recording and lesson-month permissions stay separate.</p><div data-reusable-files></div><button data-reusable-more>Load files</button><p data-reusable-status role="status"></p>';
  const list=$('dialog-body').querySelector('[data-reusable-files]'),more=$('dialog-body').querySelector('[data-reusable-more]'),note=$('dialog-body').querySelector('[data-reusable-status]');
- async function load(){more.disabled=true;try{const data=await api('/api/admin/'+record.offeringId+'?after='+encodeURIComponent(after));if(captured!==epoch)return;const batch=data.media.slice(0,50);after=batch.at(-1)?.attachment_id||after;
+ async function load(){more.disabled=true;try{const data=await api('/api/admin/'+record.offeringId+'/files?after='+encodeURIComponent(after));if(captured!==epoch)return;const batch=data.assets;after=data.nextCursor||after;
   for(const row of batch)if(row.audience==='WEBSITE'&&['application/pdf','image/png','image/jpeg','image/webp'].includes(row.mime_type)&&!rows.has(row.asset_id)){rows.set(row.asset_id,row);list.insertAdjacentHTML('beforeend',`<article class="website-list-card"><h3>${esc(row.title||row.filename)}</h3><small>${esc(row.mime_type==='application/pdf'?'PDF':'Image')}</small><button data-attach="${esc(row.asset_id)}">Reuse file</button></article>`);}
-  more.hidden=data.media.length<=50;more.textContent='Load more files';note.textContent=rows.size?'':'No reusable website files on this page. Upload a new file in Lesson media, or load more.';
+  more.hidden=!data.more;more.textContent='Load more files';note.textContent=rows.size?'':'No reusable website files on this page. Upload a new file in Lesson media, or load more.';
  }catch(error){note.textContent=error.message;}finally{more.disabled=false;}}
  more.onclick=load;list.onclick=async event=>{const button=event.target.closest('[data-attach]');if(!button)return;button.disabled=true;try{await studio.attachAcademyMaterial(await attach(rows.get(button.dataset.attach)));$('studio-dialog').close();}catch(error){note.textContent=error.message;button.disabled=false;}};
  $('studio-dialog').showModal();await load();
@@ -42,10 +48,10 @@ window.COURSE_WEBSITE_ADMIN={nativeMedia:true,surahId:null,ownerKey:()=>identity
  async assetBlob(assetId){const asset=record.assets.find(a=>a.id===assetId);if(!asset)throw Error('File not found.');return api(asset.url+'?draft=1',{blob:true});},
  async download(assetId){const blob=await this.assetBlob(assetId),asset=record.assets.find(a=>a.id===assetId),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=asset.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);},
  async upload(asset){const operationId='upload-'+asset.id;await api('/api/admin/'+record.offeringId+'/files?'+new URLSearchParams({assetId:asset.id,operationId,filename:asset.name}),{method:'PUT',body:asset.blob});
-  await mutate('/api/admin/'+record.offeringId,{action:'attachment',attachmentId:'website-image-'+asset.id,assetId:asset.id,websiteId,lessonId:record.document.lessons[0]?.id||'website-cover',lessonDate:new Date().toISOString().slice(0,10),cohort:'',title:asset.name,audience:'WEBSITE',published:false});await reload();},
+  await mutate('/api/admin/'+record.offeringId,{action:'attachment',attachmentId:'website-image-'+asset.id,assetId:asset.id,websiteId,lessonId:record.document.lessons[0]?.id||'website-cover',lessonDate:new Date().toISOString().slice(0,10),cohort:'',title:asset.name,audience:'WEBSITE',published:false});await attachedAsset(asset.id);},
  async publish(){if(studio.hasUnsavedChanges())throw Error('Save your draft before publishing.');const result=await editing.publish();record.revision=result.revision;record.enabled=true;record.publishedVersion=result.publishedVersion||result.revision;label();},
  async withdraw(){if(!confirm('Withdraw this website? Its draft and publication history will be retained.'))return false;const result=await editing.withdraw();record.revision=result.revision;record.enabled=false;label();return true;},
- async attachReference(reference){if(reference.offeringId!==record.offeringId)throw Error('This copy needs an authorised shared-file mapping before import into another offering.');const data=await api('/api/admin/'+record.offeringId);const source=data.media.find(row=>row.asset_id===reference.assetId&&row.audience==='WEBSITE');if(!source)throw Error('Choose the authorised file through Reuse existing PDF or image.');return attach(source);},
+ async attachReference(reference){if(reference.offeringId!==record.offeringId)throw Error('This copy needs an authorised shared-file mapping before import into another offering.');const data=await api('/api/admin/'+record.offeringId+'/files?'+new URLSearchParams({assetId:reference.assetId}));const source=data.assets.find(row=>row.asset_id===reference.assetId&&row.audience==='WEBSITE');if(!source)throw Error('Choose the authorised file through Reuse existing PDF or image.');return attach(source);},
  async attachMedia(){try{await reusableFiles();}catch(error){$('save-status').textContent=error.message;}}
 };
 try{identity.account=await api('/api/me');if(!websiteId)throw Error('Choose a website from Media / Lesson media.');editing=session();record=await editing.open();record.assets=record.assets.map(metadata);label();window.COURSE_WEBSITE_ADMIN.surahId=record.document.pages.sessions?null:websiteId;$('website-list-panel').hidden=true;$('website-editor').hidden=false;$('selected-course-name').textContent=record.document.name;studio=await import('/shared/studio.mjs');}
