@@ -56,7 +56,7 @@ try{
 
  let coverRequests=0,releaseCover;const coverReady=new Promise(resolve=>releaseCover=resolve),cover='/api/media/website-image-'+saved.document.home.imageId;
  await reader.route('**'+cover,async route=>{coverRequests++;await coverReady;await route.continue();});
- await reader.locator('[data-website="site-course"]').click();await reader.locator('[data-join="course-session"]').first().waitFor({state:'attached'});assert.equal(coverRequests,1,'Timetable redraws must share the in-flight image request');const coverResponse=reader.waitForResponse(response=>new URL(response.url()).pathname===cover);releaseCover();await coverResponse;await reader.unroute('**'+cover);
+ await reader.locator('[data-website="site-course"]').click();await reader.locator('[data-join^="ws-"]').first().waitFor({state:'attached'});assert.equal(coverRequests,1,'Timetable redraws must share the in-flight image request');const coverResponse=reader.waitForResponse(response=>new URL(response.url()).pathname===cover);releaseCover();await coverResponse;await reader.unroute('**'+cover);
  result.checks.push('Concurrent timetable redraws share one protected image request');
  await reader.locator('[data-sp="lesson"]').first().click();await reader.locator('[data-material="integration-video-attachment"]').click();await reader.locator('#media-dialog[open] iframe').waitFor();
  const second=await learner.newPage();await second.goto(base);await second.locator('#sign-out-button').waitFor();await second.locator('#sign-out-button').click();await reader.locator('#media-dialog').waitFor({state:'hidden'});assert.equal(await reader.locator('#media-body iframe,#media-body video,#media-body img').count(),0);

@@ -23,9 +23,9 @@ const deviceKey=()=>`website-learning:${identity.account.accountId}:${current.we
 function remember(){if(textEditor.editing)return;try{localStorage.setItem(deviceKey(),JSON.stringify({completed:ui.completed,reflections:ui.reflections,readingSize:ui.readingSize}));}catch{status('Browser storage is unavailable. Export your reflections before closing.');}}
 function draw(){if(!current||!identity.account)return;$('course-reader').innerHTML=renderCourse({...current.document,pages:{...current.document.pages,assessments:false}},ui,assets);textEditor.draw();renderDelivery();if(textEditor.editing)for(const control of $('course-reader').querySelectorAll('[data-sp=complete],[data-sp-note]'))control.disabled=true;void loadImages();}
 async function loadImages(){const key=generation,images=$('course-reader').querySelectorAll('img[data-course-image]');for(const image of images){const asset=assets.get(image.dataset.courseImage);if(!asset||!asset.type.startsWith('image/'))continue;if(!asset.blobURL){try{asset.imageRequest||=api(asset.url,{blob:true}).then(blob=>{if(key!==generation)return;asset.blobURL=URL.createObjectURL(blob);urls.add(asset.blobURL);}).finally(()=>{asset.imageRequest=null;});await asset.imageRequest;if(key!==generation)return;}catch(error){if(key===generation)status(error.message);continue;}}if(asset.blobURL)image.src=asset.blobURL;}}
-async function openWebsite(websiteId){if(!textEditor.canLeave())return;closeMedia();textEditor.clear();beforeEditing=null;removeReaderToolbars();if(!identity.account){$('sign-in-dialog').showModal();return;}generation++;for(const url of urls)URL.revokeObjectURL(url);urls.clear();const key=generation,record=await api('/api/websites/'+encodeURIComponent(websiteId));if(key!==generation)return;current=record;assets=new Map(record.assets.map(a=>[a.asset_id,{...a,id:a.asset_id}]));delivery=freshDelivery();clearTimeout(joinTimer);let saved={};try{saved=JSON.parse(localStorage.getItem(deviceKey())||'{}');}catch{}
+async function openWebsite(websiteId,returnLesson){if(!textEditor.canLeave())return;closeMedia();textEditor.clear();beforeEditing=null;removeReaderToolbars();if(!identity.account){$('sign-in-dialog').showModal();return;}generation++;for(const url of urls)URL.revokeObjectURL(url);urls.clear();const key=generation,record=await api('/api/websites/'+encodeURIComponent(websiteId));if(key!==generation)return;current=record;assets=new Map(record.assets.map(a=>[a.asset_id,{...a,id:a.asset_id}]));delivery=freshDelivery();clearTimeout(joinTimer);let saved={};try{saved=JSON.parse(localStorage.getItem(deviceKey())||'{}');}catch{}
  ui={portal:true,route:'home',lessonId:record.document.lessons[0]?.id,readingSize:Math.max(16,Math.min(24,Number(saved.readingSize)||18)),completed:Array.isArray(saved.completed)?saved.completed.filter(id=>record.document.lessons.some(l=>l.id===id)):[],reflections:saved.reflections&&typeof saved.reflections==='object'?saved.reflections:{},sessionsHTML:'<p>Select Sessions to load the published timetable.</p>',nativeMaterialsHTML:'',journalEligible:false};
- const requestedLesson=new URLSearchParams(location.search).get('lesson');if(requestedLesson&&record.document.lessons.some(l=>l.id===requestedLesson)){ui.route='lesson';ui.lessonId=requestedLesson;}
+ const requestedLesson=returnLesson??new URLSearchParams(location.search).get('lesson');if(requestedLesson&&record.document.lessons.some(l=>l.id===requestedLesson)){ui.route='lesson';ui.lessonId=requestedLesson;}
  show('course-reader');history.replaceState(null,'','/?website='+encodeURIComponent(websiteId));status('');draw();
  const toolbar=document.createElement('nav');toolbar.className='toolbar';toolbar.innerHTML=(record.canEdit?'<span class=website-edition>Published edition '+esc(record.publishedVersion?.slice(0,10)||'on file')+'</span>':'')+'<button data-library>Academy Library ↗</button><button data-device-export>Export reading progress & reflections</button><button data-device-import>Import device learning</button>';$('course-reader').before(toolbar);toolbar.dataset.readerToolbar='';
  if(current.document.pages.sessions)void loadTimetable().then(()=>{if(key===generation)draw();}).catch(error=>status(error.message));
@@ -73,10 +73,20 @@ $('sign-in-form').addEventListener('submit',async event=>{event.preventDefault()
 const base64=buffer=>btoa(String.fromCharCode(...new Uint8Array(buffer))).replaceAll('+','-').replaceAll('/','_').replaceAll('=','');const token=()=>base64(crypto.getRandomValues(new Uint8Array(32)));
 $('sign-in-button').onclick=()=>$('sign-in-dialog').showModal();$('close-sign-in').onclick=()=>$('sign-in-dialog').close();$('home-button').onclick=()=>{if(!textEditor.canLeave())return;textEditor.clear();beforeEditing=null;show('homepage');history.replaceState(null,'','/');};$('explore-button').onclick=()=>$('public-cards').scrollIntoView({behavior:'smooth'});$('my-websites').onclick=()=>library().catch(e=>status(e.message));
 $('sign-out-button').onclick=async()=>{try{await api('/auth/logout',{body:{}});}finally{changed(null);clear();}};
-$('academy-button').onclick=()=>{
+function openAcademy(libraryContext){
  const child=window.open(config.academyOrigin+'/academy/website-platform/connect/','_blank');if(!child){status('Allow this window to open, then select Academy again.');return;}
- const listener=async event=>{if(event.source!==child||event.origin!==config.academyOrigin||event.data?.type!=='ACADEMY_WEBSITE_CHALLENGE')return;window.removeEventListener('message',listener);try{const {state,challenge}=event.data,result=await api('/auth/academy',{body:{state,challenge}});child.postMessage({type:'WEBSITE_ACADEMY_CODE',state,code:result.code},config.academyOrigin);}catch(error){status(error.message);}};window.addEventListener('message',listener);setTimeout(()=>window.removeEventListener('message',listener),60_000);
-};
+ let connected=false,watch;const finish=()=>{window.removeEventListener('message',listener);clearInterval(watch);};
+ const listener=async event=>{if(event.source!==child||event.origin!==config.academyOrigin)return;
+  if(event.data?.type==='ACADEMY_WEBSITE_RETURN'&&libraryContext&&connected){try{
+   if(!current||current.websiteId!==libraryContext.websiteId||libraryContext.lessonId&&ui.lessonId!==libraryContext.lessonId){if(!textEditor.canLeave())return;await openWebsite(libraryContext.websiteId,libraryContext.lessonId);}
+   window.focus();child.postMessage({type:'WEBSITE_LIBRARY_RETURNED'},config.academyOrigin);finish();}catch(error){status(error.message);}return;
+  }
+  if(event.data?.type!=='ACADEMY_WEBSITE_CHALLENGE'||connected)return;connected=true;
+  try{const {state,challenge}=event.data,result=await api('/auth/academy',{body:{state,challenge,...(libraryContext?{library:libraryContext}:{})}});child.postMessage({type:'WEBSITE_ACADEMY_CODE',state,code:result.code},config.academyOrigin);if(!libraryContext)finish();}catch(error){status(error.message);finish();}
+ };window.addEventListener('message',listener);watch=setInterval(()=>{if(child.closed)finish();},1000);
+ setTimeout(()=>{if(!connected)finish();},60_000);
+}
+$('academy-button').onclick=()=>openAcademy();
 $('manage-button').onclick=async()=>{if(!textEditor.canLeave())return;textEditor.clear();beforeEditing=null;try{show('administration');adminModule||=await import('./admin.mjs');await adminModule.open($('administration'));}catch(error){status(error.message);}};
 $('close-media').onclick=closeMedia;
 $('media-dialog').addEventListener('cancel',closeMedia);
@@ -87,7 +97,7 @@ document.addEventListener('click',async event=>{if(event.target.closest('[data-i
  if(button.dataset.join){const result=await api('/api/offerings/'+current.offeringId+'/join',{body:{sessionId:button.dataset.join}});location.assign(result.destination);}
  if(button.dataset.material)await openMaterial('/api/media/'+button.dataset.material,button.dataset.type,button.dataset.filename);
  if(button.hasAttribute('data-more-media')){await loadMedia({more:true});if(ui.route==='sessions')await sessions();else await materials();}
- if(button.hasAttribute('data-library')){const result=await api('/api/library-return?'+new URLSearchParams({website:current.websiteId,lesson:ui.lessonId||''}));location.assign(result.destination);}
+ if(button.hasAttribute('data-library')){if(textEditor.canLeave())openAcademy({websiteId:current.websiteId,lessonId:ui.route==='lesson'?ui.lessonId:null});}
  if(button.hasAttribute('data-device-export')||button.dataset.sp==='download-reflections')downloadJSON(exportDeviceLearning({accountId:identity.account.accountId,websiteId:current.websiteId,document:current.document,state:ui}),'my-learning.json');
  if(button.hasAttribute('data-device-import'))$('device-import').click();
  if(!button.dataset.sp||!ui)return;const action=button.dataset.sp;

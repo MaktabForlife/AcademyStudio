@@ -56,8 +56,8 @@ The bounded publication implementation validates references by indexed existence
 | Warm sign-in, baseline | 21 | 165 | 21 |
 | First sign-in after adding 4,000 unrelated master accounts, including source proof refresh | 26 | 276 | 21 |
 | Warm sign-in after growth | 21 | 167 | 21 |
-| Master account creation and acknowledgement | 14 | 38 | 34 |
-| Queued suspension plus new-account recovery, including originating trigger | 4 | 27 | 19 |
+| Master account creation and acknowledgement | 14 | 42 | 34 |
+| Queued suspension plus new-account recovery, including originating trigger | 6 | 33 | 19 |
 
 The regression exposed a source session join that scanned 4,025 rows after growth: a new binary account reference did not match the existing account index's NOCASE collation. The connector now joins with the source's declared collation, including its atomic identity guard. The test separately bounds the proof-refresh case and the warm case; coordinator refresh work must not be mistaken for an account-population scan.
 
@@ -65,12 +65,22 @@ A second regression adds 4,000 unpaid recordings inside the **same Tafseer offer
 
 Current-edition asset selection has a separate growth regression in `tests/edition-assets.test.mjs`. Adding 4,000 historical WEBSITE attachments and 1,050 duplicates inside the same website leaves editor Open at 13 rows and learner Open at 10 for that two-reference draft/one-reference publication. Exact unused-asset lookup reads 7 rows; a 50-item metadata page reads 107. Current references are indexed individually, deduplicated and never selected from a first historical page. History remains intact. Save reads 15 rows and Publish 27 in the same growth fixture; one required private delivery reference is published and all 5,052 attachment rows remain. The full-package table above includes these optimizations.
 
-Still required before migration acceptance: source timetable/Zoom export and replay budgets; broader account/credential/role/admission changes and recovery batches; maximum-size asset-reference sets and bulk paid-month budgets; actual migrated access distributions; aggregate daily traffic/retry estimates; object-request costs; and cleanup/reconciliation budgets. Keep these separate from the measured cases above. Never remove current authority checks merely to meet a numerical budget.
+Still required before migration acceptance: real source timetable/access distributions and outage/replay batches; broader account/credential/role/admission changes and recovery batches; maximum-size asset-reference sets and bulk paid-month budgets; actual migrated access distributions; aggregate daily traffic/retry estimates; object-request costs; and cleanup/reconciliation budgets. Keep these separate from the measured cases above. Never remove current authority checks merely to meet a numerical budget.
 
 ## Integrated picker and timetable growth
 
 The scoped offering WEBSITE-file picker now uses a dedicated endpoint instead of reading the full participant/payment/enrolment register. It reads 5 rows before and after adding 4,000 recordings in the same offering; exact lookup reads 5. Those recording attachments are excluded. This is distinct from the website's 50-item attachment-history picker above.
 
-A public timetable delta reads 20 rows before and 26 after adding 4,000 historical and 4,000 cancelled sessions. A cancellation-first index excludes that history while retaining upcoming lessons, including those beyond a month. Public homepage reads remain zero. Fallback snapshots also apply visible offering-card rules. The source export/replay/rolling-publication policy is still a production dependency.
+A public timetable delta reads 20 rows before and 26 after adding 4,000 historical and 4,000 cancelled sessions. A cancellation-first index excludes that history while retaining upcoming lessons, including those beyond a month. Public homepage reads remain zero. Fallback snapshots also apply visible offering-card rules. The disabled source exporter and its local rolling/replay policy are now implemented; real offering mapping and hosted activation remain separate migration dependencies.
 
 Browser acceptance verifies concurrent reader/timetable redraws share one protected image request in the current account/website view. Permission decisions and image I/O are not cached across accounts. `outputs/integration-browser/result.json` records the final main-preview scenarios and request/read metadata; no external traffic or hosted fixtures are involved.
+
+## Academy schedule export and Library journey
+
+`tests/academy-timetable.test.mjs` measures actual native source D1 metadata. Initial two-offering projection/outbox/delivery reads 49 rows in 31 queries, excluding fixture setup. A Program master-Zoom correction **including its originating mutation/trigger** and delivery reads 36 rows in 19 queries; the same correction after 4,000 historical publication bodies reads 33 in 19. The initial planner used a date index and scanned 8,003 rows to choose the current version; the explicit version index fixes that regression. Target costs remain separate: the protected timetable list reads 6→8 after 4,000 old and 4,000 cancelled rows, and public homepage views read zero.
+
+Recovery selects at most two due mapped scopes, rechecks dirty revision/activation atomically, and keeps at most one unacknowledged timetable per scope. Publication/status/Zoom/calendar writes start recovery; the existing quarter-hour cron backs it up and rolls the horizon daily. Native checks cover lost ACK replay, late source changes, disabled activation catch-up and overflow that closes live joining. These bound actual tested workflows, not every possible production timetable or outage. No roster or whole-account refresh runs for schedule projection, normal reading, file requests or Join.
+
+`tests/library-return.test.mjs` records `outputs/library-return-reads.json`: preparing the Library handoff reads 4 website rows and 6 Academy rows (3 source queries); one-use Academy exchange reads another 10 Academy rows (6 queries). Website lesson validation reads the existing R2 publication. Returning to the unchanged original tab needs no website API call. Master credentials/tokens never enter website storage or return URLs.
+
+The actual Library/PDF browser fixture records source-native totals in `outputs/library-browser/result.json`. Two Library opens plus PDF rendering/Close, normal Academy session/catalogue/default reads, original-tab return and closed-opener fallback total 482 source rows in 59 queries on the synthetic fixture. This aggregate excludes the initial website PIN sign-in and is separate from the small handoff-only numbers. The fixture preserves Academy's existing Library permission/cache flow and uses one labelled synthetic public PDF; it does not enable private Module media. Library-wide growth/daily traffic/object-request estimates remain outstanding. Ordinary protected website reading/Join still performs zero Academy reads; entering Academy Library intentionally uses its existing Academy endpoints.
