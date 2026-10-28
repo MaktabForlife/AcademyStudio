@@ -17,7 +17,8 @@ export async function change(env,store,actor,offeringId,input){
   const website=await store.first('SELECT website_id FROM websites WHERE website_id=? AND offering_id=?',[id(input.websiteId),offeringId]);if(!website)throw fail('Choose a website in this offering.');if(!input.reason?.trim())throw fail('Give a reason for the grant change.');
   if(input.enabled===true)s('INSERT INTO surah_grants VALUES(?,?,?) ON CONFLICT(account_id,website_id) DO UPDATE SET reason=excluded.reason',[id(input.accountId),website.website_id,text(input.reason,500)]);else if(input.enabled===false)s('DELETE FROM surah_grants WHERE account_id=? AND website_id=?',[id(input.accountId),website.website_id]);else throw fail('Choose whether to enable the grant.');
  }else if(input.action==='website-create'){
-  const websiteId=id(input.websiteId),document=input.document||newCourse(),completionDate=input.completionDate?date(input.completionDate):null;const errors=validatePackage(document);if(errors.length)throw fail(errors.join(' '));const key=await saveContent(env,document,websiteId);
+  const websiteId=id(input.websiteId),document=input.document||newCourse(),completionDate=input.completionDate?date(input.completionDate):null;
+  const errors=validatePackage(document);if(errors.length)throw fail(errors.join(' '));const key=await saveContent(env,document,websiteId);
   s('INSERT INTO websites VALUES(?,?,?,?,?,NULL,0,0,?)',[websiteId,offeringId,text(input.title),completionDate?completionDate.slice(0,7):input.completionMonth?month(input.completionMonth):null,key,completionDate]);
  }else if(input.action==='completion-month'){
   const previous=await store.first('SELECT completion_date FROM websites WHERE website_id=? AND offering_id=?',[id(input.websiteId),offeringId]);if(previous?.completion_date)throw fail('Preserve the full completion date using the completion-date action.');

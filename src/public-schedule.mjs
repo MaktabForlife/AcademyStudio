@@ -1,7 +1,9 @@
 import {bodyJSON,fail} from './protocol.mjs';
 export async function publishSchedule(env,store,offeringId){
  const offering=await store.first('SELECT active,revision FROM offerings WHERE offering_id=?',[offeringId]);
- const sessions=offering.active?await store.all('SELECT session_id,offering_id,title,starts_at,ends_at,cancelled FROM timetable WHERE offering_id=? ORDER BY starts_at LIMIT 200',[offeringId]):[];
+ // The cancellation-first index keeps a large cancelled future cohort out of
+ // the scan; SQLite otherwise prefers the older time-only offering index.
+ const now=Date.now(),sessions=offering.active?await store.all('SELECT session_id,offering_id,title,starts_at,ends_at,cancelled FROM timetable INDEXED BY timetable_public_offering WHERE offering_id=? AND cancelled=0 AND starts_at>=? ORDER BY starts_at LIMIT 200',[offeringId,now-86400_000]):[];
  for(let attempt=0;attempt<5;attempt++){
   const object=await env.CONTENT.get('public/schedule.json'),current=object?await bodyJSON(object.body):{offerings:{}};
   if((current.offerings[offeringId]?.revision||0)>=offering.revision)return;
