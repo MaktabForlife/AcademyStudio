@@ -27,23 +27,25 @@ Source synchronization uses indexed per-account pending events, bounded 40-event
 
 ## Full teaching-package rehearsal
 
-The small-fixture numbers above are not budgets for image-rich teaching packages. The separate content branch ran the actual nine local packages/91 lessons through native target D1/R2 using the exact-content backend. The verified report is in the project workspace at `outputs/independent-websites-20261028/native-rehearsal.json`; source teaching and artwork remain outside tracked code. Its measured request rows are:
+The small-fixture numbers above are not budgets for image-rich teaching packages. All nine local packages/91 latest-reviewed lessons were rechecked here through native target D1/R2 using the integrated exact-content backend, history-independent asset selection and bounded Save/Publish. The current report is `outputs/integrated-nine-site-rehearsal.json` in this repository. Earlier editorial checkpoint reports remain in the project workspace at `outputs/independent-websites-20261028/native-rehearsal.json`; their older operation costs must not be presented as current.
 
-| Website | Lessons | Editor open | Save | Publish | Restore |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Kahf | 11 | 24 | 30 | 67 | 12 |
-| Saffat | 15 | 7 | 13 | 19 | 12 |
-| Yaseen | 16 | 24 | 30 | 70 | 12 |
-| Sajdah | 3 | 8 | 14 | 22 | 12 |
-| Ankabut | 9 | 8 | 14 | 22 | 12 |
-| Luqman | 12 | 8 | 14 | 22 | 12 |
-| Muzammil | 8 | 22 | 28 | 64 | 12 |
-| Qasas | 4 | 8 | 14 | 22 | 12 |
-| Foundations | 13 | 34 | 40 | 126 | 12 |
+| Website | Latest lessons | Saved reader | Reviewed reader | Editor | Save | Publish | Restore |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Kahf | 11 | 5 | 50 | 41 | 29 | 83 | 12 |
+| Saffat | 15 | 10 | 10 | 9 | 13 | 20 | 12 |
+| Yaseen | 16 | 10 | 50 | 41 | 29 | 84 | 12 |
+| Sajdah | 3 | 10 | 10 | 9 | 13 | 21 | 12 |
+| Ankabut | 9 | 10 | 10 | 9 | 13 | 21 | 12 |
+| Luqman | 12 | 10 | 10 | 9 | 13 | 21 | 12 |
+| Muzammil | 8 | 10 | 45 | 37 | 27 | 76 | 12 |
+| Qasas | 4 | 10 | 10 | 9 | 13 | 21 | 12 |
+| Foundations | 13 | — | — | 61 | 39 | 125 | 12 |
 
-All nine preserved exact saved publication and latest reviewed draft JSON/IDs, private Save, explicit Publish, recoverable previous drafts and unchanged peer websites. The report records zero hosted calls, 38 deduplicated artwork objects and no copied recording/PDF inventory. These are editorial operations, not measured learner-reader traffic or aggregate daily quotas. Higher metadata/reference counts explain why the full packages exceed the small fixture; do not generalise the small reader's five-row result to all real packages.
+The saved-reader column measures each original saved publication. The reviewed-reader column measures the latest reviewed draft after **explicit publication inside a disposable fixture**. This does not publish reviewed teaching to a hosted service or change the original saved source snapshots. Artwork range requests read 9–10 rows in these cases. Foundations has no learner measurement because its migration location remains undecided.
 
-Foundations is included only for preservation and local rehearsal. Its public access in Academy stays unchanged and its migration location remains undecided. Exact original media/session/access inventory is still required, including separate recording rights. The final frontend/content-tools delivery and browser acceptance remain separate from this native report.
+All nine preserved exact saved publication and latest-reviewed JSON/IDs, private Save/Restore, explicit publication and unchanged peers. The report records zero hosted calls, 38 deduplicated artwork objects and no copied recording/PDF inventory. These request costs are not aggregate daily quotas. Metadata/reference counts explain why full packages exceed the small fixture; do not generalise the tiny reader's five-row result to all real packages.
+
+The bounded publication implementation validates references by indexed existence checks, prefers an already published delivery attachment and publishes one canonical attachment per accepted asset when needed. It does not rescan or rewrite every historical duplicate. Exact current-reference lookup retains all publication/permission checks. Foundations is included only for preservation and local rehearsal; Academy public access remains unchanged. Source teaching/artwork stay outside tracked code.
 
 ## Source account workflows
 
@@ -61,7 +63,7 @@ The regression exposed a source session join that scanned 4,025 rows after growt
 
 A second regression adds 4,000 unpaid recordings inside the **same Tafseer offering**. Media discovery uses a paid-month-first join and its composite expression index; SQLite's affinity on the month comparison is handled explicitly. The filtered request reads 12→13 rows, and the unfiltered paid-month feed reads 9 after growth. The test rejects a scan through unpaid recordings and verifies that website-only grants cannot discover recordings. Exact website filters use stored IDs, and no title/date matching is introduced.
 
-Current-edition asset selection has a separate growth regression in `tests/edition-assets.test.mjs`. Adding 4,000 historical WEBSITE attachments and 1,000 duplicates inside the same website leaves editor Open at 15 rows and learner Open at 11 for that two-reference draft/one-reference publication. Exact unused-asset lookup reads 7 rows; a 50-item metadata page reads 107. Current references are indexed individually, deduplicated and never selected from a first historical page. History remains intact. The refreshed full-package table below includes the subsequent metadata lookup optimization.
+Current-edition asset selection has a separate growth regression in `tests/edition-assets.test.mjs`. Adding 4,000 historical WEBSITE attachments and 1,050 duplicates inside the same website leaves editor Open at 13 rows and learner Open at 10 for that two-reference draft/one-reference publication. Exact unused-asset lookup reads 7 rows; a 50-item metadata page reads 107. Current references are indexed individually, deduplicated and never selected from a first historical page. History remains intact. The refreshed full-package table below includes the subsequent metadata lookup optimization.
 
 Still required before migration acceptance: source timetable/Zoom export and replay budgets; broader account/credential/role/admission changes and recovery batches; maximum-size asset-reference sets and bulk paid-month budgets; actual migrated access distributions; aggregate daily traffic/retry estimates; object-request costs; and cleanup/reconciliation budgets. Keep these separate from the measured cases above. Never remove current authority checks merely to meet a numerical budget.
 

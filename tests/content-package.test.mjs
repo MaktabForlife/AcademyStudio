@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {newCourse} from '../public/shared/model.mjs';import {validatePackage} from '../src/content-package.mjs';import {fixture} from './fixture.mjs';import {sha256} from '../src/protocol.mjs';
 test('content rejects operational fields and raw meeting links at every supported depth',()=>{
- for(const mutate of [d=>d.accounts=[],d=>d.home.zoomUrl='secret',d=>d.lessons[0].participants=[],d=>d.lessons[0].sections[0].blocks[0].access={paid:true},d=>d.lessons[0].sections[0].blocks[0].aside={accounts:[]},d=>d.home.imageId='../another-file',d=>d.home.description='Join https://example.zoom.us/j/123?pwd=private',d=>d.lessons[0].sections[0].blocks[0].text='https://zoomgov.com/j/123']){const doc=newCourse();mutate(doc);assert.throws(()=>validatePackage(doc));}
+ for(const mutate of [d=>d.accounts=[],d=>d.home.zoomUrl='secret',d=>d.lessons[0].participants=[],d=>d.lessons[0].sections[0].blocks[0].access={paid:true},d=>d.lessons[0].sections[0].blocks[0].aside={accounts:[]},d=>d.home.imageId='../another-file',d=>d.home.description='Join https://example.zoom.us/j/123?pwd=private',d=>d.lessons[0].sections[0].blocks[0].text='https://zoomgov.com/j/123',d=>d.home.description='https://zoom.com/j/123']){const doc=newCourse();mutate(doc);assert.throws(()=>validatePackage(doc));}
  assert.deepEqual(validatePackage(newCourse()),[]);assert.throws(()=>validatePackage({format:'ACADEMY_COURSE_STUDIO_V1',pages:null}));
 });
 test('the shared schema bounds the full asset-reference set before storage',()=>{

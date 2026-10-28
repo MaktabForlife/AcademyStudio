@@ -25,7 +25,7 @@ function object(value,kind){
  for(const [key,valid] of Object.entries(optionalTypes[kind]||{}))if(Object.hasOwn(value,key)&&!valid(value[key]))throw fail('Check the editorial source field: '+key+'.');
 }
 function noMeetingLinks(value){
- if(typeof value==='string'&&/(?:https?:\/\/|www\.)(?:[-\w]+\.)*(?:zoom\.us|zoomgov\.com)(?=[:/?#\s]|$)/i.test(value))throw fail('Keep Zoom links in Academy session settings.');
+ if(typeof value==='string'&&/(?:https?:\/\/|www\.)(?:[-\w]+\.)*(?:zoom\.us|zoom\.com|zoomgov\.com)(?=[:/?#\s]|$)/i.test(value))throw fail('Keep Zoom links in Academy session settings.');
  if(value&&typeof value==='object')for(const child of Object.values(value))noMeetingLinks(child);
 }
 export function validatePackage(document,{review=false}={}){
