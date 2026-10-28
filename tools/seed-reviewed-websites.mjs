@@ -3,8 +3,8 @@ import {resolve,join} from 'node:path';
 import {createHash} from 'node:crypto';
 import {validatePackage} from '../src/content-package.mjs';
 
-// Only the disposable preview harness calls this. No production importer,
-// credentials, users, entitlements or hosted bindings are created here.
+// Storage-neutral preparation for disposable rehearsals and the authorised
+// private preview. This helper itself has no hosted bindings or credentials.
 export async function seedReviewedWebsites(f,directory) {
  const root=resolve(directory),index=JSON.parse(await readFile(join(root,'private/import-index.json'),'utf8'));
  if(index.format!=='LOCAL_WEBSITE_MIGRATION_V1')throw Error('Choose the prepared local content inventory.');

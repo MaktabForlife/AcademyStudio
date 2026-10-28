@@ -13,6 +13,8 @@
     "ENVIRONMENT": "isolated-preview",
     "WEBSITE_ORIGIN": "https://academy-studio-preview.naidu-hajira.workers.dev",
     "ACADEMY_ORIGIN": "https://academy.invalid",
+    "PREVIEW_LOGIN_ENABLED": "1",
+    "PREVIEW_ACCESS_EXPIRES_AT": "1793818462128",
     "ACCOUNT_MAX_AGE_SECONDS": "3600",
     "ADMIN_MAX_AGE_SECONDS": "300"
   },

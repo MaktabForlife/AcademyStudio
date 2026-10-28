@@ -1,5 +1,7 @@
 # AcademyStudio isolated preview
 
+The human subsequently authorised private testing of all nine existing websites and the builder. The current implementation and permission boundaries are documented in [PRIVATE-PREVIEW.md](PRIVATE-PREVIEW.md), on `feature/academy-studio-private-preview`. The records below describe the initial public-sample deployment; its sample-only/no-test-identity limitation is superseded by that explicit private-preview authorisation. Live Academy integration and production cutover remain unapproved.
+
 The human authorised a hosted preview on 28 October 2026, using the new account's Cloudflare address and leaving live Academy unchanged. This supersedes the local-only hold solely for this isolated preview. Production migration, Academy connector activation, DNS changes and production data import remain unauthorised.
 
 - Source: reviewed `d238d7f` on `feature/academy-studio-integration-review`, plus this preview-only entrypoint and configuration.

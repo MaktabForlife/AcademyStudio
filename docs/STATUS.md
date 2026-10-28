@@ -1,5 +1,7 @@
 # Local implementation status — 28 October 2026
 
+Current preview work is on `feature/academy-studio-private-preview`: the human authorised the nine existing website copies and full builder for private testing in the separate Cloudflare preview, with temporary synthetic identities and unchanged permission gates. The approved homepage styling is retained. See [PRIVATE-PREVIEW.md](PRIVATE-PREVIEW.md) and the parent project's private preview evidence for current status; earlier local-only statements below record historical checkpoints. Live Academy, actual users/rights/media inventories, timetable integration and production cutover remain outside this preview authorisation.
+
 The combined integration review is on `feature/academy-studio-integration-review`; see [INTEGRATION-REVIEW.md](INTEGRATION-REVIEW.md) for repairs, measured growth costs and the preview-versus-live deployment boundary. Production migration remains unaccepted and no deployment is authorised by the review.
 
 The independent repository exists locally on `feature/website-platform`; no remote repository/account resources, push, deployment, hosted query, live content publication or production migration has been performed. The committed runtime configuration stays disabled and contains only local placeholder resources.

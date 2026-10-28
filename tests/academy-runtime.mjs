@@ -1,10 +1,14 @@
-import {build} from 'esbuild';import {readFileSync} from 'node:fs';import {resolve} from 'node:path';import {pathToFileURL} from 'node:url';
+import {build} from 'esbuild';import {readFileSync,existsSync} from 'node:fs';import {resolve} from 'node:path';import {pathToFileURL} from 'node:url';
 export async function academyRuntime(bindings){
  const metrics={queries:0,rowsRead:0,rowsWritten:0},statements=[],telemetry=async request=>{const item=await request.json();for(const key of Object.keys(metrics))metrics[key]+=item[key];statements.push(...item.statements);return new Response('counted');},instrument=new URL('./source-d1-metrics.mjs',import.meta.url).pathname;
  const root=resolve(process.env.ACADEMY_SOURCE||'../Academy-website-studio');
  const {splitFixture}=await import(pathToFileURL(root+'/backend/tests/fixtures/academy-split-fixture.mjs'));
  const {importSQL}=await import(pathToFileURL(root+'/backend/tools/academy-split/artifact.mjs'));
- const f=await splitFixture();f.databases.core.exec(readFileSync(root+'/backend/migrations/academy-core/0011_website_platform.sql','utf8'));f.databases.core.exec("UPDATE website_platform_control SET enabled=1;UPDATE split_deployment_state SET state='READY'");
+ const f=await splitFixture();f.databases.core.exec(readFileSync(root+'/backend/migrations/academy-core/0011_website_platform.sql','utf8'));
+ // The separately developed source connector now uses its next additive schema.
+ // Apply it only to this disposable fixture, never to a hosted/source database.
+ const nextSchema=root+'/backend/migrations/academy-core/0012_website_schedule_library.sql';if(existsSync(nextSchema))f.databases.core.exec(readFileSync(nextSchema,'utf8'));
+ f.databases.core.exec("UPDATE website_platform_control SET enabled=1;UPDATE split_deployment_state SET state='READY'");
  const api=root+'/backend/src/academy-development-runtime.js',bridge=root+'/backend/src/academy/d1/web-platform/bridge.mjs';
  const bundle=async input=>(await build({stdin:{contents:input,resolveDir:root},bundle:true,format:'esm',platform:'browser',write:false,external:['cloudflare:workers']})).outputFiles[0].text;
  const sourceScript=await bundle(`import app from ${JSON.stringify(api)};import {measuredBindings} from ${JSON.stringify(instrument)};import {recoverWebsite} from ${JSON.stringify(bridge)};export {ProgramTimetableCoordinator} from ${JSON.stringify(api)};export default {async fetch(r,raw,c){const e=measuredBindings(raw);if(new URL(r.url).pathname==='/__local/recover'){await recoverWebsite(e,{fetcher:(u,o)=>e.PLATFORM_TEST.fetch(u,o)});return Response.json({done:true});}return app.fetch(r,{...e,AUTH_LOGIN_RATE_LIMITER:{limit:async()=>({success:true})}},c);}};`);
