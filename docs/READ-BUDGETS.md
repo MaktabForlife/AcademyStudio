@@ -61,6 +61,24 @@ The regression exposed a source session join that scanned 4,025 rows after growt
 
 A second regression adds 4,000 unpaid recordings inside the **same Tafseer offering**. Media discovery uses a paid-month-first join and its composite expression index; SQLite's affinity on the month comparison is handled explicitly. The filtered request reads 12→13 rows, and the unfiltered paid-month feed reads 9 after growth. The test rejects a scan through unpaid recordings and verifies that website-only grants cannot discover recordings. Exact website filters use stored IDs, and no title/date matching is introduced.
 
-Current-edition asset selection has a separate growth regression in `tests/edition-assets.test.mjs`. Adding 4,000 historical WEBSITE attachments and 1,000 duplicates inside the same website leaves editor Open at 15 rows and learner Open at 11 for that two-reference draft/one-reference publication. Exact unused-asset lookup reads 7 rows; a 50-item metadata page reads 107. Current references are indexed individually, deduplicated and never selected from a first historical page. History remains intact. Full teaching-package measurements above precede this query change and must be refreshed on integration.
+Current-edition asset selection has a separate growth regression in `tests/edition-assets.test.mjs`. Adding 4,000 historical WEBSITE attachments and 1,000 duplicates inside the same website leaves editor Open at 15 rows and learner Open at 11 for that two-reference draft/one-reference publication. Exact unused-asset lookup reads 7 rows; a 50-item metadata page reads 107. Current references are indexed individually, deduplicated and never selected from a first historical page. History remains intact. The refreshed full-package table below includes the subsequent metadata lookup optimization.
 
-Still required before migration acceptance: source timetable/Zoom export and replay budgets; broader account/credential/role/admission changes and recovery batches; maximum-size asset-reference sets and bulk paid-month budgets; full-package learner-reader measurements and actual migrated access distributions; aggregate daily traffic/retry estimates; object-request costs; and cleanup/reconciliation budgets. Keep these separate from the measured cases above. Never remove current authority checks merely to meet a numerical budget.
+Still required before migration acceptance: source timetable/Zoom export and replay budgets; broader account/credential/role/admission changes and recovery batches; maximum-size asset-reference sets and bulk paid-month budgets; actual migrated access distributions; aggregate daily traffic/retry estimates; object-request costs; and cleanup/reconciliation budgets. Keep these separate from the measured cases above. Never remove current authority checks merely to meet a numerical budget.
+
+## Current nine-website rehearsal
+
+Refreshed after the current-reference lookup and its metadata projection optimization. Synthetic local Workers/D1/R2 only; exact source content and IDs passed for all 91 lessons. Numbers count platform rows scanned, not API requests, and are not production traffic forecasts. Ordinary reading makes no Academy call. Published reader columns are content requests only: add separately gated artwork/media, timetable and status work to estimate a complete visit. Artwork is a 32-byte range request, not a PDF/video benchmark. Foundations is an Admin preservation rehearsal only; its learner-page location remains on hold.
+
+| Website | Saved publication reader | Reviewed reader | Artwork range | Draft editor | Save | Publish | Restore |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| kahf | 5 | 50 | 10 | 41 | 47 | 101 | 12 |
+| saffat | 10 | 10 | 9 | 9 | 14 | 21 | 12 |
+| yaseen | 10 | 50 | 9 | 41 | 47 | 104 | 12 |
+| sajdah | 10 | 10 | 9 | 9 | 15 | 24 | 12 |
+| ankabut | 10 | 10 | 9 | 9 | 15 | 24 | 12 |
+| luqman | 10 | 10 | 9 | 9 | 15 | 24 | 12 |
+| muzammil | 10 | 45 | 9 | 37 | 43 | 94 | 12 |
+| qasas | 10 | 10 | 9 | 9 | 15 | 24 | 12 |
+| foundations | — | — | — | 61 | 67 | 180 | 12 |
+
+Evidence: private local `outputs/independent-websites-20261028/native-rehearsal.json` in the parent project. The standalone preparation/rehearsal commands are in EDITORIAL-MIGRATION.md. Earlier pre-optimization figures are superseded by this table. These measurements do not accept daily aggregate budgets, maximum-reference packages, actual participant distributions or a production cutover.

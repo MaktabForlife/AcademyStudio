@@ -74,3 +74,6 @@ test('uncertain publication exposes a retry action and does not publish twice',a
  assert.equal(s.pendingAction,'publish');await s.retry();assert.equal(s.pending,false);assert.equal(s.record.revision,2);assert.equal(f.published.home.description,'Publish exactly once');
  const attempts=f.calls.filter(call=>call.input?.action==='publish');assert.deepEqual(attempts[0].input,attempts[1].input);
 });
+test('a pending restore cannot silently switch to another requested historical edition',async()=>{
+ const f=editorFixture(),s=f.make();await s.open();f.failNext();await assert.rejects(s.restore(0),/Response lost/);assert.equal(s.pendingAction,'restore');await assert.rejects(s.restore(1),/unfinished action/);
+});
