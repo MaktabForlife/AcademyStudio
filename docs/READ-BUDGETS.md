@@ -27,23 +27,25 @@ Source synchronization uses indexed per-account pending events, bounded 40-event
 
 ## Full teaching-package rehearsal
 
-The small-fixture numbers above are not budgets for image-rich teaching packages. The separate content branch ran the actual nine local packages/91 lessons through native target D1/R2 using the exact-content backend. The verified report is in the project workspace at `outputs/independent-websites-20261028/native-rehearsal.json`; source teaching and artwork remain outside tracked code. Its measured request rows are:
+The small-fixture numbers above are not budgets for image-rich teaching packages. All nine local packages/91 latest-reviewed lessons were rechecked here through native target D1/R2 using the integrated exact-content backend, history-independent asset selection and bounded Save/Publish. The current report is `outputs/integrated-nine-site-rehearsal.json` in this repository. Earlier editorial checkpoint reports remain in the project workspace at `outputs/independent-websites-20261028/native-rehearsal.json`; their older operation costs must not be presented as current.
 
-| Website | Lessons | Editor open | Save | Publish | Restore |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Kahf | 11 | 24 | 30 | 67 | 12 |
-| Saffat | 15 | 7 | 13 | 19 | 12 |
-| Yaseen | 16 | 24 | 30 | 70 | 12 |
-| Sajdah | 3 | 8 | 14 | 22 | 12 |
-| Ankabut | 9 | 8 | 14 | 22 | 12 |
-| Luqman | 12 | 8 | 14 | 22 | 12 |
-| Muzammil | 8 | 22 | 28 | 64 | 12 |
-| Qasas | 4 | 8 | 14 | 22 | 12 |
-| Foundations | 13 | 34 | 40 | 126 | 12 |
+| Website | Latest lessons | Saved reader | Reviewed reader | Editor | Save | Publish | Restore |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Kahf | 11 | 5 | 50 | 41 | 29 | 83 | 12 |
+| Saffat | 15 | 10 | 10 | 9 | 13 | 20 | 12 |
+| Yaseen | 16 | 10 | 50 | 41 | 29 | 84 | 12 |
+| Sajdah | 3 | 10 | 10 | 9 | 13 | 21 | 12 |
+| Ankabut | 9 | 10 | 10 | 9 | 13 | 21 | 12 |
+| Luqman | 12 | 10 | 10 | 9 | 13 | 21 | 12 |
+| Muzammil | 8 | 10 | 45 | 37 | 27 | 76 | 12 |
+| Qasas | 4 | 10 | 10 | 9 | 13 | 21 | 12 |
+| Foundations | 13 | — | — | 61 | 39 | 125 | 12 |
 
-All nine preserved exact saved publication and latest reviewed draft JSON/IDs, private Save, explicit Publish, recoverable previous drafts and unchanged peer websites. The report records zero hosted calls, 38 deduplicated artwork objects and no copied recording/PDF inventory. These are editorial operations, not measured learner-reader traffic or aggregate daily quotas. Higher metadata/reference counts explain why the full packages exceed the small fixture; do not generalise the small reader's five-row result to all real packages.
+The saved-reader column measures each original saved publication. The reviewed-reader column measures the latest reviewed draft after **explicit publication inside a disposable fixture**. This does not publish reviewed teaching to a hosted service or change the original saved source snapshots. Artwork range requests read 9–10 rows in these cases. Foundations has no learner measurement because its migration location remains undecided.
 
-Foundations is included only for preservation and local rehearsal. Its public access in Academy stays unchanged and its migration location remains undecided. Exact original media/session/access inventory is still required, including separate recording rights. The final frontend/content-tools delivery and browser acceptance remain separate from this native report.
+All nine preserved exact saved publication and latest-reviewed JSON/IDs, private Save/Restore, explicit publication and unchanged peers. The report records zero hosted calls, 38 deduplicated artwork objects and no copied recording/PDF inventory. These request costs are not aggregate daily quotas. Metadata/reference counts explain why full packages exceed the small fixture; do not generalise the tiny reader's five-row result to all real packages.
+
+The bounded publication implementation validates references by indexed existence checks, prefers an already published delivery attachment and publishes one canonical attachment per accepted asset when needed. It does not rescan or rewrite every historical duplicate. Exact current-reference lookup retains all publication/permission checks. Foundations is included only for preservation and local rehearsal; Academy public access remains unchanged. Source teaching/artwork stay outside tracked code.
 
 ## Source account workflows
 
@@ -54,16 +56,34 @@ Foundations is included only for preservation and local rehearsal. Its public ac
 | Warm sign-in, baseline | 21 | 165 | 21 |
 | First sign-in after adding 4,000 unrelated master accounts, including source proof refresh | 26 | 276 | 21 |
 | Warm sign-in after growth | 21 | 167 | 21 |
-| Master account creation and acknowledgement | 14 | 38 | 34 |
-| Queued suspension plus new-account recovery, including originating trigger | 4 | 27 | 19 |
+| Master account creation and acknowledgement | 14 | 42 | 34 |
+| Queued suspension plus new-account recovery, including originating trigger | 6 | 33 | 19 |
 
 The regression exposed a source session join that scanned 4,025 rows after growth: a new binary account reference did not match the existing account index's NOCASE collation. The connector now joins with the source's declared collation, including its atomic identity guard. The test separately bounds the proof-refresh case and the warm case; coordinator refresh work must not be mistaken for an account-population scan.
 
 A second regression adds 4,000 unpaid recordings inside the **same Tafseer offering**. Media discovery uses a paid-month-first join and its composite expression index; SQLite's affinity on the month comparison is handled explicitly. The filtered request reads 12→13 rows, and the unfiltered paid-month feed reads 9 after growth. The test rejects a scan through unpaid recordings and verifies that website-only grants cannot discover recordings. Exact website filters use stored IDs, and no title/date matching is introduced.
 
-Current-edition asset selection has a separate growth regression in `tests/edition-assets.test.mjs`. Adding 4,000 historical WEBSITE attachments and 1,000 duplicates inside the same website leaves editor Open at 15 rows and learner Open at 11 for that two-reference draft/one-reference publication. Exact unused-asset lookup reads 7 rows; a 50-item metadata page reads 107. Current references are indexed individually, deduplicated and never selected from a first historical page. History remains intact. The refreshed full-package table below includes the subsequent metadata lookup optimization.
+Current-edition asset selection has a separate growth regression in `tests/edition-assets.test.mjs`. Adding 4,000 historical WEBSITE attachments and 1,050 duplicates inside the same website leaves editor Open at 13 rows and learner Open at 10 for that two-reference draft/one-reference publication. Exact unused-asset lookup reads 7 rows; a 50-item metadata page reads 107. Current references are indexed individually, deduplicated and never selected from a first historical page. History remains intact. Save reads 15 rows and Publish 27 in the same growth fixture; one required private delivery reference is published and all 5,052 attachment rows remain. The full-package table above includes these optimizations.
 
-Still required before migration acceptance: source timetable/Zoom export and replay budgets; broader account/credential/role/admission changes and recovery batches; maximum-size asset-reference sets and bulk paid-month budgets; actual migrated access distributions; aggregate daily traffic/retry estimates; object-request costs; and cleanup/reconciliation budgets. Keep these separate from the measured cases above. Never remove current authority checks merely to meet a numerical budget.
+Still required before migration acceptance: real source timetable/access distributions and outage/replay batches; broader account/credential/role/admission changes and recovery batches; maximum-size asset-reference sets and bulk paid-month budgets; actual migrated access distributions; aggregate daily traffic/retry estimates; object-request costs; and cleanup/reconciliation budgets. Keep these separate from the measured cases above. Never remove current authority checks merely to meet a numerical budget.
+
+## Integrated picker and timetable growth
+
+The scoped offering WEBSITE-file picker now uses a dedicated endpoint instead of reading the full participant/payment/enrolment register. It reads 5 rows before and after adding 4,000 recordings in the same offering; exact lookup reads 5. Those recording attachments are excluded. This is distinct from the website's 50-item attachment-history picker above.
+
+A public timetable delta reads 20 rows before and 26 after adding 4,000 historical and 4,000 cancelled sessions. A cancellation-first index excludes that history while retaining upcoming lessons, including those beyond a month. Public homepage reads remain zero. Fallback snapshots also apply visible offering-card rules. The disabled source exporter and its local rolling/replay policy are now implemented; real offering mapping and hosted activation remain separate migration dependencies.
+
+Browser acceptance verifies concurrent reader/timetable redraws share one protected image request in the current account/website view. Permission decisions and image I/O are not cached across accounts. `outputs/integration-browser/result.json` records the final main-preview scenarios and request/read metadata; no external traffic or hosted fixtures are involved.
+
+## Academy schedule export and Library journey
+
+`tests/academy-timetable.test.mjs` measures actual native source D1 metadata. Initial two-offering projection/outbox/delivery reads 49 rows in 31 queries, excluding fixture setup. A Program master-Zoom correction **including its originating mutation/trigger** and delivery reads 36 rows in 19 queries; the same correction after 4,000 historical publication bodies reads 33 in 19. The initial planner used a date index and scanned 8,003 rows to choose the current version; the explicit version index fixes that regression. Target costs remain separate: the protected timetable list reads 6→8 after 4,000 old and 4,000 cancelled rows, and public homepage views read zero.
+
+Recovery selects at most two due mapped scopes, rechecks dirty revision/activation atomically, and keeps at most one unacknowledged timetable per scope. Publication/status/Zoom/calendar writes start recovery; the existing quarter-hour cron backs it up and rolls the horizon daily. Native checks cover lost ACK replay, late source changes, disabled activation catch-up and overflow that closes live joining. These bound actual tested workflows, not every possible production timetable or outage. No roster or whole-account refresh runs for schedule projection, normal reading, file requests or Join.
+
+`tests/library-return.test.mjs` records `outputs/library-return-reads.json`: preparing the Library handoff reads 4 website rows and 6 Academy rows (3 source queries); one-use Academy exchange reads another 10 Academy rows (6 queries). Website lesson validation reads the existing R2 publication. Returning to the unchanged original tab needs no website API call. Master credentials/tokens never enter website storage or return URLs.
+
+The actual Library/PDF browser fixture records source-native totals in `outputs/library-browser/result.json`. Two Library opens plus PDF rendering/Close, normal Academy session/catalogue/default reads, original-tab return and closed-opener fallback total 482 source rows in 59 queries on the synthetic fixture. This aggregate excludes the initial website PIN sign-in and is separate from the small handoff-only numbers. The fixture preserves Academy's existing Library permission/cache flow and uses one labelled synthetic public PDF; it does not enable private Module media. Library-wide growth/daily traffic/object-request estimates remain outstanding. Ordinary protected website reading/Join still performs zero Academy reads; entering Academy Library intentionally uses its existing Academy endpoints.
 
 ## Current nine-website rehearsal
 

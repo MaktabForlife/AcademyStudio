@@ -1,0 +1,13 @@
+const ZOOM='https://example.zoom.us/j/123456789';
+const run=(db,sql,...args)=>db.prepare(sql).bind(...args).run();
+export async function seedTimetables(f){
+ const db=await f.runtime.getD1Database('ACADEMY_DB','academy'),{programA,courseA}=f.source.f.scopes,today=new Date().toISOString().slice(0,10),clock=new Date(),startTime=clock.toISOString().slice(11,16),endTime=new Date(clock.getTime()+3600_000).toISOString().slice(11,16);
+ const weekly={schema:'105.3.2.2-weekly',format:'105.3.2.2-weekly',programId:programA.slice(8),effectiveFrom:today,timezone:'UTC',programZoomLink:ZOOM,rules:[{id:'RULE-website-bridge',weekdays:[clock.getUTCDay()],startTime,endTime,classIds:[],moduleName:'Source weekly lesson',zoomLink:'',effectiveZoomLink:ZOOM,zoomSource:'PROGRAM'}]};
+ await run(db,"INSERT INTO timetable_publications(activity_key,publication_id,scope_key,version_no,pattern,effective_from,timezone,snapshot_json,source_snapshot_sha256,conversion) VALUES(?,?,?,10000,'WEEKLY',?,'UTC',?,?,'EXACT')",programA,'ws-program-publication',programA,today,JSON.stringify(weekly),'a'.repeat(64));
+ await run(db,"INSERT INTO course_runs(activity_key,run_id,name,timezone,start_date,end_date,schedule_mode,schedule_definition,active) VALUES(?,'ws-run','Source Course','UTC',?,?,'EXPLICIT','[]',1)",courseA,today,today);
+ const publication={PublicationID:'ws-course-publication',RunID:'ws-run',SubjectID:courseA.slice(7),VersionNo:1,SessionCount:1,ScheduleMode:'EXPLICIT'},session={PublishedSessionID:'ws-published-lesson',SourceSessionID:'ws-course-lesson',PublicationID:publication.PublicationID,RunID:'ws-run',SubjectID:courseA.slice(7),SessionDate:today,StartTime:startTime,EndTime:endTime,TeacherName:'Synthetic teacher',RunName:'Source Course',SubjectName:'Source Course',Timezone:'UTC',ZoomLink:ZOOM,SessionDescription:'Source Course lesson',SessionKind:'EXPLICIT'};
+ await run(db,"INSERT INTO timetable_publications(activity_key,publication_id,scope_key,version_no,pattern,effective_from,timezone,snapshot_json,source_snapshot_sha256,conversion) VALUES(?,?,?,1,'COURSE',?,'UTC',?,?,'EXACT')",courseA,publication.PublicationID,'ws-run',today,JSON.stringify({publication,sessions:[session]}),'b'.repeat(64));
+ await run(db,"INSERT INTO course_run_state(activity_key,run_id,stage,current_publication_id) VALUES(?,'ws-run','PUBLISHED',?)",courseA,publication.PublicationID);
+ for(const [activity,offering,kind] of [[programA,'tafseer','TAFSEER'],[courseA,'course','COURSE']])await run(db,'INSERT INTO website_platform_timetable_scopes(activity_key,offering_id,kind) VALUES(?,?,?)',activity,offering,kind);
+ await f.run("DELETE FROM stream_heads WHERE stream IN ('timetable:course','timetable:tafseer')");return {db,programA,courseA,weekly,today};
+}

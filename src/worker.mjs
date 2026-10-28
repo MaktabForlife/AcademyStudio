@@ -37,7 +37,9 @@ async function route(request,env,store,fetcher){
   if(!claimed.length)throw fail('Your account refresh is already in progress. Retry the action shortly.',409,'REFRESH_PENDING');
   try{await academyCommand(env,store,'/internal/website/status',{sourceRef:actor.source_ref},fetcher);const current=await store.actor(actor.token_hash);return json({verifiedAt:current.verified_at});}finally{await store.run('DELETE FROM refresh_claims WHERE account_id=? AND claim_id=?',[actor.account_id,claimId]);}
  }
- if(path==='/auth/academy'&&method==='POST'){const input=await bodyJSON(request.body,4096);if(!actor.source_ref||!safeToken(input.challenge)||!safeToken(input.state))throw fail('Reopen Academy from the website.',401);const result=await academyCommand(env,store,'/internal/website/open-academy',{sourceRef:actor.source_ref,challenge:input.challenge,state:input.state},fetcher);if(!safeToken(result.code))throw fail('Academy could not prepare the handoff.',503);return json({code:result.code});}
+ if(path==='/auth/academy'&&method==='POST'){const input=await bodyJSON(request.body,4096);if(!actor.source_ref||!safeToken(input.challenge)||!safeToken(input.state))throw fail('Reopen Academy from the website.',401);let library;
+  if(input.library){const website=await websiteAccess(store,actor,id(input.library.websiteId)),lessonId=input.library.lessonId?id(input.library.lessonId):null;if(lessonId){const document=website.published_key?await objectJSON(env.CONTENT,website.published_key):null;if(!document?.lessons.some(l=>l.id===lessonId))throw fail('Choose a published lesson for the Library return.',404);}library={websiteId:website.website_id,lessonId};}
+  const result=await academyCommand(env,store,'/internal/website/open-academy',{sourceRef:actor.source_ref,challenge:input.challenge,state:input.state,...(library?{library}:{})},fetcher);if(!safeToken(result.code))throw fail('Academy could not prepare the handoff.',503);return json({code:result.code});}
  if(path==='/auth/logout'&&method==='POST'){await store.run('UPDATE sessions SET revoked=1 WHERE token_hash=?',[actor.token_hash]);return json({signedOut:true},200,{'Set-Cookie':cookie('',0)});}
  if(path==='/api/me'&&method==='GET')return json({accountId:actor.account_id,displayName:actor.display_name,globalAdmin:Boolean(actor.global_admin),verifiedAt:actor.verified_at});
  if(path==='/api/websites'&&method==='GET'){
@@ -63,7 +65,7 @@ async function route(request,env,store,fetcher){
  match=path.match(/^\/api\/media\/([-A-Za-z0-9_:]+)$/);if(match&&['GET','HEAD'].includes(method)){const row=await mediaGate(store,actor,match[1],{admin:url.searchParams.get('draft')==='1'});return streamMedia(env,row,request);}
  match=path.match(/^\/api\/offerings\/([-A-Za-z0-9_:]+)\/(sessions|media|join|enrol|provision|resume)$/);
  if(match){const offeringId=id(match[1]),action=match[2],scope=await store.scope(actor,offeringId);
-  if(action==='sessions'&&method==='GET'){if(!actor.global_admin&&!scope.live&&!scope.role)throw fail('Live-session access is required.',403);return json({sessions:await store.all('SELECT session_id,title,starts_at,ends_at,cancelled FROM timetable WHERE offering_id=? AND starts_at>=? ORDER BY starts_at LIMIT 100',[offeringId,Date.now()-31*86400_000]),serverTime:Date.now()});}
+  if(action==='sessions'&&method==='GET'){if(!actor.global_admin&&!scope.live&&!scope.role)throw fail('Live-session access is required.',403);return json({sessions:await store.all('SELECT session_id,title,starts_at,ends_at,cancelled FROM timetable INDEXED BY timetable_public_offering WHERE offering_id=? AND cancelled=0 AND starts_at>=? ORDER BY starts_at,session_id LIMIT 200',[offeringId,Date.now()-86400_000]),serverTime:Date.now()});}
   if(action==='media'&&method==='GET'){
    const after=url.searchParams.get('after')||'',websiteId=url.searchParams.get('website');
    if(websiteId){const site=await websiteAccess(store,actor,id(websiteId));if(site.offering_id!==offeringId)throw fail('Choose a website in this offering.',400);}
@@ -102,10 +104,6 @@ async function route(request,env,store,fetcher){
  }
  if(path==='/api/admin/announcements'&&method==='POST')return json(await announcements(store,actor,await bodyJSON(request.body,16384)));
  if(path==='/api/admin/home/publish'&&method==='POST')return json(await publishHome(env,store,actor,await bodyJSON(request.body,4096)));
- if(path==='/api/library-return'&&method==='GET'){
-  const website=await websiteAccess(store,actor,id(url.searchParams.get('website'))),lesson=url.searchParams.get('lesson');if(lesson)id(lesson);
-  return json({destination:env.ACADEMY_ORIGIN+'/academy/library/?'+new URLSearchParams({websiteReturn:env.WEBSITE_ORIGIN+'/?website='+encodeURIComponent(website.website_id)+(lesson?'&lesson='+encodeURIComponent(lesson):'')})});
- }
  throw fail('This page or action was not found.',404);
 }
 export async function handle(request,env,ctx,fetcher=fetch){

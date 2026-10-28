@@ -1,0 +1,22 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {pathToFileURL} from 'node:url';import {mkdirSync,writeFileSync} from 'node:fs';import {resolve} from 'node:path';import {fixture} from './fixture.mjs';import {random,challenge} from '../src/protocol.mjs';
+const {approvedReturn}=await import(pathToFileURL(resolve('../Academy-website-studio/academy/website-platform/library-return.mjs')));
+const ok=r=>{assert.equal(r.status,200,JSON.stringify(r.body));return r.body;};
+test('Library handoff binds a one-use Academy session to an entitled website and actual lesson, without returning a master token to the website',async t=>{
+ const f=await fixture({academy:true}),evidence={};try{
+  const verifier=random(),state=random(),login=ok(await f.request('/auth/login',{method:'POST',body:{uniqueid:'separation-global',pin:'1234',state,challenge:await challenge(verifier)}})),session=await f.request('/auth/exchange',{method:'POST',body:{code:login.code,state,verifier}});ok(session);const cookie=session.response.headers.get('Set-Cookie').split(';')[0],lessonId=f.doc.lessons[0].id;
+  f.source.resetMetrics();const childVerifier=random(),childState=random(),body={challenge:await challenge(childVerifier),state:childState,library:{websiteId:'site-course',lessonId}},made=await f.request('/auth/academy',{method:'POST',cookie,body}),ticket=ok(made);assert(!JSON.stringify(ticket).includes('token'));assert(made.reads<12);evidence.prepare={websiteRows:made.reads,source:{...f.source.metrics}};
+  const exchange=async(fields,origin='https://academy.test')=>f.runtime.dispatchFetch('https://academy.test/api/website-platform/exchange',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify(fields)}),input={code:ticket.code,state:childState,verifier:childVerifier};
+  assert.equal((await exchange(input,'https://evil.test')).status,403);assert.equal((await exchange({...input,verifier:random()})).status,401);
+  f.source.resetMetrics();const reply=await exchange(input);assert.equal(reply.status,200,await reply.clone().text());evidence.exchange={source:{...f.source.metrics}};const opened=await reply.json();assert(opened.token);assert.deepEqual(opened.library,{websiteId:'site-course',lessonId,returnUrl:'https://website.test/?website=site-course&lesson='+lessonId});assert.equal((await exchange(input)).status,401);
+  assert.equal((await f.request('/auth/academy',{method:'POST',cookie,body:{...body,library:{websiteId:'site-course',lessonId:'invented-lesson'}}})).status,404);
+  const learnerVerifier=random(),learnerState=random(),learnerLogin=ok(await f.request('/auth/login',{method:'POST',body:{uniqueid:'separation-studentA',pin:'1234',state:learnerState,challenge:await challenge(learnerVerifier)}})),learnerSession=await f.request('/auth/exchange',{method:'POST',body:{code:learnerLogin.code,state:learnerState,verifier:learnerVerifier}});ok(learnerSession);const limitedCookie=learnerSession.response.headers.get('Set-Cookie').split(';')[0];assert.equal((await f.request('/auth/academy',{method:'POST',cookie:limitedCookie,body})).status,403);
+  mkdirSync('outputs',{recursive:true});writeFileSync('outputs/library-return-reads.json',JSON.stringify(evidence,null,2)+'\n');t.diagnostic(JSON.stringify(evidence));
+  const {source_ref}=await f.db.prepare('SELECT source_ref FROM sessions WHERE account_id=?').bind(f.source.f.actors.global).first();assert(source_ref);
+  const source=await f.runtime.getD1Database('ACADEMY_DB','academy');await source.prepare('UPDATE accounts SET active=0 WHERE account_id=?').bind(f.source.f.actors.global).run();assert.equal((await f.request('/auth/academy',{method:'POST',cookie,body})).status,401);
+ }finally{await f.close();}
+});
+test('Library return ignores arbitrary URL parameters and permits only a bounded exact-origin website/lesson destination',()=>{
+ const c={websiteId:'site-course',lessonId:'lesson-1',websiteOrigin:'https://website.test',returnUrl:'https://website.test/?website=site-course&lesson=lesson-1',expiresAt:Date.now()+60_000};
+ assert(approvedReturn(JSON.stringify(c)));
+ for(const change of [{returnUrl:'https://evil.test/?website=site-course'},{returnUrl:'https://website.test/redirect?website=site-course'},{returnUrl:c.returnUrl+'&next=https://evil.test'},{returnUrl:c.returnUrl+'#next'},{expiresAt:0},{expiresAt:null},{websiteId:'other-site'}])assert.equal(approvedReturn(JSON.stringify({...c,...change})),null,JSON.stringify(change));
+});

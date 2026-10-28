@@ -4,6 +4,7 @@ const ok=r=>{assert.equal(r.status,200,JSON.stringify(r.body));return r.body;};
 test('public timetable keeps upcoming sessions when historical and cancelled sessions grow',async t=>{
  const f=await fixture();try{
   const now=Date.now(),event={type:'timetable',mode:'delta',offering:{id:'course',kind:'COURSE',title:'Course',active:true},sessions:[{id:'new-session',title:'Upcoming lesson',startsAt:now+120_000,endsAt:now+3600_000,cancelled:false},{id:'later-session',title:'Later lesson',startsAt:now+60*86400_000,endsAt:now+60*86400_000+3600_000,cancelled:false}]};
+  const cookie=(await f.login('learner')).cookie,protectedBefore=await f.request('/api/offerings/course/sessions',{cookie});ok(protectedBefore);
   const before=await f.deliver(event);assert.equal(before.response.status,200);const base=Number(before.response.headers.get('X-Local-D1-Rows-Read'));
   const records=JSON.stringify(Array.from({length:4000},(_,i)=>({id:'history-'+i,starts:now-400*86400_000+i*1000})));
   await f.run("INSERT INTO timetable SELECT json_extract(value,'$.id'),'course','Historical lesson',json_extract(value,'$.starts'),json_extract(value,'$.starts')+1000,NULL,0,1 FROM json_each(?)",records);
@@ -13,9 +14,10 @@ test('public timetable keeps upcoming sessions when historical and cancelled ses
   const query=await f.db.prepare(sql).bind('course',now-86400_000).all(),plan=await f.db.prepare('EXPLAIN QUERY PLAN '+sql).bind('course',now-86400_000).all();
   t.diagnostic(JSON.stringify({scheduleRows:query.meta.rows_read,schedulePlan:plan.results}));
   const after=await f.deliver(event);assert.equal(after.response.status,200);const grown=Number(after.response.headers.get('X-Local-D1-Rows-Read'));
+  const protectedAfter=await f.request('/api/offerings/course/sessions',{cookie});ok(protectedAfter);assert(protectedAfter.body.sessions.some(s=>s.session_id==='later-session'));assert(protectedAfter.reads<=protectedBefore.reads+10);assert(protectedAfter.body.sessions.every(s=>!s.cancelled));
   const home=await f.request('/api/public/home');assert(ok(home).sessions.some(row=>row.session_id==='new-session'));assert(home.body.sessions.some(row=>row.session_id==='later-session'));assert(home.body.sessions.every(row=>row.offering_id==='course'&&!row.cancelled&&row.ends_at>now));assert.equal(home.reads,0);
   assert(grown<=base+10,`Public timetable update scanned history: ${base} -> ${grown}`);
-  t.diagnostic(JSON.stringify({historicalSessions:4000,cancelledSessions:4000,publicationBefore:base,publicationAfter:grown,publicView:home.reads}));
+  t.diagnostic(JSON.stringify({historicalSessions:4000,cancelledSessions:4000,publicationBefore:base,publicationAfter:grown,publicView:home.reads,protectedBefore:protectedBefore.reads,protectedAfter:protectedAfter.reads}));
  }finally{await f.close();}
 });
 

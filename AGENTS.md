@@ -11,3 +11,5 @@
 - The 24-hour learner status fallback is provisional and configurable for local rehearsal; staff freshness is separate. No daily full-account sweeps, per-tab status polling or per-file Academy requests. Local withdrawal and permission removal take effect immediately.
 - No personal journals exist to migrate. Preserve browser-held progress/reflections through an explicit device transfer/export. The location of free Foundations learning pages remains undecided; preserve existing public access.
 - Use synthetic local Workers/D1/R2 fixtures. Record local evidence and limitations in docs/STATUS.md. Reused renderer/model assets originate at Academy Studio commit a639da30; keep source licences.
+
+- On 29 October the human authorised starting deployment. The rollout checkout is `feature/academy-studio-rollout-20261029`; prepare and update the existing isolated preview first. A scope question is pending about real Academy integration because the earlier leave-live-Academy-unchanged restriction persists. No source/DNS cutover, real account/access/media import or Git push is authorised by this preview step.
