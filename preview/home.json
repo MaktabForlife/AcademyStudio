@@ -1,0 +1,98 @@
+{
+  "revision": 1,
+  "title": "Umm Abbad Academy — homepage layout preview",
+  "cards": [
+    {
+      "id": "foundations",
+      "offering_id": "preview-foundations",
+      "kind": "TAFSEER",
+      "title": "Foundations of Tafseer",
+      "arabic": "علوم القرآن",
+      "tone": "sage",
+      "access": "public",
+      "description": "Begin with intention, revelation and Ulumul Qur’an, then explore the sources of Tafseer, early commentators and important works."
+    },
+    {
+      "id": "yaseen",
+      "offering_id": "preview-yaseen",
+      "kind": "TAFSEER",
+      "title": "Surah Yaseen",
+      "arabic": "سورة يس",
+      "tone": "plum",
+      "access": "restricted",
+      "description": "Reflect on revelation, the signs in creation and the return to Allah, with lessons on faith, accountability and the Hereafter."
+    },
+    {
+      "id": "saffat",
+      "offering_id": "preview-saffat",
+      "kind": "TAFSEER",
+      "title": "Surah As-Saffat",
+      "arabic": "سورة الصافات",
+      "tone": "rose",
+      "access": "restricted",
+      "description": "Explore Allah’s Oneness, the angels’ devotion and the stories of His messengers, ending with remembrance, peace and praise."
+    },
+    {
+      "id": "ankabut",
+      "offering_id": "preview-ankabut",
+      "kind": "TAFSEER",
+      "title": "Surah Al-Ankabut",
+      "arabic": "سورة العنكبوت",
+      "tone": "sage",
+      "access": "restricted",
+      "description": "Study the trials of faith, steadfastness, fragile worldly supports and the strength of relying on Allah."
+    },
+    {
+      "id": "luqman",
+      "offering_id": "preview-luqman",
+      "kind": "TAFSEER",
+      "title": "Surah Luqman",
+      "arabic": "سورة لقمان",
+      "tone": "gold",
+      "access": "restricted",
+      "description": "Discover wisdom through gratitude, Luqman’s advice, family responsibilities, worship and humble conduct."
+    },
+    {
+      "id": "muzammil",
+      "offering_id": "preview-muzammil",
+      "kind": "TAFSEER",
+      "title": "Surah Al-Muzzammil",
+      "arabic": "سورة المزمل",
+      "tone": "plum",
+      "access": "restricted",
+      "description": "Reflect on night prayer, measured recitation, patience and reliance on Allah, with guidance for worship within one’s ability."
+    },
+    {
+      "id": "qasas",
+      "offering_id": "preview-qasas",
+      "kind": "TAFSEER",
+      "title": "Surah Al-Qasas",
+      "arabic": "سورة القصص",
+      "tone": "gold",
+      "access": "restricted",
+      "description": "Follow selected passages about Musa عليه السلام: repentance, trust, modesty, and the qualities of strength and integrity."
+    },
+    {
+      "id": "sajdah",
+      "offering_id": "preview-sajdah",
+      "kind": "TAFSEER",
+      "title": "Surah As-Sajdah",
+      "arabic": "سورة السجدة",
+      "tone": "rose",
+      "access": "restricted",
+      "description": "Pause over selected ayahs about Allah’s care, listening to guidance and recognising His signs in everyday life."
+    },
+    {
+      "id": "kahf",
+      "offering_id": "preview-kahf",
+      "kind": "COURSE",
+      "title": "Surah Al Kahf",
+      "arabic": "سورة الكهف",
+      "tone": "plum",
+      "access": "restricted",
+      "description": "A four-week journey through the trials of faith, wealth, knowledge and power, exploring the nurturing system of Allah in Surah Al Kahf."
+    }
+  ],
+  "sessions": [],
+  "announcements": []
+}
