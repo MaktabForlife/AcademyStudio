@@ -60,7 +60,17 @@ async function route(request,env,store,fetcher){
  match=path.match(/^\/api\/offerings\/([-A-Za-z0-9_:]+)\/(sessions|media|join|enrol|provision|resume)$/);
  if(match){const offeringId=id(match[1]),action=match[2],scope=await store.scope(actor,offeringId);
   if(action==='sessions'&&method==='GET'){if(!actor.global_admin&&!scope.live&&!scope.role)throw fail('Live-session access is required.',403);return json({sessions:await store.all('SELECT session_id,title,starts_at,ends_at,cancelled FROM timetable WHERE offering_id=? AND starts_at>=? ORDER BY starts_at LIMIT 100',[offeringId,Date.now()-31*86400_000]),serverTime:Date.now()});}
-  if(action==='media'&&method==='GET'){const after=url.searchParams.get('after')||'',rows=await store.all(`SELECT x.attachment_id,x.title,x.lesson_id,x.lesson_date,x.audience,o.mime_type type FROM attachments x JOIN objects o USING(asset_id) WHERE x.offering_id=? AND x.published=1 AND x.attachment_id>? AND (x.audience='RECORDING' AND (?=1 OR ?=1 OR ? IS NOT NULL OR EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=? AND m.offering_id=x.offering_id AND m.month=substr(x.lesson_date,1,7) AND m.cohort=x.cohort))) ORDER BY x.attachment_id LIMIT 51`,[offeringId,after,actor.global_admin,Number(Boolean(scope.purchased)),scope.role,actor.account_id]);return json({media:rows.slice(0,50),more:rows.length>50});}
+  if(action==='media'&&method==='GET'){
+   const after=url.searchParams.get('after')||'',websiteId=url.searchParams.get('website');
+   if(websiteId){const site=await websiteAccess(store,actor,id(websiteId));if(site.offering_id!==offeringId)throw fail('Choose a website in this offering.',400);}
+   const filter=websiteId?' AND x.website_id=?':'',tail=websiteId?[websiteId]:[],select='SELECT x.attachment_id,x.asset_id,x.website_id,x.title,x.lesson_id,x.lesson_date,x.cohort,x.audience,o.mime_type type',staff=actor.global_admin||scope.role;
+   let rows=[];
+   if(staff||scope.kind==='COURSE'&&scope.purchased)rows=await store.all(`${select} FROM attachments x JOIN objects o USING(asset_id) WHERE x.offering_id=? AND x.audience='RECORDING' AND x.published=1 AND x.attachment_id>?${filter} ORDER BY x.attachment_id LIMIT 51`,[offeringId,after,...tail]);
+   // Unary + preserves the month value while removing column affinity: SQLite can
+   // then use the substr expression index for each paid month, not scan the offer.
+   else if(scope.kind==='TAFSEER')rows=await store.all(`${select} FROM paid_months m CROSS JOIN attachments x INDEXED BY attachments_month JOIN objects o USING(asset_id) WHERE m.account_id=? AND m.offering_id=? AND x.offering_id=m.offering_id AND substr(x.lesson_date,1,7)=+m.month AND x.cohort=m.cohort AND x.audience='RECORDING' AND x.published=1 AND x.attachment_id>?${filter} ORDER BY x.attachment_id LIMIT 51`,[actor.account_id,offeringId,after,...tail]);
+   return json({media:rows.slice(0,50),more:rows.length>50});
+  }
   if(method!=='POST')throw fail('This action needs a POST request.',405);const input=await bodyJSON(request.body,16384);
   if(action==='join'){if(!actor.global_admin&&!scope.live&&!scope.role)throw fail('Current live-session access is required.',403);const session=await store.first('SELECT starts_at,ends_at,zoom_url,cancelled FROM timetable WHERE session_id=? AND offering_id=?',[id(input.sessionId),offeringId]),now=Date.now();if(!session||session.cancelled||now<session.starts_at-300_000||now>=session.ends_at||!session.zoom_url)throw fail('Joining is available from five minutes before the lesson until it ends.',403,'JOIN_CLOSED');return json({destination:session.zoom_url});}
   if(action==='enrol')return json(await requestEnrolment(store,actor,offeringId,input));

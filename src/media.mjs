@@ -21,7 +21,7 @@ export async function streamMedia(env,row,request){
   if(!match[1]){length=Math.min(Number(match[2]),row.byte_size);offset=row.byte_size-length;}else{offset=Number(match[1]);const end=match[2]?Math.min(Number(match[2]),row.byte_size-1):row.byte_size-1;length=end-offset+1;}
   if(!Number.isSafeInteger(offset)||!Number.isSafeInteger(length)||offset<0||offset>=row.byte_size||length<1)throw fail('This byte range is outside the file.',416);status=206;
  }
- const object=await env.MEDIA.get(row.object_key,range?{range:{offset,length}}:{});if(!object)throw fail('This file needs to be restored from its recovery source.',503,'FILE_MISSING');
+ const object=request.method==='HEAD'?await env.MEDIA.head(row.object_key):await env.MEDIA.get(row.object_key,range?{range:{offset,length}}:{});if(!object)throw fail('This file needs to be restored from its recovery source.',503,'FILE_MISSING');
  const headers={'Content-Type':row.mime_type,'Cache-Control':'private, no-store','Accept-Ranges':'bytes','Content-Length':String(length),'X-Content-Type-Options':'nosniff','Content-Disposition':`inline; filename*=UTF-8''${encodeURIComponent(row.filename)}`};
  if(status===206)headers['Content-Range']=`bytes ${offset}-${offset+length-1}/${row.byte_size}`;
  return new Response(request.method==='HEAD'?null:object.body,{status,headers});

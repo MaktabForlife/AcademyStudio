@@ -51,6 +51,8 @@ The four Admin sections share `GET/POST /api/admin/:offeringId`. Supported actio
 
 Stored timetable cards use `GET /api/offerings/:offeringId/sessions`. `POST /api/offerings/:offeringId/join` accepts `{sessionId}` and releases the private `destination` only after local current-live entitlement and five-minutes-before/until-end checks. Session lists, public homepage facts and content packages exclude raw Zoom URLs. Corrections/cancellation use stable IDs and do not retarget attachments.
 
+`GET /api/offerings/:offeringId/media?website=<websiteId>&after=<attachmentId>` optionally filters only explicit attachment `website_id` matches and validates the website/offering. Results include `attachment_id,asset_id,website_id,lesson_id,lesson_date,cohort,title,audience,type`. There is no inferred title/date binding. Unbound historical recordings remain available through the offering feed under their original rights; the migration inventory must supply explicit website/lesson/session mappings before claiming website-specific completeness. `lesson_id` currently represents the supplied stable lesson/session identity, not a guessed timetable association. Tafseer discovery starts with this account's indexed paid months; it never scans all unpaid recordings to find eligible rows.
+
 `GET /api/library-return?website=...&lesson=...` builds a fixed Academy Library destination with a bounded website return address. The remaining Academy Library close/back integration must be verified before claiming a full round-trip. Free Foundations stays publicly accessible in Academy while its page-location decision is open.
 
 ## Local integration evidence

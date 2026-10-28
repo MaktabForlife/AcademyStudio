@@ -25,4 +25,20 @@ Public cards/announcements and global upcoming-session preparation have dedicate
 
 Source synchronization uses indexed per-account pending events, bounded 40-event pages and at most four pages per command. Recovery examines at most 20 candidates per run (configurable maximum 40), preserves per-stream order and backs off failures. Source session-revocation lookup is indexed. No all-account status sweep or per-tab polling has been introduced.
 
-Still required before migration acceptance: source authentication/coordinator and trigger read accounting; source timetable/Zoom export and replay budgets; identity provisioning/recovery, large accepted asset-reference sets and bulk paid-month budgets; actual migrated access distributions; aggregate daily traffic/retry estimates; object-request costs; and cleanup/reconciliation budgets. Keep these separate from the target-only measurements above. Never remove current authority checks merely to meet a numerical budget.
+## Source account workflows
+
+`tests/source-read-budgets.test.mjs` uses test-only instrumentation around native Core/Admin D1 in both the source API and its split coordinator. No SQL parameters, PINs or tokens are recorded. Full output is regenerated as `outputs/source-read-budgets.json`.
+
+| Source workflow | Queries | Rows read | Rows written |
+| --- | ---: | ---: | ---: |
+| Warm sign-in, baseline | 21 | 165 | 21 |
+| First sign-in after adding 4,000 unrelated master accounts, including source proof refresh | 26 | 276 | 21 |
+| Warm sign-in after growth | 21 | 167 | 21 |
+| Master account creation and acknowledgement | 14 | 38 | 34 |
+| Queued suspension plus new-account recovery, including originating trigger | 4 | 27 | 19 |
+
+The regression exposed a source session join that scanned 4,025 rows after growth: a new binary account reference did not match the existing account index's NOCASE collation. The connector now joins with the source's declared collation, including its atomic identity guard. The test separately bounds the proof-refresh case and the warm case; coordinator refresh work must not be mistaken for an account-population scan.
+
+A second regression adds 4,000 unpaid recordings inside the **same Tafseer offering**. Media discovery uses a paid-month-first join and its composite expression index; SQLite's affinity on the month comparison is handled explicitly. The filtered request reads 12→13 rows, and the unfiltered paid-month feed reads 9 after growth. The test rejects a scan through unpaid recordings and verifies that website-only grants cannot discover recordings. Exact website filters use stored IDs, and no title/date matching is introduced.
+
+Still required before migration acceptance: source timetable/Zoom export and replay budgets; broader account/credential/role/admission changes and recovery batches; large accepted asset-reference sets and bulk paid-month budgets; actual migrated access distributions; aggregate daily traffic/retry estimates; object-request costs; and cleanup/reconciliation budgets. Keep these separate from the measured cases above. Never remove current authority checks merely to meet a numerical budget.

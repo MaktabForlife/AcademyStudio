@@ -63,6 +63,9 @@ CREATE TABLE attachments (
 CREATE INDEX attachments_website ON attachments(website_id,attachment_id);
 CREATE INDEX attachments_offering ON attachments(offering_id,attachment_id);
 CREATE INDEX attachments_asset ON attachments(asset_id,website_id);
+CREATE INDEX attachments_feed ON attachments(offering_id,audience,published,attachment_id);
+CREATE INDEX attachments_website_feed ON attachments(website_id,audience,published,attachment_id);
+CREATE INDEX attachments_month ON attachments(offering_id,substr(lesson_date,1,7),cohort,audience,published,attachment_id);
 CREATE TABLE asset_owners (asset_id TEXT NOT NULL REFERENCES objects(asset_id),offering_id TEXT NOT NULL REFERENCES offerings(offering_id),PRIMARY KEY(asset_id,offering_id));
 CREATE TABLE uploads (asset_id TEXT PRIMARY KEY,offering_id TEXT NOT NULL REFERENCES offerings(offering_id),object_key TEXT NOT NULL,upload_id TEXT NOT NULL,filename TEXT NOT NULL,created_at INTEGER NOT NULL,state TEXT NOT NULL CHECK(state IN('OPEN','COMPLETE')));
 CREATE TABLE timetable (

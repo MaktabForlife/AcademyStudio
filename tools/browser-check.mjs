@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';import {mkdirSync,writeFileSync} from 'n
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
 const base=process.env.PREVIEW_ORIGIN||'http://localhost:8791',allowed=new Set([new URL(base).origin,'http://localhost:'+(Number(new URL(base).port)+1)]);
 mkdirSync('outputs/browser',{recursive:true});const findings={checks:[],errors:[],blocked:[]};
-const browser=await chromium.launch({headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{})});
+const browser=await chromium.launch({headless:true,args:['--disable-gpu'],...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{})});
 async function context(){const ctx=await browser.newContext({viewport:{width:1440,height:1000}});await ctx.route('**/*',route=>{const url=route.request().url();if(allowed.has(new URL(url).origin)||url.startsWith('blob:')||url.startsWith('data:'))return route.continue();findings.blocked.push(url);return route.abort();});ctx.on('page',p=>p.on('pageerror',e=>findings.errors.push(e.message)));return ctx;}
 async function login(page,uniqueid){await page.goto(base);await page.locator('#sign-in-button').click();await page.locator('[name=uniqueid]').fill(uniqueid);await page.locator('[name=pin]').fill('1234');await page.locator('#sign-in-form button[type=submit]').click();await page.locator('#my-learning:not([hidden])').waitFor();assert(await page.context().cookies().then(c=>c.some(x=>x.name==='__Host-maktab_web'&&x.httpOnly&&x.secure)));}
 try{

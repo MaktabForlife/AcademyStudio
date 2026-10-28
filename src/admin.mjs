@@ -59,11 +59,12 @@ export async function recording(env,store,actor,offeringId,input,request){
  const row=await store.first('SELECT * FROM uploads WHERE asset_id=? AND offering_id=?',[assetId,offeringId]);if(!row)throw fail('Recording upload not found.',404);const multipart=env.MEDIA.resumeMultipartUpload(row.object_key,row.upload_id);
  if(input.action==='part'){
   if(row.state!=='OPEN')throw fail('This upload is complete.',409);const partNumber=integer(input.partNumber,1,10000),data=await bytes(request.body,10*1024*1024);
-  if(partNumber===1&&String.fromCharCode(...data.slice(4,8))!=='ftyp')throw fail('Choose an MP4 recording.');return multipart.uploadPart(partNumber,data);
+  if(partNumber===1&&String.fromCharCode(...data.slice(4,8))!=='ftyp')throw fail('Choose an MP4 recording.');const part=await multipart.uploadPart(partNumber,data);return {partNumber:part.partNumber,etag:part.etag};
  }
  if(input.action==='complete'){
   if(!Array.isArray(input.parts)||!input.parts.length||input.parts.length>10000)throw fail('Supply the uploaded recording parts.');
-  let object=await env.MEDIA.head(row.object_key);if(!object)object=await multipart.complete(input.parts.map(p=>({partNumber:integer(p.partNumber,1,10000),etag:text(p.etag,160)})));
+  const parts=input.parts.map((p,index)=>{if(p.partNumber!==index+1)throw fail('Supply all recording parts in order, starting with part one.');return {partNumber:integer(p.partNumber,1,10000),etag:text(p.etag,1024)};});
+  let object=await env.MEDIA.head(row.object_key);if(!object)object=await multipart.complete(parts);
   const result=await store.mutate(actor,offeringId,input,[store.statement('INSERT INTO objects VALUES(?,?,?,?,?,?,NULL)',[assetId,row.object_key,'video/mp4',row.filename,object.size,'multipart:'+object.etag]),store.statement('INSERT INTO asset_owners VALUES(?,?)',[assetId,offeringId]),store.statement("UPDATE uploads SET state='COMPLETE' WHERE asset_id=?",[assetId])],{assetId,size:object.size,retained:true});return result;
  }throw fail('Unknown recording upload action.');
 }
