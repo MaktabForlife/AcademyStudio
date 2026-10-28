@@ -44,7 +44,21 @@ try{
  result.checks.push('Upload and reuse preserve unsaved work, discover exact metadata, retain the live PDF and avoid full-draft/register reloads');
  await editor.screenshot({path:output+'/builder-files.png',fullPage:true});
 
- await reader.locator('[data-website="site-course"]').click();await reader.locator('[data-sp="lesson"]').first().click();await reader.locator('[data-material="integration-video-attachment"]').click();await reader.locator('#media-dialog[open] iframe').waitFor();
+ const inline=await admin.newPage();await inline.goto(base+'/?website=site-course');await inline.locator('[data-inline-action="start"]:visible').first().click();
+ const headline=inline.locator('[data-inline-path="home.headline"]').first();await headline.waitFor();await headline.fill('Both editors share the same website draft.');
+ await inline.locator('[data-inline-action="save"]').click();await inline.locator('.sp-inline-state').filter({hasText:'Draft saved'}).waitFor();
+ const inlineSaved=await json(admin,'/api/websites/site-course/edit');assert.equal(inlineSaved.document.home.headline,'Both editors share the same website draft.');assert.equal(inlineSaved.document.home.imageId,saved.document.home.imageId);assert.equal((await json(learner,'/api/websites/site-course')).document.home.headline,published.home.headline);
+ await inline.locator('[data-inline-action="review"]').click();await inline.locator('[data-inline-action="publish"]').click();await inline.locator('[data-inline-action="start"]:visible').first().waitFor();
+ assert.equal((await json(learner,'/api/websites/site-course')).document.home.headline,'Both editors share the same website draft.');
+ await editor.reload();await editor.locator('[data-path="home.headline"]').waitFor();assert.equal(await editor.locator('[data-path="home.headline"]').inputValue(),'Both editors share the same website draft.');
+ result.checks.push('Full-builder assets survive on-page editing; both modes share private Save and explicit publication');
+ await inline.screenshot({path:output+'/shared-editor-publication.png',fullPage:true});
+
+ let coverRequests=0,releaseCover;const coverReady=new Promise(resolve=>releaseCover=resolve),cover='/api/media/website-image-'+saved.document.home.imageId;
+ await reader.route('**'+cover,async route=>{coverRequests++;await coverReady;await route.continue();});
+ await reader.locator('[data-website="site-course"]').click();await reader.locator('[data-join="course-session"]').first().waitFor({state:'attached'});assert.equal(coverRequests,1,'Timetable redraws must share the in-flight image request');const coverResponse=reader.waitForResponse(response=>new URL(response.url()).pathname===cover);releaseCover();await coverResponse;await reader.unroute('**'+cover);
+ result.checks.push('Concurrent timetable redraws share one protected image request');
+ await reader.locator('[data-sp="lesson"]').first().click();await reader.locator('[data-material="integration-video-attachment"]').click();await reader.locator('#media-dialog[open] iframe').waitFor();
  const second=await learner.newPage();await second.goto(base);await second.locator('#sign-out-button').waitFor();await second.locator('#sign-out-button').click();await reader.locator('#media-dialog').waitFor({state:'hidden'});assert.equal(await reader.locator('#media-body iframe,#media-body video,#media-body img').count(),0);
  result.checks.push('Cross-tab sign-out closes protected playback and removes its private media view');
 

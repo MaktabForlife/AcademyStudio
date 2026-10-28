@@ -1,5 +1,7 @@
 # Local implementation status — 28 October 2026
 
+The combined integration review is on `feature/academy-studio-integration-review`; see [INTEGRATION-REVIEW.md](INTEGRATION-REVIEW.md) for repairs, measured growth costs and the preview-versus-live deployment boundary. Production migration remains unaccepted and no deployment is authorised by the review.
+
 The independent repository exists locally on `feature/website-platform`; no remote repository/account resources, push, deployment, hosted query, live content publication or production migration has been performed. The committed runtime configuration stays disabled and contains only local placeholder resources.
 
 Implemented locally: single Academy PIN sign-in and first-PIN setup path, one-use PKCE website/Academy handoffs, local account/permission checks, retained whole-Course and Tafseer month/cohort/Surah rights, scoped administration, coordinated identity/enrolment state, independent R2 draft/publication/history pointers, protected reusable media and ranged delivery, private Zoom joining from stored facts, public homepage/card/announcement publication and signed versioned status/timetable reception.

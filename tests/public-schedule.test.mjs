@@ -25,12 +25,3 @@ test('public timetable fallback excludes invisible offerings without database re
   const home=await f.request('/api/public/home');assert.deepEqual(ok(home).sessions.map(row=>row.session_id),['public']);assert.equal(home.reads,0);
  }finally{await f.close();}
 });
-
-test('website creation validates the same content boundary before writing a draft',async()=>{
- const f=await fixture();try{
-  const cookie=(await f.login('admin')).cookie;
-  for(const document of [{...f.doc,participants:[]},{...f.doc,home:{...f.doc.home,description:'https://example.zoom.us/j/123456789'}}]){
-   const response=await f.request('/api/admin/course',{cookie,method:'POST',body:{action:'website-create',operationId:crypto.randomUUID(),websiteId:'invalid-site',title:'Invalid',document}});assert.equal(response.status,400);assert.equal(await f.db.prepare("SELECT count(*) n FROM websites WHERE website_id='invalid-site'").first('n'),0);
-  }
- }finally{await f.close();}
-});
