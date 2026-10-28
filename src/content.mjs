@@ -21,7 +21,7 @@ export async function editWebsite(env,store,actor,websiteId,input){
  if(input.revision!==website.revision)throw fail('This website changed elsewhere. Reopen the saved draft.',409);
  const revision=website.revision+1,statements=[];let historyKey=website.draft_key;
  if(input.action==='save'){
-  const document=structuredClone(input.document);const errors=validatePackage(document);if(errors.length)throw fail(errors.join(' '));document.pages.assessments=false;
+  const document=structuredClone(input.document);const errors=validatePackage(document);if(errors.length)throw fail(errors.join(' '));
   const refs=referencedAssets(document);if(refs.length>100)throw fail('Keep up to 100 website assets.');
   for(const assetId of refs)id(assetId);
   if(refs.length){const linked=await store.all("SELECT DISTINCT asset_id FROM attachments WHERE website_id=? AND audience='WEBSITE' AND asset_id IN(SELECT value FROM json_each(?))",[websiteId,JSON.stringify(refs)]),accepted=new Set(linked.map(row=>row.asset_id));if(refs.some(ref=>!accepted.has(ref)))throw fail('A website file needs an attachment to this website.');}
