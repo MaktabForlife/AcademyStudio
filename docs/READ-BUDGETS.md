@@ -25,6 +25,26 @@ Public cards/announcements and global upcoming-session preparation have dedicate
 
 Source synchronization uses indexed per-account pending events, bounded 40-event pages and at most four pages per command. Recovery examines at most 20 candidates per run (configurable maximum 40), preserves per-stream order and backs off failures. Source session-revocation lookup is indexed. No all-account status sweep or per-tab polling has been introduced.
 
+## Full teaching-package rehearsal
+
+The small-fixture numbers above are not budgets for image-rich teaching packages. The separate content branch ran the actual nine local packages/91 lessons through native target D1/R2 using the exact-content backend. The verified report is in the project workspace at `outputs/independent-websites-20261028/native-rehearsal.json`; source teaching and artwork remain outside tracked code. Its measured request rows are:
+
+| Website | Lessons | Editor open | Save | Publish | Restore |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Kahf | 11 | 24 | 30 | 67 | 12 |
+| Saffat | 15 | 7 | 13 | 19 | 12 |
+| Yaseen | 16 | 24 | 30 | 70 | 12 |
+| Sajdah | 3 | 8 | 14 | 22 | 12 |
+| Ankabut | 9 | 8 | 14 | 22 | 12 |
+| Luqman | 12 | 8 | 14 | 22 | 12 |
+| Muzammil | 8 | 22 | 28 | 64 | 12 |
+| Qasas | 4 | 8 | 14 | 22 | 12 |
+| Foundations | 13 | 34 | 40 | 126 | 12 |
+
+All nine preserved exact saved publication and latest reviewed draft JSON/IDs, private Save, explicit Publish, recoverable previous drafts and unchanged peer websites. The report records zero hosted calls, 38 deduplicated artwork objects and no copied recording/PDF inventory. These are editorial operations, not measured learner-reader traffic or aggregate daily quotas. Higher metadata/reference counts explain why the full packages exceed the small fixture; do not generalise the small reader's five-row result to all real packages.
+
+Foundations is included only for preservation and local rehearsal. Its public access in Academy stays unchanged and its migration location remains undecided. Exact original media/session/access inventory is still required, including separate recording rights. The final frontend/content-tools delivery and browser acceptance remain separate from this native report.
+
 ## Source account workflows
 
 `tests/source-read-budgets.test.mjs` uses test-only instrumentation around native Core/Admin D1 in both the source API and its split coordinator. No SQL parameters, PINs or tokens are recorded. Full output is regenerated as `outputs/source-read-budgets.json`.
@@ -41,4 +61,4 @@ The regression exposed a source session join that scanned 4,025 rows after growt
 
 A second regression adds 4,000 unpaid recordings inside the **same Tafseer offering**. Media discovery uses a paid-month-first join and its composite expression index; SQLite's affinity on the month comparison is handled explicitly. The filtered request reads 12→13 rows, and the unfiltered paid-month feed reads 9 after growth. The test rejects a scan through unpaid recordings and verifies that website-only grants cannot discover recordings. Exact website filters use stored IDs, and no title/date matching is introduced.
 
-Still required before migration acceptance: source timetable/Zoom export and replay budgets; broader account/credential/role/admission changes and recovery batches; large accepted asset-reference sets and bulk paid-month budgets; actual migrated access distributions; aggregate daily traffic/retry estimates; object-request costs; and cleanup/reconciliation budgets. Keep these separate from the measured cases above. Never remove current authority checks merely to meet a numerical budget.
+Still required before migration acceptance: source timetable/Zoom export and replay budgets; broader account/credential/role/admission changes and recovery batches; maximum-size asset-reference sets and bulk paid-month budgets; full-package learner-reader measurements and actual migrated access distributions; aggregate daily traffic/retry estimates; object-request costs; and cleanup/reconciliation budgets. Keep these separate from the measured cases above. Never remove current authority checks merely to meet a numerical budget.
