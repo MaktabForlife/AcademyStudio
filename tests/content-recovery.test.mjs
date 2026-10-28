@@ -5,9 +5,10 @@ test('an object-store failure cannot advance a draft; historical restore stays p
   const store=new Store({...f.env,DB:f.db}),actor=await store.actor(await sha256(admin.slice(admin.indexOf('=')+1))),input={operationId:crypto.randomUUID(),action:'save',revision:0,document:{...f.doc,name:'First new edition'}};
   await assert.rejects(editWebsite({...f.env,CONTENT:{put:async()=>{throw Error('Injected local R2 outage');}}},store,actor,'site-course',input),/R2 outage/);assert.equal(await f.db.prepare("SELECT revision FROM websites WHERE website_id='site-course'").first('revision'),0);
   ok(await f.request(path,{cookie:admin,method:'POST',body:input}));ok(await f.request(path,{cookie:admin,method:'POST',body:{operationId:crypto.randomUUID(),revision:1,action:'publish'}}));
-  ok(await f.request(path,{cookie:admin,method:'POST',body:{operationId:crypto.randomUUID(),revision:2,action:'save',document:{...f.doc,name:'Later private edition'}}}));
-  ok(await f.request(path,{cookie:admin,method:'POST',body:{operationId:crypto.randomUUID(),revision:3,action:'restore',historyRevision:1}}));
-  assert.equal(ok(await f.request(path,{cookie:admin})).document.name,'First new edition');assert.equal(ok(await f.request('/api/websites/site-course',{cookie:learner})).document.name,'First new edition');assert.equal(await f.db.prepare("SELECT revision FROM websites WHERE website_id='site-course'").first('revision'),4);
-  const history=ok(await f.request('/api/websites/site-course/history',{cookie:admin}));assert.equal(history.history[0].action,'restore');assert.equal(history.history[0].revision,4);
+  ok(await f.request(path,{cookie:admin,method:'POST',body:{operationId:crypto.randomUUID(),revision:2,action:'save',document:{...f.doc,name:'Second published edition'}}}));
+  ok(await f.request(path,{cookie:admin,method:'POST',body:{operationId:crypto.randomUUID(),revision:3,action:'publish'}}));
+  ok(await f.request(path,{cookie:admin,method:'POST',body:{operationId:crypto.randomUUID(),revision:4,action:'restore',historyRevision:1}}));
+  assert.equal(ok(await f.request(path,{cookie:admin})).document.name,'First new edition');assert.equal(ok(await f.request('/api/websites/site-course',{cookie:learner})).document.name,'Second published edition');assert.equal(await f.db.prepare("SELECT revision FROM websites WHERE website_id='site-course'").first('revision'),5);
+  const history=ok(await f.request('/api/websites/site-course/history',{cookie:admin}));assert.equal(history.history[0].action,'restore');assert.equal(history.history[0].revision,5);
  }finally{await f.close();}
 });
