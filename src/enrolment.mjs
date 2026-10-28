@@ -7,6 +7,7 @@ export async function requestEnrolment(store,actor,offeringId,input){
 export async function beginProvision(store,actor,offeringId,input){
  const scope=await store.scope(actor,offeringId,{admin:true});
  if(!actor.global_admin&&!scope.can_create_account)throw fail('Your current scope cannot create or link master accounts.',403);
+ if(input.accountId&&!actor.global_admin)throw fail('Only Global Admin can link an existing Academy master account.',403);
  const command={operationId:id(input.operationId),offeringId,actorId:actor.account_id,actorEpoch:actor.epoch,...(input.accountId?{accountId:id(input.accountId)}:{displayName:text(input.displayName),create:true})},hash=await sha256(JSON.stringify(command));
  const old=await store.first('SELECT actor_id,payload_hash,state,account_id FROM provisioning WHERE operation_id=?',[input.operationId]);
  if(old){if(old.actor_id!==actor.account_id||old.payload_hash!==hash)throw fail('This enrolment retry has different details.',409);return {state:old.state,accountId:old.account_id};}
@@ -23,9 +24,9 @@ export async function resumeProvision(env,store,actor,offeringId,input,fetcher){
   const signed=await signedHeaders(env.WEBSITE_TO_ACADEMY_SECRET,path,{...JSON.parse(job.command_json),sourceRef:actor.source_ref,issuedAt:Date.now()});
   try{
    const response=await fetcher(origin.origin+path,{method:'POST',headers:signed.headers,body:signed.payload,redirect:'manual',signal:AbortSignal.timeout(8000)});
-   if(!response.ok){await response.body?.cancel();throw Error();}
+   if(!response.ok){const rejection=await bodyJSON(response.body,4096);throw fail(rejection.error||'Academy could not confirm this account.',[401,403].includes(response.status)?response.status:503,'ACADEMY_IDENTITY_REJECTED');}
    const received=await bodyJSON(response.body,16384);await receive(new Request(env.WEBSITE_ORIGIN+'/internal/academy/events',{method:'POST',headers:{'X-Maktab-Signature':received.signature},body:JSON.stringify(received.delivery)}),env,store);
-  }catch(error){await store.run('UPDATE provisioning SET attempts=attempts+1,next_attempt=?,last_error=? WHERE operation_id=?',[Date.now()+Math.min(3600_000,5000*2**Math.min(job.attempts,9)),'Academy acknowledgement is pending.',job.operation_id]);throw fail('The master-account result is pending. Retry this enrolment later.',503,'IDENTITY_PENDING');}
+  }catch(error){await store.run('UPDATE provisioning SET attempts=attempts+1,next_attempt=?,last_error=? WHERE operation_id=?',[Date.now()+Math.min(3600_000,5000*2**Math.min(job.attempts,9)),[401,403].includes(error.status)?'Academy rejected the current account authority.':'Academy acknowledgement is pending.',job.operation_id]);if([401,403].includes(error.status))throw error;throw fail('The master-account result is pending. Retry this enrolment later.',503,'IDENTITY_PENDING');}
   job=await store.first('SELECT * FROM provisioning WHERE operation_id=?',[job.operation_id]);
  }
  if(job.state!=='IDENTITY_LINKED'||!job.account_id)throw fail('Academy has not confirmed the account.',503);
