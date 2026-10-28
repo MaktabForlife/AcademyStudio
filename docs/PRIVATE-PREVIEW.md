@@ -25,3 +25,9 @@ The complete local regression suite passed 48 tests. The all-nine native preview
 Two source-integration tests initially failed because the separately developed local source connector now requires additive schema 0012. Only the disposable test fixture was updated to apply that schema when present. Both checks then passed (and the full suite passed); no source worktree, live schema or Academy data was changed.
 
 Keep hosted checks small: upload 55 prepared R2 objects and apply the initial preview seed once; deploy the preview entrypoint/secret; verify a bounded anonymous/admin/learner smoke batch plus one browser view. Do not exercise live Academy or repeat full acceptance remotely. Actual deployed version and smoke evidence belong in the private project outputs.
+
+## Deployed and verified
+
+The private testing build is available at **https://academy-studio-preview.naidu-hajira.workers.dev/preview/**, Cloudflare version `594fe414-8f0c-4334-a648-a15d4070b2b3`, tag `private-preview-20261028-6591cf7`, deployed source `6591cf79bececf6d854f662894e87d2ea32815f3`. Private role links are in the local `ACCESS.md` named above; the generic address does not grant access by itself.
+
+The 55 R2 objects were uploaded once. The one-time D1 seed executed 254 statements with **17 rows read and 864 rows written** in the separate preview database (these are import costs, not the total cost of later testing). Five small hosted HTTP checks passed: anonymous access denied; synthetic learner login; learner editing denied; exact saved Al Kahf publication returned; test logout. Browser checks confirmed nine administrator reader/builder links and opened the original Al Kahf private draft and artwork. No hosted content was edited or published during verification. Live Academy/DNS and the production worker/homepage stylesheet are unchanged.
