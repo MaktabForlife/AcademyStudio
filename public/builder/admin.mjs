@@ -1,5 +1,5 @@
 import {createWebsiteEditSession} from '/shared/website-edit-session.mjs';
-import {api,mutate,identity,downloadJSON} from '/api.mjs';import {esc,clone} from '/shared/model.mjs';
+import {api,mutate,identity} from '/api.mjs';import {esc,clone} from '/shared/model.mjs';
 const $=id=>document.getElementById(id),websiteId=new URLSearchParams(location.search).get('website');let record=null,studio=null,epoch=0,editing=null;
 const previous=document.createElement('button');previous.textContent='Previous editions';previous.type='button';$('selected-course-name').after(previous);
 const edition=document.createElement('p');edition.className='website-edition';edition.setAttribute('role','status');$('selected-course-name').after(edition);
@@ -42,7 +42,7 @@ async function reusableFiles(){
  $('studio-dialog').showModal();await load();
 }
 
-window.COURSE_WEBSITE_ADMIN={nativeMedia:true,surahId:null,ownerKey:()=>identity.account?.accountId,revision:()=>record?.revision||0,list:()=>{if(!studio||studio.canLeave())location.assign('/?manage=1');},drafts:async()=>record?[clone(editing.record.document)]:[],
+window.COURSE_WEBSITE_ADMIN={websiteId,nativeMedia:true,surahId:null,ownerKey:()=>identity.account?.accountId,revision:()=>record?.revision||0,list:()=>{if(!studio||studio.canLeave())location.assign('/?manage=1');},drafts:async()=>record?[clone(editing.record.document)]:[],
  async save(document){const captured=epoch;try{if(editing.pending)await editing.retry();editing.replace(document);await editing.save();if(captured!==epoch)throw new DOMException('Account changed.','AbortError');record.revision=editing.record.revision;record.document=clone(editing.record.document);label();}catch(error){if(error.status===403)end();else label();throw error;}},
  async assets(){const captured=epoch;return Promise.all(record.assets.map(async asset=>{const blob=asset.type.startsWith('image/')?await api(asset.url+'?draft=1',{blob:true}):null;if(captured!==epoch)throw new DOMException('Account changed.','AbortError');return {...asset,courseId:record.document.id,blob};}));},
  async assetBlob(assetId){const asset=record.assets.find(a=>a.id===assetId);if(!asset)throw Error('File not found.');return api(asset.url+'?draft=1',{blob:true});},

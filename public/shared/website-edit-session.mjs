@@ -15,7 +15,7 @@ export function createWebsiteEditSession({websiteId,owner,request}) {
     current();if(busy)throw Error('Wait for the current save to finish.');
     if(conflict)throw Error('This draft changed elsewhere. Export your unsaved work before reopening the current draft.');
     if(['publish','restore'].includes(action)&&JSON.stringify(document)!==baseline)throw Error('Save your changes before publishing.');
-    if(pending&&pending.action!==action)throw Error('Retry the unfinished save before another action.');
+    if(pending&&(pending.action!==action||action==='restore'&&extra.historyRevision!==undefined&&pending.historyRevision!==extra.historyRevision))throw Error('Retry the unfinished action before another action.');
     if(!pending) {
       const issues=validateCourse(document,{review:action==='publish'});if(issues.length)throw Error(issues.join(' '));
       pending={action,...extra,revision:record.revision,operationId:crypto.randomUUID(),...(action==='save'?{document:structuredClone(document)}:{})};
