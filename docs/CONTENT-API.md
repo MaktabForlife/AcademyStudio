@@ -32,6 +32,8 @@ Use one operation UUID for one exact actor/offering/website/payload and retain i
 
 Reader/edit/export responses also include `canEdit`, `draftVersion` and `publishedVersion`, derived from the already-read role and object pointers. `canEdit` means Global Admin or scoped ADMIN; Teachers cannot edit. Version labels are object filename hashes, or `null` before an edition exists. Use these fields instead of extra permission/history requests. The server independently validates the content allowlist in `src/content-package.mjs`, rejects unknown/private/operational fields at every model level and rejects raw Zoom URLs in text. Propose editorial schema extensions explicitly. Referenced website files are checked in one scoped batch query.
 
+Accepted existing editorial provenance: Course/lesson `sourceEdition:boolean`; lesson `accent:string` (100 characters), `moduleId:string` (180), `journal:boolean` (chapter flag only, never entries); section `sourceKey:string` (1,000), `sourcePages:integer[]` (up to 1,000 positive page numbers); block `sourceKey:string`, `sourcePage:integer`, `legacyNoteKey:string` (1,000). Original note keys support explicit browser-state continuity. Page numbers are 1–100,000. No personal answers or journal entries belong in these fields.
+
 ## Assets and media
 
 - Website responses expose assets as `{attachment_id,asset_id,lesson_id,name,type,size,title,url}`; `url` is a protected attachment URL. Normalize these field names in the editor adapter, not in content IDs.

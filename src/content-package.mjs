@@ -4,18 +4,25 @@ import {validateCourse} from '../public/shared/model.mjs';
 // Content packages have no operational escape hatch. Keep this allowlist alongside
 // the shared model: new editorial fields need an intentional contract change.
 const fields={
- course:'format id name tag theme home lessons pages menu sessionOptions materials updatedAt editorialLayout academyMediaIds',
+ course:'format id name tag theme home lessons pages menu sessionOptions materials updatedAt editorialLayout academyMediaIds sourceEdition',
  home:'headline subtitle description imageId imageAlt caption journeyTitle themes',
  theme:'id label title arabic description lessonId',
- lesson:'id title group summary sections',section:'id title label blocks',
- block:'id type aside text arabic translation reference attribution items leftArabic leftMeaning rightArabic rightMeaning assetId alt caption tint graphic presentation ordered emphasis',
+ lesson:'id title group summary sections sourceEdition accent moduleId journal',section:'id title label blocks sourceKey sourcePages',
+ block:'id type aside text arabic translation reference attribution items leftArabic leftMeaning rightArabic rightMeaning assetId alt caption tint graphic presentation ordered emphasis sourceKey sourcePage legacyNoteKey',
  pages:'sessions materials assessments',menu:'home lessons sessions materials assessments',
  sessionOptions:'showTeacher showNotes',materials:'intro files',file:'id assetId title description'
 };
 const allowed=Object.fromEntries(Object.entries(fields).map(([kind,names])=>[kind,new Set(names.split(' '))]));
+const optionalTypes={
+ course:{sourceEdition:v=>typeof v==='boolean'},
+ lesson:{sourceEdition:v=>typeof v==='boolean',accent:v=>typeof v==='string'&&v.length<=100,moduleId:v=>typeof v==='string'&&v.length<=180,journal:v=>typeof v==='boolean'},
+ section:{sourceKey:v=>typeof v==='string'&&v.length<=1000,sourcePages:v=>Array.isArray(v)&&v.length<=1000&&v.every(page=>Number.isSafeInteger(page)&&page>=1&&page<=100000)},
+ block:{sourceKey:v=>typeof v==='string'&&v.length<=1000,sourcePage:v=>Number.isSafeInteger(v)&&v>=1&&v<=100000,legacyNoteKey:v=>typeof v==='string'&&v.length<=1000}
+};
 function object(value,kind){
  if(!value||typeof value!=='object'||Array.isArray(value))throw fail('Check the website content settings.');
  for(const key of Object.keys(value))if(!allowed[kind].has(key))throw fail('Website content contains an unsupported field: '+key+'.');
+ for(const [key,valid] of Object.entries(optionalTypes[kind]||{}))if(Object.hasOwn(value,key)&&!valid(value[key]))throw fail('Check the editorial source field: '+key+'.');
 }
 function noMeetingLinks(value){
  if(typeof value==='string'&&/(?:https?:\/\/|www\.)(?:[-\w]+\.)*(?:zoom\.us|zoomgov\.com)(?=[:/?#\s]|$)/i.test(value))throw fail('Keep Zoom links in Academy session settings.');

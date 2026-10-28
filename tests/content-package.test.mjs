@@ -4,6 +4,10 @@ test('content rejects operational fields and raw meeting links at every supporte
  for(const mutate of [d=>d.accounts=[],d=>d.home.zoomUrl='secret',d=>d.lessons[0].participants=[],d=>d.lessons[0].sections[0].blocks[0].access={paid:true},d=>d.home.description='Join https://example.zoom.us/j/123?pwd=private',d=>d.lessons[0].sections[0].blocks[0].text='https://zoomgov.com/j/123']){const doc=newCourse();mutate(doc);assert.throws(()=>validatePackage(doc));}
  assert.deepEqual(validatePackage(newCourse()),[]);assert.throws(()=>validatePackage({format:'ACADEMY_COURSE_STUDIO_V1',pages:null}));
 });
+test('typed editorial provenance and chapter flags preserve source and browser note identities',()=>{
+ const doc=newCourse();doc.sourceEdition=true;Object.assign(doc.lessons[0],{sourceEdition:true,accent:'#694165',moduleId:'module-original',journal:false});Object.assign(doc.lessons[0].sections[0],{sourceKey:'source-original',sourcePages:[1,2]});Object.assign(doc.lessons[0].sections[0].blocks[0],{sourceKey:'source-block',sourcePage:2,legacyNoteKey:'old-reflection-key'});assert.deepEqual(validatePackage(doc),[]);
+ for(const corrupt of [d=>d.sourceEdition='true',d=>d.lessons[0].journal={answers:[]},d=>d.lessons[0].accent=[],d=>d.lessons[0].sections[0].sourcePages=[1,'2'],d=>d.lessons[0].sections[0].blocks[0].sourcePage=0,d=>d.lessons[0].sections[0].blocks[0].legacyNoteKey={account:'private'}]){const copy=structuredClone(doc);corrupt(copy);assert.throws(()=>validatePackage(copy));}
+});
 test('capabilities and version labels use existing rows; rejected content never becomes a draft',async()=>{
  const f=await fixture();try{const admin=(await f.login('admin')).cookie,learner=(await f.login()).cookie;
   const read=await f.request('/api/websites/site-course',{cookie:learner});assert.equal(read.body.canEdit,false);assert.equal(read.body.publishedVersion,'seed');
