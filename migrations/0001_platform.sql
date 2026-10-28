@@ -71,11 +71,14 @@ CREATE TABLE timetable (
  zoom_url TEXT, cancelled INTEGER NOT NULL DEFAULT 0 CHECK(cancelled IN(0,1)), revision INTEGER NOT NULL
 );
 CREATE INDEX timetable_offering ON timetable(offering_id,starts_at,session_id);
+CREATE INDEX timetable_upcoming ON timetable(starts_at);
 CREATE TABLE cards (
  offering_id TEXT PRIMARY KEY REFERENCES offerings(offering_id), title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',
  display_label TEXT NOT NULL DEFAULT '', visible INTEGER NOT NULL DEFAULT 0 CHECK(visible IN(0,1)), revision INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE announcements (announcement_id TEXT PRIMARY KEY, text TEXT NOT NULL, visible INTEGER NOT NULL CHECK(visible IN(0,1)));
+CREATE INDEX cards_public ON cards(visible,offering_id);
+CREATE INDEX announcements_public ON announcements(visible,announcement_id);
 CREATE TABLE operations (
  operation_id TEXT PRIMARY KEY, actor_id TEXT NOT NULL, payload_hash TEXT NOT NULL, result_json TEXT NOT NULL, created_at INTEGER NOT NULL
 );

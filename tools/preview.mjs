@@ -1,0 +1,43 @@
+import {createServer} from 'node:http';import {readFile,stat} from 'node:fs/promises';import {resolve,extname} from 'node:path';import {Readable} from 'node:stream';import {fixture} from '../tests/fixture.mjs';
+
+// Disposable, synthetic data only. These origins never contact a hosted account.
+const sitePort=Number(process.env.PREVIEW_PORT||8791),academyPort=sitePort+1;
+if(!Number.isInteger(sitePort)||sitePort<1024||sitePort>65534)throw Error('Choose a local preview port between 1024 and 65534.');
+const websiteOrigin='http://localhost:'+sitePort,academyOrigin='http://localhost:'+academyPort;
+const publicRoot=resolve(process.env.PREVIEW_PUBLIC_ROOT||'public'),f=await fixture({academy:true});
+for(const [account,globalAdmin] of [[f.source.f.actors.global,1],[f.source.f.actors.studentA,0]])await f.run('INSERT INTO accounts VALUES(?,?,1,1,1,?,?)',account,'Synthetic Academy '+(globalAdmin?'Admin':'Learner'),Date.now(),globalAdmin);
+await f.run("INSERT INTO participation VALUES(?,'course',1,1,1,'')",f.source.f.actors.studentA);
+const mime={'.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.woff2':'font/woff2','.woff':'font/woff'};
+async function staticFile(path,request,response){
+ let file=resolve(publicRoot,'.'+decodeURIComponent(path));if(!file.startsWith(publicRoot+'/')&&file!==publicRoot)throw Error('Invalid file.');
+ if((await stat(file)).isDirectory())file=resolve(file,'index.html');const data=await readFile(file);response.writeHead(200,{'Content-Type':mime[extname(file)]||'application/octet-stream','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});response.end(request.method==='HEAD'?undefined:data);
+}
+async function handler(request,response,isAcademy){
+ try{
+  const pathname=new URL(request.url,'http://localhost').pathname;
+  if(!pathname.startsWith('/api/')&&!pathname.startsWith('/auth/')&&!pathname.startsWith('/internal/')){
+   if(!isAcademy)return await staticFile(pathname,request,response);
+   if(pathname==='/js/m4l-config.js'){response.writeHead(200,{'Content-Type':'text/javascript'});return response.end('window.M4L_CONFIG={API_BASE:location.origin};');}
+   if(pathname.startsWith('/academy/website-platform/connect/')){const name=pathname.endsWith('connect.mjs')?'connect.mjs':pathname.endsWith('/')||pathname.endsWith('index.html')?'index.html':null;if(!name)throw Error('Unknown connector file.');response.writeHead(200,{'Content-Type':mime[extname(name)]});return response.end(await readFile(f.source.root+'/academy/website-platform/connect/'+name));}
+   if(pathname==='/academy/'||pathname==='/academy/library/'){
+    response.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});
+    return response.end('<!doctype html><meta charset="utf-8"><title>Local Academy handoff</title><h1>Academy session</h1><p id="status">Checking local handoff…</p><p>This page is an integration rehearsal with synthetic data. The Academy interface and Library are separate acceptance work.</p><script>document.getElementById("status").textContent=localStorage.getItem("m4l_account_token")?"Academy session connected":"No Academy session";</script>');
+   }
+   response.writeHead(404);return response.end('Not part of the local connector preview.');
+  }
+  let length=0,chunks=[];for await(const chunk of request){length+=chunk.length;if(length>17*1024*1024){response.writeHead(413);return response.end('Preview request too large.');}chunks.push(chunk);}
+  const headers=new Headers();for(const [key,value] of Object.entries(request.headers))if(value&&!['host','connection','content-length','accept-encoding'].includes(key))headers.set(key,Array.isArray(value)?value.join(','):value);
+  if(headers.get('Origin')===websiteOrigin)headers.set('Origin',f.env.WEBSITE_ORIGIN);else if(headers.get('Origin')===academyOrigin)headers.set('Origin',f.env.ACADEMY_ORIGIN);
+  const result=await f.runtime.dispatchFetch((isAcademy?f.env.ACADEMY_ORIGIN:f.env.WEBSITE_ORIGIN)+request.url,{method:request.method,headers,...(['GET','HEAD'].includes(request.method)?{}:{body:Buffer.concat(chunks)})});
+  const outputHeaders=Object.fromEntries(result.headers);outputHeaders['cache-control']='no-store';
+  if(pathname==='/api/config'||pathname==='/api/website-platform/config'||pathname==='/api/library-return'){
+   const body=(await result.text()).replaceAll(f.env.WEBSITE_ORIGIN,websiteOrigin).replaceAll(f.env.ACADEMY_ORIGIN,academyOrigin);delete outputHeaders['content-length'];response.writeHead(result.status,outputHeaders);return response.end(body);
+  }
+  response.writeHead(result.status,outputHeaders);if(request.method==='HEAD'||!result.body)return response.end();Readable.fromWeb(result.body).on('error',()=>response.destroy()).pipe(response);
+ }catch(error){if(!response.headersSent)response.writeHead(error.code==='ENOENT'?404:500,{'Content-Type':'text/plain'});response.end(error.code==='ENOENT'?'Page not found.':'Local preview error: '+error.message);}
+}
+const servers=[createServer((r,s)=>handler(r,s,false)),createServer((r,s)=>handler(r,s,true))];
+try{await Promise.all(servers.map((server,i)=>new Promise((resolve,reject)=>{server.once('error',reject);server.listen(sitePort+i,'127.0.0.1',resolve);})));
+ console.log(JSON.stringify({website:websiteOrigin,academy:academyOrigin,data:'Disposable synthetic data; resets when stopped',accounts:[{id:'separation-global',pin:'1234',role:'Admin'},{id:'separation-studentA',pin:'1234',role:'Learner'}],publicRoot}));
+}catch(error){for(const server of servers)server.close();await f.close();throw error;}
+let closing=false;async function close(){if(closing)return;closing=true;for(const server of servers)server.close();await f.close();process.exit(0);}process.on('SIGINT',close);process.on('SIGTERM',close);

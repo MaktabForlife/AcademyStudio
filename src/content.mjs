@@ -1,5 +1,6 @@
 import {fail,id,text,month,sha256,bodyJSON} from './protocol.mjs';
-import {validateCourse,referencedAssets} from '../public/shared/model.mjs';
+import {referencedAssets} from '../public/shared/model.mjs';
+import {validatePackage} from './content-package.mjs';
 export async function objectJSON(bucket,key,limit=1_500_000){const object=await bucket.get(key);if(!object||object.size>limit)throw fail('The saved edition is unavailable.',503);return bodyJSON(object.body,limit);}
 export async function saveContent(env,document,websiteId=document.id){const encoded=JSON.stringify(document);if(new TextEncoder().encode(encoded).length>1_500_000)throw fail('This website edition is too large.',413);const hash=await sha256(encoded),key='websites/'+encodeURIComponent(websiteId)+'/versions/'+hash+'.json';await env.CONTENT.put(key,encoded,{httpMetadata:{contentType:'application/json'}});return key;}
 export async function websiteAccess(store,actor,websiteId,{admin=false}={}){
@@ -20,13 +21,13 @@ export async function editWebsite(env,store,actor,websiteId,input){
  if(input.revision!==website.revision)throw fail('This website changed elsewhere. Reopen the saved draft.',409);
  const revision=website.revision+1,statements=[];let historyKey=website.draft_key;
  if(input.action==='save'){
-  const document=structuredClone(input.document);document.pages.assessments=false;
-  let errors;try{errors=validateCourse(document,{review:false});}catch(error){throw fail(error.message);}if(errors.length)throw fail(errors.join(' '));
+  const document=structuredClone(input.document);const errors=validatePackage(document);if(errors.length)throw fail(errors.join(' '));document.pages.assessments=false;
   const refs=referencedAssets(document);if(refs.length>100)throw fail('Keep up to 100 website assets.');
-  for(const assetId of refs){const ref=await store.first('SELECT attachment_id FROM attachments WHERE asset_id=? AND website_id=? AND audience=\'WEBSITE\' LIMIT 1',[id(assetId),websiteId]);if(!ref)throw fail('A website file needs an attachment to this website.');}
+  for(const assetId of refs)id(assetId);
+  if(refs.length){const linked=await store.all("SELECT DISTINCT asset_id FROM attachments WHERE website_id=? AND audience='WEBSITE' AND asset_id IN(SELECT value FROM json_each(?))",[websiteId,JSON.stringify(refs)]),accepted=new Set(linked.map(row=>row.asset_id));if(refs.some(ref=>!accepted.has(ref)))throw fail('A website file needs an attachment to this website.');}
   const key=await saveContent(env,document,websiteId);historyKey=key;statements.push(store.statement('UPDATE websites SET draft_key=?,revision=? WHERE website_id=?',[key,revision,websiteId]));
  }else if(input.action==='publish'){
-  if(!website.draft_key)throw fail('Save a draft first.');const document=await objectJSON(env.CONTENT,website.draft_key);const errors=validateCourse(document,{review:true});if(errors.length)throw fail(errors.join(' '));
+  if(!website.draft_key)throw fail('Save a draft first.');const document=await objectJSON(env.CONTENT,website.draft_key);const errors=validatePackage(document,{review:true});if(errors.length)throw fail(errors.join(' '));
   const refs=referencedAssets(document);const linked=await store.all("SELECT asset_id FROM attachments WHERE website_id=? AND audience='WEBSITE' AND asset_id IN(SELECT value FROM json_each(?))",[websiteId,JSON.stringify(refs)]);
   if(refs.some(ref=>!linked.some(row=>row.asset_id===ref)))throw fail('A referenced website asset is no longer attached.');
   statements.push(store.statement('DELETE FROM published_assets WHERE website_id=?',[websiteId]));

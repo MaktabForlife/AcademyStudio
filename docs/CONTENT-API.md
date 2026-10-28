@@ -30,6 +30,8 @@ All mutations use the same-origin Secure HttpOnly website cookie and require exa
 
 Use one operation UUID for one exact actor/offering/website/payload and retain it across uncertain retries. Do not regenerate it after a timeout. A successful retry returns the original result with `replayed:true`; changed payload/scope or stale revision returns 409. The mutation's database guard rechecks current account/session/scope and revision atomically. R2 is written first, so a failed object write cannot advance pointers and a failed guard leaves only private unreferenced objects.
 
+Reader/edit/export responses also include `canEdit`, `draftVersion` and `publishedVersion`, derived from the already-read role and object pointers. `canEdit` means Global Admin or scoped ADMIN; Teachers cannot edit. Version labels are object filename hashes, or `null` before an edition exists. Use these fields instead of extra permission/history requests. The server independently validates the content allowlist in `src/content-package.mjs`, rejects unknown/private/operational fields at every model level and rejects raw Zoom URLs in text. Propose editorial schema extensions explicitly. Referenced website files are checked in one scoped batch query.
+
 ## Assets and media
 
 - Website responses expose assets as `{attachment_id,asset_id,lesson_id,name,type,size,title,url}`; `url` is a protected attachment URL. Normalize these field names in the editor adapter, not in content IDs.
