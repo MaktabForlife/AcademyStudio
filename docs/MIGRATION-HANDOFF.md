@@ -14,7 +14,7 @@ The human supplied these decisions after reviewing the expanded migration handof
 
 | Topic | Confirmed direction |
 | --- | --- |
-| Cloudflare placement | A separate Cloudflare account from Academy. The specific account and hosted identifiers are not selected here. |
+| Cloudflare placement | Separate account naidu.hajira@gmail.com; account ID `2b01ca929611669e032703ff19f7098f`, verified read-only from the existing Cloudflare dashboard Account details on 28 October 2026. Local Wrangler configuration pins this target. Hosted resource IDs remain placeholders; no resource creation or deployment is authorised. |
 | Repository | A separate repository for the website/learning platform. No remote repository has been created or pushed. |
 | Offering scope | Tafseer and all paid Courses. Rehearse and cut over offerings individually; all paid Courses are in scope, rather than only a pilot subset. |
 | Sign-in | The website owns the public homepage and offers the existing Academy sign-in there. One user sign-in must admit the user to authorised Academy/website destinations; do not introduce another website login or independent website credentials. A private website session may be established through the Academy authentication flow without asking the user to sign in again. |

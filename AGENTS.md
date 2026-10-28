@@ -1,5 +1,6 @@
 # Independent website platform — local development
 
+- Canonical remote: https://github.com/MaktabForlife/AcademyStudio.git. Verified website-platform Cloudflare account: naidu.hajira@gmail.com, account_id 2b01ca929611669e032703ff19f7098f (read-only existing dashboard Account details, 28 October 2026). Pin this target in Wrangler configuration; never reuse Academy's source account/resources. Local bindings remain remote:false and the platform disabled. CLI authentication was expired during verification; account identification does not establish CLI deployment access or authorise any push/hosted change.
 - Work only on a feature branch. The current build is authorised locally. Do not push, deploy, create hosted resources, apply hosted SQL, publish live content or migrate production without separate human approval.
 - This is a separate repository and targets a separate Cloudflare account. Do not embed Academy source, credentials, production IDs, source exports or private data. Preserve the parent ../AGENTS.md live-read rules.
 - Academy owns identities, credentials, platform admission, scheduling and Zoom settings. The website owns the entire public homepage, all paid Courses and Tafseer delivery, participants/content rights, cards, media and enrolment. Keep Academy Library and other programmes intact.
