@@ -61,6 +61,8 @@ CREATE TABLE attachments (
  audience TEXT NOT NULL CHECK(audience IN('WEBSITE','RECORDING')), published INTEGER NOT NULL DEFAULT 0 CHECK(published IN(0,1))
 );
 CREATE INDEX attachments_website ON attachments(website_id,attachment_id);
+CREATE INDEX attachments_edition ON attachments(website_id,asset_id,audience,published DESC,attachment_id);
+CREATE INDEX attachments_website_picker ON attachments(website_id,audience,attachment_id);
 CREATE INDEX attachments_offering ON attachments(offering_id,attachment_id);
 CREATE INDEX attachments_asset ON attachments(asset_id,website_id);
 CREATE INDEX attachments_feed ON attachments(offering_id,audience,published,attachment_id);

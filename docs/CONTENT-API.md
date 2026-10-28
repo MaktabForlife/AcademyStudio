@@ -27,6 +27,8 @@ All mutations use the same-origin Secure HttpOnly website cookie and require exa
 | Same POST, `action:'restore'` | Also supply `historyRevision`; restores an existing edition as a new private draft. Explicit review/publish is still required. |
 | `GET /api/websites/:websiteId/history?before=<revision>` | Scoped Admin bounded metadata history. No arbitrary object-key endpoint. |
 | `GET /api/websites/:websiteId/export` | Current Admin draft and reference metadata. Portable-package export must retain file references rather than fetching another copy of every PDF/recording. |
+| `GET /api/websites/:websiteId/assets?after=<attachmentId>` | Scoped Admin metadata picker, at most 50 WEBSITE attachments with `{websiteId,offeringId,assets,more,nextCursor}`. Includes unused references; never RECORDING attachments. |
+| Same GET, `?assetId=<assetId>` | Scoped Admin exact lookup for an already attached file, returning zero or one matching WEBSITE asset in `assets`, with `more:false,nextCursor:null`. Use after upload/attach; it does not publish the file. |
 
 Use one operation UUID for one exact actor/offering/website/payload and retain it across uncertain retries. Do not regenerate it after a timeout. A successful retry returns the original result with `replayed:true`; changed payload/scope or stale revision returns 409. The mutation's database guard rechecks current account/session/scope and revision atomically. R2 is written first, so a failed object write cannot advance pointers and a failed guard leaves only private unreferenced objects.
 
@@ -37,6 +39,7 @@ Accepted existing editorial provenance: Course/lesson `sourceEdition:boolean`; l
 ## Assets and media
 
 - Website responses expose assets as `{attachment_id,asset_id,lesson_id,name,type,size,title,url}`; `url` is a protected attachment URL. Normalize these field names in the editor adapter, not in content IDs.
+- Reader/edit/export `assets` contains only the returned document's exact referenced asset IDs (maximum 100). Historical or duplicate attachments cannot crowd out current files. One deterministic attachment is returned per referenced asset, preferring a published attachment when available; learner delivery still requires the current accepted publication and file gate. Keep unused-file selection separately paginated through `/assets`; merge newly attached metadata locally after its exact lookup, since it is not a document reference until saved.
 - `GET /api/media/:attachmentId` supports one byte range for PDFs/MP4s. `?draft=1` requires current scoped Admin authority. YouTube metadata contains the validated video ID; no extra recording rights are inferred.
 - Upload an image/PDF with `PUT /api/admin/:offeringId/files?assetId=...&operationId=...&filename=...`. Raw file body. PDF limit 16 MiB, image limit 5 MiB; type is checked by bytes. The response is `{assetId,type,size}`. Existing IDs/objects are reused by reference; upload is not publication.
 - MP4 uploads use `POST /api/admin/:offeringId/recording` with `action:'start'`, `operationId`, `assetId`, `filename`; bounded `PUT` parts with `assetId`/`partNumber` in the query; then POST `action:'complete'`, the same `assetId`, a new exact operation ID and `{partNumber,etag}` parts. Stored recordings use a retained namespace with no application expiry.

@@ -8,6 +8,7 @@ import {requestEnrolment,beginProvision,resumeProvision} from './enrolment.mjs';
 import {academyCommand} from './academy-client.mjs';
 import {publishSchedule} from './public-schedule.mjs';
 import {contentVersion} from './content-package.mjs';
+import {editionAssets,attachedWebsiteAssets} from './website-assets.mjs';
 
 async function forwardSignIn(request,env,store,input,fetcher){
  if(!safeToken(input.challenge)||!safeToken(input.state))throw fail('Reopen sign-in from the homepage.');
@@ -48,13 +49,14 @@ async function route(request,env,store,fetcher){
     UNION SELECT website_id FROM surah_grants WHERE account_id=?
    ) SELECT w.website_id,w.title,w.offering_id,w.completion_month,w.enabled FROM mine JOIN websites w USING(website_id) JOIN offerings o USING(offering_id) WHERE w.website_id>? AND o.active=1 AND (w.enabled=1 AND w.published_key IS NOT NULL OR EXISTS(SELECT 1 FROM staff s WHERE s.account_id=? AND s.offering_id=w.offering_id AND s.role='ADMIN')) ORDER BY w.website_id LIMIT 51`,[actor.account_id,actor.account_id,actor.account_id,actor.account_id,after,actor.account_id]);return json({websites:rows.slice(0,50),more:rows.length>50});
  }
- let match=path.match(/^\/api\/websites\/([-A-Za-z0-9_:]+)(?:\/(edit|export|history))?$/);
+ let match=path.match(/^\/api\/websites\/([-A-Za-z0-9_:]+)(?:\/(edit|export|history|assets))?$/);
  if(match){const websiteId=id(match[1]),action=match[2];if(method==='POST'&&action==='edit')return json(await editWebsite(env,store,actor,websiteId,await bodyJSON(request.body)));
   if(method!=='GET')throw fail('Use GET to read website content.',405);
   if(action==='history'){await websiteAccess(store,actor,websiteId,{admin:true});return json({history:await store.all('SELECT revision,action,created_at,actor_id FROM website_history WHERE website_id=? AND revision<? ORDER BY revision DESC LIMIT 51',[websiteId,Number(url.searchParams.get('before'))||Number.MAX_SAFE_INTEGER])});}
+  if(action==='assets'){const website=await websiteAccess(store,actor,websiteId,{admin:true});return json({websiteId,offeringId:website.offering_id,...await attachedWebsiteAssets(store,websiteId,{assetId:url.searchParams.get('assetId'),after:url.searchParams.get('after')||''})});}
   const website=await websiteAccess(store,actor,websiteId,{admin:Boolean(action)}),key=action?website.draft_key:website.published_key,document=key?await objectJSON(env.CONTENT,key):null;
-  const assets=await store.all('SELECT x.attachment_id,x.asset_id,x.lesson_id,o.filename name,o.mime_type type,o.byte_size size,x.title FROM attachments x JOIN objects o USING(asset_id) WHERE x.website_id=? AND (?=1 OR (x.published=1 AND EXISTS(SELECT 1 FROM published_assets p WHERE p.website_id=x.website_id AND p.asset_id=x.asset_id))) ORDER BY x.attachment_id LIMIT 100',[websiteId,Number(Boolean(action))]);
-  return json({websiteId,offeringId:website.offering_id,revision:website.revision,document,assets:assets.map(a=>({...a,url:'/api/media/'+a.attachment_id})),enabled:Boolean(website.enabled),canEdit:Boolean(actor.global_admin||website.role==='ADMIN'),draftVersion:contentVersion(website.draft_key),publishedVersion:contentVersion(website.published_key),capabilities:{assessments:false,journal:false}});
+  const assets=await editionAssets(store,websiteId,document,{draft:Boolean(action)});
+  return json({websiteId,offeringId:website.offering_id,revision:website.revision,document,assets,enabled:Boolean(website.enabled),canEdit:Boolean(actor.global_admin||website.role==='ADMIN'),draftVersion:contentVersion(website.draft_key),publishedVersion:contentVersion(website.published_key),capabilities:{assessments:false,journal:false}});
  }
  match=path.match(/^\/api\/media\/([-A-Za-z0-9_:]+)$/);if(match&&['GET','HEAD'].includes(method)){const row=await mediaGate(store,actor,match[1],{admin:url.searchParams.get('draft')==='1'});return streamMedia(env,row,request);}
  match=path.match(/^\/api\/offerings\/([-A-Za-z0-9_:]+)\/(sessions|media|join|enrol|provision|resume)$/);
