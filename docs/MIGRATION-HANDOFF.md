@@ -1,5 +1,9 @@
 # Academy website platform migration and Studio prototype
 
+## Active local implementation baseline
+
+The human subsequently authorised continuing the build locally. The independent repository is `work/Maktab-web-platform`, on feature branch `feature/website-platform`. Its first coherent local baseline is commit `653c0e64c07d8f9734aeecb620ca2a81505b13c6` (11 passing native local tests plus syntax/configuration checks). This is a local commit, not a push or deployment. Content/editor work should branch from that baseline, keep the nine preserved packages separate from source authentication/entitlement work, and use [CONTENT-API.md](CONTENT-API.md). See [STATUS.md](STATUS.md) for remaining integration/acceptance items; the prototype sections below remain historical evidence.
+
 Local implementation on `feature/academy-website-studio`, based on V107.120 (`4cbb787c`). Deployment, pushing, hosted migrations, resource creation and live content changes require the human's approval. Release markers and active deployment configuration remain unchanged. Keep live checks small: use the saved packages and synthetic local fixtures first.
 
 All further migration work must remain on a dedicated feature branch, including integration, configuration and tests; do not work directly on development/main. No deployments tonight (28 October 2026, Riyadh), and no automatic deployment afterward: the approval hold remains in force. Do not deploy APIs/Workers/frontends, apply hosted schema/resource changes, publish content or cut over production as part of this handoff.
