@@ -1,4 +1,5 @@
-import {clone,setPath,validateCourse} from './model.mjs';
+import {clone,setPath} from './model.mjs';
+import {validatePackage as validateCourse} from './content-schema.mjs';
 
 // Only teaching text can change here. IDs, file references and access settings
 // continue to belong to the full website builder and their existing services.

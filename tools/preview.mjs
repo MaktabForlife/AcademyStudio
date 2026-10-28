@@ -7,6 +7,7 @@ const websiteOrigin='http://localhost:'+sitePort,academyOrigin='http://localhost
 const publicRoot=resolve(process.env.PREVIEW_PUBLIC_ROOT||'public'),f=await fixture({academy:true});
 for(const [account,globalAdmin] of [[f.source.f.actors.global,1],[f.source.f.actors.studentA,0]])await f.run('INSERT INTO accounts VALUES(?,?,1,1,1,?,?)',account,'Synthetic Academy '+(globalAdmin?'Admin':'Learner'),Date.now(),globalAdmin);
 await f.run("INSERT INTO participation VALUES(?,'course',1,1,1,'')",f.source.f.actors.studentA);
+if(process.env.PREVIEW_CONTENT_ROOT){const{seedReviewedWebsites}=await import('./seed-reviewed-websites.mjs');console.log(JSON.stringify({contentReview:await seedReviewedWebsites(f,process.env.PREVIEW_CONTENT_ROOT)}));}
 const mime={'.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.woff2':'font/woff2','.woff':'font/woff'};
 async function staticFile(path,request,response){
  let file=resolve(publicRoot,'.'+decodeURIComponent(path));if(!file.startsWith(publicRoot+'/')&&file!==publicRoot)throw Error('Invalid file.');

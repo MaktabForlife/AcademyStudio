@@ -1,17 +1,18 @@
-import {esc,validateCourse} from './model.mjs';
+import {esc} from './model.mjs';
+import {validatePackage as validateCourse} from './content-schema.mjs';
 import {inlineSession,decorateInlineText} from './inline-text.mjs?v=107.120';
 
-export function createInlineEditor({root,request,active,allowed,workspace,enterAdmin,canStart=()=>true,launchEditor=async()=>false,showDraft,showPublished,published,route,dialog,dialogTitle,dialogBody}){
- const session=inlineSession({request,active}),host=document.createElement('section');
+export function createInlineEditor({root,request,session:providedSession,active,allowed,workspace,enterAdmin,canStart=()=>true,launchEditor=async()=>false,showDraft,showPublished,published,permissionLost=()=>{},route,dialog,dialogTitle,dialogBody}){
+ const session=providedSession||inlineSession({request,active}),host=document.createElement('section');
  host.className='sp-inline-toolbar';host.hidden=true;host.setAttribute('aria-label','Edit website text');root.before(host);
  let editing=false,notice='',opened=false,errorNotice=false;
  const busy=()=>opened||session.busy;
  const control=(action,label,primary=false)=>`<button type="button" data-inline-action="${action}"${primary?' class="sp-primary"':''}${busy()?' disabled':''}>${label}</button>`;
  function controls(){
-  host.hidden=!editing&&!errorNotice;host.innerHTML=editing?`<div class="sp-inline-controls"><strong>Edit text</strong><span class="sp-inline-state" role="status">${esc(notice|| (session.dirty?'Unsaved text changes':'Editing the saved draft'))}</span><div>${control('save','Save draft',true)}${control('review','Publish')}${control('close','Close editing')}</div></div><p>Click any outlined heading or passage to edit it. Students see the published website until you publish.</p>`:errorNotice?`<p role="alert">${esc(notice)}</p>`:'';
-  for(const field of root.querySelectorAll('[data-inline-path]')){const value=busy()?'false':'plaintext-only';if(field.getAttribute('contenteditable')!==value)field.setAttribute('contenteditable',value);}
+  host.hidden=!editing&&!errorNotice;host.innerHTML=editing?`<div class="sp-inline-controls"><strong>${esc(session.record?.document.name||'Website')} · Private draft · revision ${esc(session.record?.revision||0)}</strong><span class="sp-inline-state" role="status">${esc(notice|| (session.dirty?'Unsaved text changes':'Editing the saved draft'))}</span><div>${session.pending?control('retry','Retry '+(session.pendingAction||'Save'),true):control('save','Save draft',true)}${control('review','Publish')}${control('export','Export unsaved text')}${control('close','Close editing')}</div></div><p>Click any outlined heading or passage to edit it. Students see the published website until you publish.</p>`:errorNotice?`<p role="alert">${esc(notice)}</p>`:'';
+  for(const field of root.querySelectorAll('[data-inline-path]')){const value=busy()||session.pending?'false':'plaintext-only';if(field.getAttribute('contenteditable')!==value)field.setAttribute('contenteditable',value);}
  }
- const fail=error=>{if(active()&&error.name!=='AbortError'){notice=error.message;errorNotice=true;controls();}};
+ const fail=error=>{if(error.status===403){session.clear();editing=false;document.body.classList.remove('website-inline-editing');showPublished();permissionLost();}if(active()&&error.name!=='AbortError'){notice=error.message;errorNotice=true;controls();}};
  function syncButtons(){for(const button of root.querySelectorAll('[data-inline-action="start"]'))button.remove();if(!allowed()||editing)return;
   for(const target of root.querySelectorAll('.sp-row-actions,.sp-sidebar')){const button=document.createElement('button');button.type='button';button.className='sp-inline-entry';button.dataset.inlineAction='start';button.textContent='Edit text';button.setAttribute('aria-label','Edit website text');target.insertBefore(button,target.classList.contains('sp-sidebar')?target.querySelector('nav'):null);}
  }
@@ -26,14 +27,14 @@ export function createInlineEditor({root,request,active,allowed,workspace,enterA
  }
  function close(){
   if(busy())return false;
-  if(session.dirty&&!confirm('Close editing without saving your text changes?'))return false;
+  if((session.dirty||session.pending)&&!confirm('Close editing without saving your text changes? Export any unsaved text first.'))return false;
   session.clear();editing=false;notice='';errorNotice=false;document.body.classList.remove('website-inline-editing');controls();showPublished();return true;
  }
  async function save(){
   const job=session.save();notice='Saving draft…';controls();try{await job;notice='Draft saved · ready to publish';errorNotice=false;}finally{controls();}
  }
  async function review(){
-  const errors=validateCourse(session.record.document,{review:true});if(errors.length)throw Error(errors.join(' '));await save();if(!active())return;
+  const errors=validateCourse(session.record.document,{review:true});if(errors.length)throw Error(errors.join(' '));if(session.dirty||session.pending)throw Error('Save your draft before reviewing it for publication.');if(!active())return;
   dialogTitle.textContent='Publish text changes';dialogBody.innerHTML=`<p>Your updated text will be visible to students.</p><p><strong>${esc(session.record.document.name)}</strong> · ${session.record.document.lessons.length} web lesson${session.record.document.lessons.length===1?'':'s'}</p><div class="sp-inline-review-actions">${control('publish','Publish changes',true)}${control('back','Keep editing')}</div>`;dialog.showModal();
  }
  async function publish(){
@@ -43,7 +44,7 @@ export function createInlineEditor({root,request,active,allowed,workspace,enterA
  }
  const click=async event=>{
   const button=event.target.closest('[data-inline-action]');if(!button||button.disabled||!active())return;event.preventDefault();
-  try{const action=button.dataset.inlineAction;if(action==='start')await start();else if(action==='save')await save();else if(action==='review')await review();else if(action==='close')close();else if(action==='publish')await publish();else if(action==='back')dialog.close();}
+  try{const action=button.dataset.inlineAction;if(action==='start')await start();else if(action==='save')await save();else if(action==='retry'){const action=session.pendingAction;await session.retry();if(action==='publish'){dialog.close();session.clear();editing=false;errorNotice=false;document.body.classList.remove('website-inline-editing');controls();await published();}else {notice='Draft saved · ready to publish';controls();}}else if(action==='review')await review();else if(action==='close')close();else if(action==='publish')await publish();else if(action==='back')dialog.close();else if(action==='export'){const value=session.export?session.export():session.record,url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='website-unsaved-text.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}}
   catch(error){fail(error);}
  };
  document.addEventListener('click',click);
@@ -64,7 +65,7 @@ export function createInlineEditor({root,request,active,allowed,workspace,enterA
  window.addEventListener('beforeunload',event=>{if(editing&&(session.dirty||busy())){event.preventDefault();event.returnValue='';}});
  return {
   get editing(){return editing;},get busy(){return busy();},start,close,
-  canLeave(){return !busy()&&(!session.dirty||confirm('Leave without saving your website text changes?'));},
+  canLeave(){return !busy()&&(!(session.dirty||session.pending)||confirm('Leave without saving your website text changes? Export any unsaved text first.'));},
   draw(){root.classList.toggle('sp-inline-editing',editing);if(editing)decorateInlineText(root,session.record.document,route());syncButtons();controls();},
   clear(){session.clear();editing=false;opened=false;errorNotice=false;host.replaceChildren();host.hidden=true;document.body.classList.remove('website-inline-editing');},
   error:fail
