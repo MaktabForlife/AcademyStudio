@@ -1,0 +1,13 @@
+# Local implementation status — 28 October 2026
+
+The independent repository exists locally on `feature/website-platform`; no remote repository/account resources, push, deployment, hosted query, live content publication or production migration has been performed. The committed runtime configuration stays disabled and contains only local placeholder resources.
+
+Implemented locally: single Academy PIN sign-in and first-PIN setup path, one-use PKCE website/Academy handoffs, local account/permission checks, retained whole-Course and Tafseer month/cohort/Surah rights, scoped administration, coordinated identity/enrolment state, independent R2 draft/publication/history pointers, protected reusable media and ranged delivery, private Zoom joining from stored facts, public homepage/card/announcement publication and signed versioned status/timetable reception.
+
+The current local preview UI reuses the existing reader/full builder and exposes the four administration sections. The content/editor chat is preparing the nine independent packages, content preservation and both editor modes on a separate feature branch. The shared contract is [CONTENT-API.md](CONTENT-API.md). Its work must not overwrite reviewed drafts with older saved exports.
+
+The accompanying Academy source connector is on `feature/academy-website-studio` under `backend/src/academy/d1/web-platform/`; additive Core schema `0011_website_platform.sql` and all configuration/activation remain local and disabled by default. Source changes capture account, credential, admission, Global Admin and source-session revocation into a durable indexed outbox. Existing authentication and account-creation scope are reused/rechecked; no independent website credential database is introduced.
+
+Not yet accepted: final 24-hour/admin/outage policy; Foundations page location; source timetable publication/Zoom exporter and scoped retirement routing; source content/access/media inventory and full migration/recovery rehearsal; end-to-end Academy Library return; independent editorial package/editor integration; comprehensive per-workflow and aggregate read budgets. Do not infer readiness from the narrower Studio evidence or the first passing native tests. Keep these items explicit until verified.
+
+Native runtime currently supports 2026-09-28; intended Workers compatibility date is 2026-10-28. Packaging/type generation and the intended production-date runtime need their own recorded verification. The dependencies are reused locally through an ignored symlink; package.json pins the versions actually installed. No new provider pricing/resource plan is assumed.

@@ -1,0 +1,10 @@
+# Independent website platform — local development
+
+- Work only on a feature branch. The current build is authorised locally. Do not push, deploy, create hosted resources, apply hosted SQL, publish live content or migrate production without separate human approval.
+- This is a separate repository and targets a separate Cloudflare account. Do not embed Academy source, credentials, production IDs, source exports or private data. Preserve the parent ../AGENTS.md live-read rules.
+- Academy owns identities, credentials, platform admission, scheduling and Zoom settings. The website owns the entire public homepage, all paid Courses and Tafseer delivery, participants/content rights, cards, media and enrolment. Keep Academy Library and other programmes intact.
+- One Academy sign-in from the website homepage. No independent website credentials. Whole-Course purchases include non-expiring recordings/PDFs; Tafseer retains paid-month/cohort and website-only Surah grants. Never grant recordings from a website-only grant.
+- Optimise every process for D1 reads. Public requests target zero D1. Ordinary protected requests never call Academy and use bounded indexed local gates. Measure rows scanned (including retries/guards/triggers), not request count. Do not weaken authority checks to meet a budget.
+- The 24-hour learner status fallback is provisional and configurable for local rehearsal; staff freshness is separate. No daily full-account sweeps, per-tab status polling or per-file Academy requests. Local withdrawal and permission removal take effect immediately.
+- No personal journals exist to migrate. Preserve browser-held progress/reflections through an explicit device transfer/export. The location of free Foundations learning pages remains undecided; preserve existing public access.
+- Use synthetic local Workers/D1/R2 fixtures. Record local evidence and limitations in docs/STATUS.md. Reused renderer/model assets originate at Academy Studio commit a639da30; keep source licences.
