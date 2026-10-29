@@ -1,3 +1,4 @@
+import {accessStatements,fenceAccess} from './access.mjs';
 import {bodyJSON,bytes,verify,envelopePurpose,fail,id,text,integer,flag,sha256,safeToken,httpsURL} from './protocol.mjs';
 export async function signedInput(request,env){
  const payload=new TextDecoder().decode(await bytes(request.body,262144));
@@ -13,13 +14,16 @@ const accountStatements=(store,a,{insertOnly=false}={})=>{
 };
 export async function receive(request,env,store){
  const data=await signedInput(request,env),event=data.event;id(data.operationId);id(data.stream);integer(data.version,1);if(!event)throw fail('Missing delivery.');
+ if(['access','access-scope'].includes(event.type)){const offer=id(event.offeringId||event.offering?.id),account=event.type==='access'?id(event.account?.accountId).toLowerCase():'';if(data.stream!=='access:'+await sha256(JSON.stringify([offer,account])))throw fail('Invalid authoritative access stream.');}
  const hash=await sha256(JSON.stringify({stream:data.stream,version:data.version,event}));
- const receipt=await store.replay('ACADEMY',data.operationId,hash);if(receipt)return receipt;
+ const receipt=await store.replay('ACADEMY',data.operationId,hash);if(receipt){if(data.superseded===true&&event.type.startsWith('access'))await fenceAccess(store,event,data.version);return receipt;}
  const old=await store.first('SELECT version,payload_hash FROM stream_heads WHERE stream=?',[data.stream]);
  if(data.version===(old?.version||0)&&hash===old?.payload_hash)return {accepted:true,version:data.version,replayed:true};
  if(data.version!==(old?.version||0)+1)throw fail('Deliver the missing version first.',409,'DELIVERY_GAP');
  const statements=[];let extraSQL='1',extraArgs=[];
- if(event.type==='account'){
+ if(data.superseded===true&&['access','access-scope'].includes(event.type)){await fenceAccess(store,event,data.version);}
+ else if(['access','access-scope'].includes(event.type)){statements.push(...await accessStatements(store,event,data.version,a=>accountStatements(store,a,{insertOnly:true})));extraSQL="NOT EXISTS(SELECT 1 FROM source_access_scopes WHERE offering_id=? AND authority='WEBSITE')";extraArgs=[event.offeringId||event.offering.id];}
+ else if(event.type==='account'){
   if(data.stream!=='account:'+event.account.accountId)throw fail('Invalid account stream.');statements.push(...accountStatements(store,event.account));
  }else if(event.type==='timetable'){
   const offer=event.offering,offeringId=id(offer.id);if(data.stream!=='timetable:'+offeringId||!['COURSE','TAFSEER','ACADEMY'].includes(offer.kind)||!Array.isArray(event.sessions)||event.sessions.length>200)throw fail('Invalid timetable publication.');
@@ -31,9 +35,9 @@ export async function receive(request,env,store){
   // Stable session identities preserve local attachment links through corrections and cancellation.
   if(event.mode!=='delta')statements.push(store.statement('UPDATE timetable SET cancelled=1,revision=? WHERE offering_id=? AND cancelled=0 AND session_id NOT IN(SELECT value FROM json_each(?))',[data.version,offeringId,JSON.stringify(event.sessions.map(s=>s.id))]));
   if(cancelled.length)statements.push(store.statement('UPDATE timetable SET cancelled=1,revision=? WHERE offering_id=? AND session_id IN(SELECT value FROM json_each(?))',[data.version,offeringId,JSON.stringify(cancelled)]));
-  const seen=new Set(cancelled);for(const session of event.sessions){const sessionId=id(session.id);if(seen.has(sessionId))throw fail('Repeated session identity.');seen.add(sessionId);
+  const seen=new Set(cancelled);for(const session of event.sessions){if(session.classIds!==undefined&&(!Array.isArray(session.classIds)||session.classIds.length>100)||session.teacherIds!==undefined&&(!Array.isArray(session.teacherIds)||session.teacherIds.length>100))throw fail('Invalid session audience.');const sessionId=id(session.id);if(seen.has(sessionId))throw fail('Repeated session identity.');seen.add(sessionId);
    const starts=integer(session.startsAt),ends=integer(session.endsAt,starts+1),zoom=session.zoomUrl?httpsURL(session.zoomUrl,{zoom:true}):null;
-   statements.push(store.statement(`INSERT INTO timetable VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(session_id) DO UPDATE SET title=excluded.title,starts_at=excluded.starts_at,ends_at=excluded.ends_at,zoom_url=excluded.zoom_url,cancelled=excluded.cancelled,revision=excluded.revision`,[sessionId,offeringId,text(session.title),starts,ends,zoom,flag(session.cancelled||false),data.version]));
+   statements.push(store.statement(`INSERT INTO timetable VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(session_id) DO UPDATE SET title=excluded.title,starts_at=excluded.starts_at,ends_at=excluded.ends_at,zoom_url=excluded.zoom_url,cancelled=excluded.cancelled,revision=excluded.revision`,[sessionId,offeringId,text(session.title),starts,ends,zoom,flag(session.cancelled||false),data.version]));statements.push(store.statement('INSERT INTO source_session_audiences VALUES(?,?,?) ON CONFLICT(session_id) DO UPDATE SET class_ids_json=excluded.class_ids_json,teacher_ids_json=excluded.teacher_ids_json',[sessionId,JSON.stringify((session.classIds||[]).map(id)),JSON.stringify((session.teacherIds||[]).map(id))]));
   }
  }else if(event.type==='handoff'){
   if(data.stream!=='handoff:'+event.codeHash||!/^[a-f0-9]{64}$/.test(event.codeHash||'')||!safeToken(event.challenge)||!safeToken(event.state))throw fail('Invalid sign-in handoff.');

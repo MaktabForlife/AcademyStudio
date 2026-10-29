@@ -1,8 +1,10 @@
+import {rejectAuthorityWrite} from './access.mjs';
 import {fail,id,text,integer,flag,month,date,sha256,bytes,httpsURL} from './protocol.mjs';
 import {fileKind,newCourse} from '../public/shared/model.mjs';
 import {saveContent} from './content.mjs';
 import {validatePackage} from './content-package.mjs';
 export async function change(env,store,actor,offeringId,input){
+ if(['participant','paid-months','staff','surah-grant','completion-month','completion-date','enrolment-decision','website-create','attachment'].includes(input.action))await rejectAuthorityWrite(store,offeringId);
  await store.scope(actor,offeringId,{admin:true});const statements=[];const s=(sql,args=[])=>statements.push(store.statement(sql,args));
  if(input.action==='participant'){
   const accountId=id(input.accountId);if(!await store.first('SELECT account_id FROM accounts WHERE account_id=?',[accountId]))throw fail('Create or explicitly link the Academy account first.',409,'IDENTITY_REQUIRED');
@@ -10,7 +12,7 @@ export async function change(env,store,actor,offeringId,input){
   s(`INSERT INTO participation VALUES(?,?,?,?,?,?) ON CONFLICT(account_id,offering_id) DO UPDATE SET enrolled=excluded.enrolled,live=excluded.live,purchased=excluded.purchased,cohort=excluded.cohort`,[accountId,offeringId,flag(input.enrolled),flag(input.live),flag(input.purchased),text(input.cohort||'',180)]);
  }else if(input.action==='paid-months'){
   const offering=await store.first('SELECT kind FROM offerings WHERE offering_id=?',[offeringId]);if(offering.kind!=='TAFSEER'||!Array.isArray(input.changes)||input.changes.length>240)throw fail('Choose up to 240 Tafseer month changes.');
-  for(const cell of input.changes){const args=[id(cell.accountId),offeringId,month(cell.month),text(cell.cohort||'',180)];if(cell.paid===true)s('INSERT INTO paid_months VALUES(?,?,?,?,?) ON CONFLICT DO NOTHING',[...args,text(cell.reason||'',500)]);else if(cell.paid===false){if(!cell.reason?.trim())throw fail('Give a reason for removing acquired rights.');s('DELETE FROM paid_months WHERE account_id=? AND offering_id=? AND month=? AND cohort=?',args);}else throw fail('Choose paid or unpaid.');}
+  for(const cell of input.changes){const args=[id(cell.accountId),offeringId,month(cell.month),text(cell.cohort||'',180)];if(cell.paid===true)s('INSERT INTO paid_months VALUES(?,?,?,?,?) ON CONFLICT DO NOTHING',[...args,text(cell.reason||'',500)]);else if(cell.paid===false){if(!cell.reason?.trim())throw fail('Give a reason for removing acquired rights.');s('DELETE FROM paid_months WHERE account_id=? AND offering_id=? AND month=? AND cohort=?',args);}else throw fail('Choose paid or unpaid.');if(cell.paid)s('INSERT INTO website_months VALUES(?,?,?) ON CONFLICT DO NOTHING',args.slice(0,3));else s('DELETE FROM website_months WHERE account_id=? AND offering_id=? AND month=? AND NOT EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=? AND m.offering_id=? AND m.month=?)',[...args.slice(0,3),...args.slice(0,3)]);}
  }else if(input.action==='staff'){
   if(!actor.global_admin)throw fail('Only Global Admin changes staff authority.',403);const accountId=id(input.accountId);if(input.role===null)s('DELETE FROM staff WHERE account_id=? AND offering_id=?',[accountId,offeringId]);else {if(!['ADMIN','TEACHER'].includes(input.role))throw fail('Choose a staff role.');s('INSERT INTO staff VALUES(?,?,?,?) ON CONFLICT(account_id,offering_id) DO UPDATE SET role=excluded.role,can_create_account=excluded.can_create_account',[accountId,offeringId,input.role,flag(input.canCreateAccount||false)]);}
  }else if(input.action==='surah-grant'){

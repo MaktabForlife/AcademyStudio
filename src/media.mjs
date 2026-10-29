@@ -1,3 +1,4 @@
+import {accessGate} from './access.mjs';
 import {fail,id} from './protocol.mjs';
 import {websiteAccess} from './content.mjs';
 export async function mediaGate(store,actor,attachmentId,{admin=false}={}){
@@ -6,7 +7,7 @@ export async function mediaGate(store,actor,attachmentId,{admin=false}={}){
   FROM attachments x JOIN objects o USING(asset_id) JOIN offerings f USING(offering_id)
   LEFT JOIN participation p ON p.account_id=? AND p.offering_id=x.offering_id
   LEFT JOIN staff s ON s.account_id=? AND s.offering_id=x.offering_id WHERE x.attachment_id=?`,[actor.account_id,actor.account_id,actor.account_id,id(attachmentId)]);
- if(!row||!row.active)throw fail('This attachment is unavailable.',404);
+ if(!row||!row.active)throw fail('This attachment is unavailable.',404);await accessGate(store,actor,row.offering_id,{admin:Boolean(row.role)});
  if(admin){await store.scope(actor,row.offering_id,{admin:true});return row;}
  if(!row.published)throw fail('This attachment is not published.',404);
  const staff=actor.global_admin||row.role==='ADMIN'||row.role==='TEACHER';

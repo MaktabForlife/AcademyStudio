@@ -1,0 +1,7 @@
+-- Source-authoritative parallel projection. No identities or access are seeded.
+CREATE TABLE source_access_scopes(offering_id TEXT PRIMARY KEY REFERENCES offerings(offering_id),authority TEXT NOT NULL DEFAULT 'ACADEMY' CHECK(authority IN('ACADEMY','WEBSITE')),generation INTEGER NOT NULL,version INTEGER NOT NULL,enabled INTEGER NOT NULL,live_enabled INTEGER NOT NULL,timezone TEXT NOT NULL,classes_json TEXT NOT NULL);
+CREATE TABLE source_access_people(account_id TEXT NOT NULL REFERENCES accounts(account_id),offering_id TEXT NOT NULL REFERENCES offerings(offering_id),generation INTEGER NOT NULL,version INTEGER NOT NULL,verified_at INTEGER NOT NULL,ready INTEGER NOT NULL,windows_json TEXT NOT NULL,has_allocation INTEGER NOT NULL,course INTEGER NOT NULL,PRIMARY KEY(account_id,offering_id));
+CREATE TABLE source_access_websites(website_id TEXT PRIMARY KEY REFERENCES websites(website_id),offering_id TEXT NOT NULL REFERENCES offerings(offering_id),enabled INTEGER NOT NULL);
+CREATE INDEX source_access_websites_scope ON source_access_websites(offering_id,website_id);
+CREATE TABLE website_months(account_id TEXT NOT NULL REFERENCES accounts(account_id),offering_id TEXT NOT NULL REFERENCES offerings(offering_id),month TEXT NOT NULL,PRIMARY KEY(account_id,offering_id,month));
+CREATE TABLE source_session_audiences(session_id TEXT PRIMARY KEY REFERENCES timetable(session_id),class_ids_json TEXT NOT NULL,teacher_ids_json TEXT NOT NULL);
