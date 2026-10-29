@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {recordingOverview,recordingGuides,recordingTopics,recordingStart,recordingMomentLink,recordingTopicGuide,companionReadingEntry} from '../public/shared/recording-companion.mjs';
+import {recordingOverview,recordingGuides,recordingTopics,recordingStart,recordingMomentLink,recordingTopicGuide,companionReadingEntry,recordingReadingIntro} from '../public/shared/recording-companion.mjs';
 
 test('recording overview uses gated references, chronological lessons and reviewed transcript summaries only',()=>{
  const row=(id,date,asset=id)=>({attachment_id:id,asset_id:asset,lesson_id:id,title:'Lesson '+id,lesson_date:date,type:'video/youtube'});
@@ -25,4 +25,11 @@ test('timestamp navigation is bounded, escaped and attached only to authorised v
  const row={attachment_id:'gated',type:'video/youtube',title:'Lesson'};
  const html=recordingTopicGuide(row,topics);assert(html.includes('Later &lt;topic&gt;'));assert(html.includes('data-material="gated"'));assert(!html.includes('youtube.com'));
  assert.equal(recordingTopicGuide({...row,type:'application/pdf'},topics),'');assert.equal(recordingTopicGuide({},topics),'');assert.equal(recordingMomentLink(row,'not a time'),'');assert.equal(recordingMomentLink({...row,type:'application/pdf'},'11:01'),'');assert(recordingMomentLink(row,'11:01').includes('data-recording-start="661"'));
+});
+
+
+test('reading overview stays inside its gated recording card before actions and collapsed topics',()=>{
+ const row={attachment_id:'gated-video',type:'video/youtube',title:'Original recording'},guide={title:'A living reminder',summary:'Notice the signs <around us>.',status:'reviewed',topics:recordingTopics(['2:15 Begin with reflection'])};
+ const html=recordingReadingIntro(row,guide);assert(html.includes('WATCH &amp; FOLLOW ALONG'));assert(html.includes('Notice the signs &lt;around us&gt;.'));assert(html.indexOf('Notice the signs')<html.indexOf('Watch the full video'));assert(html.indexOf('Watch the full video')<html.indexOf('Follow the recording by topic'));assert(!html.includes('<details open'));assert(!html.includes('youtube.com'));assert(!html.includes('<textarea'));assert(!html.includes('Words to carry'));
+ assert.equal(recordingReadingIntro({...row,type:'application/pdf'},guide),'');assert.equal(recordingReadingIntro(row,{...guide,status:'pending'}),'');assert.equal(recordingReadingIntro({},guide),'');
 });

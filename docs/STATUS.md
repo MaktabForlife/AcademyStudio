@@ -46,3 +46,8 @@ Five transcript-based video summaries and paired reading links are prepared loca
 # Compact course headers — local review, 29 October 2026
 
 Coordinated with the “new builder” chat’s `c7bc3446` author-preview handoff. The native account menu and compact course row retain real navigation, scoped editing, edition/draft status, live Join lesson placement, Course materials, reading size and full-screen controls. Website tools are available inside the account menu. Mobile/desktop browser checks and twelve focused local tests pass; no hosted changes. Original course content is unchanged by this header pass; the wider nine-site transcript/style review remains in progress. Details and limitations are in [RECORDING-COMPANION-REVIEW.md](RECORDING-COMPANION-REVIEW.md).
+
+
+# Kahf recordings and closing lesson layout — local draft
+
+The two newly supplied Kahf recordings are prepared as local transcript companions with active introductions, practical closing sections, quotation links and 27 topics. All eleven original PDF readings remain unchanged; the existing chapter PDF is reused in Course materials. Separate local review: port 8893; the previous Yaseen preview on 8892 remains running. Native source attachment mapping and Session 2’s PDF notes remain pending. The shared normal reader now puts Words to carry inside the final practical section, preserving source text/editor fields and navigation. Focused tests and a 29-reading in-memory DOM rehearsal pass; the latest browser visual check was blocked by browser security policy and is not claimed. No hosted changes or deployment. See [RECORDING-COMPANION-REVIEW.md](RECORDING-COMPANION-REVIEW.md).

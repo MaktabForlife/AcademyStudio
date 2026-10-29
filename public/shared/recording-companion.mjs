@@ -7,9 +7,37 @@ export function recordingTopics(items=[]){
  const seen=new Set();return items.flatMap(item=>{const match=typeof item==='string'&&item.match(/^(\d{1,3}):([0-5]\d)(?::([0-5]\d))?\s+(.+)$/);if(!match||!match[4].trim())return [];const start=match[3]===undefined?Number(match[1])*60+Number(match[2]):Number(match[1])*3600+Number(match[2])*60+Number(match[3]);if(start>86400||seen.has(start))return [];seen.add(start);return [{time:match[1]+':'+match[2]+(match[3]===undefined?'':':'+match[3]),start,title:match[4].trim()}];}).sort((a,b)=>a.start-b.start);
 }
 const playable=row=>row?.attachment_id&&['video/youtube','video/mp4'].includes(row.type);
+const watchButton=row=>playable(row)?`<button class="sp-watch-full" data-material="${esc(row.attachment_id)}" data-type="${esc(row.type)}" data-filename="${esc(row.title)}" aria-label="Watch the full video: ${esc(row.title)}">${play}<span>Watch the full video</span><span aria-hidden="true">→</span></button>`:'';
 export const companionReadingEntry=()=>'<div class="sp-companion-reading-entry"><button class="sp-reading-along" data-sp="route" data-route="lessons">Read &amp; reflect →</button></div>';
 export function recordingMomentLink(row,time){const moment=recordingTopics([time+' Quotation'])[0];return playable(row)&&moment?`<button type="button" class="sp-hear-quotation" data-material="${esc(row.attachment_id)}" data-type="${esc(row.type)}" data-filename="${esc(row.title)}" data-recording-start="${moment.start}">Hear this in the recording</button>`:'';}
 export function recordingTopicGuide(row,topics=[]){if(!playable(row)||!topics.length)return '';return `<details class="sp-recording-topics"><summary>Follow the recording by topic</summary><ol>${topics.map(topic=>`<li><button type="button" data-material="${esc(row.attachment_id)}" data-type="${esc(row.type)}" data-filename="${esc(row.title)}" data-recording-start="${recordingStart(topic.start)}"><span class="sp-topic-time">${esc(topic.time)}</span><span>${esc(topic.title)}</span></button></li>`).join('')}</ol></details>`;}
+
+export function recordingReadingIntro(row,guide){
+ if(!playable(row)||guide?.status!=='reviewed'||!guide.summary?.trim())return '';
+ return `<section class="sp-recorded-lesson sp-reading-recording" aria-label="Watch and follow along"><span class="sp-eyebrow">WATCH &amp; FOLLOW ALONG</span><h2>${esc(guide.title||row.title)}</h2><p class="sp-recorded-summary">${esc(guide.summary)}</p>${watchButton(row)}${recordingTopicGuide(row,guide.topics)}</section>`;
+}
+
+// Rearrange only the normal reader DOM. Both editors retain the original saved
+// sections, block IDs, wording and shared Save/Publish process.
+export function arrangeRecordingReading({root,guides=[],media=[]}){
+ const body=root.querySelector('.sp-reading-body'),shown=new Set();if(!body)return shown;
+ const doc=root.ownerDocument,managed=new Set(),quotes=[],introductions=[];
+ for(const guide of guides){
+  const row=media.find(row=>row.lesson_id===guide.lessonId&&playable(row)),intro=[...body.querySelectorAll('[data-recording-intro]')].find(node=>node.dataset.recordingIntro===guide.lessonId),html=recordingReadingIntro(row,guide);
+  if(intro&&html){managed.add(intro.closest('.sp-reading-section'));const holder=doc.createElement('div');holder.innerHTML=html;introductions.push(holder.firstElementChild);intro.remove();shown.add(row.attachment_id);
+   for(const list of body.querySelectorAll('[data-recording-topics]'))if(list.dataset.recordingTopics===guide.lessonId){managed.add(list.closest('.sp-reading-section'));list.remove();}
+  }
+  for(const quote of body.querySelectorAll('[data-recording-quote]'))if(quote.dataset.recordingQuote===guide.lessonId){managed.add(quote.closest('.sp-reading-section'));quotes.push(quote);}
+ }
+ let closing=[...body.querySelectorAll('.sp-reading-section')].find(section=>[...section.children].some(node=>node.tagName==='H2'&&node.textContent.trim().toLowerCase()==='carry the lesson into daily life'));
+ if(quotes.length||closing){
+  if(!closing){closing=doc.createElement('aside');closing.className='sp-reading-section sp-recording-closing';const heading=doc.createElement('h2');heading.textContent='Carry the lesson into daily life';closing.append(heading);}else closing.classList.add('sp-recording-closing');
+  if(quotes.length){const words=doc.createElement('section'),heading=doc.createElement('h3');words.className='sp-carry-quote';heading.textContent='Words to carry';words.append(heading,...quotes);closing.append(words);}
+  body.append(closing);
+ }
+ for(const section of managed)if(section&&section!==closing&&!section.querySelector('.sp-block'))section.remove();
+ body.prepend(...introductions);return shown;
+}
 
 // Transcript summaries are ordinary editable source-note asides. The source key
 // identifies the recorded lesson; it never contains or grants a playback URL.
