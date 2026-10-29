@@ -13,3 +13,5 @@
 - Use synthetic local Workers/D1/R2 fixtures. Record local evidence and limitations in docs/STATUS.md. Reused renderer/model assets originate at Academy Studio commit a639da30; keep source licences.
 
 - On 29 October the human authorised starting deployment. The rollout checkout is `feature/academy-studio-rollout-20261029`; prepare and update the existing isolated preview first. The human clarified that the real integration should start with parallel systems, then separate. Academy must keep serving everyone; no old-screen retirement or rerouting. Academy remains the authority for enrolment/access during the parallel stage. Any real bridge must preserve current grants and revocations through an authoritative importer and ordered deltas before enabling real learners. The preview runtime update does not itself activate that bridge or authorise a DNS cutover, screen retirement or Git push.
+
+- Communication preference, 29 October: address the user as “you”; avoid referring to them as “the human”. State disagreement and its reasons directly.

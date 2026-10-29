@@ -1,6 +1,6 @@
 # Parallel rollout — 29 October 2026
 
-The human has authorised starting deployment and clarified: start with parallel systems, then move to separation. Academy remains available with its existing learner/admin routes, homepage, Library and schedules. Do not redirect users, retire screens, change DNS or delete recovery data during this stage.
+You have authorised starting deployment and clarified: start with parallel systems, then move to separation. Academy remains available with its existing learner/admin routes, homepage, Library and schedules. Do not redirect users, retire screens, change DNS or delete recovery data during this stage.
 
 ## Deployment being released
 
@@ -29,3 +29,7 @@ A failed parallel activation returns users to the unchanged Academy paths and di
 After per-offering content, users, historical rights, media, timetable changes, revocations and Library return are verified, freeze the old ownership briefly, deliver the final delta, verify counters/versions and switch that offering's management authority to the website. Retire old routes/bookmarks and background reads only as a subsequent cutover. Master credentials and scheduling remain Academy-owned. No destructive cleanup is part of deployment.
 
 Local/hosted release evidence is in the parent project's private `outputs/academy-studio-rollout-20261029/` directory. Previous preview rollback version: `594fe414-8f0c-4334-a648-a15d4070b2b3`.
+
+## Preview runtime deployed
+
+Released source `db0ad6fa4bcf2430cd708f1ba482661b0d03c494` to the existing isolated preview as Cloudflare version `3dfe5378-a31f-4016-b754-ba2b6ecf8ced`, tag `parallel-prep-20261029-db0ad6f`. All 53 local tests and five bounded hosted checks passed. The hosted JavaScript SHA256 matched the local source. These checks used no sign-in, hosted SQL, private content mutation or Academy request; zero D1 queries are expected from the checked routes, rather than measured provider aggregate usage. Real-user parallel activation remains pending the access/import work above.
