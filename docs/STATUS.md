@@ -1,4 +1,6 @@
-# Local implementation status — 28 October 2026
+# Local implementation and deployed boundary — 29 October 2026
+
+> V108.0 parallel activation is complete according to the deployment owner. The real site is https://academy-studio-parallel.naidu-hajira.workers.dev; source `313b6100`, target `5183846`. Existing Academy delivery remains available. [DEPLOYED-PARALLEL-V108.md](DEPLOYED-PARALLEL-V108.md) records verification, exact local recovery/index alignment and the small local-only sender-fence difference. Future changes require separate approval. No hosted work was performed by this thread.
 
 The independent platform is on `feature/website-platform`, with canonical remote `https://github.com/MaktabForlife/AcademyStudio.git`. The separate Cloudflare target has been verified and pinned locally; storage resource IDs remain placeholders. The platform stays disabled, with local-only bindings, no preview deployment and no hosted resource creation, hosted SQL, content publication, push or production migration. A separate review checkout owns the authorised isolated-preview setup; this feature checkout remains local. Its dedicated profile/account guard and reported isolated-preview deployment are recorded in [LOCAL-PREVIEW.md](LOCAL-PREVIEW.md).
 
