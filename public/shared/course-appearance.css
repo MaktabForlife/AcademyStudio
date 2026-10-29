@@ -74,3 +74,19 @@
  .student-course [data-course-theme] .sp-ayah{background:Canvas;border-color:CanvasText;box-shadow:none}
  .student-course .sp-ayah::before,.student-course .sp-ayah::after{display:none}
 }
+
+/* Quotation colours follow the selected website palette in both editors/readers. */
+.student-course [data-course-theme] .sp-quote{
+ --sp-quote-ink:var(--sp-accent);
+ --sp-quote-border:color-mix(in srgb,var(--sp-accent) 52%,var(--sp-paper));
+ color:var(--sp-quote-ink);
+ border-color:var(--sp-quote-border);
+ background:var(--sp-paper);
+}
+.student-course [data-course-theme=rose] .sp-quote{--sp-quote-border:#bd7595}
+.student-course [data-course-theme] .sp-quote p,
+.student-course [data-course-theme] .sp-quote cite,
+.student-course [data-course-theme] .sp-quote .sp-hear-quotation{color:var(--sp-quote-ink)}
+@media(forced-colors:active){
+ .student-course [data-course-theme] .sp-quote{--sp-quote-ink:CanvasText;background:Canvas;border-color:CanvasText}
+}
