@@ -74,6 +74,7 @@ const base64=buffer=>btoa(String.fromCharCode(...new Uint8Array(buffer))).replac
 $('sign-in-button').onclick=()=>$('sign-in-dialog').showModal();$('close-sign-in').onclick=()=>$('sign-in-dialog').close();$('home-button').onclick=()=>{if(!textEditor.canLeave())return;textEditor.clear();beforeEditing=null;show('homepage');history.replaceState(null,'','/');};$('explore-button').onclick=()=>$('public-cards').scrollIntoView({behavior:'smooth'});$('my-websites').onclick=()=>library().catch(e=>status(e.message));
 $('sign-out-button').onclick=async()=>{try{await api('/auth/logout',{body:{}});}finally{changed(null);clear();}};
 function openAcademy(libraryContext){
+ if(config?.isolatedPreview){status('Academy Library is disconnected in this preview. The live Academy is unchanged.');return;}
  const child=window.open(config.academyOrigin+'/academy/website-platform/connect/','_blank');if(!child){status('Allow this window to open, then select Academy again.');return;}
  let connected=false,watch;const finish=()=>{window.removeEventListener('message',listener);clearInterval(watch);};
  const listener=async event=>{if(event.source!==child||event.origin!==config.academyOrigin)return;
