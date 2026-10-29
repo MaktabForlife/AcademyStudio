@@ -37,3 +37,7 @@ Editorial branch verification: 39 combined tests passed, then the metadata-only 
 
 Recordings are the lessons; websites provide companion reading. Progress must come from watching the recordings, never from reading-page completion. The local companion renderer no longer offers manual lesson completion or derives progress from reading flags. Legacy saved device data remains intact; actual player tracking is still pending and this change is not deployed. See [LEARNING-AND-PROGRESS.md](LEARNING-AND-PROGRESS.md).
 
+# Yaseen recording companion — local review, 29 October 2026
+
+Five transcript-based video summaries and paired reading links are prepared locally, using the original Yaseen text and source recordings. The shared reader offers an authorised recording overview and a persistent desktop/mobile player, without counting reading as lesson completion. Both editors reuse ordinary source-note asides and the existing Save/Publish flow. Nine focused local tests and mobile/desktop checks pass. Nothing from this review is deployed or imported into hosted storage. See [RECORDING-COMPANION-REVIEW.md](RECORDING-COMPANION-REVIEW.md).
+
