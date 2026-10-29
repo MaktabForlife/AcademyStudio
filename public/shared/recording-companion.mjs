@@ -32,7 +32,17 @@ export function arrangeRecordingReading({root,guides=[],media=[]}){
  let closing=[...body.querySelectorAll('.sp-reading-section')].find(section=>[...section.children].some(node=>node.tagName==='H2'&&node.textContent.trim().toLowerCase()==='carry the lesson into daily life'));
  if(quotes.length||closing){
   if(!closing){closing=doc.createElement('aside');closing.className='sp-reading-section sp-recording-closing';const heading=doc.createElement('h2');heading.textContent='Carry the lesson into daily life';closing.append(heading);}else closing.classList.add('sp-recording-closing');
-  if(quotes.length){const words=doc.createElement('section'),heading=doc.createElement('h3');words.className='sp-carry-quote';heading.textContent='Words to carry';words.append(heading,...quotes);closing.append(words);}
+  if(quotes.length){
+   const words=doc.createElement('section'),heading=doc.createElement('h3');words.className='sp-carry-quote';heading.textContent='Words to carry';words.append(heading,...quotes);
+   const blocks=[...closing.children].filter(node=>node.matches('div.sp-block')),first=blocks.find(node=>node.children.length===1&&node.firstElementChild.tagName==='P'),paragraph=first?.firstElementChild;
+   if(paragraph){
+    // A saved text field may contain several paragraphs. Split only its displayed
+    // nodes so the inset follows the first paragraph without changing editor data.
+    const parts=paragraph.textContent.split(/\r?\n[\t ]*\r?\n/),following=parts.slice(1).some(text=>text.trim())||blocks.slice(blocks.indexOf(first)+1).some(node=>node.textContent.trim());
+    if(parts.length>1){const paragraphs=parts.map(text=>{const p=doc.createElement('p');p.className='sp-carry-paragraph';p.textContent=text;return p;});paragraph.replaceWith(...paragraphs);paragraphs[0].after(words);}else first.after(words);
+    if(following)closing.classList.add('has-carry-inset');
+   }else closing.append(words);
+  }
   body.append(closing);
  }
  for(const section of managed)if(section&&section!==closing&&!section.querySelector('.sp-block'))section.remove();
