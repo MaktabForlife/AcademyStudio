@@ -41,3 +41,8 @@ Recordings are the lessons; websites provide companion reading. Progress must co
 
 Five transcript-based video summaries and paired reading links are prepared locally, using the original Yaseen text and source recordings. The shared reader offers an authorised recording overview and a persistent desktop/mobile player, without counting reading as lesson completion. Both editors reuse ordinary source-note asides and the existing Save/Publish flow. Nine focused local tests and mobile/desktop checks pass. Nothing from this review is deployed or imported into hosted storage. See [RECORDING-COMPANION-REVIEW.md](RECORDING-COMPANION-REVIEW.md).
 
+
+
+# Compact course headers — local review, 29 October 2026
+
+Coordinated with the “new builder” chat’s `c7bc3446` author-preview handoff. The native account menu and compact course row retain real navigation, scoped editing, edition/draft status, live Join lesson placement, Course materials, reading size and full-screen controls. Website tools are available inside the account menu. Mobile/desktop browser checks and twelve focused local tests pass; no hosted changes. Original course content is unchanged by this header pass; the wider nine-site transcript/style review remains in progress. Details and limitations are in [RECORDING-COMPANION-REVIEW.md](RECORDING-COMPANION-REVIEW.md).
