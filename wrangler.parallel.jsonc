@@ -18,7 +18,7 @@
   },
   "vars": {
     "PLATFORM_ENABLED": "1",
-    "PARALLEL_ACCESS_ENABLED": "0",
+    "PARALLEL_ACCESS_ENABLED": "1",
     "ENVIRONMENT": "parallel",
     "AUTHORITY_MODE": "ACADEMY",
     "WEBSITE_ORIGIN": "https://academy-studio-parallel.naidu-hajira.workers.dev",
