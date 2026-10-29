@@ -23,3 +23,11 @@ Apply source additive schemas 0011–0013 with control disabled and target 0002.
 On failure, close target browser access, disable source database control, then disable/revert the source connector if necessary. Preserve additive schemas, ordered outbox/receipts, legitimate synced accounts/rights, drafts/publications and recovery evidence. Do not reset versions, reseed permissions or restore a whole database as a rollback shortcut.
 
 Private release evidence and final deployment IDs: parent `outputs/academy-parallel-access-20261029/`. The earlier synthetic preview runtime is `db0ad6f` / Cloudflare `3dfe5378-a31f-4016-b754-ba2b6ecf8ced`; that preview update did not activate real access. V108.0 deployment evidence must explicitly distinguish closed preparation from completed activation.
+
+## V108.0 active release
+
+The real parallel site is active at https://academy-studio-parallel.naidu-hajira.workers.dev . Runtime commit `5183846b17f60d242665943c5ff3042a663c5e40`, Cloudflare version `5e2bbc0e-d402-4d91-b4d1-a2d651e331ee`. Academy API/frontend also report V108.0; old screens remain available. Source implementation is `313b6100`, Worker `2bd1b45d-e577-45a0-bdb8-77617095b020`, Pages deployment `29722737`.
+
+All 68 combined local tests and five small hosted checks passed. Initial access sync finished with 17 deliveries, zero failures and no unfinished import phases, dirty projections or pending events. Its measured source usage was 886 rows read and 470 written; these are operator totals rather than aggregate daily usage. A single target metadata check confirmed nine websites, two enabled Academy-authoritative scopes, eight Surah maps, eight real accounts and thirteen ready projections. PIN/revocation acceptance was local; live checks did not use a real login or dashboard.
+
+Private final record: parent `outputs/academy-parallel-access-20261029/release-verification.json`. PDF/recording byte migration remains separate, and existing Academy material stays available. Synthetic preview identities remain isolated. This release authorisation is fulfilled; future deployments need fresh approval.

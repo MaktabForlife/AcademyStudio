@@ -1,6 +1,6 @@
-# Parallel access protocol — implementation in progress
+# Parallel access protocol — V108.0
 
-Source migration: `0013_website_parallel_access.sql`, additive to Core `0011`/`0012`. Target migration: `0002_parallel_access.sql`, additive to platform `0001`. Both are local only. No resources or source settings are activated here.
+Source migration: `0013_website_parallel_access.sql`, additive to Core `0011`/`0012`. Target migration: `0002_parallel_access.sql`, additive to platform `0001`. Both are deployed in the separate real parallel setup. Source capture and the verified browser gate are active; see PARALLEL-ROLLOUT.md and the private final release record.
 
 Target `AUTHORITY_MODE=ACADEMY` selects parallel, source-authoritative access; `WEBSITE` preserves the later independent management model. Target `ACADEMY_ORIGIN` is the browser/Pages origin; `ACADEMY_API_ORIGIN` is the Worker API origin (falls back to browser origin only for compatible local fixtures). Source `WEBSITE_PLATFORM_ACADEMY_ORIGIN` stays the Pages origin, and source browser CORS does not need the target website origin for signed server commands.
 

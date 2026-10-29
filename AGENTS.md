@@ -1,3 +1,7 @@
+# V108.0 deployment completed — 29 October 2026
+
+- The authorised real parallel deployment is active; see docs/PARALLEL-ROLLOUT.md and the private parent release-verification.json. Future changes remain local on feature branches until another deployment approval. Preserve Academy authority and current sync state; do not reuse synthetic preview identities, retire screens, change DNS or push Git under the completed release authorisation.
+
 # V108.0 parallel access release — current authorisation
 
 - You explicitly authorised completing/testing access synchronisation and deploying both systems for parallel testing, then requested V108.0. This authorises the necessary additive schemas, exact origin/secret settings, bounded import and activation in the separate AcademyStudio account. It supersedes the earlier preparation-only holds below for this release.

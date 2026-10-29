@@ -1,3 +1,15 @@
+# AcademyStudio V108.0 — parallel testing active
+
+## V108.0 active release
+
+The real parallel site is active at https://academy-studio-parallel.naidu-hajira.workers.dev . Runtime commit `5183846b17f60d242665943c5ff3042a663c5e40`, Cloudflare version `5e2bbc0e-d402-4d91-b4d1-a2d651e331ee`. Academy API/frontend also report V108.0; old screens remain available. Source implementation is `313b6100`, Worker `2bd1b45d-e577-45a0-bdb8-77617095b020`, Pages deployment `29722737`.
+
+All 68 combined local tests and five small hosted checks passed. Initial access sync finished with 17 deliveries, zero failures and no unfinished import phases, dirty projections or pending events. Its measured source usage was 886 rows read and 470 written; these are operator totals rather than aggregate daily usage. A single target metadata check confirmed nine websites, two enabled Academy-authoritative scopes, eight Surah maps, eight real accounts and thirteen ready projections. PIN/revocation acceptance was local; live checks did not use a real login or dashboard.
+
+Private final record: parent `outputs/academy-parallel-access-20261029/release-verification.json`. PDF/recording byte migration remains separate, and existing Academy material stays available. Synthetic preview identities remain isolated. This release authorisation is fulfilled; future deployments need fresh approval.
+
+## Historical preparation status before real activation
+
 # AcademyStudio rollout status — 29 October 2026
 
 The current rollout is on `feature/academy-studio-rollout-20261029` in the combined review checkout. The nine-site private preview is already deployed in the separate account `2b01ca929611669e032703ff19f7098f`; see [PRIVATE-PREVIEW.md](PRIVATE-PREVIEW.md). This branch integrates the latest timetable/Library source tests before a preview runtime update. Preview content and temporary synthetic permissions remain separate from real Academy. The human has now chosen a parallel rollout before separation: Academy continues to serve everyone and remains enrolment/access authority during the parallel stage. Live Academy/DNS remain unchanged by the preview runtime update; real bridge activation needs the authoritative initial inventory and ordered updates described below. Counts below describe the source branch's local evidence; the combined rollout verification is recorded separately.
