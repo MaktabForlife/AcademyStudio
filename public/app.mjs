@@ -1,4 +1,4 @@
-import {recordingOverview,recordingGuides,companionPlayer} from './shared/recording-companion.mjs';
+import {recordingOverview,recordingGuides,recordingStart,recordingTopicGuide,recordingMomentLink,companionPlayer} from './shared/recording-companion.mjs';
 import './shared/reading-focus.mjs';
 import {exportDeviceLearning,importDeviceLearning} from './shared/device-learning.mjs';
 import {combinedSessionCards,mediaButton,joinIsOpen} from './shared/lesson-media.mjs';
@@ -6,7 +6,7 @@ import {readerEditing} from './reader-editing.mjs';
 import {api,mutate,identity,changed,downloadJSON} from './api.mjs';
 import {esc} from './shared/model.mjs';import {renderCourse} from './shared/student.mjs';
 const $=id=>document.getElementById(id);let current=null,assets=new Map(),urls=new Set(),ui=null,config=null,adminModule=null,generation=0;
-let beforeEditing=null,delivery=null,joinTimer=null,mediaEpoch=0;
+let beforeEditing=null,delivery=null,joinTimer=null,mediaEpoch=0,activeRecording=null;
 const recordingPlayer=companionPlayer({workspace:$('reader-workspace'),panel:$('companion-player')});
 const freshDelivery=()=>({media:[],sessions:[],loaded:false,more:false,request:null,sessionRequest:null,serverOffset:0});
 const textEditor=readerEditing({root:$('course-reader'),identity,api,current:()=>current,route:()=>ui,showDraft(record){document.querySelectorAll('[data-reader-toolbar]').forEach(node=>node.hidden=true);beforeEditing={record:current,ui:structuredClone(ui),assets};current={...record,canEdit:true};assets=new Map(record.assets.map(a=>[a.asset_id,{...a,id:a.asset_id,url:a.url+'?draft=1'}]));ui={...ui,isPreview:true,completed:[],reflections:{}};draw();},showPublished(){document.querySelectorAll('[data-reader-toolbar]').forEach(node=>node.hidden=false);if(beforeEditing){current=beforeEditing.record;ui=beforeEditing.ui;assets=beforeEditing.assets;beforeEditing=null;draw();}},async refresh(){const id=current.websiteId;beforeEditing=null;await openWebsite(id);}});
@@ -14,7 +14,7 @@ const removeReaderToolbars=()=>document.querySelectorAll('[data-reader-toolbar]'
 const show=name=>{if(name!=='course-reader'){removeReaderToolbars();closeMedia();}$('reader-workspace').hidden=name!=='course-reader';for(const key of ['homepage','my-learning','course-reader','administration'])$(key).hidden=key!==name;};
 const status=message=>$('status').textContent=message;
 const time=value=>new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short'}).format(new Date(value));
-function closeMedia(){mediaEpoch++;recordingPlayer.close();for(const video of $('media-body').querySelectorAll('video'))video.pause();$('media-body').replaceChildren();$('media-dialog').close();}
+function closeMedia(){mediaEpoch++;activeRecording=null;recordingPlayer.close();for(const video of $('media-body').querySelectorAll('video'))video.pause();$('media-body').replaceChildren();$('media-dialog').close();}
 function clear(){clearTimeout(joinTimer);closeMedia();removeReaderToolbars();textEditor.clear();beforeEditing=null;generation++;delivery=null;current=null;ui=null;for(const url of urls)URL.revokeObjectURL(url);urls.clear();assets.clear();$('course-reader').replaceChildren();$('learning-cards').replaceChildren();$('administration').replaceChildren();$('account-name').textContent='';$('sign-in-button').hidden=false;$('sign-out-button').hidden=true;$('manage-button').hidden=true;$('academy-button').hidden=true;show('homepage');}
 window.addEventListener('website-account-changed',()=>{textEditor.clear();beforeEditing=null;});
 window.addEventListener('website-session-ended',()=>{clear();status('Your session changed. Sign in to Academy to continue.');});
@@ -40,7 +40,9 @@ function renderDelivery(){
  if(live){const row=$('course-reader').querySelector('.sp-row-actions,.sp-sidebar');if(row&&!row.querySelector('[data-join]')){const button=document.createElement('button');button.className='sp-primary';button.dataset.join=live.session_id;button.textContent='Join lesson';row.append(button);}}
  if(ui.route==='lesson'){
   const sourceLessons=new Set(recordingGuides(current.document).filter(guide=>guide.readingId===ui.lessonId).map(guide=>guide.lessonId));const files=delivery.media.filter(row=>row.lesson_id===ui.lessonId||sourceLessons.has(row.lesson_id));
-  if(files.length){const article=$('course-reader').querySelector('.sp-lesson-article');if(article){const section=document.createElement('section');section.className='sp-lesson-linked-media';section.setAttribute('aria-label','Lesson recordings and notes');section.innerHTML='<h2>Lesson recordings & notes</h2><div class="sp-lesson-media">'+files.map(mediaButton).join('')+'</div>';article.append(section);}}
+  const guides=recordingGuides(current.document);for(const quote of $('course-reader').querySelectorAll('[data-recording-quote]')){quote.querySelector('cite')?.remove();const guide=guides.find(guide=>guide.lessonId===quote.dataset.recordingQuote),row=files.find(row=>row.lesson_id===guide?.lessonId&&['video/youtube','video/mp4'].includes(row.type));if(row)quote.insertAdjacentHTML('beforeend',recordingMomentLink(row,guide?.quote?.timestamp));}
+  const shownTopics=new Set();for(const list of $('course-reader').querySelectorAll('[data-recording-topics]')){const guide=guides.find(guide=>guide.lessonId===list.dataset.recordingTopics),row=files.find(row=>row.lesson_id===guide?.lessonId&&['video/youtube','video/mp4'].includes(row.type)),html=recordingTopicGuide(row,guide?.topics);if(html){const holder=document.createElement('div');holder.innerHTML=html;list.replaceWith(holder.firstElementChild);shownTopics.add(row.lesson_id);}else list.hidden=true;}
+  if(files.length){const article=$('course-reader').querySelector('.sp-lesson-article');if(article){const section=document.createElement('section');section.className='sp-lesson-linked-media';section.setAttribute('aria-label','Lesson recordings and notes');section.innerHTML='<h2>Lesson recordings & notes</h2><div class="sp-lesson-media">'+files.map(row=>mediaButton(row)+(shownTopics.has(row.lesson_id)?'':recordingTopicGuide(row,guides.find(guide=>guide.lessonId===row.lesson_id)?.topics))).join('')+'</div>';article.append(section);}}
  }
 }
 async function loadMedia({more=false}={}){
@@ -63,14 +65,18 @@ async function sessions(){
 }
 async function materials(){await loadMedia();const shown=new Set(current.document.materials.files.map(file=>file.assetId));ui.nativeMaterialsHTML=delivery.media.filter(row=>{if(row.type!=='application/pdf'||shown.has(row.asset_id))return false;shown.add(row.asset_id);return true;}).map(row=>`<article class="sp-material"><h2>${esc(row.title)}</h2>${mediaButton(row,{download:true})}</article>`).join('')+(delivery.more?'<button data-more-media>Load more materials</button>':'');draw();}
 async function downloadMaterial(path,name){const key=generation,blob=await api(path,{blob:true});if(key!==generation)return;const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=name||'Course material.pdf';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-async function openMaterial(path,type,name){
+async function openMaterial(path,type,name,start=0){
  if(type==='application/pdf')return downloadMaterial(path,(name||'Course material').replace(/\.pdf$/i,'')+'.pdf');
+ start=recordingStart(start);
+ // Seeking within the recording already playing reuses its authorised source,
+ // just like the native seek bar; it does not query permissions per topic.
+ if(activeRecording?.path===path&&activeRecording.type===type&&activeRecording.element.isConnected){const element=activeRecording.element;if(type==='video/youtube'){const url=new URL(element.src);url.searchParams.set('start',String(start));element.src=url.href;}else {element.currentTime=start;void element.play().catch(()=>{});}return;}
  closeMedia();const key=generation,opening=mediaEpoch;let element;
- if(type==='video/youtube'){const data=await api(path);element=document.createElement('iframe');if(!/^[A-Za-z0-9_-]{11}$/.test(data.videoId))throw Error('This recording link needs review.');element.src='https://www.youtube-nocookie.com/embed/'+data.videoId+'?playsinline=1&autoplay=1';element.allow='autoplay; fullscreen; picture-in-picture';element.referrerPolicy='strict-origin-when-cross-origin';}
- else if(type==='video/mp4'){element=document.createElement('video');element.controls=true;element.src=path;}
+ if(type==='video/youtube'){const data=await api(path);element=document.createElement('iframe');if(!/^[A-Za-z0-9_-]{11}$/.test(data.videoId))throw Error('This recording link needs review.');element.src='https://www.youtube-nocookie.com/embed/'+data.videoId+'?playsinline=1&autoplay=1&start='+start;element.allow='autoplay; fullscreen; picture-in-picture';element.referrerPolicy='strict-origin-when-cross-origin';}
+ else if(type==='video/mp4'){element=document.createElement('video');element.controls=true;element.autoplay=true;element.src=path;if(start)element.addEventListener('loadedmetadata',()=>{element.currentTime=Math.min(start,Number.isFinite(element.duration)?Math.max(0,element.duration-.1):start);},{once:true});}
  else {const key=generation,blob=await api(path,{blob:true});if(key!==generation)return;const objectURL=URL.createObjectURL(blob);urls.add(objectURL);element=document.createElement('img');element.src=objectURL;}
  if(key!==generation||opening!==mediaEpoch||!identity.account)return;
- element.title=name||'Course material';if(type.startsWith('video/')){recordingPlayer.open(element,name);return;}$('media-body').append(element);$('media-dialog').showModal();
+ element.title=name||'Course material';if(type.startsWith('video/')){recordingPlayer.open(element,name);activeRecording={path,type,element};return;}$('media-body').append(element);$('media-dialog').showModal();
 }
 $('sign-in-form').addEventListener('submit',async event=>{event.preventDefault();const form=event.target,button=form.querySelector('button');button.disabled=true;$('sign-in-status').textContent='Checking your Academy account…';try{const verifier=token(),state=token(),challenge=base64(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier))),fields=new FormData(form);const response=await api('/auth/login',{body:{uniqueid:fields.get('uniqueid'),pin:fields.get('pin'),challenge,state,...(form.dataset.setup==='1'?{setup:true,pinConfirmation:fields.get('pinConfirmation')}:{})}});await api('/auth/exchange',{body:{code:response.code,verifier,state}});form.reset();delete form.dataset.setup;$('pin-confirm-label').hidden=true;form.elements.pinConfirmation.required=false;clear();const me=await profile();changed(me);$('sign-in-dialog').close();await library();}catch(error){if(error.code==='PIN_NOT_SET'){form.dataset.setup='1';$('pin-confirm-label').hidden=false;form.elements.pinConfirmation.required=true;$('sign-in-status').textContent='Confirm your PIN to set up this Academy account.';}else $('sign-in-status').textContent=error.message;}finally{button.disabled=false;}});
 const base64=buffer=>btoa(String.fromCharCode(...new Uint8Array(buffer))).replaceAll('+','-').replaceAll('/','_').replaceAll('=','');const token=()=>base64(crypto.getRandomValues(new Uint8Array(32)));
@@ -88,7 +94,7 @@ document.addEventListener('click',async event=>{if(event.target.closest('[data-i
  if(button.dataset.website){document.querySelectorAll('[data-reader-toolbar]').forEach(x=>x.remove());await openWebsite(button.dataset.website);}
  if(button.dataset.enrol){if(!identity.account){$('sign-in-dialog').showModal();return;}await mutate('/api/offerings/'+button.dataset.enrol+'/enrol',{requestId:crypto.randomUUID(),note:''});status('Your enrolment request has been submitted.');}
  if(button.dataset.join){const result=await api('/api/offerings/'+current.offeringId+'/join',{body:{sessionId:button.dataset.join}});location.assign(result.destination);}
- if(button.dataset.material)await openMaterial('/api/media/'+button.dataset.material,button.dataset.type,button.dataset.filename);
+ if(button.dataset.material)await openMaterial('/api/media/'+button.dataset.material,button.dataset.type,button.dataset.filename,button.dataset.recordingStart);
  if(button.hasAttribute('data-more-media')){await loadMedia({more:true});if(ui.route==='sessions')await sessions();else if(ui.route==='home')draw();else await materials();}
  if(button.hasAttribute('data-library')){const result=await api('/api/library-return?'+new URLSearchParams({website:current.websiteId,lesson:ui.lessonId||''}));location.assign(result.destination);}
  if(button.hasAttribute('data-device-export')||button.dataset.sp==='download-reflections')downloadJSON(exportDeviceLearning({accountId:identity.account.accountId,websiteId:current.websiteId,document:current.document,state:ui}),'my-learning.json');

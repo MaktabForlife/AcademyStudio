@@ -1,5 +1,6 @@
 import {readFile,writeFile,mkdir} from 'node:fs/promises';import {resolve,dirname} from 'node:path';import {createHash} from 'node:crypto';import assert from 'node:assert/strict';
 import {newBlock} from '../public/shared/model.mjs';import {validatePackage} from '../public/shared/content-schema.mjs';
+import {recordingTopics} from '../public/shared/recording-companion.mjs';
 const [source,guideFile,output]=process.argv.slice(2);if(!source||!guideFile||!output)throw Error('Specify source package, reviewed guide file and a separate local output.');if(resolve(source)===resolve(output))throw Error('Keep the source package unchanged.');
 const original=JSON.parse(await readFile(source,'utf8')),result=structuredClone(original),guides=JSON.parse(await readFile(guideFile,'utf8')).guides,document=result.document;
 if(!Array.isArray(guides)||guides.length>80)throw Error('Choose a bounded set of reviewed recording guides.');
@@ -11,7 +12,8 @@ for(const guide of guides){
  let section=reading.sections.find(section=>section.id==='recording-section-'+stable(guide.lessonId));
  if(!section){section={id:'recording-section-'+stable(guide.lessonId),title:'Recorded lesson companion',label:'TRANSCRIPT SUMMARY',blocks:[]};reading.sections.unshift(section);}
  const replace=value=>{const index=section.blocks.findIndex(row=>row.id===value.id);if(index<0)section.blocks.push(value);else section.blocks[index]=value;};replace(block);
- if(guide.quote?.text){if(!guide.quote.attribution?.trim())throw Error('Attribute each transcript quotation.');replace({...newBlock('quote'),id:'recording-quote-'+stable(guide.lessonId),text:guide.quote.text,attribution:guide.quote.attribution,sourceKey:'recording-quote:'+guide.lessonId});}
+ if(guide.quote?.text){if(!guide.quote.attribution?.trim()||!recordingTopics([guide.quote.timestamp+' Quotation']).length)throw Error('Attribute and timestamp each transcript quotation.');replace({...newBlock('quote'),id:'recording-quote-'+stable(guide.lessonId),text:guide.quote.text,attribution:guide.quote.attribution,caption:guide.quote.timestamp,sourceKey:'recording-quote:'+guide.lessonId});}
+ if(guide.topics?.length){const items=guide.topics.map(topic=>topic.time+' '+topic.title);if(recordingTopics(items).length!==items.length)throw Error('Check the recording topic timestamps.');replace({...newBlock('list'),id:'recording-topics-'+stable(guide.lessonId),text:'Follow the recording by topic',items,ordered:false,sourceKey:'recording-topics:'+guide.lessonId});}
  added.push({lessonId:guide.lessonId,readingId:reading.id,blockId:block.id});
 }
 for(const reading of original.document.lessons){const next=document.lessons.find(row=>row.id===reading.id);assert(next);for(const section of reading.sections.filter(row=>!row.id.startsWith('recording-section-')))assert.deepEqual(next.sections.find(row=>row.id===section.id),section,'Existing author content must remain unchanged.');}
