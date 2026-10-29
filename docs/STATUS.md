@@ -57,3 +57,7 @@ The human confirmed that all Course websites should follow the Tafseer editorial
 ## Quotation inset — coordinated local refinement
 
 The shared reader now applies the new builder's `16a195ca` refinement: Words to carry follows the first practical paragraph inside the closing section, wrapping on the right only when the actual reading column is at least 600px wide. Narrow columns stack it; quotation-only closings remain stacked. The original saved fields/wording and native controls are unchanged. Eight focused tests, syntax checks and the 29-reading DOM/editor preservation rehearsal pass. Browser rendering/wrapping is not freshly verified because the previous browser security restriction remains in force. Shared assets are available to the existing local fixtures; nothing was deployed or published live. See [RECORDING-COMPANION-REVIEW.md](RECORDING-COMPANION-REVIEW.md).
+
+## Al-Qasas recordings received — local source review
+
+Ten distinct Al-Qasas-series recordings and their visible transcripts are saved privately, covering 25 January–19 April 2025. The duplicate February URL is retained once; the supplied 11 January introduction stays with Foundations, and 26 April stays with Al-‘Ankabut. The human confirmed the Ankabut transition in late April/early May and Ar-Rum's start on 24 May. Full new recording summaries/topic guides and native attachment mapping remain pending. No website package or hosted edition changed. See [RECORDING-COMPANION-REVIEW.md](RECORDING-COMPANION-REVIEW.md).
