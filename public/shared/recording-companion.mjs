@@ -5,7 +5,10 @@ const play='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
 
 // Transcript summaries are ordinary editable source-note asides. The source key
 // identifies the recorded lesson; it never contains or grants a playback URL.
-export function recordingGuides(document){return (document?.lessons||[]).flatMap(reading=>reading.sections.flatMap(section=>section.blocks.filter(block=>block.type==='note'&&block.aside&&block.sourceKey?.startsWith('recording:')).map(block=>({lessonId:block.sourceKey.slice('recording:'.length),readingId:reading.id,title:block.attribution,summary:block.text,status:'reviewed'}))));}
+export function recordingGuides(document){return (document?.lessons||[]).flatMap(reading=>reading.sections.flatMap(section=>section.blocks.filter(block=>block.type==='note'&&block.aside&&block.sourceKey?.startsWith('recording:')).map(block=>{
+ const lessonId=block.sourceKey.slice('recording:'.length),quote=section.blocks.find(row=>row.type==='quote'&&!row.reference&&row.sourceKey==='recording-quote:'+lessonId);
+ return {lessonId,readingId:reading.id,title:block.attribution,summary:block.text,status:'reviewed',...(quote?{quote:{text:quote.text,attribution:quote.attribution}}:{})};
+})));}
 
 // Input is the existing permission-filtered media response, never raw YouTube URLs.
 // A summary is shown only when its transcript has been reviewed. Missing text is
@@ -13,9 +16,9 @@ export function recordingGuides(document){return (document?.lessons||[]).flatMap
 export function recordingOverview({media=[],guides=[],more=false}={}){
  const seen=new Set(),videos=media.filter(row=>['video/youtube','video/mp4'].includes(row.type)&&row.attachment_id).sort((a,b)=>String(a.lesson_date||'').localeCompare(String(b.lesson_date||''))||String(a.attachment_id).localeCompare(String(b.attachment_id))).filter(row=>{const key=row.asset_id||row.attachment_id;if(seen.has(key))return false;seen.add(key);return true;});
  if(!videos.length)return '';
- return `<section class="sp-recording-overview" aria-labelledby="sp-recording-overview-title"><header><span class="sp-eyebrow">THE LESSONS · RECORDED TEACHING</span><h2 id="sp-recording-overview-title">Watch. Listen.<br><em>Read alongside.</em></h2><p>Choose a recorded lesson. Keep the player open as you explore the companion reading, references and reflections.</p></header><div class="sp-recorded-lessons">${videos.map((row,index)=>{
+ return `<section class="sp-recording-overview" aria-labelledby="sp-recording-overview-title"><header><h2 id="sp-recording-overview-title">Watch · Listen · <em>Read</em></h2></header><div class="sp-recorded-lessons">${videos.map((row,index)=>{
   const guide=guides.find(guide=>guide.lessonId===row.lesson_id&&guide.status==='reviewed'),summary=typeof guide?.summary==='string'?guide.summary.trim():'';
-  return `<article class="sp-recorded-lesson"><div class="sp-recorded-meta"><span>LESSON ${String(index+1).padStart(2,'0')}</span><time datetime="${esc(row.lesson_date)}">${esc(date(row.lesson_date))}</time></div><h3>${esc(guide?.title||row.title||'Recorded lesson')}</h3>${summary?`<p class="sp-recorded-summary">${esc(summary)}</p>`:''}<button class="sp-watch-full" data-material="${esc(row.attachment_id)}" data-type="${esc(row.type)}" data-filename="${esc(row.title)}" aria-label="Watch the full video: ${esc(row.title)}">${play}<span>Watch the full video</span><span aria-hidden="true">→</span></button>${guide?.readingId?`<button class="sp-read-recording-notes" data-sp="lesson" data-id="${esc(guide.readingId)}">Read alongside this lesson →</button>`:''}</article>`;
+  return `<article class="sp-recorded-lesson"><div class="sp-recorded-meta"><span>LESSON ${String(index+1).padStart(2,'0')}</span><time datetime="${esc(row.lesson_date)}">${esc(date(row.lesson_date))}</time></div><h3>${esc(guide?.title||row.title||'Recorded lesson')}</h3>${summary?`<p class="sp-recorded-summary">${esc(summary)}</p>`:''}${guide?.quote?.text?`<blockquote class="sp-block sp-quote sp-recorded-quote"><p>${esc(guide.quote.text)}</p><cite>${esc(guide.quote.attribution)}</cite></blockquote>`:''}<button class="sp-watch-full" data-material="${esc(row.attachment_id)}" data-type="${esc(row.type)}" data-filename="${esc(row.title)}" aria-label="Watch the full video: ${esc(row.title)}">${play}<span>Watch the full video</span><span aria-hidden="true">→</span></button>${guide?.readingId?`<button class="sp-read-recording-notes" data-sp="lesson" data-id="${esc(guide.readingId)}">Read alongside this lesson →</button>`:''}</article>`;
  }).join('')}</div>${more?'<button class="sp-recordings-more" data-more-media>Show more recorded lessons</button>':''}<button class="sp-reading-along" data-sp="route" data-route="lessons">Open companion reading →</button></section>`;
 }
 

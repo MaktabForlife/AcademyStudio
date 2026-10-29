@@ -8,10 +8,12 @@ for(const guide of guides){
  if(guide.status!=='reviewed'||!guide.summary?.trim()||!guide.title?.trim()||!/^[\w:-]{1,160}$/.test(guide.lessonId))throw Error('Each guide needs a reviewed transcript summary and stable lesson reference.');
  const reading=document.lessons.find(reading=>reading.id===guide.readingId);if(!reading)throw Error('Choose an existing companion reading.');
  const key='recording:'+guide.lessonId,block={...newBlock('note'),id:'recording-note-'+stable(guide.lessonId),aside:true,attribution:guide.title,text:guide.summary,sourceKey:key};
- const existing=reading.sections.find(section=>section.id==='recording-section-'+stable(guide.lessonId));
- if(existing)existing.blocks=[block];else reading.sections.unshift({id:'recording-section-'+stable(guide.lessonId),title:'Recorded lesson companion',label:'TRANSCRIPT SUMMARY',blocks:[block]});
+ let section=reading.sections.find(section=>section.id==='recording-section-'+stable(guide.lessonId));
+ if(!section){section={id:'recording-section-'+stable(guide.lessonId),title:'Recorded lesson companion',label:'TRANSCRIPT SUMMARY',blocks:[]};reading.sections.unshift(section);}
+ const replace=value=>{const index=section.blocks.findIndex(row=>row.id===value.id);if(index<0)section.blocks.push(value);else section.blocks[index]=value;};replace(block);
+ if(guide.quote?.text){if(!guide.quote.attribution?.trim())throw Error('Attribute each transcript quotation.');replace({...newBlock('quote'),id:'recording-quote-'+stable(guide.lessonId),text:guide.quote.text,attribution:guide.quote.attribution,sourceKey:'recording-quote:'+guide.lessonId});}
  added.push({lessonId:guide.lessonId,readingId:reading.id,blockId:block.id});
 }
-for(const reading of original.document.lessons){const next=document.lessons.find(row=>row.id===reading.id);assert(next);for(const section of reading.sections)assert.deepEqual(next.sections.find(row=>row.id===section.id),section,'Existing author content must remain unchanged.');}
+for(const reading of original.document.lessons){const next=document.lessons.find(row=>row.id===reading.id);assert(next);for(const section of reading.sections.filter(row=>!row.id.startsWith('recording-section-')))assert.deepEqual(next.sections.find(row=>row.id===section.id),section,'Existing author content must remain unchanged.');}
 document.updatedAt=new Date().toISOString();const errors=validatePackage(document,{review:true});if(errors.length)throw Error(errors.join(' '));await mkdir(dirname(resolve(output)),{recursive:true});await writeFile(output,JSON.stringify(result));
 await writeFile(output+'.audit.json',JSON.stringify({localOnly:true,source:resolve(source),guideFile:resolve(guideFile),originalReadingsPreserved:document.lessons.length,originalSectionsUnchanged:true,recordingGuides:added,hostedCalls:0},null,2));console.log(JSON.stringify({localOnly:true,recordingSummaries:guides.length,originalSectionsUnchanged:true}));
