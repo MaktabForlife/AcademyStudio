@@ -1,35 +1,25 @@
-# Parallel rollout — 29 October 2026
+# V108.0 parallel access rollout — 29 October 2026
 
-You have authorised starting deployment and clarified: start with parallel systems, then move to separation. Academy remains available with its existing learner/admin routes, homepage, Library and schedules. Do not redirect users, retire screens, change DNS or delete recovery data during this stage.
+You authorised parallel testing before separation. Existing Academy routes, homepage, Library, learning/admin screens and data remain available. Academy owns enrolment/access throughout this stage; the website holds a versioned local projection and rejects direct enrolment, purchase, staff, paid-month, Surah-grant and completion-policy authority changes. Scoped website content editing remains available. No DNS change, screen retirement, Git push or destructive cleanup is included.
 
-## Deployment being released
+## Release and resources
 
-Branch `feature/academy-studio-rollout-20261029` combines the deployed private nine-website preview with platform commit `eda36b915cdeeb365706df102926325b38b255e8`. The combined native suite passes 53 tests and syntax/configuration checks cover 74 modules. The target session listing excludes cancelled/history rows through the cancellation-first index. The source timetable exporter and authenticated Library return have local regression coverage. The preview still blocks all real Academy connections; its Library control reports that limitation without opening a disconnected origin.
+The feature branch `feature/academy-studio-rollout-20261029` integrates the nine-website preview/editor with the tested platform and additive access protocol. Matching source release: `feature/academy-parallel-access-release`, based on deployed V107.120 plus the connector, labelled V108.0 throughout.
 
-This runtime update uses the existing preview Worker/D1/R2, preserves saved preview drafts/publications and the approved styling, and performs no SQL seed, content import, hosted Save/Publish, source deployment or DNS change. Preview invitations remain synthetic and temporary. It is not the real-user parallel activation.
+Real parallel URL: https://academy-studio-parallel.naidu-hajira.workers.dev . This uses a separate real Worker and D1 (`c261eb73-7145-4f73-940c-5816db287612`) with private R2 `academy-studio-parallel-content` and `academy-studio-parallel-media` in account `2b01ca929611669e032703ff19f7098f`. Synthetic private preview identities/resources stay separate and unchanged.
 
-## Authority while both systems run
+The real target received nine independently versioned teaching JSON copies and artwork only. Draft and published editions remain separate; importing access never overwrites website drafts. PDF/recording inventory and byte migration are a separate stage: absent private material stays unavailable. Existing Academy material and public Foundations access remain available.
 
-Academy must remain the sole enrolment/access authority until an explicit per-offering handover. Website access is an enforced local projection of Academy state, not an independent set of purchases or grants. Mirror exact stable account/offering/website/media IDs and preserve paid-month/cohort, website-only Surah and recording boundaries. Retained material rights and current live-session rights are separate. Website-only grants cannot acquire recordings.
+## Access and database usage
 
-Before real-user activation, implement and verify:
+Actual PIN sign-in uses the Academy API origin, with a one-use browser handoff bound to the approved Academy Pages origin. Initial extraction is indexed, checkpointed and restricted to the two reviewed source offerings: Al Kahf and Tafseer, with eight exact Surah mappings. Trigger capture starts before extraction. Each account/offering projection atomically replaces separate current-live, purchased-course, historical paid-month/cohort and website-only rights; a Surah grant does not acquire recordings. Removals, master suspension and credential/role changes retain their own monotonic authority.
 
-1. A bounded, checkpointed initial import of the actual offering, identity, participation, purchases, paid months/cohorts, staff, Surah grants, withdrawal and media relationships. Capture source versions so changes during import cannot be overwritten by an older snapshot. Never promote synthetic preview rights.
-2. Ordered, idempotent updates for every later rights/status change, including removals and withdrawals. Current source code delivers identity/session and timetable changes, but does not yet deliver purchase/month/Surah rights. Verify stale or failed delivery cannot restore a removed right or leave Join open.
-3. Server-enforced restrictions on website-side enrolment, identity provisioning, staff/purchase/month/grant/completion changes during Academy authority. Provide a clear path to the existing Academy management flow. UI restrictions alone are insufficient. Resolve independent content-authoring authority explicitly; never periodically overwrite newer website drafts with old Academy copies.
-4. An audited PDF/video/shared-asset mapping preserving publication, cohort, withdrawal and permissions, using existing files without per-lesson duplication. Current imported preview objects are teaching JSON and artwork only. Academy Library stays on Academy.
-5. Exact origins, separate scoped secrets and production resources, activation/rollback switches, approved freshness/outage semantics and a current Academy release baseline. Deploy the source connector disabled first; prepare the real target separately from synthetic preview storage; import/reconcile and enable narrowly. Test the full path with bounded necessary checks.
+Recovery reserves bounded indexed candidates for scope/master prerequisites, prevents dependent access snapshots arriving first, and rejects obsolete generations. Active sessions renew only their own cached authority. Freshness is 300 seconds for learners and 60 seconds for staff; an outage or oversized/invalid authority closes protected operations instead of retaining old grants indefinitely. Routine website reading/media/Join does not query Academy; public R2 snapshots use zero D1 reads.
 
-The current absent importer/rights deltas are implementation gaps. Do not enable real access by granting blanket rights or querying Academy on every page/file/Join. Keep routine website reading independent of Academy D1. Public snapshots remain R2-backed with zero D1 reads; changes prepare small snapshots once.
+## Activation and recovery
 
-## Rollback and eventual separation
+Apply source additive schemas 0011–0013 with control disabled and target 0002. Deploy the matching source and receiver with target browser access still closed. Configure exact mappings, activate dirty capture, complete the bounded import/catch-up, verify versions/checkpoints and only then open real browser access. Connection secrets remain private encrypted bindings.
 
-A failed parallel activation returns users to the unchanged Academy paths and disables new sign-in/delivery. Keep new R2 versions and operational data for recovery; do not automatically replay website edits into Academy. Reconcile in-flight updates before resuming.
+On failure, close target browser access, disable source database control, then disable/revert the source connector if necessary. Preserve additive schemas, ordered outbox/receipts, legitimate synced accounts/rights, drafts/publications and recovery evidence. Do not reset versions, reseed permissions or restore a whole database as a rollback shortcut.
 
-After per-offering content, users, historical rights, media, timetable changes, revocations and Library return are verified, freeze the old ownership briefly, deliver the final delta, verify counters/versions and switch that offering's management authority to the website. Retire old routes/bookmarks and background reads only as a subsequent cutover. Master credentials and scheduling remain Academy-owned. No destructive cleanup is part of deployment.
-
-Local/hosted release evidence is in the parent project's private `outputs/academy-studio-rollout-20261029/` directory. Previous preview rollback version: `594fe414-8f0c-4334-a648-a15d4070b2b3`.
-
-## Preview runtime deployed
-
-Released source `db0ad6fa4bcf2430cd708f1ba482661b0d03c494` to the existing isolated preview as Cloudflare version `3dfe5378-a31f-4016-b754-ba2b6ecf8ced`, tag `parallel-prep-20261029-db0ad6f`. All 53 local tests and five bounded hosted checks passed. The hosted JavaScript SHA256 matched the local source. These checks used no sign-in, hosted SQL, private content mutation or Academy request; zero D1 queries are expected from the checked routes, rather than measured provider aggregate usage. Real-user parallel activation remains pending the access/import work above.
+Private release evidence and final deployment IDs: parent `outputs/academy-parallel-access-20261029/`. The earlier synthetic preview runtime is `db0ad6f` / Cloudflare `3dfe5378-a31f-4016-b754-ba2b6ecf8ced`; that preview update did not activate real access. V108.0 deployment evidence must explicitly distinguish closed preparation from completed activation.

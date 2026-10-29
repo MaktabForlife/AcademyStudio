@@ -1,0 +1,9 @@
+# Parallel access protocol — implementation in progress
+
+Source migration: `0013_website_parallel_access.sql`, additive to Core `0011`/`0012`. Target migration: `0002_parallel_access.sql`, additive to platform `0001`. Both are local only. No resources or source settings are activated here.
+
+Target `AUTHORITY_MODE=ACADEMY` selects parallel, source-authoritative access; `WEBSITE` preserves the later independent management model. Target `ACADEMY_ORIGIN` is the browser/Pages origin; `ACADEMY_API_ORIGIN` is the Worker API origin (falls back to browser origin only for compatible local fixtures). Source `WEBSITE_PLATFORM_ACADEMY_ORIGIN` stays the Pages origin, and source browser CORS does not need the target website origin for signed server commands.
+
+Explicit reviewed source offering mappings must identify Course subscription decisions as purchase authority, or the enabled Tafseer monthly register, and explicit source Surah → target website mappings. No names, Student roles, current cohorts or synthetic preview grants are purchase evidence. The importer will checkpoint indexed account keys per source dataset, with transactional dirty capture before extraction. Bounded per-account/offering snapshots replace local participation, staff, paid-month/cohort and website-only grants atomically. Versions/receipts reject older snapshots and exact retries cannot restore removed rights. Source scope/Surah metadata changes do not overwrite website content drafts/publications.
+
+A real target must be separate from invited synthetic preview storage. Actual PDF/video inventory and private bytes are separate from access metadata; absent bytes remain unavailable. Academy's existing screens/routes and Library remain intact. Review deployment mappings against the implementation's final committed checklist before enabling real access.

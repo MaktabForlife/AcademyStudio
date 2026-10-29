@@ -1,3 +1,4 @@
+import {accessGate,liveAccess,academyAuthority} from './access.mjs';
 import {fail,sha256,boundedAge,id} from './protocol.mjs';
 export class Store {
  constructor(env){this.env=env;this.db=env.DB.withSession('first-primary');this.scopes=new Map();this.metrics={queries:0,rowsRead:0,rowsWritten:0};}
@@ -17,7 +18,7 @@ export class Store {
   id(offeringId);const cacheKey=actor.account_id+':'+offeringId;let row=this.scopes.get(cacheKey);if(!row){row=await this.first(`SELECT o.*,p.enrolled,p.live,p.purchased,p.cohort,s.role,s.can_create_account
    FROM offerings o LEFT JOIN participation p ON p.offering_id=o.offering_id AND p.account_id=?
    LEFT JOIN staff s ON s.offering_id=o.offering_id AND s.account_id=? WHERE o.offering_id=? AND o.active=1`,[actor.account_id,actor.account_id,offeringId]);if(row)this.scopes.set(cacheKey,row);}
-  if(!row)throw fail('This offering is unavailable.',404);
+  if(!row)throw fail('This offering is unavailable.',404);const source=await accessGate(this,actor,offeringId,{admin:admin||teacher||Boolean(row.role)});if(source)row={...row,live:liveAccess(source,row)};
   if(admin||teacher){if(!actor.global_admin&&row.role!=='ADMIN'&&!(teacher&&row.role==='TEACHER'))throw fail('Your account cannot manage this offering.',403);if(actor.verified_at<Date.now()-boundedAge(this.env,true))throw fail('Refresh your Academy account before administration.',401,'ADMIN_STATUS_EXPIRED');}
   return row;
  }
@@ -30,7 +31,7 @@ export class Store {
    AND a.active=1 AND a.admitted=1 AND a.epoch=s.epoch AND s.revoked=0 AND s.expires_at>? AND a.verified_at>=?
    AND (?=0 OR a.global_admin=1 OR (?=0 AND EXISTS(SELECT 1 FROM staff f WHERE f.account_id=a.account_id AND f.offering_id=? AND (f.role='ADMIN' OR (?=1 AND f.role='TEACHER')))))
    AND (?='' OR EXISTS(SELECT 1 FROM offerings o WHERE o.offering_id=? AND o.active=1))
-   AND (${expectedSQL}))`,[guardId,actor.account_id,actor.token_hash,now,now-boundedAge(this.env,admin),Number(admin),Number(global),offeringId||'',Number(teacher),offeringId||'',offeringId||'',...expectedArgs]);
+   AND (${academyAuthority(this.env)&&offeringId?"EXISTS(SELECT 1 FROM source_access_scopes x WHERE x.offering_id=? AND (x.authority='WEBSITE' OR x.enabled=1 AND EXISTS(SELECT 1 FROM source_access_people p WHERE p.offering_id=x.offering_id AND p.account_id=a.account_id AND p.ready=1 AND p.generation=x.generation AND p.verified_at>=?)))":'1'}) AND (${expectedSQL}))`,[guardId,actor.account_id,actor.token_hash,now,now-boundedAge(this.env,admin),Number(admin),Number(global),offeringId||'',Number(teacher),offeringId||'',offeringId||'',...(academyAuthority(this.env)&&offeringId?[offeringId,now-boundedAge(this.env,admin)]:[]),...expectedArgs]);
   return {statement,cleanup:this.statement('DELETE FROM guards WHERE guard_id=?',[guardId])};
  }
  async mutate(actor,offeringId,input,statements,result,options={}){

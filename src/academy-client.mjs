@@ -1,7 +1,7 @@
 import {fail,signedHeaders,bodyJSON,safeToken} from './protocol.mjs';
 import {receive} from './integration.mjs';
 export async function academyCommand(env,store,path,input,fetcher){
- const origin=new URL(env.ACADEMY_ORIGIN);if(origin.protocol!=='https:'||origin.origin!==env.ACADEMY_ORIGIN)throw fail('Academy connection is unavailable.',503);
+ const origin=new URL(env.ACADEMY_API_ORIGIN||env.ACADEMY_ORIGIN);if(origin.protocol!=='https:'||origin.origin!==(env.ACADEMY_API_ORIGIN||env.ACADEMY_ORIGIN))throw fail('Academy connection is unavailable.',503);
  for(let page=0;page<4;page++){
  const signed=await signedHeaders(env.WEBSITE_TO_ACADEMY_SECRET,path,{...input,issuedAt:Date.now()});
  const response=await fetcher(origin.origin+path,{method:'POST',headers:signed.headers,body:signed.payload,redirect:'manual',signal:AbortSignal.timeout(8000)});

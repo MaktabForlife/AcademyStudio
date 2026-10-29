@@ -94,7 +94,7 @@ $('media-dialog').addEventListener('cancel',closeMedia);
 document.addEventListener('input',event=>{if(!textEditor.editing&&current&&event.target.hasAttribute('data-sp-note')){ui.reflections[event.target.dataset.spNote]=event.target.value;remember();}});
 document.addEventListener('click',async event=>{if(event.target.closest('[data-inline-path],[data-inline-action]'))return;const button=event.target.closest('button');if(!button)return;try{
  if(button.dataset.website){document.querySelectorAll('[data-reader-toolbar]').forEach(x=>x.remove());await openWebsite(button.dataset.website);}
- if(button.dataset.enrol){if(!identity.account){$('sign-in-dialog').showModal();return;}await mutate('/api/offerings/'+button.dataset.enrol+'/enrol',{requestId:crypto.randomUUID(),note:''});status('Your enrolment request has been submitted.');}
+ if(button.dataset.enrol){if(config.authorityMode==='ACADEMY'){status('Manage enrolment through Academy while both systems run in parallel.');return;}if(!identity.account){$('sign-in-dialog').showModal();return;}await mutate('/api/offerings/'+button.dataset.enrol+'/enrol',{requestId:crypto.randomUUID(),note:''});status('Your enrolment request has been submitted.');}
  if(button.dataset.join){const result=await api('/api/offerings/'+current.offeringId+'/join',{body:{sessionId:button.dataset.join}});location.assign(result.destination);}
  if(button.dataset.material)await openMaterial('/api/media/'+button.dataset.material,button.dataset.type,button.dataset.filename);
  if(button.hasAttribute('data-more-media')){await loadMedia({more:true});if(ui.route==='sessions')await sessions();else await materials();}

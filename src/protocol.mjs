@@ -6,7 +6,7 @@ export const flag=value=>{if(typeof value!=='boolean')throw fail('Use a true or 
 export const month=value=>{if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(value||''))throw fail('Choose a calendar month.');return value;};
 export const date=value=>{const parsed=new Date(value+'T00:00:00Z');if(!/^\d{4}-\d{2}-\d{2}$/.test(value||'')||!Number.isFinite(parsed.getTime())||parsed.toISOString().slice(0,10)!==value)throw fail('Choose a valid lesson date.');return value;};
 export const json=(body,status=200,headers={})=>Response.json(body,{status,headers:{'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff',...headers}});
-export const failure=error=>json({success:false,error:error.status?error.message:'The website is temporarily unavailable.',code:error.code||'UNAVAILABLE'},error.status||503);
+export const failure=error=>json({success:false,error:error.status?error.message:'The website is temporarily unavailable.',code:error.code||'UNAVAILABLE',...(error.code==='ACCESS_REFRESH_REQUIRED'?{offeringId:error.offeringId}:{})},error.status||503);
 export async function bytes(stream,limit){
  const reader=stream?.getReader();if(!reader)return new Uint8Array();let length=0;const chunks=[];
  try{for(;;){const {done,value}=await reader.read();if(done)break;length+=value.byteLength;if(length>limit){await reader.cancel();throw fail('This request is too large.',413);}chunks.push(value);}}finally{reader.releaseLock();}

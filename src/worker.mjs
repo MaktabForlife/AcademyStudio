@@ -1,3 +1,4 @@
+import {academyAuthority,accessGate,joinAudience} from './access.mjs';
 import {Store} from './database.mjs';
 import {fail,failure,json,bodyJSON,parseCookie,sha256,originCheck,cookie,id,text,integer,bytes,signedHeaders,safeToken,boundedAge} from './protocol.mjs';
 import {receive,exchange} from './integration.mjs';
@@ -26,13 +27,13 @@ async function route(request,env,store,fetcher){
   return json(home,200,{'Cache-Control':'public, max-age=60'});
  }
  if(path==='/internal/academy/events'&&method==='POST'){const result=await receive(request,env,store);if(result.changedOffering)await publishSchedule(env,store,result.changedOffering);return json(result);}
- if(path==='/api/config'&&method==='GET')return json({academyOrigin:env.ACADEMY_ORIGIN,localPreview:env.ENVIRONMENT==='local'});
+ if(path==='/api/config'&&method==='GET')return json({academyOrigin:env.ACADEMY_ORIGIN,localPreview:env.ENVIRONMENT==='local',authorityMode:env.AUTHORITY_MODE||'WEBSITE'});
  if(method==='POST'||method==='PUT'||method==='DELETE')originCheck(request,env);
  if(path==='/auth/login'&&method==='POST')return forwardSignIn(request,env,store,await bodyJSON(request.body,4096),fetcher);
  if(path==='/auth/exchange'&&method==='POST'){const result=await exchange(await bodyJSON(request.body,4096),env,store);return json({signedIn:true,accountId:result.accountId},200,{'Set-Cookie':result.cookie});}
  const token=parseCookie(request);if(!token)throw fail('Sign in to Academy to continue.',401,'SIGN_IN_REQUIRED');const actor=await store.actor(await sha256(token),Date.now(),{allowExpiredStatus:path==='/auth/refresh'||path==='/auth/logout'});
- if(path==='/auth/refresh'&&method==='POST'){
-  if(!actor.source_ref)throw fail('Sign in to Academy to refresh this session.',401);if(actor.verified_at>=Date.now()-boundedAge(env,true))return json({verifiedAt:actor.verified_at});
+ if((path==='/auth/refresh'||path==='/auth/access')&&method==='POST'){
+  if(!actor.source_ref)throw fail('Sign in to Academy to refresh this session.',401);if(path==='/auth/refresh'&&actor.verified_at>=Date.now()-boundedAge(env,true))return json({verifiedAt:actor.verified_at});
   const claimId=crypto.randomUUID(),claimed=await store.all('INSERT INTO refresh_claims VALUES(?,?,?) ON CONFLICT(account_id) DO UPDATE SET claim_id=excluded.claim_id,expires_at=excluded.expires_at WHERE refresh_claims.expires_at<? RETURNING claim_id',[actor.account_id,claimId,Date.now()+30_000,Date.now()]);
   if(!claimed.length)throw fail('Your account refresh is already in progress. Retry the action shortly.',409,'REFRESH_PENDING');
   try{await academyCommand(env,store,'/internal/website/status',{sourceRef:actor.source_ref},fetcher);const current=await store.actor(actor.token_hash);return json({verifiedAt:current.verified_at});}finally{await store.run('DELETE FROM refresh_claims WHERE account_id=? AND claim_id=?',[actor.account_id,claimId]);}
@@ -44,14 +45,16 @@ async function route(request,env,store,fetcher){
  if(path==='/api/me'&&method==='GET')return json({accountId:actor.account_id,displayName:actor.display_name,globalAdmin:Boolean(actor.global_admin),verifiedAt:actor.verified_at});
  if(path==='/api/websites'&&method==='GET'){
   // Start with this account's indexed rights, rather than scanning all sites for an OR condition.
-  const after=url.searchParams.get('after')||'',rows=actor.global_admin?
-   await store.all('SELECT w.website_id,w.title,w.offering_id,w.completion_month,w.enabled FROM websites w JOIN offerings o USING(offering_id) WHERE w.website_id>? AND o.active=1 ORDER BY w.website_id LIMIT 51',[after]):
+  if(academyAuthority(env)){const stale=await store.first("SELECT p.offering_id FROM source_access_people p JOIN source_access_scopes s USING(offering_id) WHERE p.account_id=? AND s.authority='ACADEMY' AND s.enabled=1 AND (p.ready=0 OR p.generation<>s.generation OR p.verified_at<CASE WHEN ?=1 OR EXISTS(SELECT 1 FROM staff sf WHERE sf.account_id=p.account_id AND sf.offering_id=p.offering_id) THEN ? ELSE ? END) LIMIT 1",[actor.account_id,Number(actor.global_admin),Date.now()-boundedAge(env,true),Date.now()-boundedAge(env)]);if(stale)throw Object.assign(fail('Academy access needs to be confirmed.',409,'ACCESS_REFRESH_REQUIRED'),{offeringId:stale.offering_id});}
+  const after=url.searchParams.get('after')||'',parallel=academyAuthority(env),sourceFilter=parallel?` AND EXISTS(SELECT 1 FROM source_access_scopes x WHERE x.offering_id=w.offering_id AND (x.authority='WEBSITE' OR x.enabled=1 AND EXISTS(SELECT 1 FROM source_access_people ap WHERE ap.offering_id=x.offering_id AND ap.account_id=? AND ap.ready=1 AND ap.generation=x.generation AND ap.verified_at>=CASE WHEN ?=1 OR EXISTS(SELECT 1 FROM staff sf WHERE sf.account_id=ap.account_id AND sf.offering_id=ap.offering_id) THEN ? ELSE ? END) AND (o.kind<>'TAFSEER' OR EXISTS(SELECT 1 FROM source_access_websites sw WHERE sw.website_id=w.website_id AND sw.enabled=1))))`:'',sourceArgs=parallel?[actor.account_id,Number(actor.global_admin),Date.now()-boundedAge(env,true),Date.now()-boundedAge(env)]:[],rows=actor.global_admin?
+   await store.all(`SELECT w.website_id,w.title,w.offering_id,w.completion_month,w.enabled FROM websites w JOIN offerings o USING(offering_id) WHERE w.website_id>? AND o.active=1${sourceFilter} ORDER BY w.website_id LIMIT 51`,[after,...sourceArgs]):
    await store.all(`WITH mine AS (
     SELECT w.website_id FROM participation p JOIN offerings o USING(offering_id) JOIN websites w USING(offering_id) WHERE p.account_id=? AND p.purchased=1 AND o.kind='COURSE'
     UNION SELECT w.website_id FROM paid_months p JOIN offerings o USING(offering_id) JOIN websites w ON w.offering_id=p.offering_id AND w.completion_month=p.month WHERE p.account_id=? AND o.kind='TAFSEER'
+    UNION SELECT w.website_id FROM website_months m JOIN websites w ON w.offering_id=m.offering_id AND w.completion_month=m.month WHERE m.account_id=?
     UNION SELECT w.website_id FROM staff s JOIN websites w USING(offering_id) WHERE s.account_id=?
     UNION SELECT website_id FROM surah_grants WHERE account_id=?
-   ) SELECT w.website_id,w.title,w.offering_id,w.completion_month,w.enabled FROM mine JOIN websites w USING(website_id) JOIN offerings o USING(offering_id) WHERE w.website_id>? AND o.active=1 AND (w.enabled=1 AND w.published_key IS NOT NULL OR EXISTS(SELECT 1 FROM staff s WHERE s.account_id=? AND s.offering_id=w.offering_id AND s.role='ADMIN')) ORDER BY w.website_id LIMIT 51`,[actor.account_id,actor.account_id,actor.account_id,actor.account_id,after,actor.account_id]);return json({websites:rows.slice(0,50),more:rows.length>50});
+   ) SELECT w.website_id,w.title,w.offering_id,w.completion_month,w.enabled FROM mine JOIN websites w USING(website_id) JOIN offerings o USING(offering_id) WHERE w.website_id>? AND o.active=1 AND (w.enabled=1 AND w.published_key IS NOT NULL OR EXISTS(SELECT 1 FROM staff s WHERE s.account_id=? AND s.offering_id=w.offering_id AND s.role='ADMIN'))${sourceFilter} ORDER BY w.website_id LIMIT 51`,[actor.account_id,actor.account_id,actor.account_id,actor.account_id,actor.account_id,after,actor.account_id,...sourceArgs]);return json({websites:rows.slice(0,50),more:rows.length>50});
  }
  let match=path.match(/^\/api\/websites\/([-A-Za-z0-9_:]+)(?:\/(edit|export|history|assets))?$/);
  if(match){const websiteId=id(match[1]),action=match[2];if(method==='POST'&&action==='edit')return json(await editWebsite(env,store,actor,websiteId,await bodyJSON(request.body)));
@@ -78,7 +81,7 @@ async function route(request,env,store,fetcher){
    return json({media:rows.slice(0,50),more:rows.length>50});
   }
   if(method!=='POST')throw fail('This action needs a POST request.',405);const input=await bodyJSON(request.body,16384);
-  if(action==='join'){if(!actor.global_admin&&!scope.live&&!scope.role)throw fail('Current live-session access is required.',403);const session=await store.first('SELECT starts_at,ends_at,zoom_url,cancelled FROM timetable WHERE session_id=? AND offering_id=?',[id(input.sessionId),offeringId]),now=Date.now();if(!session||session.cancelled||now<session.starts_at-300_000||now>=session.ends_at||!session.zoom_url)throw fail('Joining is available from five minutes before the lesson until it ends.',403,'JOIN_CLOSED');return json({destination:session.zoom_url});}
+  if(action==='join'){await accessGate(store,actor,offeringId,{live:true});if(!actor.global_admin&&!scope.live&&!scope.role)throw fail('Current live-session access is required.',403);const session=await store.first('SELECT session_id,starts_at,ends_at,zoom_url,cancelled FROM timetable WHERE session_id=? AND offering_id=?',[id(input.sessionId),offeringId]),now=Date.now();if(!session||session.cancelled||now<session.starts_at-300_000||now>=session.ends_at||!session.zoom_url)throw fail('Joining is available from five minutes before the lesson until it ends.',403,'JOIN_CLOSED');await joinAudience(store,actor,offeringId,session,scope);return json({destination:session.zoom_url});}
   if(action==='enrol')return json(await requestEnrolment(store,actor,offeringId,input));
   if(action==='provision')return json(await beginProvision(store,actor,offeringId,input));
   if(action==='resume')return json(await resumeProvision(env,store,actor,offeringId,input,fetcher));

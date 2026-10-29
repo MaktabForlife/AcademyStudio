@@ -1,3 +1,10 @@
+# V108.0 parallel access release — current authorisation
+
+- You explicitly authorised completing/testing access synchronisation and deploying both systems for parallel testing, then requested V108.0. This authorises the necessary additive schemas, exact origin/secret settings, bounded import and activation in the separate AcademyStudio account. It supersedes the earlier preparation-only holds below for this release.
+- Use feature/academy-studio-rollout-20261029 and the matching Academy release feature branch. Keep existing Academy screens/routes, master users, purchases/grants, media and Library available. Academy remains the access/enrolment authority until an explicit offering handover. No DNS cutover, screen retirement, data deletion or Git push is authorised.
+- Real parallel resources are academy-studio-parallel (Worker/D1), academy-studio-parallel-content and academy-studio-parallel-media in account 2b01ca929611669e032703ff19f7098f. They are separate from all synthetic preview resources. No preview identity or right may be promoted to real access.
+- Keep browser access closed while importing; require reviewed mappings, ordered/idempotent catch-up, permission/revocation and bounded-read tests before enabling. Keep live checks small. See docs/PARALLEL-ROLLOUT.md and the private release evidence in the parent outputs/academy-parallel-access-20261029 directory.
+
 # Independent website platform — local development
 
 - Canonical remote: https://github.com/MaktabForlife/AcademyStudio.git. Verified website-platform Cloudflare account: naidu.hajira@gmail.com, account_id 2b01ca929611669e032703ff19f7098f (read-only existing dashboard Account details, 28 October 2026). Pin this target in Wrangler configuration; never reuse Academy's source account/resources. Local bindings remain remote:false and the platform disabled. CLI authentication was expired during verification; account identification does not establish CLI deployment access or authorise any push/hosted change.

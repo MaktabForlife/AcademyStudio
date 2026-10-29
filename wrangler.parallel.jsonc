@@ -17,7 +17,7 @@
     ]
   },
   "vars": {
-    "PLATFORM_ENABLED": "0",
+    "PLATFORM_ENABLED": "1",
     "PARALLEL_ACCESS_ENABLED": "0",
     "ENVIRONMENT": "parallel",
     "AUTHORITY_MODE": "ACADEMY",
