@@ -33,3 +33,7 @@ The `feature/independent-course-websites` worktree now prepares nine independent
 See [EDITORIAL-MIGRATION.md](EDITORIAL-MIGRATION.md) for private-output preparation, synthetic preview instructions, browser evidence, measured workflows and unresolved dependencies. No hosted resource access, deployment, production migration or live publication was performed. Source-side export rollout and actual media reference inventory remain pending; Foundations location and status fallback are not implicitly approved.
 
 Editorial branch verification: 39 combined tests passed, then the metadata-only optimization passed targeted asset/isolation checks and a refreshed all-nine-package rehearsal. Browser image upload, private Save and file reuse passed using the exact unused-file lookup. Current-reference selection remains bounded with 4,000 historical and 1,000 duplicate attachments; it preserves history. Final per-package measurements are recorded in READ-BUDGETS.md. All live/hosted holds remain.
+# Learning and progress clarification — 29 October 2026
+
+Recordings are the lessons; websites provide companion reading. Progress must come from watching the recordings, never from reading-page completion. The local companion renderer no longer offers manual lesson completion or derives progress from reading flags. Legacy saved device data remains intact; actual player tracking is still pending and this change is not deployed. See [LEARNING-AND-PROGRESS.md](LEARNING-AND-PROGRESS.md).
+
