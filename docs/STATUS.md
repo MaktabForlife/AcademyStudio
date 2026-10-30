@@ -1,5 +1,7 @@
 # Local implementation and deployed boundary — 29 October 2026
 
+> 30 October information handoff: all eight known Tafseer native identities/access dates match the saved source inventory. Web build's local catalogue places Fatir immediately before Yaseen and Foundations first/public. Fatir's date/native mapping is pending. Recording chronology does not replace access dates. This review made zero live D1 reads and no operational changes. See [TAFSEER-ACCESS-DATES.md](TAFSEER-ACCESS-DATES.md).
+
 > V108.0 parallel activation is complete according to the deployment owner. The real site is https://academy-studio-parallel.naidu-hajira.workers.dev; source `313b6100`, target `5183846`. Existing Academy delivery remains available. [DEPLOYED-PARALLEL-V108.md](DEPLOYED-PARALLEL-V108.md) records verification, exact local recovery/index alignment and the small local-only sender-fence difference. Future changes require separate approval. No hosted work was performed by this thread.
 
 > Latest local continuation: private accepted-media inventory, deterministic import planning and streamed local PDF/MP4 verification are implemented in operator-only tools. Five focused tests and 71-module checks pass. Native source selection reads 70 rows before/after 4,000 unrelated records; synthetic protected PDF/range delivery reads nine target rows each and zero Academy rows. The tools do not copy bytes, admit attachments or publish. Real media inventory/transfer remains pending. See [MEDIA-INVENTORY.md](MEDIA-INVENTORY.md).
