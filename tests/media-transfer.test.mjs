@@ -7,6 +7,7 @@ import {contentHash} from '../tools/reconciled-content.mjs';
 import {planMediaPage} from '../tools/media-import-plan.mjs';
 import {buildCirclesMediaPlan} from '../tools/prepare-circles-media.mjs';
 import {stageMediaTransfer} from '../tools/stage-media-transfer.mjs';
+import {buildExistingDataMediaPlan} from '../tools/prepare-existing-data-migration.mjs';
 
 import {sampleMediaTransfer as sample} from './media-transfer-fixture.mjs';
 const build=data=>buildCirclesMediaPlan(data.bundle,data.copy,data.pages,{bundleSha256:'f'.repeat(64)});
@@ -23,6 +24,20 @@ test('exact asset associations preserve original audiences without associating n
  assert.throws(()=>planMediaPage(page,{associations:[mapping,{sourceLessonId:'original-lesson',websiteId:'site-surah'}]}),/MEDIA_MAPPING_AMBIGUOUS/);
  assert.throws(()=>planMediaPage(page,{associations:[{...mapping,sourceAssetId:'not-in-page'}]}),/MEDIA_MAPPING_OUTSIDE_PAGE/);
  assert.throws(()=>planMediaPage(page,{associations:[mapping,mapping]}),/MEDIA_MAPPING_DUPLICATE/);
+});
+
+test('existing-data preparation explicitly preserves programme media while leaving new content out',()=>{
+ const data=sample(),options={bundleSha256:'f'.repeat(64)},plan=buildExistingDataMediaPlan(data.bundle,data.copy,data.pages,options);
+ assert.equal(plan.migrationPhase,'EXISTING_DATA_ONLY');assert.equal(plan.objects.length,4);assert.equal(plan.attachments.length,8);assert.equal(plan.held.length,0);
+ assert.equal(plan.offeringOnlyAssociations.length,1);assert.equal(plan.offeringOnlyAssociations[0].websiteAssociation,'PENDING');
+ const unmapped=plan.objects.find(o=>o.object.sourceAssetId==='unassigned-video').object;
+ assert.equal(plan.attachments.filter(a=>a.asset_id===unmapped.assetId&&a.website_id===null&&a.audience==='RECORDING').length,2);
+ assert.deepEqual(plan.excludedNextPhase.standaloneDrafts,['unmapped-course']);assert(plan.editions.every(e=>!('reviewDraft'in e)));
+ const page=data.pages[0],mapping={sourceLessonId:'original-lesson',sourceAssetId:'unassigned-video',offeringOnly:true};
+ assert.equal(planMediaPage(page,{associations:[mapping]}).objects.length,1);
+ assert.throws(()=>planMediaPage(page,{associations:[{...mapping,sourceAssetId:undefined}]}),/MEDIA_OFFERING_ONLY_MAPPING_INVALID/);
+ assert.throws(()=>planMediaPage(page,{associations:[{...mapping,websiteId:'invented-site'}]}),/MEDIA_OFFERING_ONLY_MAPPING_INVALID/);
+ assert.throws(()=>planMediaPage(page,{associations:[{sourceLessonId:'original-lesson',sourceAssetId:'unassigned-video',websiteId:null}]}));
 });
 
 test('copy reconciliation refuses incomplete snapshots, changed native identity and competing website mappings',()=>{

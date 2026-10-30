@@ -15,7 +15,9 @@ export function planMediaPage(page,{associations=[]}={}){
  check(Array.isArray(associations)&&associations.length<=500,'MEDIA_ASSOCIATION_LIMIT');
  const mappings=new Map(),usedMappings=new Set(),seen=new Set(),objects=new Map(),attachments=[],held=[];
  const mappingKey=(lesson,asset=null)=>JSON.stringify([lesson,asset]);
- for(const mapping of associations){id(mapping.sourceLessonId);id(mapping.websiteId);if(mapping.sourceAssetId!==undefined)id(mapping.sourceAssetId);const key=mappingKey(mapping.sourceLessonId,mapping.sourceAssetId);check(!mappings.has(key),'MEDIA_MAPPING_DUPLICATE');mappings.set(key,mapping.websiteId);}
+ for(const mapping of associations){id(mapping.sourceLessonId);if(mapping.sourceAssetId!==undefined)id(mapping.sourceAssetId);
+  if(mapping.offeringOnly===true)check(mapping.sourceAssetId!==undefined&&(mapping.websiteId===undefined||mapping.websiteId===null),'MEDIA_OFFERING_ONLY_MAPPING_INVALID');else id(mapping.websiteId);
+  const key=mappingKey(mapping.sourceLessonId,mapping.sourceAssetId);check(!mappings.has(key),'MEDIA_MAPPING_DUPLICATE');mappings.set(key,{websiteId:mapping.offeringOnly===true?null:mapping.websiteId});}
  for(const lesson of page.lessons){
   const lessonId=id(lesson.sourceLessonId);check(!seen.has(lessonId),'MEDIA_LESSON_DUPLICATE');seen.add(lessonId);
   check(['SESSION','COURSE'].includes(lesson.scope)&&['PUBLISHED','DRAFT','HIDDEN','MISSING'].includes(lesson.state),'MEDIA_LESSON_INVALID');
@@ -30,7 +32,7 @@ export function planMediaPage(page,{associations=[]}={}){
    id(asset.sourceAssetId);check(!assetIds.has(asset.sourceAssetId),'MEDIA_ASSET_DUPLICATE');assetIds.add(asset.sourceAssetId);
    const exactMapping=mappingKey(lessonId,asset.sourceAssetId);check(!(mappings.has(lessonMapping)&&mappings.has(exactMapping)),'MEDIA_MAPPING_AMBIGUOUS');
    if(mappings.has(exactMapping))usedMappings.add(exactMapping);
-   const websiteId=mappings.get(exactMapping)||mappings.get(lessonMapping)||null;
+   const mapping=mappings.get(exactMapping)||mappings.get(lessonMapping),websiteId=mapping?.websiteId||null;
    check(['PDF','MP4','YOUTUBE'].includes(asset.kind)&&text(asset.filename,180)&&text(asset.name,500),'MEDIA_ASSET_INVALID');
    check(typeof asset.linked==='boolean'&&typeof asset.sourceExpired==='boolean','MEDIA_ASSET_INVALID');
    const reasons=[];
@@ -38,7 +40,7 @@ export function planMediaPage(page,{associations=[]}={}){
    if(!asset.linked)reasons.push('SOURCE_ATTACHMENT_REMOVED');
    if(asset.sourceExpired)reasons.push('SOURCE_RECORDING_EXPIRED');
    if(!cohorts.length)reasons.push('HISTORICAL_CLASS_REQUIRED');
-   if(!websiteId)reasons.push('EXPLICIT_WEBSITE_ASSOCIATION_REQUIRED');
+   if(!mapping)reasons.push('EXPLICIT_WEBSITE_ASSOCIATION_REQUIRED');
    if(asset.kind==='YOUTUBE')check(/^[A-Za-z0-9_-]{11}$/.test(asset.youtubeId||'')&&!asset.resolvedObjectKey&&!asset.sourceObjectKey,'MEDIA_YOUTUBE_INVALID');
    else{
     check(text(asset.sourceObjectKey,1200)&&asset.sourceObjectKey&&text(asset.resolvedObjectKey,1200)&&asset.resolvedObjectKey,'MEDIA_OBJECT_INVALID');

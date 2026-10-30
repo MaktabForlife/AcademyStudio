@@ -1,5 +1,7 @@
 # Private media migration continuation — 30 October 2026
 
+Later existing-data continuation: all 38 original recording references are now included, with six explicit programme-only associations rather than guessed Surah links. The existing-data admission/activation/rollback adapter and actual-copy rehearsal pass; new content/course creation is excluded. See [EXISTING-DATA-MIGRATION.md](EXISTING-DATA-MIGRATION.md). The earlier 32-reference preparation below remains retained as historical evidence.
+
 Migration takes priority over UI changes, as requested. The deferred homepage, visitor-choice and destination requests are recorded in the parent `outputs/circles-ui-request-queue-20261030.json`. Their unfinished implementation is saved on `feature/circles-home-requests-20261030` at `3121af1`; its separate Academy entry helper is at `01e1dfba` on `feature/circles-home-entry`. This migration branch continues from the tested connection checkpoint `1f428f9` and does not include those UI changes.
 
 ## Prepared copied material

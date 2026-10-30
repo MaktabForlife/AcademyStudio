@@ -1,5 +1,7 @@
 # Academy copy and builder reconciliation — 30 October 2026
 
+Current priority: migrate existing data only; new content/course creation and review-draft promotion are deferred. The existing-data package covers all 49 accepted source references, preserving six programme-only recordings without guessing website associations. See [EXISTING-DATA-MIGRATION.md](EXISTING-DATA-MIGRATION.md) for the current adapter, actual-copy rehearsal and live-import boundary. The original copy/reconciliation evidence below remains unchanged.
+
 You authorised copying from Academy, then incorporating web build and new builder material. The resulting private local bundle is prepared for the Circles UI. Source originals, existing hosted draft/publication pointers, identities and permissions remain unchanged. Deployment, public publication, DNS, retirement and deletion stay with their existing approval holds.
 
 ## Actual copy
