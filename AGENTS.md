@@ -1,3 +1,7 @@
+# V108.5 circle block correction deployed — 30 October 2026
+
+- The requested placement correction is live: Worker 18f63abd-ea89-471c-8ab7-acbc7309d4e1, deployment afb3fcd8-d397-4be2-9e66-609fd3768958, 100% traffic. Login returns to the circle homepage; permission-filtered choices are attached to their existing blocks. Nine native checks and seven bounded hosted checks pass, with a browser-verified native Academy handoff on local synthetic data. Exact approved e68d0b7 layout retained; no newer UI trials were composed. All 17 target bindings and the 43200/43200/60 policy are preserved. No source deployment, SQL/R2 write, permission or media change. See docs/CIRCLES-BLOCK-NAVIGATION.md and the private parent outputs/circles-block-navigation-20261030/release-verification.json. Preserve this connected navigation on later approved UI compositions.
+
 # V108.5 correction requested — 30 October 2026
 
 - The owner corrected the deployed result: “THE LINKS ARE SUPPOSED TO ATTACHE TO THE BLOCKS ON THE CIRCLES”, with screenshots of the unwanted account menu and intended circle blocks. Carry this correction through the existing Circles deployment: remove the separate destination menu, return login to the circle homepage, and attach permission-filtered choices to the existing blocks. This is completion of the authorised navigation behavior, not approval for unrelated UI trials or changes to rights/media/source. See docs/CIRCLES-BLOCK-NAVIGATION.md.
