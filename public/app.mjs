@@ -35,7 +35,7 @@ async function openWebsite(websiteId){if(!textEditor.canLeave())return;closeMedi
 }
 function renderDelivery(){
  if(!current||!delivery||!ui||textEditor.editing)return;
- if(ui.route==='home'){const overview=recordingOverview({media:delivery.media,guides:recordingGuides(current.document),more:delivery.more}),page=$('course-reader').querySelector('.sp-page');page.classList.add('sp-companion-home');if(overview)page.classList.add('sp-recordings-present');page.querySelector('.sp-hero').insertAdjacentHTML('afterend',companionReadingEntry()+overview);}
+ if(ui.route==='home'){const overview=recordingOverview({media:delivery.media,guides:recordingGuides(current.document),more:delivery.more,layout:current.document.home.recordingLayout}),page=$('course-reader').querySelector('.sp-page');page.classList.add('sp-companion-home');if(overview)page.classList.add('sp-recordings-present');page.querySelector('.sp-hero').insertAdjacentHTML('afterend',companionReadingEntry()+overview);}
  const live=delivery.sessions.find(session=>joinIsOpen(session,Date.now()+delivery.serverOffset));
  if(live)for(const row of $('course-reader').querySelectorAll('.sp-row-actions,.sp-sidebar')){if(!row.querySelector('[data-join]')){const button=document.createElement('button');button.className='sp-primary';button.dataset.join=live.session_id;button.textContent='Join lesson';row.append(button);}}
  if(ui.route==='lesson'){
