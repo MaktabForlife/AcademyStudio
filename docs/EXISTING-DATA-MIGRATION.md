@@ -1,5 +1,7 @@
 # Existing data migration — 30 October 2026
 
+Later authorised connection: the 49 copied originals are now enabled through their existing protected media routes, with 43 exact website attachments and six retained programme-only recordings. No new media, teaching edition or access policy was added. See [EXISTING-MEDIA-PUBLICATION.md](EXISTING-MEDIA-PUBLICATION.md) for current source/byte checks, the activation receipt, recovery and remaining account-specific acceptance. The private-import sections below retain the earlier unpublished-stage evidence.
+
 This phase moves existing Academy data. New course/content creation, review-draft promotion and UI changes are deferred, as requested. The migration does not create accounts, change purchases/grants or replace saved teaching editions.
 
 ## Existing data covered
