@@ -1,3 +1,8 @@
+# Circles homepage release V108.2 — 30 October 2026
+
+- You asked to make Circles the new Academy homepage so you can log in and check it. This authorises deploying the prepared Circles homepage, native Academy sign-in and Studio/Tafseer routes to the existing real parallel site. Keep the deployed V108.1 twelve-hour learner verification and sixty-second sensitive Admin checks. Use the dedicated academy-studio profile and explicitly pinned target account.
+- The release includes only the nine existing website catalogue entries and the pending Fatir notice, with their public artwork. Do not promote new course drafts, synthetic preview identities, private migration files or the 49 unpublished media attachments. Existing Academy remains available; no source deployment, DNS cutover, screen retirement, Git push or offering-authority transfer is authorised. The latest flyer layout request was withdrawn with “ignore”.
+
 # V108.0 deployment completed — 29 October 2026
 
 - The authorised real parallel deployment is active; see docs/PARALLEL-ROLLOUT.md and the private parent release-verification.json. Future changes remain local on feature branches until another deployment approval. Preserve Academy authority and current sync state; do not reuse synthetic preview identities, retire screens, change DNS or push Git under the completed release authorisation.
