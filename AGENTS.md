@@ -1,3 +1,7 @@
+# Navigation release V108.4 approved — 30 October 2026
+
+- The owner explicitly said “﷽ deploy” after reviewing the prepared permission navigation. This authorises the coordinated source/target release, its additive navigation schemas and five reviewed programme mappings. Preserve live homepage e68d0b7, all existing rights/media, Academy authority and the 43200/43200/60 policy. Do not include local layout trials or promote Mothers teaching drafts. No DNS, Git push or permission reset.
+
 # Circles permission navigation — local preparation, 30 October 2026
 
 - The owner specified the circle blocks as navigation and confirmed that Mothers of the Ummah must use existing programme membership. Each short Course retains independent access. The paired source/target changes and local tests are in docs/CIRCLES-PERMISSION-NAVIGATION.md. No new role, grant, teaching publication, hosted schema or deployment has been applied.

@@ -1,3 +1,7 @@
+## V108.4 deployment authorised
+
+The owner approved the reviewed navigation release on 30 October 2026. The local layout and Mothers author-draft holds remain. Record actual deployed versions and verification after completion.
+
 # Circles permission navigation — local preparation
 
 The owner specified the homepage circle blocks as navigation and confirmed that Mothers of the Ummah follows its existing programme membership. No hosted deployment, SQL, permission or publication change has been performed for this work.

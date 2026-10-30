@@ -27,7 +27,7 @@
     "ACCOUNT_MAX_AGE_SECONDS": "43200",
     "LIVE_ACCESS_MAX_AGE_SECONDS": "43200",
     "ADMIN_MAX_AGE_SECONDS": "60",
-    "RELEASE_VERSION": "108.3"
+    "RELEASE_VERSION": "108.4"
   },
   "d1_databases": [
     {
