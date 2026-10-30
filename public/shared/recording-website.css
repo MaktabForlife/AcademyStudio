@@ -89,3 +89,20 @@
 .circles-theme .rs-series-tools:empty{display:none}
 .circles-theme .rs-series-tools{display:flex;gap:10px;margin-top:12px;max-width:none}
 .circles-theme .student-course .rs-series-tools button{min-height:36px;font-size:11px;padding:7px 12px;background:transparent;border:1px solid var(--circle-rule);border-radius:999px;color:var(--sp-accent)}
+
+/* The standard Surah name artwork replaces the former photograph everywhere. */
+.circles-theme .tafseer-name-artwork{--card-accent:var(--sp-accent);--card-soft:var(--sp-soft);--ornament:#9b8053;position:relative;isolation:isolate;container-type:inline-size;display:flex;align-items:center;justify-content:center;aspect-ratio:1;border:1px solid #bca783;border-radius:7px;background:color-mix(in srgb,var(--sp-soft) 26%,#faf5ed);color:var(--sp-accent);overflow:hidden;width:100%;padding:10% 8% 22%}
+.circles-theme .tafseer-name-artwork::before{content:'';position:absolute;inset:0;background:url('/shared/assets/tafseer-geometric.svg') center/48px repeat;opacity:.3;z-index:-2;border-radius:0}
+.circles-theme .tafseer-name-artwork::after{content:'';position:absolute;inset:18% 12%;background:color-mix(in srgb,var(--sp-soft) 26%,#faf5ed);box-shadow:0 0 13px 13px color-mix(in srgb,var(--sp-soft) 26%,#faf5ed);z-index:-1;border-radius:50%}
+.circles-theme .tafseer-name-artwork .tafseer-frame{position:absolute;inset:4px;color:var(--ornament)}
+.circles-theme .tafseer-name-artwork .tafseer-frame>svg{height:100%;width:100%;stroke:currentColor;stroke-width:.85}
+.circles-theme .tafseer-name-artwork .tafseer-lettering{display:flex;flex-direction:column;align-items:center;text-align:center;font-family:Amiri,'Geeza Pro',serif;line-height:1.3;width:100%;position:relative;z-index:2}
+.circles-theme .tafseer-name-artwork .tafseer-prefix{font-size:clamp(9px,11cqi,18px);line-height:1.7}
+.circles-theme .tafseer-name-artwork .tafseer-surah-name{font-size:clamp(18px,30cqi,58px);line-height:1.5;white-space:nowrap}
+.circles-theme .tafseer-name-artwork .tafseer-flourish{width:43%;height:9px;stroke:var(--ornament);stroke-width:.8;margin-top:3px}
+.circles-theme .tafseer-name-artwork .tafseer-english{position:absolute;bottom:11%;left:8%;right:8%;font:500 clamp(6px,6.5cqi,11px)/1.3 'DM Sans',sans-serif;text-align:center;color:var(--sp-accent);z-index:2}
+.circles-theme .rs-tafseer.rs-shell .rs-series-header{grid-template-columns:100px minmax(0,1fr)}
+.circles-theme .rs-tafseer.rs-shell .rs-series-header.rs-compact{grid-template-columns:90px minmax(0,1fr)}
+.circles-theme .sp-hero-image:has(.tafseer-name-artwork)::before{display:none}
+@media(min-width:760px){.circles-theme .rs-tafseer.rs-shell .rs-series-header{grid-template-columns:174px minmax(0,1fr)}.circles-theme .rs-tafseer.rs-shell .rs-series-header.rs-compact{grid-template-columns:110px minmax(0,1fr)}}
+@media(max-width:359px){.circles-theme .rs-tafseer.rs-shell .rs-series-header,.circles-theme .rs-tafseer.rs-shell .rs-series-header.rs-compact{grid-template-columns:82px minmax(0,1fr)}}

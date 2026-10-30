@@ -1,3 +1,4 @@
+import {tafseerDisplayCourse} from '../shared/tafseer-cover.mjs';
 import {esc} from '../shared/model.mjs';
 
 const icon=name=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${name==='play'?'<rect x="3" y="3" width="18" height="18" rx="5"/><path d="m10 8 6 4-6 4Z"/>':'<path d="M12 5c-3-2-6-2-10-1v15c4-1 7-1 10 1 3-2 6-2 10-1V4c-4-1-7-1-10 1Z"/><path d="M12 5v15"/>'}</svg>`;
@@ -15,7 +16,7 @@ export function renderPreviewHome(data){
  home.querySelector('.section-title h2').textContent='Tafseer & courses';
  const introduction=document.createElement('p');introduction.className='preview-catalogue-intro';introduction.textContent='Begin with Foundations, then explore each independent surah or course. The recordings lead your study; the reading accompanies them.';home.querySelector('.section-title').after(introduction);
  const note=document.createElement('p');note.className='preview-catalogue-note';note.textContent='Layout preview: these card buttons demonstrate the experience. Recordings and learning links are not connected here.';grid.after(note);
- const cards=[...data.cards].sort((a,b)=>(a.id==='foundations'?-1:0)-(b.id==='foundations'?-1:0));
+ const cards=data.cards.map(card=>({...card,title:tafseerDisplayCourse({name:card.title}).name})).sort((a,b)=>(a.id==='foundations'?-1:0)-(b.id==='foundations'?-1:0));
  grid.className='preview-course-grid';
  grid.innerHTML=cards.map(card=>{
   const foundation=card.id==='foundations',tone=['sage','rose','gold','plum'].includes(card.tone)?card.tone:'plum';

@@ -149,3 +149,10 @@ The current local Circles review uses compact recording lists and individual les
 The latest catalogue shows only cards beneath the brand/Tafseer/Courses navigation. English names sit inside Tafseer covers; Fatir says **Text pending**. Course pictures are preserved. Subscription lock components support required, subscribed and free states; the review's closed locks are demonstration states pending connection to learner entitlements. Foundations text has no lock. No production access behaviour is changed.
 
 21 focused tests and the 89-module syntax/configuration check pass. Mobile/desktop catalogue, detail, topic playback, linked/independent reading, pending media, direct reload and browser Back checks are recorded in `outputs/academy-podcast-layout-20261030/`. See [CIRCLES-RECONCILED-REVIEW.md](CIRCLES-RECONCILED-REVIEW.md) for source boundaries and remaining integration work. No push, deployment, hosted publication or Academy read/write occurred.
+
+
+# Single-circle design reference and Tafseer artwork — 30 October UI follow-up
+
+The latest human comments restore the single large circle for the public homepage, replace the former yellow-flower Qur’an photograph throughout Tafseer headers/readings/editing with the standard name artwork, and rename Foundations to **Ulumul Qur’an — Qur’anic Studies**, Arabic **علوم القرآن**. The native UI uses a display adapter without changing canonical identities, original editions, free text access or recording entitlements. Course artwork is preserved. The single-circle reference lives in the original design checkout on ui/single-circle-home; the native reader update remains on feature/circles-content-theme. App linking stays with the Circles migration chat. Evidence is in outputs/academy-ui-refinements-20261030/.
+
+Latest naming correction: visible title/card English is **Qur’anic Studies** and the Arabic is **علوم القرآن**; the English transliteration is removed from UI labels. Existing source identity and teaching prose stay intact.

@@ -53,3 +53,28 @@ test('catalogue cards carry names, pending text and subscription symbols without
  const html=circlesReviewPage({websites:[item,fatir],courses:[],catalogue:[{key:'yaseen'},{key:'fatir'}]});
  assert(html.includes('class="tafseer-english" lang="en" dir="ltr">Surah Yaseen'));assert(html.includes('class="tafseer-english" lang="en" dir="ltr">Text pending'));assert(!html.includes('5 linked'));assert(!html.includes('Private mapping detail'));assert(!html.includes('collection-hero'));assert(!html.includes('collection-copy'));assert(html.includes('aria-label="Surah Yaseen · Subscription required"'));
 });
+
+test('standard name cards replace all recognised Tafseer cover identities without reclassifying Courses',async()=>{
+ const {tafseerCourseCover}=await import('../public/shared/tafseer-cover.mjs');
+ for(const name of ['Foundations of Tafseer','Surah Fatir','Surah Yaseen','Surah As-Saffat','Surah Al-Ankabut','Surah Luqman','Surah Al-Muzzammil','Surah Al-Qasas','Surah As-Sajdah']){
+  const course={name},before=structuredClone(course),html=tafseerCourseCover(course);
+  assert(html.includes('tafseer-surah-name'));assert(html.includes(name==='Surah Fatir'?'Text pending':name==='Foundations of Tafseer'?'Qur’anic Studies':name));assert(!html.includes('<img'));assert.deepEqual(course,before);
+ }
+ assert.equal(tafseerCourseCover({name:'The Tawakkul Mindset'}),'');
+ assert.equal(tafseerCourseCover({name:'Surah Al Kahf'}),'');
+});
+
+
+test('Ulumul Quran is the display identity while the source document remains unchanged',async()=>{
+ const {tafseerDisplayCourse,tafseerCourseCover}=await import('../public/shared/tafseer-cover.mjs');
+ const course={name:'Foundations of Tafseer',home:{headline:'Foundations of Tafseer',subtitle:'Original subtitle'},lessons:[{id:'original-reading'}]},before=structuredClone(course),shown=tafseerDisplayCourse(course);
+ assert.equal(shown.name,'Qur’anic Studies');assert.equal(shown.home.subtitle,'علوم القرآن');assert.equal(shown.lessons,course.lessons);assert.deepEqual(course,before);assert(tafseerCourseCover(shown).includes('علوم القرآن'));assert.equal(tafseerDisplayCourse({name:'Surah Yaseen'}).name,'Surah Yaseen');
+});
+
+
+test('Tafseer removes Sessions while Course navigation retains its configured timetable',async()=>{
+ const {recordingWebsiteTabs}=await import('../public/shared/recording-website.mjs');
+ const pages={materials:true,sessions:true};
+ for(const name of ['Foundations of Tafseer','Ulumul Qur’an','Surah Yaseen'])assert.deepEqual(recordingWebsiteTabs({name,pages}).map(t=>t[1]),['Recordings','Read','About','Materials']);
+ assert(recordingWebsiteTabs({name:'A guidance Course',pages}).some(t=>t[0]==='sessions'));
+});
