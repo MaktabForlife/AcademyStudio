@@ -71,10 +71,10 @@ export function recordingOverview({media=[],guides=[],more=false,layout='cards'}
 export function companionPlayer({workspace,panel}){
  let returnFocus=null;
  function close({focus=false}={}){for(const video of panel.querySelectorAll('video'))video.pause();panel.replaceChildren();panel.hidden=true;workspace.classList.remove('is-listening');if(focus&&returnFocus?.isConnected)returnFocus.focus();returnFocus=null;}
- function open(element,title){
+ function open(element,title,{recordingId}={}){
   close();returnFocus=document.activeElement;const heading=document.createElement('h2'),header=document.createElement('header'),eyebrow=document.createElement('span'),button=document.createElement('button'),body=document.createElement('div'),footer=document.createElement('div'),reading=document.createElement('button'),hint=document.createElement('p');
   eyebrow.className='sp-eyebrow';eyebrow.textContent='LESSON RECORDING';heading.id='companion-player-title';heading.textContent=title||'Recorded lesson';button.type='button';button.textContent='×';button.setAttribute('aria-label','Close recording player');button.onclick=()=>close({focus:true});
-  header.append(eyebrow,button,heading);body.className='sp-companion-player-media';body.append(element);hint.textContent='Keep listening as you move between the companion readings.';reading.textContent='Read alongside →';reading.dataset.sp='route';reading.dataset.route='lessons';footer.append(hint,reading);panel.append(header,body,footer);panel.setAttribute('aria-labelledby',heading.id);panel.hidden=false;workspace.classList.add('is-listening');button.focus({preventScroll:true});
+  header.append(eyebrow,button,heading);body.className='sp-companion-player-media';body.append(element);hint.textContent='Keep listening as you move between the companion readings.';reading.textContent=recordingId?'Follow along →':'Read alongside →';reading.dataset.sp=recordingId?'recording':'route';if(recordingId)reading.dataset.id=recordingId;else reading.dataset.route='lessons';footer.append(hint,reading);panel.append(header,body,footer);panel.setAttribute('aria-labelledby',heading.id);panel.hidden=false;workspace.classList.add('is-listening');button.focus({preventScroll:true});
  }
  return {open,close};
 }

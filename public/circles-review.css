@@ -120,3 +120,27 @@ a:focus-visible { outline: 3px solid var(--circle-accent); outline-offset: 5px; 
  .tafseer-surah-name { font-size: 34px; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; }.collection-orb { animation: none; } }
+
+/* Cards carry their own identity; the catalogue has no metadata below them. */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.collection-card-only .collection-header{position:sticky;top:0;z-index:10;background:var(--circle-paper)}
+.collection-card-only .collection-header nav a{background:transparent}
+.collection-card-only .collection-header nav a[aria-current=page]{background:#eee6df}
+.collection-card-only .collection-section{padding:30px 0}
+.collection-card-only .collection-section[hidden]{display:none}
+.collection-card-only .collection-grid{gap:22px}
+.collection-card-only .collection-cover{height:240px;border-radius:12px;padding:22px 22px 50px}
+.collection-card-only .collection-cover:not(.tafseer-cover){background:var(--card-soft)}
+.collection-card-only .collection-cover:not(.tafseer-cover) img{height:100%;object-fit:contain}
+.collection-card-only .tafseer-lettering{transform:translateY(-4px)}
+.tafseer-english{position:absolute;bottom:27px;left:22px;right:22px;z-index:3;color:var(--card-accent);font:500 12px/1.4 'DM Sans',sans-serif;text-align:center;letter-spacing:.025em}
+.collection-card-name{position:absolute;z-index:3;inset:auto 0 0;padding:13px 16px;background:color-mix(in srgb,var(--card-soft) 90%,#fff);font:400 21px/1.15 var(--circle-serif);color:var(--card-accent);text-align:center}
+.collection-lock{position:absolute;right:19px;top:19px;z-index:4;display:grid;place-items:center;width:30px;height:30px;background:#fffaf1e6;border:1px solid #bca78366;border-radius:50%;color:var(--card-accent)}
+.collection-lock svg{width:16px;height:16px}
+.collection-card-only .collection-cover:hover{box-shadow:0 7px 22px #604b3c14;transform:translateY(-2px)}
+@media(max-width:1000px){.collection-card-only .collection-cover{height:220px}}
+@media(max-width:700px){.collection-card-only .collection-grid{gap:14px}.collection-card-only .collection-cover{height:195px;padding:18px 16px 46px}.collection-card-only .collection-section{padding:22px 0}.tafseer-english{bottom:23px;left:14px;right:14px;font-size:10px}.collection-lock{top:12px;right:12px;width:26px;height:26px}.collection-lock svg{width:14px;height:14px}.collection-card-name{font-size:17px;padding:12px}.collection-card-only .tafseer-surah-name{font-size:clamp(34px,26cqi,49px)}}
+@media(max-width:359px){.collection-card-only .collection-cover{height:174px;padding:17px 13px 43px}.collection-card-only .tafseer-prefix{font-size:15px}.collection-card-only .tafseer-surah-name{font-size:31px}.tafseer-english{font-size:9px;bottom:21px}.collection-card-name{font-size:15px}.collection-card-only .tafseer-flourish{margin-top:0;width:50px}}
+/* Keep anchored collections clear of the compact sticky navigation. */
+.collection-card-only .collection-section{scroll-margin-top:80px}
+@media(max-width:700px){.collection-card-only .collection-section{scroll-margin-top:54px}}
