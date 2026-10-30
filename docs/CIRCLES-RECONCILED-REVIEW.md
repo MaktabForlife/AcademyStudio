@@ -32,6 +32,12 @@ The canonical state is `status === MATCHED`, not an inherited `nativeMappingPend
 
 ## Separate drafts and public policy
 
+### Tafseer card design
+
+The user requested standard Tafseer cards with traditional Arab patterns, Arabic calligraphy and smaller English names. The nine catalogue covers now share an ivory illuminated-book design, repeating eight-point geometric ornament and a fine double frame. Self-hosted Amiri renders the Arabic as selectable, correctly shaped text; English titles remain accessible links beneath. The current Arabic labels follow the supplied surah names, with Foundations' introductory wording taken from its source subtitle. These are catalogue cover labels, not changes to teaching documents or reader artwork.
+
+Course pictures remain unchanged. Fatir remains non-clickable and pending. Browser checks at 320, 390, 768 and 1440px found no page overflow or Arabic names crossing the cover edges. All six existing course pictures remained present, with no Tafseer template applied to Courses; Yaseen's existing link still opened its five native recording entries. Evidence is in `outputs/academy-tafseer-cards-20261030/`.
+
 The six guidance-course readers fetch their exact copied author wrappers and checksum-verified artwork from the bundle. A normal local administrator check protects these author-review routes. Only the existing renderer runtime/fonts come from the prepared previews; teaching JSON and artwork are no longer read from those earlier preview content directories. All author-export fields, original artwork and existing device-only editing tools remain intact. No course identity, purchase or grant is inferred.
 
 Mothers of the Ummah's eleven-reading draft is retained in the same bundle and shown separately as an Academy draft. Its existing built page is not rebuilt or folded into Tafseer/Courses here. Six guidance drafts (53 web lessons) plus the nine mapped readers (103) are explorable in this review; Mothers' operational page/import remains separate. The bundle's full total is 167 readings, including those eleven retained Mothers entries.

@@ -1,3 +1,7 @@
+# Standard Tafseer cards — 30 October 2026
+
+The requested Tafseer catalogue covers now use traditional geometric patterns, an ivory/gold manuscript frame and Arabic names in self-hosted Amiri, with smaller English titles. The common template is scoped to Tafseer; existing Course pictures, teaching documents, reader artwork and access/navigation remain unchanged. Nine covers fit at phone/tablet/desktop widths, Arabic names stay inside the frames, and the Yaseen link still opens its five native recordings. Evidence: `outputs/academy-tafseer-cards-20261030/`. This is a local presentation change, with no hosted publication.
+
 # Copied Academy content connected to the Circles review — 30 October 2026
 
 The primary local review at `http://localhost:8901/local-start` now uses the reconciled private Academy-copy bundle. Nine mapped websites retain 103 readings and 45 companions; 32 recordings are linked through the native gated feed and thirteen remain explicitly pending, without play buttons. All eleven copied Academy PDFs resolve through the unchanged media API. Six guidance-course drafts use the exact bundled teaching/artwork; Mothers remains a separate retained Academy draft. Fatir is a placeholder before Yaseen. No reviewed draft is published by this server and no access is inferred for standalone courses.
