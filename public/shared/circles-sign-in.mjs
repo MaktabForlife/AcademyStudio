@@ -2,7 +2,7 @@
 // No credentials or master Academy tokens are persisted by this client.
 const encode=buffer=>btoa(String.fromCharCode(...new Uint8Array(buffer))).replaceAll('+','-').replaceAll('/','_').replaceAll('=','');
 export const accessArea=value=>['academy','tafseer','courses','mothers','hifz','studio'].includes(value)?value:'general';
-export const learningDestination=area=>['tafseer','courses'].includes(accessArea(area))?'/?view=collections':accessArea(area)==='studio'?'/?manage=1':null;
+export const learningDestination=area=>['tafseer','courses'].includes(accessArea(area))?'/studio/?view=collections&collection='+accessArea(area):accessArea(area)==='studio'?'/studio/?manage=1':null;
 export async function signInFromCircles(request,credentials,{crypto=globalThis.crypto,current=()=>true}={}){
  const verifier=encode(crypto.getRandomValues(new Uint8Array(32))),state=encode(crypto.getRandomValues(new Uint8Array(32))),challenge=encode(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier)));
  const response=await request('/auth/login',{body:{uniqueid:credentials.uniqueid,pin:credentials.pin,challenge,state,...(credentials.setup?{setup:true,pinConfirmation:credentials.pinConfirmation}:{})}});

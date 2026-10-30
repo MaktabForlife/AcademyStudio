@@ -1,5 +1,17 @@
 # Circles login connection — 30 October 2026
 
+## Circles homepage and Tafseer connection
+
+The user now wants Circles as the homepage and its Tafseer entry connected to Studio. The prepared local build serves the current Circles design at `/`, with `/circles/` retained as an alias. Native catalogue, reader and staff-management entry pages live at `/studio/`. This is a presentation-route change; server APIs, website identities, teaching editions, roles and media publication are unchanged.
+
+The Tafseer card keeps the approved anonymous Log in / Apply for access choice. After the same Academy sign-in, it opens `/studio/?view=collections&collection=tafseer` with Tafseer selected. Signed-in visitors go directly there. Courses selects its own native tab. Catalogue links open the existing Studio website/Surah ids; staff editing remains separately gated by the existing APIs. The native Home action and brand link return to Circles.
+
+Old root bookmarks containing website/edition/reading context, the collection view or management entry are routed to the corresponding Studio entry with their query and fragment preserved. Device progress/reflections continue using the same origin/account/website keys. This neither migrates nor duplicates learning records. The public homepage and login retain the same design snapshot and Academy session flow.
+
+Fresh preparation: ignored `local-content/circles-home-tafseer-20261030/`. The current review at `http://localhost:8930/` was updated without restarting its backend or resetting sessions. Its contents and accounts remain synthetic. Ten focused route/login/permission regressions and 133-module checks pass. Chrome verifies Circles root → Tafseer choice → login → selected native Tafseer catalogue → existing Surah, preserved published-edition bookmarks, and Home → Circles. Evidence: parent `outputs/circles-login-connection-20261030/home-tafseer-build.json`, `home-tafseer-tests.txt` and `tafseer-studio-catalogue.png`.
+
+Hosted rollout is separate. The deployment owner has now completed the verification-only Studio V108.1 release, without changing its assets or content. A future Circles release must retain that deployed twelve-hour behavior and fresh staff checks, use a later release label, prepare the approved public catalogue, and receive separate deployment approval. Do not overwrite the newer runtime with a V108.0 configuration or activate the 49 unpublished media attachments as part of this route change. No hosted call, deployment or real content publication occurred in this continuation.
+
 The current Circles public design now has a native Academy login adapter in the local integration build. The Circles UI checkout remains owned by the `circles` chat; its original preview is untouched. The connected review is prepared under ignored `local-content/`, independently of both hosted systems and the completed private media import.
 
 ## Connected behavior
@@ -40,4 +52,4 @@ The design snapshot was refreshed in the same review without restarting its serv
 
 The ownership direction reported from `optimisation` is recorded for a later controlled handover: Academy retains master identities/login/status revocation; Studio owns its eventual specific access roles/entitlements. Placement of the management interface in Academy Admin is under discussion. This login change adds no administration interface, transfers no offering authority and performs no dual authoritative writes. Existing parallel `AUTHORITY_MODE=ACADEMY` and all current rights remain in force. A per-offering handover must reconcile original rights and stop old entitlement updates from overwriting Studio-owned rights while retaining master-status revocation.
 
-The current review deliberately uses `/circles/` alongside the native Studio/reader routes. It does not replace the hosted root homepage or the standalone Sites prototype. A reviewed hosted release and remaining destination connections are separate steps. All 49 imported media attachments remain unpublished.
+The initial login review used `/circles/` alongside the native root routes. The latest prepared build now serves Circles at `/` and moves the native entry to `/studio/`, as described above. The hosted root homepage and standalone Sites prototype remain unchanged pending a reviewed release. All 49 imported media attachments remain unpublished.
