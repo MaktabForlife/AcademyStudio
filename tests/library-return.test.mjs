@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {pathToFileURL} from 'node:url';import {mkdirSync,writeFileSync} from 'node:fs';import {resolve} from 'node:path';import {fixture} from './fixture.mjs';import {random,challenge} from '../src/protocol.mjs';
-const sourceRoot=resolve(process.env.ACADEMY_SOURCE||'../Academy-website-studio');
+const sourceRoot=resolve(process.env.ACADEMY_SOURCE||'../Academy-combined-candidate');
 const {approvedReturn}=await import(pathToFileURL(resolve(sourceRoot,'academy/website-platform/library-return.mjs')));
 const {approvedCirclesReturn}=await import(pathToFileURL(resolve(sourceRoot,'academy/website-platform/circles-return.mjs')));
 const ok=r=>{assert.equal(r.status,200,JSON.stringify(r.body));return r.body;};

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';import {fixture} from './fixture.mjs';import {accessFixture} from './access-fixture.mjs';
-export async function studioFixture(){
- const f=await fixture({academy:true,authorityMode:'ACADEMY',verification:{accountSeconds:43200,adminSeconds:60,liveSeconds:43200}});try{
+export async function studioFixture(configuration={}){
+ const f=await fixture({academy:true,authorityMode:'ACADEMY',verification:{accountSeconds:43200,adminSeconds:60,liveSeconds:43200},...configuration});try{
  const x=await accessFixture(f);await x.recover(25);
  for(const table of ['participation','staff','paid_months','surah_grants','access_members'])await f.run(`DELETE FROM ${table} WHERE account_id IN('learner','former','teacher','grant-only')`);
  const tokens=new Map();const nativeLogin=async(who='global')=>{if(tokens.has(who))return tokens.get(who);const r=await f.runtime.dispatchFetch('https://academy.test/api/account/login',{method:'POST',headers:{Origin:'https://academy.test','Content-Type':'application/json'},body:JSON.stringify({uniqueid:'separation-'+who,pin:'1234'})}),b=await r.json();assert.equal(r.status,200,JSON.stringify(b));tokens.set(who,b.token);return b.token;};

@@ -17,6 +17,6 @@ test('explicit source offering kind keeps Course pictures and scheduling even wh
  const course={name:'Surah Yaseen',home:{},pages:{sessions:true,materials:true},displayIdentity:{kind:'COURSE'}};
  assert.equal(tafseerCourseCover(course),'');assert(recordingWebsiteTabs(course).some(([key])=>key==='sessions'));
  const tafseer={...course,name:'A source title',displayIdentity:{kind:'TAFSEER',key:'foundations'}};
- assert.equal(tafseerDisplayCourse(tafseer).name,'Qur’anic Studies');assert(tafseerCourseCover(tafseer).includes('علوم القرآن'));assert(!recordingWebsiteTabs(tafseer).some(([key])=>key==='sessions'));
+ assert.equal(tafseerDisplayCourse(tafseer).name,'Introduction to Qur’anic Studies');assert(tafseerCourseCover(tafseer).includes('علوم القرآن'));assert(!recordingWebsiteTabs(tafseer).some(([key])=>key==='sessions'));
  assert.equal(tafseer.name,'A source title','Canonical display identity does not rewrite the saved source');
 });
