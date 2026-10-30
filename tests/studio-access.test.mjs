@@ -141,3 +141,11 @@ test('new Studio Tafseer enrolment receives an Academy class/date allocation wit
   const end={...command,operationId:crypto.randomUUID(),enrollmentId:allocation.enrollment_id,base:allocation,active:false};await good(end,{activity:x.programA});assert.equal((await good({action:'read',accountId:created.accountId},{activity:x.programA})).liveAllocation.windows.length,0);
  }finally{await f.close();}
 });
+
+test('a rejected Save acknowledges accepted authority deliveries so correcting a field keeps its revision',{timeout:60000},async()=>{
+ const {f,x,good,proxy,handover}=await studioFixture();try{
+  await handover(x.programA);const view=await good({action:'read',accountId:x.student},{activity:x.programA});
+  const command={action:'save',revision:view.revision,change:{action:'access-batch',operationId:crypto.randomUUID(),changes:[{action:'surah-grant',accountId:x.student,websiteId:'site-surah',enabled:true,reason:''}]}};assert.equal((await proxy(command,{activity:x.programA})).status,400);
+  const corrected={...command,change:{...command.change,operationId:crypto.randomUUID(),changes:[{...command.change.changes[0],reason:'Verified correction after validation'}]}};assert.equal((await good(corrected,{activity:x.programA})).saved,true);
+ }finally{await f.close();}
+});

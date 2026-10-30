@@ -12,7 +12,7 @@ export async function studioAccess(request,env,store,fetcher){
  const input=await signedInput(request,env),proof=input.proof,now=Date.now();
  if(!proof||proof.verifiedAt<now-60_000||proof.verifiedAt>now+1000||proof.expiresAt<=now||proof.expiresAt>now+60_000)throw fail('Refresh your Academy Admin session.',401,'ADMIN_STATUS_EXPIRED');
  if(!Array.isArray(input.deliveries)||input.deliveries.length>40)throw fail('Invalid Admin confirmation.');
- const acknowledge=[];
+ const acknowledge=[];try{
  for(const item of input.deliveries){await receive(new Request(env.WEBSITE_ORIGIN+'/internal/academy/events',{method:'POST',headers:{'X-Maktab-Signature':item.signature},body:JSON.stringify(item.delivery)}),env,store);acknowledge.push(item.delivery.operationId);}
  if(input.more)return {acknowledge,pending:true};
  const tokenHash=await sha256('academy-admin:'+id(proof.sourceRef)),accountId=id(proof.accountId);
@@ -32,6 +32,7 @@ export async function studioAccess(request,env,store,fetcher){
  else if(command.action?.startsWith('handover-'))result=await handover(store,actor,offer,command);
  else throw fail('Unknown access action.');
  return {...result,acknowledge};
+ }catch(error){error.acknowledge=acknowledge;throw error;}
 }
 
 export async function readAccess(store,actor,offer,input){
