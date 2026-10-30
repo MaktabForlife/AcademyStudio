@@ -18,9 +18,13 @@ test('native programme membership filters circle menus independently of short Co
   const theirs=ok(await f.request('/api/circles/navigation',{cookie:other}));assert.equal(theirs.mothers,false);assert.deepEqual(theirs.academia,[{key:'alimiyah',label:'Aalimiyah'}]);assert.deepEqual(theirs.shortCourses,[]);
   assert.equal((await f.request('/api/circles/classrooms/mothers',{cookie:other})).status,403);assert.equal(ok(await f.request('/api/circles/classrooms/mothers',{cookie})).materialsConnected,false);
   const inherited=ok(await f.request('/api/circles/navigation',{cookie:admin}));assert(inherited.mothers);assert.equal(inherited.academia.length,1);
+  assert.equal(mine.purchasedCourses.length,1);assert.equal(mine.purchasedCourses[0].href,'/studio/?website=site-course');
+  assert.deepEqual(theirs.purchasedCourses,[]);assert.deepEqual(inherited.purchasedCourses,[],'Staff authority alone never becomes a purchased course');
+  const previousClass=Date.now()-86400000;await f.run("UPDATE timetable SET starts_at=?,ends_at=? WHERE offering_id='course'",previousClass,previousClass+3600000);
+  const completed=ok(await f.request('/api/circles/navigation',{cookie}));assert.equal(completed.purchasedCourses.length,1,'A completed class does not expire purchased course content');assert.equal(completed.purchasedCourses[0].latestClass,previousClass);
   await f.run('UPDATE accounts SET verified_at=? WHERE account_id=?',Date.now()-61_000,f.source.f.actors.global);await f.run('UPDATE source_access_people SET verified_at=? WHERE account_id=?',Date.now()-61_000,f.source.f.actors.global);f.source.resetMetrics();ok(await f.request('/api/circles/navigation',{cookie:admin}));assert.equal(f.source.metrics.queries,0,'An ordinary staff menu is not a sensitive Admin operation');assert.notEqual((await f.request('/api/websites/site-course/edit',{cookie:admin})).status,200,'The destination retains the sensitive Admin freshness check');
   f.source.resetMetrics();for(let i=0;i<3;i++)ok(await f.request('/api/circles/navigation',{cookie}));assert.equal(f.source.metrics.queries,0,'Navigation reuses local signed evidence for twelve hours');
-  const menu=circleBlockChoices('mothers',mine);assert.match(menu,/Mothers of the Ummah/);assert.match(menu,/Synthetic Circles Course/);assert.doesNotMatch(circleBlockChoices('academy',mine),/data-programme-key/);assert(!menu.includes('must-not-leak'));
+  const menu=circleBlockChoices('mothers',mine);assert.match(menu,/Mothers of the Ummah/);assert.doesNotMatch(menu,/Synthetic Circles Course/);assert.doesNotMatch(circleBlockChoices('academy',mine),/data-programme-key/);assert(!menu.includes('must-not-leak'));
   assert.equal((await f.request('/api/circles/navigation')).status,401);
  }finally{await f.close();}
 });

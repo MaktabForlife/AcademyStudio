@@ -1,5 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {pathToFileURL} from 'node:url';import {mkdirSync,writeFileSync} from 'node:fs';import {resolve} from 'node:path';import {fixture} from './fixture.mjs';import {random,challenge} from '../src/protocol.mjs';
-const {approvedReturn}=await import(pathToFileURL(resolve('../Academy-website-studio/academy/website-platform/library-return.mjs')));
+const sourceRoot=resolve(process.env.ACADEMY_SOURCE||'../Academy-website-studio');
+const {approvedReturn}=await import(pathToFileURL(resolve(sourceRoot,'academy/website-platform/library-return.mjs')));
+const {approvedCirclesReturn}=await import(pathToFileURL(resolve(sourceRoot,'academy/website-platform/circles-return.mjs')));
 const ok=r=>{assert.equal(r.status,200,JSON.stringify(r.body));return r.body;};
 test('Library handoff binds a one-use Academy session to an entitled website and actual lesson, without returning a master token to the website',async t=>{
  const f=await fixture({academy:true}),evidence={};try{
@@ -19,4 +21,10 @@ test('Library return ignores arbitrary URL parameters and permits only a bounded
  const c={websiteId:'site-course',lessonId:'lesson-1',websiteOrigin:'https://website.test',returnUrl:'https://website.test/?website=site-course&lesson=lesson-1',expiresAt:Date.now()+60_000};
  assert(approvedReturn(JSON.stringify(c)));
  for(const change of [{returnUrl:'https://evil.test/?website=site-course'},{returnUrl:'https://website.test/redirect?website=site-course'},{returnUrl:c.returnUrl+'&next=https://evil.test'},{returnUrl:c.returnUrl+'#next'},{expiresAt:0},{expiresAt:null},{websiteId:'other-site'}])assert.equal(approvedReturn(JSON.stringify({...c,...change})),null,JSON.stringify(change));
+});
+
+test('Circles dashboard return permits only its exact mode and origin, with an expiring account-bound connector context',()=>{
+ const c={mode:'teach',returnUrl:'https://website.test/?workspace=teach',websiteOrigin:'https://website.test',owner:'a'.repeat(64),expiresAt:Date.now()+60000};
+ assert(approvedCirclesReturn(JSON.stringify(c)));
+ for(const change of [{returnUrl:'https://evil.test/?workspace=teach'},{returnUrl:c.returnUrl+'&next=https://evil.test'},{returnUrl:c.returnUrl+'#next'},{returnUrl:'https://website.test/studio/?workspace=teach'},{mode:'admin'},{expiresAt:0},{expiresAt:Date.now()+13*3600000},{owner:'raw-token'},{websiteOrigin:'javascript:bad'}])assert.equal(approvedCirclesReturn(JSON.stringify({...c,...change})),null,JSON.stringify(change));
 });

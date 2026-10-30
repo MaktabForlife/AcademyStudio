@@ -1,4 +1,6 @@
 import {pinEntry} from './shared/pin-entry.mjs';
+import {headerIcon} from './shared/header-icons.mjs';
+import {installHeaderDates} from './shared/header-dates.mjs';
 import {startReaderView} from './shared/reader-startup.mjs';
 import {protectAccountHistory} from './shared/account-history.mjs';
 import {mothersClassroom} from './shared/circles-navigation.mjs';
@@ -25,6 +27,7 @@ const currentSeriesRecordings=()=>seriesRecordings({media:delivery?.media||[],gu
 const freshDelivery=()=>({bindings:[],media:[],sessions:[],loaded:false,more:false,request:null,sessionRequest:null,serverOffset:0});
 const textEditor=readerEditing({root:$('course-reader'),identity,api,current:()=>current,route:()=>ui,showDraft(record){document.querySelectorAll('[data-reader-toolbar]').forEach(node=>node.hidden=true);beforeEditing={record:current,ui:structuredClone(ui),assets};current={...record,canEdit:true};assets=new Map(record.assets.map(a=>[a.asset_id,{...a,id:a.asset_id,url:a.url+'?draft=1'}]));ui={...ui,route:['recording','about'].includes(ui.route)?'home':ui.route,isPreview:true,completed:[],reflections:{}};draw();},showPublished(){document.querySelectorAll('[data-reader-toolbar]').forEach(node=>node.hidden=false);if(beforeEditing){current=beforeEditing.record;ui=beforeEditing.ui;assets=beforeEditing.assets;beforeEditing=null;draw();}},async refresh(){const id=current.websiteId;beforeEditing=null;await openWebsite(id);}});
 const pins=pinEntry($('sign-in-form'));
+installHeaderDates();
 function openSignIn(){pins.clear();$('sign-in-dialog').showModal();}
 $('sign-in-dialog').addEventListener('close',()=>{pins.clear();$('sign-in-status').textContent='';});
 const removeReaderToolbars=()=>document.querySelectorAll('[data-reader-toolbar]').forEach(node=>node.remove());
@@ -112,6 +115,9 @@ $('sign-in-form').addEventListener('submit',async event=>{event.preventDefault()
 const base64=buffer=>btoa(String.fromCharCode(...new Uint8Array(buffer))).replaceAll('+','-').replaceAll('/','_').replaceAll('=','');const token=()=>base64(crypto.getRandomValues(new Uint8Array(32)));
 $('sign-in-button').onclick=()=>openSignIn();$('close-sign-in').onclick=()=>$('sign-in-dialog').close();$('home-button').onclick=()=>{if(!textEditor.canLeave())return;if(appPath==='/studio/'){location.assign('/');return;}textEditor.clear();beforeEditing=null;show('homepage');history.pushState(null,'','/');renderPublicCircle();};$('explore-button').onclick=()=>$('public-cards').scrollIntoView({behavior:'smooth'});$('my-websites').onclick=()=>{if(new URLSearchParams(location.search).has('classroom'))history.pushState(null,'',appPath+'?view=collections');return library().catch(e=>status(e.message));};
 $('sign-out-button').onclick=async()=>{try{await api('/auth/logout',{body:{}});}finally{changed(null);clear();if(appPath==='/studio/')location.assign('/');}};
+$('header-home-button').onclick=()=>$('home-button').click();
+$('header-refresh-button').onclick=()=>{if(textEditor.canLeave())location.reload();};
+for(const [id,icon,label]of [['header-home-button','home','Home · Return to your dashboard'],['header-refresh-button','refresh','Refresh this page']]){$(id).innerHTML=headerIcon(icon);$(id).setAttribute('aria-label',label);}
 function openAcademy(libraryContext){
  if(config?.isolatedPreview){status('Academy Library is disconnected in this preview. The live Academy is unchanged.');return;}
  const child=window.open(config.academyOrigin+'/academy/website-platform/connect/','_blank');if(!child){status('Allow this window to open, then select Academy again.');return;}

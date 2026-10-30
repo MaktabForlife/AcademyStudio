@@ -11,7 +11,7 @@ export function circlesCatalogue(items,access=[],{applicationPath='/',kind='TAFS
  applicationPath=applicationPath==='/studio/'?'/studio/':'/';kind=kind==='COURSE'?'COURSE':'TAFSEER';
  const rights=new Map(access.map(r=>[r.websiteId,r]));
  const card=source=>{
-  const item=source.key==='foundations'?{...source,title:'Qur’anic Studies'}:source;
+  const item=source.key==='foundations'?{...source,title:'Introduction to Qur’anic Studies'}:source;
   const right=rights.get(item.websiteId),state=item.publicTextUrl?'free':right?.subscriptionStatus==='subscribed'?'subscribed':'required';
   const ornament=tafseerCover(item),label=item.key==='fatir'?'Text pending':item.title;
   const body=`${ornament||(item.cover?`<img src="${esc(item.cover)}" alt="" loading="lazy">`:'<span class="cover-circles"><i></i><i></i><i></i></span>')}${catalogueLock(state)}${!ornament?`<span class="collection-card-name">${esc(label)}</span>`:''}`;
