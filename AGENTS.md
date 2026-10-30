@@ -1,3 +1,9 @@
+# V108.4 permission navigation deployed — 30 October 2026
+
+- The approved coordinated release completed at 30 Oct 2026, 15:42 Riyadh. Academy Worker 6b58c57b-ec48-48d0-bd37-07eaccb8d912 and Circles Worker d1b846ae-535c-48e9-b9f6-34eac3aab51e are each 100% active. Academy Pages 6bd1bf8f-5a76-4c53-afd6-c64cccc37862 is the production deployment. Eleven release checks, nine bounded live checks and the live login form passed; no real PIN was used.
+- All 38 prior source bindings and 17 target bindings are preserved; the only new source setting is the five reviewed programme mappings. The additive navigation schemas are active. All 49 original media attachments remain enabled. Roles, purchases, months, teaching editions, DNS and Git remotes were not changed. Mothers materials remain pending, and the homepage stays on approved e68d0b7.
+- This deployment approval is fulfilled. Future deployments require fresh approval. Preserve compatibility with queued navigation-invalidated events during any coordinated recovery. See docs/CIRCLES-PERMISSION-NAVIGATION.md and the private parent outputs/circles-permission-navigation-20261030/release-1084-verification.json.
+
 # Navigation release V108.4 approved — 30 October 2026
 
 - The owner explicitly said “﷽ deploy” after reviewing the prepared permission navigation. This authorises the coordinated source/target release, its additive navigation schemas and five reviewed programme mappings. Preserve live homepage e68d0b7, all existing rights/media, Academy authority and the 43200/43200/60 policy. Do not include local layout trials or promote Mothers teaching drafts. No DNS, Git push or permission reset.

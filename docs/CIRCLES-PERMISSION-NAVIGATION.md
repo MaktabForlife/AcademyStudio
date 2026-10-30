@@ -1,3 +1,9 @@
+# V108.4 deployed
+
+The owner-approved release completed at 30 Oct 2026, 15:42 Riyadh on 30 October 2026. Source Worker `6b58c57b-ec48-48d0-bd37-07eaccb8d912`, target Worker `d1b846ae-535c-48e9-b9f6-34eac3aab51e`, and Academy Pages `6bd1bf8f-5a76-4c53-afd6-c64cccc37862` are active. Existing bindings, 43200/43200/60 settings, approved homepage layout and all 49 original media attachments are preserved. Nine bounded live checks and the real login form passed; user PIN acceptance was not exercised. Mothers materials remain pending. Private final receipt: parent outputs/circles-permission-navigation-20261030/release-1084-verification.json.
+
+The earlier local preparation and authorisation notes below are historical. This release approval is fulfilled; future deployments need fresh approval.
+
 ## V108.4 deployment authorised
 
 The owner approved the reviewed navigation release on 30 October 2026. The local layout and Mothers author-draft holds remain. Record actual deployed versions and verification after completion.
