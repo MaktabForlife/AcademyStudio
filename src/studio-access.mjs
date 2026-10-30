@@ -23,7 +23,7 @@ export async function studioAccess(request,env,store,fetcher){
  const command=input.command||{};let result;
  if(command.action==='read')result=await readAccess(store,actor,offer,command);
  else if(command.action==='save'){
-  if(!['access-batch','participant','paid-months','surah-grant','staff'].includes(command.change?.action))throw fail('Choose a supported access change.');
+  if(!['access-batch','participant','paid-months','website-months','surah-grant','staff'].includes(command.change?.action))throw fail('Choose a supported access change.');
   const expected=integer(command.revision),options={expectedSQL:revisionSQL,expectedArgs:[offer,expected]};
   // Native Save preserves exact operation receipts, scope checks and mutation guards.
   result=await change(env,store,actor,offer,command.change,options);
@@ -43,8 +43,9 @@ export async function readAccess(store,actor,offer,input){
  const websites=await store.all('SELECT website_id,title,completion_month,enabled FROM websites WHERE offering_id=? ORDER BY website_id LIMIT 129',[offer]);if(websites.length>128)throw fail('This offering needs a narrower website selector.',409);
  let person=null;
  if(accountId){const account=await store.first('SELECT a.account_id,a.display_name,a.active,a.admitted,p.enrolled,p.live,p.purchased,p.cohort,s.role,s.can_create_account FROM accounts a LEFT JOIN participation p ON p.account_id=a.account_id AND p.offering_id=? LEFT JOIN staff s ON s.account_id=a.account_id AND s.offering_id=? WHERE a.account_id=?',[offer,offer,accountId]);if(!account)throw fail('Link the Academy account before managing its learning access.',404);
-  const months=await store.all('SELECT month,cohort,reason FROM paid_months WHERE account_id=? AND offering_id=? ORDER BY month,cohort LIMIT 513',[accountId,offer]),grants=await store.all('SELECT g.website_id,g.reason FROM websites w CROSS JOIN surah_grants g WHERE w.offering_id=? AND g.website_id=w.website_id AND g.account_id=? ORDER BY g.website_id LIMIT 129',[offer,accountId]);if(months.length>512||grants.length>128)throw fail('This account needs a narrower access view.',409);
-  person={...account,months,grants,liveFacts:await store.first('SELECT windows_json,has_allocation,course,verified_at,ready FROM source_access_people WHERE account_id=? AND offering_id=?',[accountId,offer])};
+  const months=await store.all('SELECT month,cohort FROM paid_months WHERE account_id=? AND offering_id=? ORDER BY month,cohort LIMIT 513',[accountId,offer]),grants=await store.all('SELECT g.website_id FROM websites w CROSS JOIN surah_grants g WHERE w.offering_id=? AND g.website_id=w.website_id AND g.account_id=? ORDER BY g.website_id LIMIT 129',[offer,accountId]);if(months.length>512||grants.length>128)throw fail('This account needs a narrower access view.',409);
+  const websiteMonths=await store.all('SELECT month FROM website_months WHERE account_id=? AND offering_id=? ORDER BY month LIMIT 241',[accountId,offer]);if(websiteMonths.length>240)throw fail('This account needs a narrower month view.',409);
+  person={...account,months,websiteMonths:websiteMonths.map(m=>m.month),grants,liveFacts:await store.first('SELECT windows_json,has_allocation,course,verified_at,ready FROM source_access_people WHERE account_id=? AND offering_id=?',[accountId,offer])};
  }
  const pendingJobs=await store.all("SELECT operation_id,state,account_id FROM provisioning INDEXED BY provisioning_pending_actor WHERE offering_id=? AND actor_id=? AND state<>'COMPLETE' ORDER BY operation_id LIMIT 11",[offer,actor.account_id]);
  return {revision:current,ownership,kind:scope.kind,pendingJobs,canLinkAccount:Boolean(actor.global_admin),canChangeStaff:Boolean(actor.global_admin&&!academyAuthority(store.env)),participants:participants.slice(0,25),more:participants.length>25,next:participants.length>25?participants[24].account_id:null,websites,person};

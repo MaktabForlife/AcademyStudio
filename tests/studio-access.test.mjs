@@ -156,6 +156,7 @@ test('suspended people and archived paid offerings hand over acquired rights whi
   await handover();const row=await good({action:'read',accountId:x.student});assert.equal(row.person.purchased,1);assert.equal(row.person.active,0);assert.equal((await f.request('/api/websites/site-course',{cookie})).status,401);
   await assert.rejects(x.run("UPDATE course_settings SET legacy_access_model='FREE' WHERE activity_key=?",x.courseA),/STUDIO_ACCESS_MANAGED/);
   await x.run('UPDATE accounts SET active=1 WHERE account_id=?',x.student);await x.recover(8);ok(await f.request('/api/websites/site-course',{cookie}));assert.equal((await f.request('/api/offerings/course/join',{cookie,method:'POST',body:{sessionId:'course-session'}})).status,403);assert.equal(await f.db.prepare("SELECT live_enabled FROM source_access_scopes WHERE offering_id='course'").first('live_enabled'),0);
+  const adminCookie=await signIn(f,'global');await f.run("UPDATE timetable SET cancelled=0,starts_at=?,ends_at=? WHERE session_id='course-session'",Date.now()-1000,Date.now()+60_000);assert.equal((await f.request('/api/offerings/course/join',{cookie:adminCookie,method:'POST',body:{sessionId:'course-session'}})).body.code,'JOIN_CLOSED');
  }finally{await f.close();}
 });
 
@@ -165,5 +166,35 @@ test('received master mismatch fences Studio immediately, while unrelated live p
   old.account.active=false;assert.equal((await f.deliver(old,{stream})).response.status,200);assert.equal((await f.request('/api/websites/site-course',{cookie})).body.code,'ACCESS_REFRESH_REQUIRED');
   assert.equal((await f.deliver({type:'account',account:{...old.account,verifiedAt:Date.now()}})).response.status,200);assert.equal((await f.request('/api/websites/site-course',{cookie})).status,401);
   old.account.active=true;old.blocked=true;assert.equal((await f.deliver({type:'account',account:{...old.account,verifiedAt:Date.now()}})).response.status,200);assert.equal((await f.deliver(old,{stream})).response.status,200);ok(await f.request('/api/websites/site-course',{cookie}));assert.equal((await f.request('/api/offerings/course/join',{cookie,method:'POST',body:{sessionId:'course-session'}})).body.code,'ACCESS_REFRESH_REQUIRED');
+ }finally{await f.close();}
+});
+
+test('website-only paid months remain visible and editable without creating blank-cohort recording rights',{timeout:60000},async()=>{
+ const {f,x,handover,good}=await studioFixture();try{
+  await handover(x.programA);let v=await good({action:'read',accountId:x.grant},{activity:x.programA});await good({action:'save',revision:v.revision,change:{action:'access-batch',operationId:crypto.randomUUID(),changes:[{action:'surah-grant',accountId:x.grant,websiteId:'site-surah',enabled:false,reason:'Replace with the exact acquired website month'},{action:'website-months',changes:[{accountId:x.grant,month:'2024-01',paid:true,reason:'Historical paid month without a confirmed recording cohort'}]}]}},{activity:x.programA});
+  const cookie=await signIn(f,'studentB');ok(await f.request('/api/websites/site-surah',{cookie}));await f.run("INSERT INTO objects VALUES('website-month-video',NULL,'video/youtube','Blank-cohort recording',0,NULL,'abcdefghijk')");await f.run("INSERT INTO attachments VALUES('website-month-recording','tafseer','site-surah','website-month-video','lesson-id','2024-01-23','','Recording','RECORDING',1)");assert.equal((await f.request('/api/media/website-month-recording',{cookie})).status,403);
+  v=await good({action:'read',accountId:x.grant},{activity:x.programA});assert.deepEqual(v.person.websiteMonths,['2024-01']);assert.deepEqual(v.person.months,[]);await assert.rejects(x.run('UPDATE program_monthly_media_policies SET enabled=0 WHERE activity_key=?',x.programA),/STUDIO_ACCESS_MANAGED/);
+  await good({action:'save',revision:v.revision,change:{action:'website-months',operationId:crypto.randomUUID(),changes:[{accountId:x.grant,month:'2024-01',paid:false,reason:'Explicit reviewed revocation'}]}},{activity:x.programA});assert.equal((await f.request('/api/websites/site-surah',{cookie})).status,403);
+ }finally{await f.close();}
+});
+
+test('a large bounded command drains confirmed source deliveries before executing instead of exceeding the signed envelope',{timeout:60000},async()=>{
+ const {f,x,handover,good,proxy}=await studioFixture();try{
+  await handover();const actor=f.source.f.actors.global,stream='account:'+actor,current=await x.db.prepare('SELECT * FROM website_platform_account_state WHERE account_id=?').bind(actor).first();await x.run('UPDATE website_platform_streams SET version=version+1 WHERE stream=?',stream);const version=await x.db.prepare('SELECT version FROM website_platform_streams WHERE stream=?').bind(stream).first('version');
+  const event={type:'account',account:{accountId:actor,displayName:current.display_name,active:true,admitted:true,epoch:current.epoch,globalAdmin:true,verifiedAt:Date.now()},padding:'p'.repeat(200_000)};await x.run('INSERT INTO website_platform_outbox(operation_id,stream,version,event_json) VALUES(?,?,?,?)',crypto.randomUUID(),stream,version,JSON.stringify(event));
+  const command={action:'read',padding:'c'.repeat(120_000)},first=await proxy(command);assert.equal(first.body.code,'STUDIO_CONFIRMATION_PENDING');assert.equal((await good(command)).ownership.authority,'WEBSITE');
+ }finally{await f.close();}
+});
+
+test('a fresh authenticated Admin epoch can resume a prepared identity intent without trusting the expired session',{timeout:60000},async()=>{
+ const {f,x,good,handover,proxy}=await studioFixture();try{
+  await handover();const operationId=crypto.randomUUID(),name='Synthetic prepared intent resumed with current authority';await good({action:'provision',input:{operationId,displayName:name}});await x.run('UPDATE account_credentials SET credential_epoch=credential_epoch+1 WHERE account_id=?',f.source.f.actors.global);assert.equal((await proxy({action:'resume',input:{jobId:operationId}})).status,401);
+  const r=await f.runtime.dispatchFetch('https://academy.test/api/account/login',{method:'POST',headers:{Origin:'https://academy.test','Content-Type':'application/json'},body:JSON.stringify({uniqueid:'separation-global',pin:'1234'})}),fresh=await r.json();assert.equal(r.status,200,JSON.stringify(fresh));const complete=await good({action:'resume',input:{jobId:operationId}},{headers:{Authorization:'Bearer '+fresh.token}});assert.equal(complete.state,'COMPLETE');assert.equal(await x.db.prepare('SELECT count(*) n FROM accounts WHERE display_name=?').bind(name).first('n'),1);
+ }finally{await f.close();}
+});
+
+test('the server Admin proof never extends the underlying Academy session expiry',{timeout:60000},async()=>{
+ const {f,x,good,handover}=await studioFixture();try{
+  await handover();await good({action:'read'});const ref=await f.db.prepare('SELECT source_ref FROM sessions WHERE account_id=? ORDER BY expires_at DESC LIMIT 1').bind(f.source.f.actors.global).first('source_ref'),expiry=Date.now()+20_000;await x.run('UPDATE account_sessions SET expires_at=? WHERE session_id=(SELECT session_id FROM website_platform_sessions WHERE source_ref=?)',new Date(expiry).toISOString(),ref);await good({action:'read'});assert((await f.db.prepare('SELECT expires_at FROM sessions WHERE source_ref=?').bind(ref).first('expires_at'))<=expiry);
  }finally{await f.close();}
 });

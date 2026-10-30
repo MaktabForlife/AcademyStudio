@@ -13,6 +13,7 @@ export async function accessGate(store,actor,offeringId,{admin=false,live=false}
  if(!actor.source_ref)throw fail('Sign in through Academy for parallel access.',401,'SIGN_IN_REQUIRED');
  const liveAge=Math.max(30,Math.min(86400,Number(store.env.LIVE_ACCESS_MAX_AGE_SECONDS)||boundedAge(store.env)/1000))*1000,maxAge=live?Math.min(liveAge,boundedAge(store.env,admin)):boundedAge(store.env,admin);
  if(row&&!row.enabled)throw fail('This offering is unavailable in Academy.',403,'SOURCE_SCOPE_UNAVAILABLE');
+ if(live&&row?.live_enabled===0)throw fail('Live entry is closed for this offering.',403,'JOIN_CLOSED');
  if(!row?.ready||row.person_generation!==row.generation||row.verified_at<Date.now()-maxAge)throw Object.assign(fail('Academy access needs to be confirmed.',409,'ACCESS_REFRESH_REQUIRED'),{offeringId});return row?.authority==='WEBSITE'?{...row,studio:true}:row;
 }
 export async function rejectAuthorityWrite(store,offeringId){

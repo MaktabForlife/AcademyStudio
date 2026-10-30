@@ -4,7 +4,7 @@ import {fileKind,newCourse} from '../public/shared/model.mjs';
 import {saveContent} from './content.mjs';
 import {validatePackage} from './content-package.mjs';
 export async function change(env,store,actor,offeringId,input,guardOptions={}){
- if(!guardOptions.collect&&['access-batch','participant','paid-months','staff','surah-grant','completion-month','completion-date','enrolment-decision','website-create','attachment'].includes(input.action))await rejectAuthorityWrite(store,offeringId);
+ if(!guardOptions.collect&&['access-batch','participant','paid-months','website-months','staff','surah-grant','completion-month','completion-date','enrolment-decision','website-create','attachment'].includes(input.action))await rejectAuthorityWrite(store,offeringId);
  if(!guardOptions.collect)await store.scope(actor,offeringId,{admin:true});const statements=[];const s=(sql,args=[])=>statements.push(store.statement(sql,args));
  if(input.action==='access-batch'){
   if(!Array.isArray(input.changes)||!input.changes.length||input.changes.length>40)throw fail('Save up to 40 access changes together.');
@@ -14,7 +14,7 @@ export async function change(env,store,actor,offeringId,input,guardOptions={}){
    const values=people.map(item=>{const enrolled=flag(item.enrolled),live=flag(item.live);if(previous.get(item.accountId)&&item.purchased===false&&!item.reason?.trim())throw fail('Give a reason for revoking a whole-Course purchase.');return {account:id(item.accountId),enrolled,live:enrolled&&live,purchased:flag(item.purchased),cohort:text(item.cohort||'',180)};});
    s("INSERT INTO participation SELECT json_extract(value,'$.account'),?,json_extract(value,'$.enrolled'),json_extract(value,'$.live'),json_extract(value,'$.purchased'),json_extract(value,'$.cohort') FROM json_each(?) WHERE 1 ON CONFLICT(account_id,offering_id) DO UPDATE SET enrolled=excluded.enrolled,live=excluded.live,purchased=excluded.purchased,cohort=excluded.cohort",[offeringId,JSON.stringify(values)]);
   }
-  for(const item of input.changes){if(item.action==='participant')continue;if(!['paid-months','surah-grant','staff'].includes(item.action))throw fail('Choose a supported access change.');statements.push(...await change(env,store,actor,offeringId,item,{collect:true}));}
+  for(const item of input.changes){if(item.action==='participant')continue;if(!['paid-months','website-months','surah-grant','staff'].includes(item.action))throw fail('Choose a supported access change.');statements.push(...await change(env,store,actor,offeringId,item,{collect:true}));}
   if(statements.length>90)throw fail('Save a smaller access batch.');
  }else if(input.action==='participant'){
   const accountId=id(input.accountId),enrolled=flag(input.enrolled),live=flag(input.live);if(!await store.first('SELECT account_id FROM accounts WHERE account_id=?',[accountId]))throw fail('Create or explicitly link the Academy account first.',409,'IDENTITY_REQUIRED');
@@ -22,10 +22,15 @@ export async function change(env,store,actor,offeringId,input,guardOptions={}){
   s(`INSERT INTO participation VALUES(?,?,?,?,?,?) ON CONFLICT(account_id,offering_id) DO UPDATE SET enrolled=excluded.enrolled,live=excluded.live,purchased=excluded.purchased,cohort=excluded.cohort`,[accountId,offeringId,enrolled,enrolled&&live,flag(input.purchased),text(input.cohort||'',180)]);
  }else if(input.action==='paid-months'){
   const offering=await store.first('SELECT kind FROM offerings WHERE offering_id=?',[offeringId]);if(offering.kind!=='TAFSEER'||!Array.isArray(input.changes)||input.changes.length>240)throw fail('Choose up to 240 Tafseer month changes.');
-  const cells=[],seen=new Set();for(const cell of input.changes){const row={accountId:id(cell.accountId),month:month(cell.month),cohort:text(cell.cohort||'',180),paid:flag(cell.paid),reason:text(cell.reason||'',500)},key=JSON.stringify([row.accountId,row.month,row.cohort]);if(seen.has(key))throw fail('Choose each account/month/cohort only once.');seen.add(key);if(!row.paid&&!row.reason.trim())throw fail('Give a reason for removing acquired rights.');cells.push(row);}
+  const cells=[],seen=new Set();for(const cell of input.changes){const row={accountId:id(cell.accountId),month:month(cell.month),cohort:text(cell.cohort||'',180),paid:flag(cell.paid),reason:text(cell.reason||input.reason||'',500)},key=JSON.stringify([row.accountId,row.month,row.cohort]);if(seen.has(key))throw fail('Choose each account/month/cohort only once.');seen.add(key);if(!row.paid&&!row.reason.trim())throw fail('Give a reason for removing acquired rights.');cells.push(row);}
   const rows=JSON.stringify(cells);
   s("INSERT INTO paid_months SELECT json_extract(value,'$.accountId'),?,json_extract(value,'$.month'),json_extract(value,'$.cohort'),json_extract(value,'$.reason') FROM json_each(?) WHERE json_extract(value,'$.paid')=1 ON CONFLICT DO NOTHING",[offeringId,rows]);
   s("DELETE FROM paid_months WHERE offering_id=? AND (account_id,month,cohort) IN(SELECT json_extract(value,'$.accountId'),json_extract(value,'$.month'),json_extract(value,'$.cohort') FROM json_each(?) WHERE json_extract(value,'$.paid')=0)",[offeringId,rows]);
+  s("INSERT INTO website_months SELECT json_extract(value,'$.accountId'),?,json_extract(value,'$.month') FROM json_each(?) WHERE json_extract(value,'$.paid')=1 ON CONFLICT DO NOTHING",[offeringId,rows]);
+  s("DELETE FROM website_months WHERE offering_id=? AND (account_id,month) IN(SELECT json_extract(value,'$.accountId'),json_extract(value,'$.month') FROM json_each(?) WHERE json_extract(value,'$.paid')=0) AND NOT EXISTS(SELECT 1 FROM paid_months p WHERE p.account_id=website_months.account_id AND p.offering_id=website_months.offering_id AND p.month=website_months.month)",[offeringId,rows]);
+ }else if(input.action==='website-months'){
+  const offering=await store.first('SELECT kind FROM offerings WHERE offering_id=?',[offeringId]);if(offering.kind!=='TAFSEER'||!Array.isArray(input.changes)||input.changes.length>240)throw fail('Choose up to 240 website-month changes.');
+  const cells=input.changes.map(c=>{const paid=flag(c.paid),reason=text(c.reason||input.reason||'',500);if(!paid&&!reason.trim())throw fail('Give a reason for removing acquired website rights.');return {accountId:id(c.accountId),month:month(c.month),paid,reason};}),rows=JSON.stringify(cells);if(new Set(cells.map(c=>JSON.stringify([c.accountId,c.month]))).size!==cells.length)throw fail('Choose each account and website month once.');
   s("INSERT INTO website_months SELECT json_extract(value,'$.accountId'),?,json_extract(value,'$.month') FROM json_each(?) WHERE json_extract(value,'$.paid')=1 ON CONFLICT DO NOTHING",[offeringId,rows]);
   s("DELETE FROM website_months WHERE offering_id=? AND (account_id,month) IN(SELECT json_extract(value,'$.accountId'),json_extract(value,'$.month') FROM json_each(?) WHERE json_extract(value,'$.paid')=0) AND NOT EXISTS(SELECT 1 FROM paid_months p WHERE p.account_id=website_months.account_id AND p.offering_id=website_months.offering_id AND p.month=website_months.month)",[offeringId,rows]);
  }else if(input.action==='staff'){
@@ -61,7 +66,7 @@ export async function change(env,store,actor,offeringId,input,guardOptions={}){
   if(input.state==='APPROVED')s('INSERT INTO participation VALUES(?,?,1,0,0,\'\') ON CONFLICT(account_id,offering_id) DO UPDATE SET enrolled=1',[target,offeringId]);
  }else throw fail('Unknown administration action.');
  if(guardOptions.collect)return statements;
- return store.mutate(actor,offeringId,input,statements,{saved:true},{...guardOptions,global:input.action==='staff'||input.action==='access-batch'&&input.changes.some(c=>c.action==='staff'),studio:['access-batch','participant','paid-months','staff','surah-grant','completion-month','completion-date','enrolment-decision','website-create','attachment'].includes(input.action)});
+ return store.mutate(actor,offeringId,input,statements,{saved:true},{...guardOptions,global:input.action==='staff'||input.action==='access-batch'&&input.changes.some(c=>c.action==='staff'),studio:['access-batch','participant','paid-months','website-months','staff','surah-grant','completion-month','completion-date','enrolment-decision','website-create','attachment'].includes(input.action)});
 }
 export async function upload(env,store,actor,offeringId,request){
  await store.scope(actor,offeringId,{admin:true});const url=new URL(request.url),assetId=id(url.searchParams.get('assetId')),operationId=id(url.searchParams.get('operationId')),filename=text(url.searchParams.get('filename')||'File');
