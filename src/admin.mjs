@@ -1,19 +1,35 @@
-import {rejectAuthorityWrite} from './access.mjs';
+import {academyAuthority,rejectAuthorityWrite} from './access.mjs';
 import {fail,id,text,integer,flag,month,date,sha256,bytes,httpsURL} from './protocol.mjs';
 import {fileKind,newCourse} from '../public/shared/model.mjs';
 import {saveContent} from './content.mjs';
 import {validatePackage} from './content-package.mjs';
-export async function change(env,store,actor,offeringId,input){
- if(['participant','paid-months','staff','surah-grant','completion-month','completion-date','enrolment-decision','website-create','attachment'].includes(input.action))await rejectAuthorityWrite(store,offeringId);
- await store.scope(actor,offeringId,{admin:true});const statements=[];const s=(sql,args=[])=>statements.push(store.statement(sql,args));
- if(input.action==='participant'){
-  const accountId=id(input.accountId);if(!await store.first('SELECT account_id FROM accounts WHERE account_id=?',[accountId]))throw fail('Create or explicitly link the Academy account first.',409,'IDENTITY_REQUIRED');
+export async function change(env,store,actor,offeringId,input,guardOptions={}){
+ if(!guardOptions.collect&&['access-batch','participant','paid-months','staff','surah-grant','completion-month','completion-date','enrolment-decision','website-create','attachment'].includes(input.action))await rejectAuthorityWrite(store,offeringId);
+ if(!guardOptions.collect)await store.scope(actor,offeringId,{admin:true});const statements=[];const s=(sql,args=[])=>statements.push(store.statement(sql,args));
+ if(input.action==='access-batch'){
+  if(!Array.isArray(input.changes)||!input.changes.length||input.changes.length>40)throw fail('Save up to 40 access changes together.');
+  const people=input.changes.filter(item=>item.action==='participant'),ids=people.map(item=>id(item.accountId));if(new Set(ids).size!==ids.length)throw fail('Choose each participant once per Save.');
+  if(people.length){const rows=await store.all("SELECT a.account_id,p.purchased FROM json_each(?) j JOIN accounts a ON a.account_id=j.value LEFT JOIN participation p ON p.account_id=a.account_id AND p.offering_id=?",[JSON.stringify(ids),offeringId]),previous=new Map(rows.map(r=>[r.account_id,r.purchased]));
+   if(rows.length!==people.length)throw fail('Create or explicitly link the Academy account first.',409,'IDENTITY_REQUIRED');
+   const values=people.map(item=>{const enrolled=flag(item.enrolled),live=flag(item.live);if(previous.get(item.accountId)&&item.purchased===false&&!item.reason?.trim())throw fail('Give a reason for revoking a whole-Course purchase.');return {account:id(item.accountId),enrolled,live:enrolled&&live,purchased:flag(item.purchased),cohort:text(item.cohort||'',180)};});
+   s("INSERT INTO participation SELECT json_extract(value,'$.account'),?,json_extract(value,'$.enrolled'),json_extract(value,'$.live'),json_extract(value,'$.purchased'),json_extract(value,'$.cohort') FROM json_each(?) WHERE 1 ON CONFLICT(account_id,offering_id) DO UPDATE SET enrolled=excluded.enrolled,live=excluded.live,purchased=excluded.purchased,cohort=excluded.cohort",[offeringId,JSON.stringify(values)]);
+  }
+  for(const item of input.changes){if(item.action==='participant')continue;if(!['paid-months','surah-grant','staff'].includes(item.action))throw fail('Choose a supported access change.');statements.push(...await change(env,store,actor,offeringId,item,{collect:true}));}
+  if(statements.length>90)throw fail('Save a smaller access batch.');
+ }else if(input.action==='participant'){
+  const accountId=id(input.accountId),enrolled=flag(input.enrolled),live=flag(input.live);if(!await store.first('SELECT account_id FROM accounts WHERE account_id=?',[accountId]))throw fail('Create or explicitly link the Academy account first.',409,'IDENTITY_REQUIRED');
   const previous=await store.first('SELECT purchased FROM participation WHERE account_id=? AND offering_id=?',[accountId,offeringId]);if(previous?.purchased&&input.purchased===false&&!input.reason?.trim())throw fail('Give a reason for revoking a whole-Course purchase.');
-  s(`INSERT INTO participation VALUES(?,?,?,?,?,?) ON CONFLICT(account_id,offering_id) DO UPDATE SET enrolled=excluded.enrolled,live=excluded.live,purchased=excluded.purchased,cohort=excluded.cohort`,[accountId,offeringId,flag(input.enrolled),flag(input.live),flag(input.purchased),text(input.cohort||'',180)]);
+  s(`INSERT INTO participation VALUES(?,?,?,?,?,?) ON CONFLICT(account_id,offering_id) DO UPDATE SET enrolled=excluded.enrolled,live=excluded.live,purchased=excluded.purchased,cohort=excluded.cohort`,[accountId,offeringId,enrolled,enrolled&&live,flag(input.purchased),text(input.cohort||'',180)]);
  }else if(input.action==='paid-months'){
   const offering=await store.first('SELECT kind FROM offerings WHERE offering_id=?',[offeringId]);if(offering.kind!=='TAFSEER'||!Array.isArray(input.changes)||input.changes.length>240)throw fail('Choose up to 240 Tafseer month changes.');
-  for(const cell of input.changes){const args=[id(cell.accountId),offeringId,month(cell.month),text(cell.cohort||'',180)];if(cell.paid===true)s('INSERT INTO paid_months VALUES(?,?,?,?,?) ON CONFLICT DO NOTHING',[...args,text(cell.reason||'',500)]);else if(cell.paid===false){if(!cell.reason?.trim())throw fail('Give a reason for removing acquired rights.');s('DELETE FROM paid_months WHERE account_id=? AND offering_id=? AND month=? AND cohort=?',args);}else throw fail('Choose paid or unpaid.');if(cell.paid)s('INSERT INTO website_months VALUES(?,?,?) ON CONFLICT DO NOTHING',args.slice(0,3));else s('DELETE FROM website_months WHERE account_id=? AND offering_id=? AND month=? AND NOT EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=? AND m.offering_id=? AND m.month=?)',[...args.slice(0,3),...args.slice(0,3)]);}
+  const cells=[],seen=new Set();for(const cell of input.changes){const row={accountId:id(cell.accountId),month:month(cell.month),cohort:text(cell.cohort||'',180),paid:flag(cell.paid),reason:text(cell.reason||'',500)},key=JSON.stringify([row.accountId,row.month,row.cohort]);if(seen.has(key))throw fail('Choose each account/month/cohort only once.');seen.add(key);if(!row.paid&&!row.reason.trim())throw fail('Give a reason for removing acquired rights.');cells.push(row);}
+  const rows=JSON.stringify(cells);
+  s("INSERT INTO paid_months SELECT json_extract(value,'$.accountId'),?,json_extract(value,'$.month'),json_extract(value,'$.cohort'),json_extract(value,'$.reason') FROM json_each(?) WHERE json_extract(value,'$.paid')=1 ON CONFLICT DO NOTHING",[offeringId,rows]);
+  s("DELETE FROM paid_months WHERE offering_id=? AND (account_id,month,cohort) IN(SELECT json_extract(value,'$.accountId'),json_extract(value,'$.month'),json_extract(value,'$.cohort') FROM json_each(?) WHERE json_extract(value,'$.paid')=0)",[offeringId,rows]);
+  s("INSERT INTO website_months SELECT json_extract(value,'$.accountId'),?,json_extract(value,'$.month') FROM json_each(?) WHERE json_extract(value,'$.paid')=1 ON CONFLICT DO NOTHING",[offeringId,rows]);
+  s("DELETE FROM website_months WHERE offering_id=? AND (account_id,month) IN(SELECT json_extract(value,'$.accountId'),json_extract(value,'$.month') FROM json_each(?) WHERE json_extract(value,'$.paid')=0) AND NOT EXISTS(SELECT 1 FROM paid_months p WHERE p.account_id=website_months.account_id AND p.offering_id=website_months.offering_id AND p.month=website_months.month)",[offeringId,rows]);
  }else if(input.action==='staff'){
+  if(academyAuthority(env))throw fail('Manage scoped staff roles in Academy User profiles.',409,'ACADEMY_STAFF_AUTHORITY');
   if(!actor.global_admin)throw fail('Only Global Admin changes staff authority.',403);const accountId=id(input.accountId);if(input.role===null)s('DELETE FROM staff WHERE account_id=? AND offering_id=?',[accountId,offeringId]);else {if(!['ADMIN','TEACHER'].includes(input.role))throw fail('Choose a staff role.');s('INSERT INTO staff VALUES(?,?,?,?) ON CONFLICT(account_id,offering_id) DO UPDATE SET role=excluded.role,can_create_account=excluded.can_create_account',[accountId,offeringId,input.role,flag(input.canCreateAccount||false)]);}
  }else if(input.action==='surah-grant'){
   const website=await store.first('SELECT website_id FROM websites WHERE website_id=? AND offering_id=?',[id(input.websiteId),offeringId]);if(!website)throw fail('Choose a website in this offering.');if(!input.reason?.trim())throw fail('Give a reason for the grant change.');
@@ -44,7 +60,8 @@ export async function change(env,store,actor,offeringId,input){
   // Approval is participation only. Self-reported payment never creates a purchase.
   if(input.state==='APPROVED')s('INSERT INTO participation VALUES(?,?,1,0,0,\'\') ON CONFLICT(account_id,offering_id) DO UPDATE SET enrolled=1',[target,offeringId]);
  }else throw fail('Unknown administration action.');
- return store.mutate(actor,offeringId,input,statements,{saved:true},{global:input.action==='staff'});
+ if(guardOptions.collect)return statements;
+ return store.mutate(actor,offeringId,input,statements,{saved:true},{...guardOptions,global:input.action==='staff'||input.action==='access-batch'&&input.changes.some(c=>c.action==='staff'),studio:['access-batch','participant','paid-months','staff','surah-grant','completion-month','completion-date','enrolment-decision','website-create','attachment'].includes(input.action)});
 }
 export async function upload(env,store,actor,offeringId,request){
  await store.scope(actor,offeringId,{admin:true});const url=new URL(request.url),assetId=id(url.searchParams.get('assetId')),operationId=id(url.searchParams.get('operationId')),filename=text(url.searchParams.get('filename')||'File');

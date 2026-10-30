@@ -10,7 +10,7 @@ export class Store {
  async batch(statements){return this.count(await this.db.batch(statements));}
  async actor(tokenHash,now=Date.now(),{allowExpiredStatus=false}={}){
   const row=await this.first(`SELECT a.*,s.token_hash,s.expires_at,s.source_ref FROM sessions s JOIN accounts a USING(account_id)
-   WHERE s.token_hash=? AND s.revoked=0 AND s.expires_at>? AND s.epoch=a.epoch AND a.active=1 AND a.admitted=1`,[tokenHash,now]);
+   WHERE s.token_hash=? AND s.revoked=0 AND s.expires_at>? AND s.epoch=a.epoch AND NOT EXISTS(SELECT 1 FROM source_session_revocations r WHERE r.source_ref=s.source_ref) AND a.active=1 AND a.admitted=1`,[tokenHash,now]);
   if(!row)throw fail('Sign in to Academy to continue.',401,'SIGN_IN_REQUIRED');
   if(!allowExpiredStatus&&row.verified_at<now-boundedAge(this.env))throw fail('Your Academy account status needs to be refreshed.',401,'STATUS_EXPIRED');return row;
  }
@@ -24,14 +24,14 @@ export class Store {
  }
  async replay(actorId,operationId,hash){const row=await this.first('SELECT actor_id,payload_hash,result_json FROM operations WHERE operation_id=?',[id(operationId)]);if(!row)return null;if(row.actor_id!==actorId||row.payload_hash!==hash)throw fail('This retry belongs to another change.',409,'RETRY_CONFLICT');return {...JSON.parse(row.result_json),replayed:true};}
  requestHash(scope,input){return sha256(JSON.stringify({scope:scope||'GLOBAL',input}));}
- guard(actor,offeringId,{admin=true,teacher=false,global=false,expectedSQL='1',expectedArgs=[]}={}){
+ guard(actor,offeringId,{admin=true,teacher=false,global=false,studio=false,expectedSQL='1',expectedArgs=[]}={}){
   const guardId=crypto.randomUUID(),now=Date.now();
   const statement=this.statement(`INSERT INTO guards(guard_id,accepted) SELECT ?,EXISTS(
    SELECT 1 FROM accounts a JOIN sessions s USING(account_id) WHERE a.account_id=? AND s.token_hash=?
-   AND a.active=1 AND a.admitted=1 AND a.epoch=s.epoch AND s.revoked=0 AND s.expires_at>? AND a.verified_at>=?
+   AND NOT EXISTS(SELECT 1 FROM source_session_revocations r WHERE r.source_ref=s.source_ref) AND a.active=1 AND a.admitted=1 AND a.epoch=s.epoch AND s.revoked=0 AND s.expires_at>? AND a.verified_at>=?
    AND (?=0 OR a.global_admin=1 OR (?=0 AND EXISTS(SELECT 1 FROM staff f WHERE f.account_id=a.account_id AND f.offering_id=? AND (f.role='ADMIN' OR (?=1 AND f.role='TEACHER')))))
    AND (?='' OR EXISTS(SELECT 1 FROM offerings o WHERE o.offering_id=? AND o.active=1))
-   AND (${academyAuthority(this.env)&&offeringId?"EXISTS(SELECT 1 FROM source_access_scopes x WHERE x.offering_id=? AND (x.authority='WEBSITE' OR x.enabled=1 AND EXISTS(SELECT 1 FROM source_access_people p WHERE p.offering_id=x.offering_id AND p.account_id=a.account_id AND p.ready=1 AND p.generation=x.generation AND p.verified_at>=?)))":'1'}) AND (${expectedSQL}))`,[guardId,actor.account_id,actor.token_hash,now,now-boundedAge(this.env,admin),Number(admin),Number(global),offeringId||'',Number(teacher),offeringId||'',offeringId||'',...(academyAuthority(this.env)&&offeringId?[offeringId,now-boundedAge(this.env,admin)]:[]),...expectedArgs]);
+   AND (${academyAuthority(this.env)&&offeringId?"EXISTS(SELECT 1 FROM source_access_scopes x WHERE x.offering_id=? AND (x.enabled=1 AND (x.authority='ACADEMY' OR x.authority='WEBSITE' AND EXISTS(SELECT 1 FROM access_handovers h WHERE h.offering_id=x.offering_id AND h.phase='COMMITTED')) AND EXISTS(SELECT 1 FROM source_access_people p WHERE p.offering_id=x.offering_id AND p.account_id=a.account_id AND p.ready=1 AND p.generation=x.generation AND p.verified_at>=?)))":'1'}) AND (${studio&&academyAuthority(this.env)?"EXISTS(SELECT 1 FROM source_access_scopes own JOIN access_handovers h USING(offering_id) WHERE own.offering_id=? AND own.authority='WEBSITE' AND h.phase='COMMITTED')":'1'}) AND (${expectedSQL}))`,[guardId,actor.account_id,actor.token_hash,now,now-boundedAge(this.env,admin),Number(admin),Number(global),offeringId||'',Number(teacher),offeringId||'',offeringId||'',...(academyAuthority(this.env)&&offeringId?[offeringId,now-boundedAge(this.env,admin)]:[]),...(studio&&academyAuthority(this.env)?[offeringId]:[]),...expectedArgs]);
   return {statement,cleanup:this.statement('DELETE FROM guards WHERE guard_id=?',[guardId])};
  }
  async mutate(actor,offeringId,input,statements,result,options={}){

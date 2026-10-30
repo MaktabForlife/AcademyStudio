@@ -23,7 +23,7 @@ export async function receive(request,env,store){
  if(data.version!==(old?.version||0)+1)throw fail('Deliver the missing version first.',409,'DELIVERY_GAP');
  const statements=[];let extraSQL='1',extraArgs=[];
  if(data.superseded===true&&['access','access-scope'].includes(event.type)){await fenceAccess(store,event,data.version);}
- else if(['access','access-scope'].includes(event.type)){statements.push(...await accessStatements(store,event,data.version,a=>accountStatements(store,a,{insertOnly:true})));extraSQL="NOT EXISTS(SELECT 1 FROM source_access_scopes WHERE offering_id=? AND authority='WEBSITE')";extraArgs=[event.offeringId||event.offering.id];}
+ else if(['access','access-scope'].includes(event.type)){statements.push(...await accessStatements(store,event,data.version,a=>accountStatements(store,a,{insertOnly:true})));const authority=await store.first('SELECT authority FROM source_access_scopes WHERE offering_id=?',[event.offeringId||event.offering.id]);extraSQL="COALESCE((SELECT authority FROM source_access_scopes WHERE offering_id=?),'ACADEMY')=?";extraArgs=[event.offeringId||event.offering.id,authority?.authority||'ACADEMY'];}
  else if(event.type==='account'){
   if(data.stream!=='account:'+event.account.accountId)throw fail('Invalid account stream.');statements.push(...accountStatements(store,event.account));
   const a=event.account;statements.push(store.statement('DELETE FROM circles_navigation WHERE account_id=? AND epoch<=?',[id(a.accountId),integer(a.epoch)]));
@@ -36,7 +36,7 @@ export async function receive(request,env,store){
   const cancelled=(event.cancelledIds||[]).map(value=>id(value));if(cancelled.length>200)throw fail('Keep each cancellation batch bounded.');const ids=[...event.sessions.map(s=>id(s.id)),...cancelled];
   const existing=await store.all('SELECT session_id,offering_id FROM timetable WHERE session_id IN(SELECT value FROM json_each(?))',[JSON.stringify(ids)]);if(existing.some(row=>row.offering_id!==offeringId))throw fail('A session belongs to another offering.',409);
   extraSQL="NOT EXISTS(SELECT 1 FROM timetable WHERE session_id IN(SELECT value FROM json_each(?)) AND offering_id<>?) AND NOT EXISTS(SELECT 1 FROM offerings WHERE offering_id=? AND kind<>?)";extraArgs=[JSON.stringify(ids),offeringId,offeringId,offer.kind];
-  statements.push(store.statement(`INSERT INTO offerings VALUES(?,?,?,?,?) ON CONFLICT(offering_id) DO UPDATE SET title=excluded.title,active=excluded.active,revision=excluded.revision WHERE offerings.kind=excluded.kind`,[offeringId,offer.kind,text(offer.title),flag(offer.active),data.version]));
+  statements.push(store.statement(`INSERT INTO offerings VALUES(?,?,?,?,?) ON CONFLICT(offering_id) DO UPDATE SET title=excluded.title,active=excluded.active,revision=excluded.revision WHERE offerings.kind=excluded.kind`,[offeringId,offer.kind,text(offer.title),Number(offer.active||((await store.first('SELECT authority FROM source_access_scopes WHERE offering_id=?',[offeringId]))?.authority==='WEBSITE'&&['COURSE','TAFSEER'].includes(offer.kind))),data.version]));
   // Stable session identities preserve local attachment links through corrections and cancellation.
   if(event.mode!=='delta')statements.push(store.statement('UPDATE timetable SET cancelled=1,revision=? WHERE offering_id=? AND cancelled=0 AND session_id NOT IN(SELECT value FROM json_each(?))',[data.version,offeringId,JSON.stringify(event.sessions.map(s=>s.id))]));
   if(cancelled.length)statements.push(store.statement('UPDATE timetable SET cancelled=1,revision=? WHERE offering_id=? AND session_id IN(SELECT value FROM json_each(?))',[data.version,offeringId,JSON.stringify(cancelled)]));
@@ -56,7 +56,7 @@ export async function receive(request,env,store){
   const loginPath=event.loginPath||null;if(loginPath&&!/^\/account\/[A-Za-z0-9_-]{1,160}$/.test(loginPath))throw fail('Invalid Academy account link.');
   statements.push(store.statement("UPDATE provisioning SET account_id=?,login_path=?,state='IDENTITY_LINKED',last_error=NULL WHERE operation_id=? AND state='PENDING_IDENTITY'",[event.account.accountId,loginPath,pending.operation_id]));
  }else if(event.type==='session-revoked'){
-  if(data.stream!=='session:'+event.sourceRef)throw fail('Invalid session stream.');statements.push(store.statement('UPDATE sessions SET revoked=1 WHERE source_ref=?',[id(event.sourceRef)]));
+  if(data.stream!=='session:'+event.sourceRef)throw fail('Invalid session stream.');statements.push(store.statement('INSERT INTO source_session_revocations VALUES(?,?) ON CONFLICT(source_ref) DO NOTHING',[id(event.sourceRef),Date.now()]),store.statement('UPDATE sessions SET revoked=1 WHERE source_ref=?',[id(event.sourceRef)]));
  }else throw fail('Unknown Academy delivery type.');
  const guardId=crypto.randomUUID(),result={accepted:true,version:data.version,...(event.type==='timetable'?{changedOffering:event.offering.id}:{})};
  const guard=store.statement(`INSERT INTO guards VALUES(?,(COALESCE((SELECT version FROM stream_heads WHERE stream=?),0)=?) AND (${extraSQL}))`,[guardId,data.stream,data.version-1,...extraArgs]);

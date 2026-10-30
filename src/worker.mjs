@@ -12,6 +12,7 @@ import {academyCommand} from './academy-client.mjs';
 import {publishSchedule} from './public-schedule.mjs';
 import {contentVersion} from './content-package.mjs';
 import {editionAssets,attachedWebsiteAssets,offeringWebsiteAssets} from './website-assets.mjs';
+import {studioAccess} from './studio-access.mjs';
 
 async function forwardSignIn(request,env,store,input,fetcher){
  if(!safeToken(input.challenge)||!safeToken(input.state))throw fail('Reopen sign-in from the homepage.');
@@ -32,6 +33,7 @@ async function route(request,env,store,fetcher){
   return json(home,200,{'Cache-Control':'public, max-age=60'});
  }
  if(path==='/internal/academy/events'&&method==='POST'){const result=await receive(request,env,store);if(result.changedOffering)await publishSchedule(env,store,result.changedOffering);return json(result);}
+ if(path==='/internal/studio/access'&&method==='POST')return json(await studioAccess(request,env,store,fetcher));
  if(path==='/api/config'&&method==='GET')return json({academyOrigin:env.ACADEMY_ORIGIN,localPreview:env.ENVIRONMENT==='local',authorityMode:env.AUTHORITY_MODE||'WEBSITE'});
  if(method==='POST'||method==='PUT'||method==='DELETE')originCheck(request,env);
  if(path==='/auth/login'&&method==='POST')return forwardSignIn(request,env,store,await bodyJSON(request.body,4096),fetcher);

@@ -1,3 +1,4 @@
+import {applyTargetSchema} from './target-schema.mjs';
 import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
 import {build} from 'esbuild';
 import {readFile} from 'node:fs/promises';
@@ -13,7 +14,7 @@ export async function previewFixture(){
   try{return new Response(await readFile(file),{headers:{'Content-Type':mime[extname(file)]||'application/octet-stream'}});}catch{return new Response('Not found',{status:404});}
  }}}));
  const db=await runtime.getD1Database('DB'),content=await runtime.getR2Bucket('CONTENT'),media=await runtime.getR2Bucket('MEDIA');
- for(const sql of (await readFile('migrations/0001_platform.sql','utf8')).split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(sql).run();
+ await applyTargetSchema(db);
  const run=(sql,...args)=>db.prepare(sql).bind(...args).run();
  const request=async(path,{cookie,method='GET',body,headers={}}={})=>{
   const r=await runtime.dispatchFetch(env.WEBSITE_ORIGIN+path,{method,headers:{...(cookie?{Cookie:cookie}:{}),...(method==='POST'?{Origin:env.WEBSITE_ORIGIN,'Content-Type':'application/json'}:{}),...headers},...(body===undefined?{}:{body:JSON.stringify(body)})});

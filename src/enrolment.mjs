@@ -4,7 +4,7 @@ import {receive} from './integration.mjs';
 export async function requestEnrolment(store,actor,offeringId,input){
  await rejectAuthorityWrite(store,offeringId);
  const offering=await store.scope(actor,offeringId);if(offering.kind==='ACADEMY')throw fail('Enrol in this programme through Academy.');
- return store.mutate(actor,offeringId,input,[store.statement('INSERT INTO enrolment_requests VALUES(?,?,?, ?,\'PENDING\',NULL,?)',[id(input.requestId),offeringId,actor.account_id,text(input.note||'',2000),Date.now()])],{requested:true},{admin:false});
+ return store.mutate(actor,offeringId,input,[store.statement('INSERT INTO enrolment_requests VALUES(?,?,?, ?,\'PENDING\',NULL,?)',[id(input.requestId),offeringId,actor.account_id,text(input.note||'',2000),Date.now()])],{requested:true},{admin:false,studio:true});
 }
 export async function beginProvision(store,actor,offeringId,input){
  await rejectAuthorityWrite(store,offeringId);
@@ -14,7 +14,7 @@ export async function beginProvision(store,actor,offeringId,input){
  const command={operationId:id(input.operationId),offeringId,actorId:actor.account_id,actorEpoch:actor.epoch,...(input.accountId?{accountId:id(input.accountId)}:{displayName:text(input.displayName),create:true})},hash=await sha256(JSON.stringify(command));
  const old=await store.first('SELECT actor_id,payload_hash,state,account_id FROM provisioning WHERE operation_id=?',[input.operationId]);
  if(old){if(old.actor_id!==actor.account_id||old.payload_hash!==hash)throw fail('This enrolment retry has different details.',409);return {state:old.state,accountId:old.account_id};}
- await store.mutate(actor,offeringId,{...input,action:'provision'},[store.statement("INSERT INTO provisioning VALUES(?,?,?,?,?,'PENDING_IDENTITY',NULL,0,?,NULL,NULL)",[input.operationId,offeringId,actor.account_id,hash,JSON.stringify(command),Date.now()])],{state:'PENDING_IDENTITY'});
+ await store.mutate(actor,offeringId,{...input,action:'provision'},[store.statement("INSERT INTO provisioning VALUES(?,?,?,?,?,'PENDING_IDENTITY',NULL,0,?,NULL,NULL)",[input.operationId,offeringId,actor.account_id,hash,JSON.stringify(command),Date.now()])],{state:'PENDING_IDENTITY'},{studio:true});
  return {state:'PENDING_IDENTITY'};
 }
 export async function resumeProvision(env,store,actor,offeringId,input,fetcher){
@@ -35,6 +35,6 @@ export async function resumeProvision(env,store,actor,offeringId,input,fetcher){
  }
  if(job.state!=='IDENTITY_LINKED'||!job.account_id)throw fail('Academy has not confirmed the account.',503);
  const completion={operationId:'complete:'+job.operation_id,action:'complete-enrolment',accountId:job.account_id};
- await store.mutate(actor,offeringId,completion,[store.statement("INSERT INTO participation VALUES(?,?,1,0,0,'') ON CONFLICT(account_id,offering_id) DO UPDATE SET enrolled=1",[job.account_id,offeringId]),store.statement("UPDATE provisioning SET state='COMPLETE' WHERE operation_id=?",[job.operation_id])],{state:'COMPLETE',accountId:job.account_id});
+ await store.mutate(actor,offeringId,completion,[store.statement("INSERT INTO participation VALUES(?,?,1,0,0,'') ON CONFLICT(account_id,offering_id) DO UPDATE SET enrolled=1",[job.account_id,offeringId]),store.statement("UPDATE provisioning SET state='COMPLETE' WHERE operation_id=?",[job.operation_id])],{state:'COMPLETE',accountId:job.account_id},{studio:true});
  return {state:'COMPLETE',accountId:job.account_id,loginPath:job.login_path};
 }

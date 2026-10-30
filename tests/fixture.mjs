@@ -1,3 +1,4 @@
+import {applyTargetSchema} from './target-schema.mjs';
 import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
 import {build} from 'esbuild';
 import {readFileSync} from 'node:fs';
@@ -11,7 +12,7 @@ export async function fixture({academy=false,authorityMode='WEBSITE',academyApiO
  const runtime=new Miniflare(convertV4MiniflareOptions({workers:[{name:'platform',modules:true,script,compatibilityDate:'2026-09-28',compatibilityFlags:['nodejs_compat'],bindings:env,d1Databases:{DB:'platform-local'},r2Buckets:{CONTENT:'content-local',MEDIA:'media-local'},...(academy?{serviceBindings:{ACADEMY_TEST:'academy'}}:{})},...(source?.workers||[])]}));
  if(source)try{await source.seed(runtime);}catch(error){await runtime.dispose();source.f.close();throw error;}
  const db=await runtime.getD1Database('DB','platform'),content=await runtime.getR2Bucket('CONTENT','platform'),media=await runtime.getR2Bucket('MEDIA','platform');
- const schema=['0001_platform.sql','0002_parallel_access.sql','0003_circles_navigation.sql'].map(name=>readFileSync(new URL('../migrations/'+name,import.meta.url),'utf8')).join('\n');for(const sql of schema.split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(sql).run();
+ try{await applyTargetSchema(db);}catch(error){await runtime.dispose();source?.f.close();throw error;}
  const run=(sql,...args)=>db.prepare(sql).bind(...args).run();
  const deliver=async(event,{stream,version,operationId=crypto.randomUUID()}={})=>{
   stream||=(event.type==='account'?'account:'+event.account.accountId:event.type==='timetable'?'timetable:'+event.offering.id:'handoff:'+event.codeHash);
