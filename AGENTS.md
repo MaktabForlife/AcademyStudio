@@ -1,3 +1,7 @@
+# V108.5 correction requested — 30 October 2026
+
+- The owner corrected the deployed result: “THE LINKS ARE SUPPOSED TO ATTACHE TO THE BLOCKS ON THE CIRCLES”, with screenshots of the unwanted account menu and intended circle blocks. Carry this correction through the existing Circles deployment: remove the separate destination menu, return login to the circle homepage, and attach permission-filtered choices to the existing blocks. This is completion of the authorised navigation behavior, not approval for unrelated UI trials or changes to rights/media/source. See docs/CIRCLES-BLOCK-NAVIGATION.md.
+
 # V108.4 permission navigation deployed — 30 October 2026
 
 - The approved coordinated release completed at 30 Oct 2026, 15:42 Riyadh. Academy Worker 6b58c57b-ec48-48d0-bd37-07eaccb8d912 and Circles Worker d1b846ae-535c-48e9-b9f6-34eac3aab51e are each 100% active. Academy Pages 6bd1bf8f-5a76-4c53-afd6-c64cccc37862 is the production deployment. Eleven release checks, nine bounded live checks and the live login form passed; no real PIN was used.

@@ -4,7 +4,7 @@ import {fixture} from './fixture.mjs';
 import {circlesFixture} from './circles-fixture.mjs';
 import {signIn,ok} from './access-fixture.mjs';
 import {random,challenge} from '../src/protocol.mjs';
-import {circleChoices} from '../public/shared/circles-navigation.mjs';
+import {circleBlockChoices} from '../public/shared/circles-block-navigation.mjs';
 
 const make=configuration=>fixture({academy:true,authorityMode:'ACADEMY',navigation:configuration,verification:{accountSeconds:43200,liveSeconds:43200,adminSeconds:60}});
 const exchange=async(f,body)=>{const response=await f.runtime.dispatchFetch('https://academy.test/api/website-platform/exchange',{method:'POST',headers:{Origin:'https://academy.test','Content-Type':'application/json'},body:JSON.stringify(body)});return {status:response.status,body:await response.json()};};
@@ -20,7 +20,7 @@ test('native programme membership filters circle menus independently of short Co
   const inherited=ok(await f.request('/api/circles/navigation',{cookie:admin}));assert(inherited.mothers);assert.equal(inherited.academia.length,1);
   await f.run('UPDATE accounts SET verified_at=? WHERE account_id=?',Date.now()-61_000,f.source.f.actors.global);await f.run('UPDATE source_access_people SET verified_at=? WHERE account_id=?',Date.now()-61_000,f.source.f.actors.global);f.source.resetMetrics();ok(await f.request('/api/circles/navigation',{cookie:admin}));assert.equal(f.source.metrics.queries,0,'An ordinary staff menu is not a sensitive Admin operation');assert.notEqual((await f.request('/api/websites/site-course/edit',{cookie:admin})).status,200,'The destination retains the sensitive Admin freshness check');
   f.source.resetMetrics();for(let i=0;i<3;i++)ok(await f.request('/api/circles/navigation',{cookie}));assert.equal(f.source.metrics.queries,0,'Navigation reuses local signed evidence for twelve hours');
-  const menu=circleChoices('mothers',mine);assert.match(menu,/Mothers of the Ummah/);assert.match(menu,/Synthetic Circles Course/);assert.doesNotMatch(circleChoices('academy',mine),/data-programme-key/);assert(!menu.includes('must-not-leak'));
+  const menu=circleBlockChoices('mothers',mine);assert.match(menu,/Mothers of the Ummah/);assert.match(menu,/Synthetic Circles Course/);assert.doesNotMatch(circleBlockChoices('academy',mine),/data-programme-key/);assert(!menu.includes('must-not-leak'));
   assert.equal((await f.request('/api/circles/navigation')).status,401);
  }finally{await f.close();}
 });
