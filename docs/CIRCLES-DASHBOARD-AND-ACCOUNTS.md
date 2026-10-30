@@ -25,3 +25,8 @@ Private parent evidence: outputs/circles-dashboard-20261030. Local synthetic tes
 An initial local UI review used frozen homepage checkpoint 648fe05. The release review preserves the already deployed e68d0b7 homepage/course content and adds only the requested native dashboard, navigation and sign-in behavior. Local editor controls are excluded. Circles' later cd0e2cc course-content handoff and subsequent pricing/classification corrections are a separate local phase, not part of this composition. Recording-to-Studio linking remains deferred. Do not load or publish new media, reset any rights, retire Academy screens or change DNS. Preserve the existing 49 enabled attachments.
 
 The access-management owner confirms no access code has been implemented and the dashboard can release independently. Before any coordinated release, confirm no concurrent deployment, preserve all existing source/target bindings, bump release labels coherently, and perform only bounded metadata and essential live checks. A later approved UI handoff should compose these native adapters without promoting new media. Do not deploy the raw public directory as the Circles homepage; use the reviewed composition.
+
+
+## Later local UI integration
+
+You explicitly asked to implement the UI Circles was holding. Completed checkpoint31e15f5 is now composed locally with these native adapters, superseding the old e68d0b7-only release review for the next UI review. See CIRCLES-HELD-UI-INTEGRATION.md. This does not grant deployment approval, load new media or begin deferred recording mapping. V108.5 is still live.

@@ -58,7 +58,7 @@ test('standard name cards replace all recognised Tafseer cover identities withou
  const {tafseerCourseCover}=await import('../public/shared/tafseer-cover.mjs');
  for(const name of ['Foundations of Tafseer','Surah Fatir','Surah Yaseen','Surah As-Saffat','Surah Al-Ankabut','Surah Luqman','Surah Al-Muzzammil','Surah Al-Qasas','Surah As-Sajdah']){
   const course={name},before=structuredClone(course),html=tafseerCourseCover(course);
-  assert(html.includes('tafseer-surah-name'));assert(html.includes(name==='Surah Fatir'?'Text pending':name==='Foundations of Tafseer'?'Qur’anic Studies':name));assert(!html.includes('<img'));assert.deepEqual(course,before);
+  assert(html.includes('tafseer-surah-name'));assert(html.includes(name==='Surah Fatir'?'Text pending':name==='Foundations of Tafseer'?'Introduction to Qur’anic Studies':name));assert(!html.includes('<img'));assert.deepEqual(course,before);
  }
  assert.equal(tafseerCourseCover({name:'The Tawakkul Mindset'}),'');
  assert.equal(tafseerCourseCover({name:'Surah Al Kahf'}),'');
@@ -68,7 +68,7 @@ test('standard name cards replace all recognised Tafseer cover identities withou
 test('Ulumul Quran is the display identity while the source document remains unchanged',async()=>{
  const {tafseerDisplayCourse,tafseerCourseCover}=await import('../public/shared/tafseer-cover.mjs');
  const course={name:'Foundations of Tafseer',home:{headline:'Foundations of Tafseer',subtitle:'Original subtitle'},lessons:[{id:'original-reading'}]},before=structuredClone(course),shown=tafseerDisplayCourse(course);
- assert.equal(shown.name,'Qur’anic Studies');assert.equal(shown.home.subtitle,'علوم القرآن');assert.equal(shown.lessons,course.lessons);assert.deepEqual(course,before);assert(tafseerCourseCover(shown).includes('علوم القرآن'));assert.equal(tafseerDisplayCourse({name:'Surah Yaseen'}).name,'Surah Yaseen');
+ assert.equal(shown.name,'Introduction to Qur’anic Studies');assert.equal(shown.home.subtitle,'علوم القرآن');assert.equal(shown.lessons,course.lessons);assert.deepEqual(course,before);assert(tafseerCourseCover(shown).includes('علوم القرآن'));assert.equal(tafseerDisplayCourse({name:'Surah Yaseen'}).name,'Surah Yaseen');
 });
 
 
