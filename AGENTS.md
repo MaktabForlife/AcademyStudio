@@ -2,6 +2,7 @@
 
 - You asked to make Circles the new Academy homepage so you can log in and check it. This authorises deploying the prepared Circles homepage, native Academy sign-in and Studio/Tafseer routes to the existing real parallel site. Keep the deployed V108.1 twelve-hour learner verification and sixty-second sensitive Admin checks. Use the dedicated academy-studio profile and explicitly pinned target account.
 - The release includes only the nine existing website catalogue entries and the pending Fatir notice, with their public artwork. Do not promote new course drafts, synthetic preview identities, private migration files or the 49 unpublished media attachments. Existing Academy remains available; no source deployment, DNS cutover, screen retirement, Git push or offering-authority transfer is authorised. The latest flyer layout request was withdrawn with “ignore”.
+- Release completed at 10:37 UTC: runtime `f26450b`, Cloudflare version `a2ec8e43-af2a-4785-a627-013e2c04910b`, deployment `f987142f-6dd2-42e2-bd2e-9f2e394ae641`, 100% active. Seven bounded unsigned checks and the real homepage/login browser view passed. Real PIN acceptance is left to you. This deployment approval is fulfilled; preserve the active release. See docs/CIRCLES-RELEASE-1082.md.
 
 # V108.0 deployment completed — 29 October 2026
 

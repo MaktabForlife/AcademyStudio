@@ -15,3 +15,9 @@ Full local regression: 126 passed, zero skipped/failed. After the version-label 
 Private build, deployment, verification and recovery records are in the parent `outputs/circles-homepage-release-1082-20261030/`. If runtime verification fails, restore the V108.1 Worker version rather than resetting data or access state. The two newly introduced public metadata keys can be withdrawn separately if needed, retaining their exact local copies. Existing teaching editions and private media are outside this rollback.
 
 No source Academy deployment, DNS cutover, old-screen retirement, Git push or offering-authority transfer is included.
+
+## Completed release
+
+Runtime commit `f26450b` deployed successfully at 2026-10-30 10:37 UTC. Cloudflare version `a2ec8e43-af2a-4785-a627-013e2c04910b`, deployment `f987142f-6dd2-42e2-bd2e-9f2e394ae641`, serves 100% of traffic. Post-deployment metadata confirms the same D1/R2 resources, both existing secret bindings, Academy origins, authority mode and 43200/43200/60 freshness settings.
+
+Seven bounded unsigned checks passed: Circles root, native Studio entry, exact sign-in module, real-origin configuration, ten-card public catalogue, unsigned-account rejection and the original cover byte checksum. No private content or account was requested. The browser's old synthetic Academy handoff tab now shows the real hosted Circles homepage with its empty Academy ID/PIN form open. Screenshot: parent `outputs/circles-homepage-release-1082-20261030/live-login.png`. Actual user PIN acceptance and signed-in delivery remain for your check.

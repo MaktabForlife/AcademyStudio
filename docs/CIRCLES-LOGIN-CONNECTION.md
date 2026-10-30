@@ -1,5 +1,11 @@
 # Circles login connection — 30 October 2026
 
+## Live review now available
+
+At your request to make this the homepage so you can log in, Circles V108.2 is now active at https://academy-studio-parallel.naidu-hajira.workers.dev. It uses your existing real Academy account ID/PIN. The prior local Academy page was a synthetic handoff placeholder; its browser tab now opens the real homepage and sign-in form. Root Circles and `/studio/` routes, nine existing website catalogue cards and the Fatir pending notice are deployed. Existing Academy remains available. All 49 imported media attachments remain unpublished. The flyer layout request followed by “ignore” was excluded.
+
+The V108.1 twelve-hour verification policy and fresh sensitive Admin checks are preserved. Full local regression passed 126 tests; seven small unsigned hosted checks and the browser homepage/login view passed. A real PIN was not used by the operator. Release version, runtime, rollback and private receipts are recorded in [CIRCLES-RELEASE-1082.md](CIRCLES-RELEASE-1082.md). The preparation history below describes the earlier local stage; its deployment hold has been fulfilled by this specific release.
+
 ## Circles homepage and Tafseer connection
 
 The user now wants Circles as the homepage and its Tafseer entry connected to Studio. The prepared local build serves the current Circles design at `/`, with `/circles/` retained as an alias. Native catalogue, reader and staff-management entry pages live at `/studio/`. This is a presentation-route change; server APIs, website identities, teaching editions, roles and media publication are unchanged.
