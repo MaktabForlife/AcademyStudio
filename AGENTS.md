@@ -1,3 +1,8 @@
+# Existing lesson media connection — 30 October 2026
+
+- You reported missing Tafseer lesson media and explicitly requested linking the existing Academy media to Tafseer and Courses in Studio, clarifying that Studio means the new Circles website. This authorises enabling the already copied original media, after fresh exact source/target/byte checks, through the existing protected media routes. No new teaching data, courses, guessed lesson association, permission expansion or source write is included.
+- Circles is separately updating the homepage UI; dashboard work follows that update. This media connection performs no Worker/asset deployment and leaves that UI work alone. Preserve all current Academy authority, original purchase/month/class rights and twelve-hour verification behavior. Unmatched programme-only media must retain its original scope, with no guessed Surah mapping.
+
 # Circles homepage release V108.2 — 30 October 2026
 
 - You asked to make Circles the new Academy homepage so you can log in and check it. This authorises deploying the prepared Circles homepage, native Academy sign-in and Studio/Tafseer routes to the existing real parallel site. Keep the deployed V108.1 twelve-hour learner verification and sixty-second sensitive Admin checks. Use the dedicated academy-studio profile and explicitly pinned target account.

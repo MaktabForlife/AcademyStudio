@@ -4,6 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
 import {controlPlaneAdmission,admissionVerification,verifyAdmission} from '../tools/existing-media-control-plane.mjs';
 import {contentHash} from '../tools/reconciled-content.mjs';
+import {controlPlaneActivation,controlPlaneRetirement,publicationPreflight} from '../tools/existing-media-publication.mjs';
 
 // Synthetic full-size package, without private data or real resource identifiers.
 function packageData(){
@@ -53,4 +54,44 @@ test('private admission rejects publication, edited plans and missing PDF proof'
  const missing=structuredClone(input);missing.byteReceipts.pop();assert.throws(()=>controlPlaneAdmission(missing),/PDF_BYTES_REQUIRED/);
  const changed=structuredClone(input);changed.plan.attachments[0].published=1;assert.throws(()=>controlPlaneAdmission(changed),/PLAN_CHANGED/);
  const exposed=structuredClone(input);exposed.plan.attachments[0].published=1;const {planSha256,...payload}=exposed.plan;exposed.plan.planSha256=contentHash(payload);exposed.receipt.planSha256=exposed.plan.planSha256;exposed.target.planSha256=exposed.plan.planSha256;assert.throws(()=>controlPlaneAdmission(exposed));
+});
+
+test('existing-media publication requires fresh proof, rejects races atomically and cannot reopen a retired run',async()=>{
+ const mf=new Miniflare(convertV4MiniflareOptions({modules:true,script:'export default {fetch(){return new Response("local")}}',compatibilityDate:'2026-09-28',d1Databases:{DB:'local-publication'}}));
+ try{
+  const db=await mf.getD1Database('DB'),run=async batch=>db.batch(batch.map(q=>db.prepare(q.sql).bind(...q.params)));
+  for(const name of ['0001_platform.sql','0002_parallel_access.sql'])for(const sql of (await readFile(new URL('../migrations/'+name,import.meta.url),'utf8')).split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(sql).run();
+  const input=packageData(),admission=controlPlaneAdmission(input),now=Date.now(),checkedAt=new Date(now).toISOString();
+  for(const s of input.target.results[1].results){await db.prepare('INSERT INTO offerings(offering_id,kind,title,active,revision) VALUES(?,?,?,1,1)').bind(s.offering_id,s.kind,'Synthetic offering').run();await db.prepare("INSERT INTO source_access_scopes VALUES(?,'ACADEMY',3,1,1,1,'UTC','[]')").bind(s.offering_id).run();}
+  for(const s of input.target.results[0].results)await db.prepare('INSERT INTO websites(website_id,offering_id,title,draft_key,published_key,revision,enabled) VALUES(?,?,?,?,?,?,?)').bind(s.website_id,s.offering_id,'Synthetic website',s.draft_key,s.published_key,s.revision,s.enabled).run();
+  await run(admission.batch);
+  // A newer private draft is preserved, without promoting it over the accepted edition.
+  await db.prepare("UPDATE websites SET draft_key='private-new-draft',revision=2 WHERE website_id='site-0'").run();
+  const current=await run(publicationPreflight(admission)),args={admission,current,now,sourceProof:{current:true,planSha256:admission.result.planSha256,objects:49,attachments:49,checkedAt},byteReceipts:input.byteReceipts.map(b=>({...b,checkedAt})),editionReceipts:input.plan.editions.map(e=>({websiteId:e.websiteId,key:`websites/${e.websiteId}/versions/${e.published}.json`,sha256:e.published,verified:true,checkedAt}))};
+  assert.throws(()=>controlPlaneActivation({...args,sourceProof:{...args.sourceProof,checkedAt:new Date(now-901_000).toISOString()}}),/FRESH_SOURCE/);
+  assert.throws(()=>controlPlaneActivation({...args,byteReceipts:[]}),/FRESH_PDF/);
+  assert.throws(()=>controlPlaneActivation({...args,editionReceipts:[]}),/FRESH_PUBLISHED/);
+  const activation=controlPlaneActivation(args),published=()=>db.prepare('SELECT count(*) n FROM attachments WHERE published=1').first('n');
+  await db.prepare("UPDATE attachments SET cohort='changed-class' WHERE attachment_id='attachment-0'").run();
+  await assert.rejects(run(activation.batch),/CHECK constraint/);assert.equal(await published(),0);
+  await db.prepare("UPDATE attachments SET cohort='original-class' WHERE attachment_id='attachment-0'").run();
+  await db.prepare("UPDATE source_access_scopes SET enabled=0 WHERE offering_id='offering-1'").run();
+  await assert.rejects(run(activation.batch),/CHECK constraint/);assert.equal(await published(),0);
+  await db.prepare("UPDATE source_access_scopes SET enabled=1 WHERE offering_id='offering-1'").run();
+  const fail=structuredClone(activation.batch);fail.splice(-1,0,{sql:'INSERT INTO guards VALUES(?,0)',params:['late-publication-failure']});
+  await assert.rejects(run(fail),/CHECK constraint/);assert.equal(await published(),0);
+  const applied=await run(activation.batch);assert.equal(await published(),49);
+  await assert.rejects(run(activation.batch),/CHECK constraint/);
+  const after=await run(publicationPreflight(admission));
+  assert.throws(()=>controlPlaneActivation({...args,current:after}),/PUBLICATION_ALREADY_RECORDED_OR_RETIRED/);
+  const rows=(await db.prepare('SELECT * FROM attachments').all()).results;
+  const retirement=controlPlaneRetirement({admission,activation,currentAttachments:rows,now});
+  await run(retirement.batch);assert.equal(await published(),0);
+  await assert.rejects(run(activation.batch),/CHECK constraint/);
+  assert.equal(await db.prepare('SELECT count(*) n FROM objects').first('n'),49);
+  assert.equal(await db.prepare('SELECT count(*) n FROM asset_owners').first('n'),49);
+  assert.equal(await db.prepare("SELECT draft_key FROM websites WHERE website_id='site-0'").first('draft_key'),'private-new-draft');
+  assert.equal(await db.prepare('SELECT count(*) n FROM guards').first('n'),0);
+  console.log(JSON.stringify({publicationQueries:applied.length,rowsRead:applied.reduce((n,r)=>n+r.meta.rows_read,0),rowsWritten:applied.reduce((n,r)=>n+r.meta.rows_written,0),published:49,recoveryRetainsObjects:49,retiredRunFenced:true}));
+ }finally{await mf.dispose();}
 });
