@@ -1,5 +1,7 @@
 # Circles content presentation · 30 October 2026
 
+The primary port-8901 review now consumes the reconciled Academy-copy bundle instead of this first pass's synthetic recording rows. See [CIRCLES-RECONCILED-REVIEW.md](CIRCLES-RECONCILED-REVIEW.md) for the current source, publication boundaries, native links and remaining limitations. This document records the first styling pass.
+
 Local styling work requested by the user: use the already built Tafseer and guidance-course content in the approved Circles design family. Different palettes are a design choice authorised for this pass. Religious teaching, summaries, source graphics, PDFs and recording references are not rewritten.
 
 ## Review surface

@@ -23,11 +23,11 @@ export function arrangeRecordingReading({root,guides=[],media=[]}){
  const body=root.querySelector('.sp-reading-body'),shown=new Set();if(!body)return shown;
  const doc=root.ownerDocument,managed=new Set(),quotes=[],introductions=[];
  for(const guide of guides){
-  const row=media.find(row=>row.lesson_id===guide.lessonId&&playable(row)),intro=[...body.querySelectorAll('[data-recording-intro]')].find(node=>node.dataset.recordingIntro===guide.lessonId),html=recordingReadingIntro(row,guide);
+  const sourceId=guide.editorialLessonId||guide.lessonId,row=media.find(row=>row.lesson_id===guide.lessonId&&playable(row)),intro=[...body.querySelectorAll('[data-recording-intro]')].find(node=>node.dataset.recordingIntro===sourceId),html=recordingReadingIntro(row,guide);
   if(intro&&html){managed.add(intro.closest('.sp-reading-section'));const holder=doc.createElement('div');holder.innerHTML=html;introductions.push(holder.firstElementChild);intro.remove();shown.add(row.attachment_id);
-   for(const list of body.querySelectorAll('[data-recording-topics]'))if(list.dataset.recordingTopics===guide.lessonId){managed.add(list.closest('.sp-reading-section'));list.remove();}
+   for(const list of body.querySelectorAll('[data-recording-topics]'))if(list.dataset.recordingTopics===sourceId){managed.add(list.closest('.sp-reading-section'));list.remove();}
   }
-  for(const quote of body.querySelectorAll('[data-recording-quote]'))if(quote.dataset.recordingQuote===guide.lessonId){managed.add(quote.closest('.sp-reading-section'));quotes.push(quote);}
+  for(const quote of body.querySelectorAll('[data-recording-quote]'))if(quote.dataset.recordingQuote===sourceId){managed.add(quote.closest('.sp-reading-section'));quotes.push(quote);}
  }
  let closing=[...body.querySelectorAll('.sp-reading-section')].find(section=>[...section.children].some(node=>node.tagName==='H2'&&node.textContent.trim().toLowerCase()==='carry the lesson into daily life'));
  if(quotes.length||closing){

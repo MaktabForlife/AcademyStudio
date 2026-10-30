@@ -144,7 +144,7 @@
   background: var(--circle-tint); border: 1px solid var(--circle-rule);
   border-radius: 28px 7px 28px 7px; min-height: 170px;
 }
-.circles-theme .student-course .sp-theme h3 { font-family: var(--circle-serif); }
+.circles-theme .student-course .sp-theme h3 { font-family: var(--circle-serif); overflow-wrap: anywhere; }
 .circles-theme .student-course .sp-theme small,
 .circles-theme .student-course .sp-theme p { color: var(--circle-muted); }
 .circles-theme .student-course .sp-mobile-nav {
@@ -154,6 +154,14 @@
 .circles-theme .student-course .sp-mobile-nav button { min-width: 0; font-size: 20px; }
 .circles-theme .student-course .sp-mobile-nav small { font-size: 10px; }
 .circles-theme .student-course .sp-footer { border-top: 1px solid var(--circle-rule); padding-top: 20px; }
+.circles-theme .sp-local-review-status { display: flex; align-items: center; flex-wrap: wrap; gap: 7px 14px; padding: 12px 15px; margin-bottom: 25px; border: 1px solid var(--circle-rule); border-radius: 9px; background: var(--circle-tint); font-size: 11px; line-height: 1.6; }
+.circles-theme .sp-local-review-status strong { color: var(--sp-accent); font-weight: 600; }
+.circles-theme .sp-local-review-status a { display: inline-flex; align-items: center; min-height: 44px; text-decoration: underline; text-underline-offset: 3px; margin-left: auto; }
+.circles-theme .sp-pending-recordings { margin: 32px 0; }
+.circles-theme .sp-pending-recordings h2 { font: 400 34px/1.15 var(--circle-serif); margin: 10px 0; }
+.circles-theme .sp-pending-recordings header > p { color: var(--circle-muted); font-size: 13px; line-height: 1.7; }
+.circles-theme .sp-pending-recording { border-top: 1px solid var(--circle-rule); padding: 22px 0; margin-top: 20px; }
+.circles-theme .sp-pending-recording h3 { font: 400 29px/1.15 var(--circle-serif); margin: 13px 0; }
 .circles-theme :is(.sp-companion-player, .video-dock) {
   background: var(--circle-surface); border: 1px solid var(--circle-line);
   border-radius: 18px; box-shadow: 0 10px 35px #513b4710;
@@ -245,6 +253,11 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .circles-theme .student-course { scroll-behavior: auto; }
+}
+@container course (max-width: 400px) {
+  .circles-theme .student-course .sp-journey { grid-template-columns: 1fr; }
+  .circles-theme .student-course .sp-theme { min-height: 0; padding: 17px; }
+  .circles-theme .student-course .sp-theme h3 { margin: 10px 0; }
 }
 @media (forced-colors: active) {
   .circles-theme .sp-hero-image::before { display: none; }
