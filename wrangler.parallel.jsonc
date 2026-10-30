@@ -24,7 +24,8 @@
     "WEBSITE_ORIGIN": "https://academy-studio-parallel.naidu-hajira.workers.dev",
     "ACADEMY_ORIGIN": "https://academy-maktab4life.pages.dev",
     "ACADEMY_API_ORIGIN": "https://devrebootworker.maktab4life.workers.dev",
-    "ACCOUNT_MAX_AGE_SECONDS": "300",
+    "ACCOUNT_MAX_AGE_SECONDS": "43200",
+    "LIVE_ACCESS_MAX_AGE_SECONDS": "43200",
     "ADMIN_MAX_AGE_SECONDS": "60",
     "RELEASE_VERSION": "108.0"
   },
