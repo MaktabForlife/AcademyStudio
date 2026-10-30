@@ -1,4 +1,5 @@
 import {pinEntry} from './shared/pin-entry.mjs';
+import {headerIcon} from './shared/header-icons.mjs';
 import {startReaderView} from './shared/reader-startup.mjs';
 import {protectAccountHistory} from './shared/account-history.mjs';
 import {mothersClassroom} from './shared/circles-navigation.mjs';
@@ -112,6 +113,9 @@ $('sign-in-form').addEventListener('submit',async event=>{event.preventDefault()
 const base64=buffer=>btoa(String.fromCharCode(...new Uint8Array(buffer))).replaceAll('+','-').replaceAll('/','_').replaceAll('=','');const token=()=>base64(crypto.getRandomValues(new Uint8Array(32)));
 $('sign-in-button').onclick=()=>openSignIn();$('close-sign-in').onclick=()=>$('sign-in-dialog').close();$('home-button').onclick=()=>{if(!textEditor.canLeave())return;if(appPath==='/studio/'){location.assign('/');return;}textEditor.clear();beforeEditing=null;show('homepage');history.pushState(null,'','/');renderPublicCircle();};$('explore-button').onclick=()=>$('public-cards').scrollIntoView({behavior:'smooth'});$('my-websites').onclick=()=>{if(new URLSearchParams(location.search).has('classroom'))history.pushState(null,'',appPath+'?view=collections');return library().catch(e=>status(e.message));};
 $('sign-out-button').onclick=async()=>{try{await api('/auth/logout',{body:{}});}finally{changed(null);clear();if(appPath==='/studio/')location.assign('/');}};
+$('header-home-button').onclick=()=>$('home-button').click();
+$('header-refresh-button').onclick=()=>{if(textEditor.canLeave())location.reload();};
+for(const [id,icon,label]of [['header-home-button','home','Home · Return to your dashboard'],['header-refresh-button','refresh','Refresh this page']]){$(id).innerHTML=headerIcon(icon);$(id).setAttribute('aria-label',label);}
 function openAcademy(libraryContext){
  if(config?.isolatedPreview){status('Academy Library is disconnected in this preview. The live Academy is unchanged.');return;}
  const child=window.open(config.academyOrigin+'/academy/website-platform/connect/','_blank');if(!child){status('Allow this window to open, then select Academy again.');return;}

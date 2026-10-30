@@ -30,3 +30,15 @@ The access-management owner confirms no access code has been implemented and the
 ## Later local UI integration
 
 You explicitly asked to implement the UI Circles was holding. Completed checkpoint31e15f5 is now composed locally with these native adapters, superseding the old e68d0b7-only release review for the next UI review. See CIRCLES-HELD-UI-INTEGRATION.md. This does not grant deployment approval, load new media or begin deferred recording mapping. V108.5 is still live.
+
+## Owner preview corrections — 30 October 2026
+
+Global Admin sees one timetable entry per activity/date in Coming up next and This week. Info expands the available lessons for that activity/date, including times, subject/module and status, without another source request. Learn, Teach and scoped Admin retain individual session entries. Grouping uses stable activity identity and date, not display names.
+
+Global Admin always has Learn/Teach/Admin workspace pills. This exposes the existing native teaching workspace; exact scoped teaching actions still require their native context. Signed-in circle navigation uses plain whole-card links, with separate Mothers and permitted short-Course cards and a plain Hifz card when assigned. Original public artwork returns in the public website view. Existing programme, course and Mothers permissions remain unchanged.
+
+The account name itself carries Admin colour; its role remains available in the accessible label/tooltip. Its menu contains only Switch user and Visit website. The owner confirmed Visit website means the public Circles homepage while keeping the session; Home returns to the dashboard. Home, Refresh and Sign out use header icons. Native Tafseer/course pages have Home and Refresh icons; leaving or refreshing an editor respects the existing unsaved-change guard.
+
+Three grouping view checks, twelve composition/routing/PIN/startup/view checks and five paired dashboard/navigation integration checks pass. Set ACADEMY_SOURCE=../Academy-circles-permission-navigation for integration tests; the unrelated default checkout does not contain the paired navigation contract. Browser checks verify grouped two-lesson Info, all three Global Admin pills, the two-item student menu, public website/session preservation, return Home, plain linked cards and Tafseer Home/Refresh. Demo studentA is left signed in. The current local server uses ignored local-content/circles-active-preview, pointing to circles-header-icons-review/public; no release or new media linking occurred.
+
+Further owner-authorised local work: complete Library/PDF.js Learn/Teach handoffs and review connected page titles, Gregorian/Hijri dates, timezone and header actions. That follow-up is still in progress.

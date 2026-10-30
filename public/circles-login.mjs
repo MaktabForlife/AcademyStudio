@@ -1,6 +1,7 @@
 import {pinEntry} from './shared/pin-entry.mjs';
 import {protectAccountHistory} from './shared/account-history.mjs';
 import {circlesDashboard} from './circles-dashboard.mjs';
+import {headerIcon} from './shared/header-icons.mjs';
 import {readRemembered,rememberVerified,forgetRemembered} from './shared/remembered-accounts.mjs';
 import {circleBlockNavigation} from './shared/circles-block-navigation.mjs';
 import {api,identity,changed} from './api.mjs';
@@ -12,8 +13,8 @@ dialog.innerHTML=`<button type="button" class="circles-sign-in-close" aria-label
 document.body.append(dialog);
 const element=id=>document.getElementById(id),form=element('circles-sign-in-form'),message=element('circles-sign-in-status'),renderBlocks=circleBlockNavigation(document);
 const pins=pinEntry(form);
-let config,selected='general',attempt=0,handoff,navigation=null,navRequest=null,homeMessage='',switching=false;
-const dashboard=circlesDashboard({onUpdate:refreshHeader,openAcademy});
+let config,selected='general',attempt=0,handoff,navigation=null,navRequest=null,homeMessage='',switching=false,refreshing=false,publicView=new URLSearchParams(location.search).get('public')==='1';
+const dashboard=circlesDashboard({onUpdate:refreshHeader,openAcademy,show:()=>!publicView,onWorkspace:()=>setPublicView(false)});
 const storage=()=>{try{return window.localStorage;}catch{return null;}};
 function renderRemembered(){
  const host=element('circles-remembered-accounts');host.replaceChildren();const rows=readRemembered(storage(),config?.academyOrigin);if(!rows.length){host.hidden=true;return;}host.hidden=false;
@@ -25,18 +26,33 @@ function showHomeMessage(text){homeMessage=text;refreshHeader();}
 function refreshHeader(){
  const brand=document.querySelector('a.academy-brand');if(brand)brand.href='/';
  const skip=document.querySelector('a.skip-link');if(skip)skip.href=location.pathname+location.search+'#experience';
- for(const entry of document.querySelectorAll('[data-access-login]')){
-  if(entry.classList.contains('public-login')){const label=identity.account?.displayName||'Log in',badge=identity.account&&(dashboard.adminBadge||(identity.account.globalAdmin?'Global Admin':null)),stamp=JSON.stringify([label,badge]);if(entry.dataset.circlesIdentity!==stamp){entry.replaceChildren(document.createTextNode(label));if(badge){const tag=document.createElement('span');tag.className='circles-admin-badge';tag.textContent=badge;entry.append(tag);}entry.dataset.circlesIdentity=stamp;}}
+ for(let entry of document.querySelectorAll('[data-access-login]')){
+  const accountEntry=entry.classList.contains('public-login');
+  if(accountEntry){
+   const tag=identity.account?'BUTTON':'A';if(entry.tagName!==tag){const next=document.createElement(tag);for(const attr of entry.attributes)next.setAttribute(attr.name,attr.value);next.innerHTML=entry.innerHTML;entry.replaceWith(next);entry=next;}
+   const label=identity.account?.displayName||'Log in',badge=identity.account&&(dashboard.adminBadge||(identity.account.globalAdmin?'Global Admin':null)),stamp=JSON.stringify([label,badge]);
+   if(entry.dataset.circlesIdentity!==stamp){entry.textContent=label;entry.dataset.circlesAccountRole=badge||'';entry.setAttribute('aria-label',label+(badge?' · '+badge:''));entry.title=badge||'';entry.dataset.circlesIdentity=stamp;}
+   if(identity.account){entry.type='button';entry.setAttribute('aria-controls','circles-account-menu');if(!entry.hasAttribute('aria-expanded'))entry.setAttribute('aria-expanded','false');}
+   else{entry.removeAttribute('type');entry.removeAttribute('aria-controls');entry.removeAttribute('aria-expanded');}
+  }
   entry.href=identity.account?'/#learning-circles':'/?login=1&area='+accessArea(entry.dataset.accessArea);entry.removeAttribute('target');entry.removeAttribute('rel');
   if(identity.account)entry.removeAttribute('aria-haspopup');else entry.setAttribute('aria-haspopup','dialog');
-  const switcher=entry.parentElement.querySelector('[data-circles-switch-user]');if(identity.account&&!switcher){const button=document.createElement('button');button.type='button';button.dataset.circlesSwitchUser='';button.className='circles-header-sign-out';button.textContent='Switch user';button.setAttribute('aria-haspopup','dialog');entry.after(button);}else if(!identity.account)switcher?.remove();
+  if(accountEntry){
+   let menu=entry.parentElement.querySelector('.circles-account-menu');
+   if(identity.account&&!menu){menu=document.createElement('nav');menu.id='circles-account-menu';menu.className='circles-account-menu';menu.setAttribute('aria-label','Account menu');menu.hidden=true;menu.innerHTML='<button type="button" data-circles-switch-user aria-haspopup="dialog">Switch user</button><a href="/?public=1" data-circles-visit-website>Visit website</a>';entry.parentElement.append(menu);}else if(!identity.account)menu?.remove();
+   let home=entry.parentElement.querySelector('[data-circles-home]');if(identity.account&&!home){home=document.createElement('button');home.type='button';home.dataset.circlesHome='';home.className='circles-header-home';home.innerHTML=headerIcon('home');home.title='Home · Return to your dashboard';home.setAttribute('aria-label','Return to your dashboard');entry.after(home);}else if(!identity.account)home?.remove();
+   let refresh=entry.parentElement.querySelector('[data-circles-refresh]');if(identity.account&&!refresh){refresh=document.createElement('button');refresh.type='button';refresh.dataset.circlesRefresh='';refresh.className='circles-header-refresh';refresh.innerHTML=headerIcon('refresh');entry.after(refresh);}else if(!identity.account)refresh?.remove();if(refresh){refresh.disabled=refreshing;refresh.classList.toggle('is-refreshing',refreshing);refresh.title=refreshing?'Refreshing…':'Refresh homepage and dashboard';refresh.setAttribute('aria-label','Refresh homepage and dashboard');}
+  }
   const existing=entry.parentElement.querySelector('[data-circles-sign-out]');
-  if(identity.account&&!existing){const signout=document.createElement('button');signout.type='button';signout.className='circles-header-sign-out';signout.dataset.circlesSignOut='';signout.textContent='Sign out';entry.after(signout);}else if(!identity.account)existing?.remove();
+  if(identity.account&&!existing){const signout=document.createElement('button');signout.type='button';signout.className='circles-header-sign-out';signout.dataset.circlesSignOut='';signout.innerHTML=headerIcon('signout');signout.title='Sign out';signout.setAttribute('aria-label','Sign out');entry.after(signout);}else if(!identity.account)existing?.remove();
  }
  for(const entry of document.querySelectorAll('a[data-action="visitor-access"],a[href="https://ummabbadacademy.com/my-account/"],a[href="/circles/?login=1"],a[href="/?login=1"]')){const area=accessArea(entry.dataset.id);entry.href='/?login=1&area='+area;entry.removeAttribute('target');entry.removeAttribute('rel');if(!entry.dataset.action&&!entry.dataset.programmeKey)entry.dataset.circlesLogin='';}
- renderBlocks(Boolean(identity.account),navigation);dashboard.refresh();
+ renderBlocks(Boolean(identity.account)&&!publicView,navigation);dashboard.refresh();
  const home=element('learning-circles');if(home){let status=element('circles-navigation-status');if(!status){status=document.createElement('p');status.id='circles-navigation-status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');home.append(status);}if(status.textContent!==homeMessage)status.textContent=homeMessage;status.hidden=!homeMessage;}
 }
+function closeAccountMenu({focus=false}={}){for(const menu of document.querySelectorAll('.circles-account-menu')){menu.hidden=true;const account=menu.parentElement.querySelector('.public-login');account?.setAttribute('aria-expanded','false');if(focus)account?.focus();}}
+function setPublicView(value){publicView=value;const url=new URL(location.href);if(value)url.searchParams.set('public','1');else url.searchParams.delete('public');history.replaceState(null,'',url);closeAccountMenu();refreshHeader();if(value)window.scrollTo({top:0,behavior:'smooth'});}
+async function refreshHomepage(){if(refreshing)return;refreshing=true;closeAccountMenu();refreshHeader();try{await Promise.all([loadNavigation(),dashboard.load(dashboard.mode,true)]);showHomeMessage('');}catch(error){showHomeMessage(error.message||'Your homepage could not be refreshed.');}finally{refreshing=false;refreshHeader();}}
 async function loadNavigation(){
  const generation=identity.generation,accountId=identity.account?.accountId;if(!accountId)return;
  const key=accountId+':'+generation;if(navRequest?.key===key)return navRequest.promise;
@@ -44,7 +60,7 @@ async function loadNavigation(){
 }
 const ready=(async()=>{config=await api('/api/config');try{identity.account=await api('/api/me',{optionalSession:true});}catch(error){if(error.status!==401)throw error;}if(identity.account)try{await loadNavigation();}catch{showHomeMessage('Your programme links could not be loaded. Please log in again.');}refreshHeader();if(identity.account)void dashboard.load();})();ready.catch(()=>{});
 function returnToCircles(){if(dialog.open)dialog.close();refreshHeader();const card=selected==='general'?element('learning-circles'):document.querySelector(`.hub-panel[data-home-area="${selected}"]`);if(card){if(selected==='general')window.scrollTo({top:0,behavior:'smooth'});else card.scrollIntoView({behavior:'smooth',block:'center'});if(!card.hasAttribute('tabindex'))card.tabIndex=-1;card.focus({preventScroll:true});}}
-async function begin(area,{switchUser=false}={}){const opening=++attempt;selected=accessArea(area);message.textContent='';try{await ready;if(opening!==attempt)return;if(identity.account&&!switchUser){returnToCircles();return;}switching=switchUser;form.reset();pins.clear();form.elements.rememberId.checked=true;element('circles-sign-in-title').textContent=switching?'Switch user':'Ahlan wa Sahlan';element('circles-sign-in-intro').textContent=switching?'Choose an account and enter its PIN. This switches all Circles tabs in this browser.':'Log in with your existing Academy account.';form.querySelector('[type=submit]').textContent=switching?'Switch user':'Log in';renderRemembered();element('circles-sign-in-area').textContent=labels[selected];if(!dialog.open)dialog.showModal();}catch{if(!dialog.open)dialog.showModal();message.textContent='Sign-in is temporarily unavailable. Please try again.';}}
+async function begin(area,{switchUser=false}={}){const opening=++attempt;selected=accessArea(area);message.textContent='';try{await ready;if(opening!==attempt)return;if(identity.account&&!switchUser){if(publicView)setPublicView(false);returnToCircles();return;}switching=switchUser;form.reset();pins.clear();form.elements.rememberId.checked=true;element('circles-sign-in-title').textContent=switching?'Switch user':'Ahlan wa Sahlan';element('circles-sign-in-intro').textContent=switching?'Choose an account and enter its PIN. This switches all Circles tabs in this browser.':'Log in with your existing Academy account.';form.querySelector('[type=submit]').textContent=switching?'Switch user':'Log in';renderRemembered();element('circles-sign-in-area').textContent=labels[selected];if(!dialog.open)dialog.showModal();}catch{if(!dialog.open)dialog.showModal();message.textContent='Sign-in is temporarily unavailable. Please try again.';}}
 dialog.querySelector('.circles-sign-in-close').onclick=()=>dialog.close();
 dialog.addEventListener('close',()=>{attempt++;switching=false;form.reset();pins.clear();delete form.dataset.setup;element('circles-confirm-pin').hidden=true;form.elements.pinConfirmation.required=false;message.textContent='';});
 form.addEventListener('submit',async event=>{
@@ -68,7 +84,12 @@ async function signOut(button){button.disabled=true;try{await api('/auth/logout'
 // Capture before prototype handlers; the signed-in blocks contain real links.
 document.addEventListener('click',event=>{
  if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
- const switcher=event.target.closest('[data-circles-switch-user]');if(switcher){event.preventDefault();event.stopImmediatePropagation();void begin('general',{switchUser:true});return;}
+ const account=event.target.closest('.public-login[data-access-login]');if(account&&identity.account){event.preventDefault();event.stopImmediatePropagation();const menu=account.parentElement.querySelector('.circles-account-menu');if(menu){menu.hidden=!menu.hidden;account.setAttribute('aria-expanded',String(!menu.hidden));if(!menu.hidden)menu.querySelector('button')?.focus();}return;}
+ if(!event.target.closest('.circles-account-menu'))closeAccountMenu();
+ const switcher=event.target.closest('[data-circles-switch-user]');if(switcher){event.preventDefault();event.stopImmediatePropagation();closeAccountMenu();void begin('general',{switchUser:true});return;}
+ const website=event.target.closest('[data-circles-visit-website]');if(website){event.preventDefault();event.stopImmediatePropagation();setPublicView(true);return;}
+ if(event.target.closest('[data-circles-refresh]')){event.preventDefault();event.stopImmediatePropagation();void refreshHomepage();return;}
+ if(event.target.closest('[data-circles-home]')){event.preventDefault();event.stopImmediatePropagation();setPublicView(false);window.scrollTo({top:0,behavior:'smooth'});return;}
  const signout=event.target.closest('[data-circles-sign-out]');if(signout){event.preventDefault();event.stopImmediatePropagation();void signOut(signout);return;}
  const programme=event.target.closest('[data-programme-key]');if(programme&&identity.account){event.preventDefault();event.stopImmediatePropagation();openAcademy(programme.dataset.programmeKey);return;}
  const target=event.target.closest('[data-access-login],[data-circles-login],[data-action="visitor-access"],[data-action="dashboard"],[data-action="academy"],[data-action="collection"],[data-action="course"]');if(!target)return;
@@ -77,6 +98,7 @@ document.addEventListener('click',event=>{
  const area=target.hasAttribute('data-access-login')?target.dataset.accessArea:target.dataset.action==='visitor-access'?target.dataset.id:target.dataset.action==='collection'?'courses':['academy','course'].includes(target.dataset.action)?'academy':'general';
  const prototypeDialog=element('detail');if(prototypeDialog?.open)prototypeDialog.close();void begin(area);
 },true);
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.querySelector('.circles-account-menu:not([hidden])')){event.preventDefault();closeAccountMenu({focus:true});}});
 const observer=new MutationObserver(refreshHeader);for(const id of ['experience','detail'])if(element(id))observer.observe(element(id),{childList:true,subtree:true});
 function clearAccountNavigation(){handoff?.close();navigation=null;navRequest=null;homeMessage='';dashboard.clear();refreshHeader();if(identity.account)void dashboard.load();}
 window.addEventListener('website-session-ended',event=>{clearAccountNavigation();if(event.detail?.externalAccountChange)location.reload();});
