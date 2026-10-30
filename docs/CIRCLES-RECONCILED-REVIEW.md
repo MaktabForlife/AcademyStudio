@@ -68,3 +68,16 @@ The user's subsequent catalogue request replaces the review introduction/metadat
 The catalogue omits the earlier circle hero, external card copy, counts, migration notes, and separate Mothers draft. The approved public homepage prototype and Mothers operational page are not modified. Private migration notes remain in this document and the existing handoff.
 
 Verification: 21 focused tests pass, including native aliases, denied/pending rows, author source validation, independent-reading partitioning, stable route keys, lock states and card-only copy. The syntax/configuration check covers 89 modules. Browser evidence and exact local completion details are in `outputs/academy-podcast-layout-20261030/`. This remains a local review on the existing older platform branch; final V108 authority acceptance, unresolved mapping, real subscription display and hosted release remain separate.
+
+
+## Name cards throughout Tafseer and Ulumul Qur’an naming — 30 October
+
+The user requested that the former Qur’an-among-yellow-flowers photograph be removed from the Tafseer screens and replaced with the existing Arabic/English series name artwork. The standard component is now used in every mapped Tafseer header, including recording details, Read/About/Materials/Sessions and normal reading views. The same former home-image references are replaced during inline editing, and the reader no longer fetches those cover photographs. Existing course pictures remain. Original source editions and archived assets are retained without rewriting the private source bundle.
+
+The human subsequently renamed Foundations of Tafseer to **Ulumul Qur’an — Qur’anic Studies**. Its card uses **علوم القرآن** and the full English title; the series header displays Ulumul Qur’an with Qur’anic Studies underneath. The display adapter also covers the learning/public card names. Stable website/offering/lesson IDs, free-text policy and recording gates remain unchanged. Canonical source metadata remains in the reconciled source and must be reconciled by the integration owner, not inferred as a new offering.
+
+The public three-circle artwork was separately replaced by the earlier single large circle composition in the original design reference checkout, sites/academy-design-directions-20261029, branch ui/single-circle-home. That local UI reference has its own commit and preview at http://localhost:8990/?concept=circle&view=website&branch=studio&embed=1. Retain the branch navigation, existing content and phone-first presentation. The card-only recording catalogue remains separate. This is not a publication or an app-integration change.
+
+The user also removed the redundant Sessions tab from Tafseer. Standard Tafseer navigation is Recordings / Read / About / Materials. Tafseer reader entry no longer fetches the unused live timetable, and old Sessions reader routes return to Recordings. Source scheduling records and the configured Course timetable remain intact.
+
+The human's final naming refinement removes the English transliteration “Ulumul Qur’an” from the display name and cover label. The final visible name is **Qur’anic Studies**, paired with Arabic **علوم القرآن**. The original Foundations identity remains the stable source/migration key; no new offering or access right is created. The existing teaching text is not globally rewritten.

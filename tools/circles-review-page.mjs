@@ -10,7 +10,8 @@ export function catalogueLock(item){
 }
 
 export function circlesReviewPage({websites,courses,catalogue=[]}) {
- const card=item=>{
+ const card=sourceItem=>{
+  const item=sourceItem.key==='foundations'?{...sourceItem,title:'Qur’anic Studies'}:sourceItem;
   const ornament=tafseerCover(item),label=item.key==='fatir'?'Text pending':item.title,state=item.subscriptionStatus||(item.key==='foundations'?'free':'required'),accessible=item.title+(state==='free'?'':state==='subscribed'?' · Subscribed':' · Subscription required');
   const body=`${ornament||(item.cover?`<img src="${esc(item.cover)}" alt="" loading="lazy">`:'<span class="cover-circles"><i></i><i></i><i></i></span>')}${catalogueLock(item)}${!ornament?`<span class="collection-card-name">${esc(label)}</span>`:''}`;
   return `<article class="collection-card${ornament?' collection-tafseer':''}" style="--card-accent:${esc(item.accent)};--card-soft:${esc(item.soft)}">${item.url?`<a href="${esc(item.url)}" class="collection-cover${ornament?' tafseer-cover':''}" aria-label="${esc(accessible)}">${body}</a>`:`<div class="collection-cover${ornament?' tafseer-cover':''}" role="img" aria-label="${esc(item.title+' · '+label)}">${body}</div>`}</article>`;

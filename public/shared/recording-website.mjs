@@ -1,5 +1,6 @@
 import {esc} from './model.mjs';
 import {recordingStart,recordingTopics} from './recording-companion.mjs';
+import {tafseerCourseCover,replaceTafseerArtwork,tafseerDisplayCourse} from './tafseer-cover.mjs';
 
 const video=row=>row?.attachment_id&&['video/youtube','video/mp4'].includes(row.type);
 const sourceId=guide=>guide.editorialLessonId||guide.lessonId;
@@ -45,23 +46,27 @@ export function recordingList({entries=[],loaded=true,more=false}={}){
 }
 export function readingList(readings=[]){return `<section><div class="rs-list-heading"><h1>Read</h1><span>${readings.length} ${readings.length===1?'reading':'readings'}</span></div><p class="rs-intro">Material to read and reflect on in its own right. Readings linked to a recording are kept with that lesson.</p><div class="rs-readings">${readings.map(l=>`<article class="rs-reading-card"><p class="sp-eyebrow">${esc(l.group||'READ & REFLECT')}</p><h2>${action(esc(l.title),'lesson',l.id)}</h2>${l.summary?`<p>${esc(l.summary)}</p>`:''}${action('Read <span aria-hidden="true">→</span>','lesson',l.id,'class="rs-reading-link"')}</article>`).join('')||'<p class="rs-empty">There are no separate readings in this series yet. You can find the companion readings on each recording’s page.</p>'}</div></section>`;}
 
+export function recordingWebsiteTabs(course,pages=course.pages){return [['home','Recordings'],['lessons','Read'],['about','About'],...(pages?.materials?[['materials','Materials']]:[]),...(pages?.sessions&&!tafseerCourseCover(course)?[['sessions','Sessions']]:[])];}
+
 // Rearrange presentation only. The original reading nodes and authoring schema survive.
 export function presentRecordingWebsite(root,{course,ui,entries=[],guides=[],loaded=true,more=false,pages=course.pages}={}){
+ course=tafseerDisplayCourse(course);
  const inner=root.querySelector('.sp-inner'),page=root.querySelector('.sp-page');if(!inner||!page)return;
  const original=document.createElement('div');original.className='rs-original-reading';
  for(const node of [...page.children])if(!node.matches('.sp-footer'))original.append(node);
  const compact=!['home','about'].includes(ui.route),active=ui.route==='lesson'?'lessons':ui.route==='recording'?'home':ui.route;
  const cover=inner.querySelector('.sp-hero-image,.rs-series-cover>img')?.cloneNode(true);
- const tabs=[['home','Recordings'],['lessons','Read'],['about','About'],...(pages?.materials?[['materials','Materials']]:[]),...(pages?.sessions?[['sessions','Sessions']]:[])];
+ const tabs=recordingWebsiteTabs(course,pages);
  inner.classList.add('rs-shell');inner.dataset.seriesView=ui.route;
  inner.innerHTML=`<header class="rs-series-header${compact?' rs-compact':''}"><div class="rs-series-cover"></div><div class="rs-series-identity"><p class="sp-eyebrow">${esc(course.tag||'UMM ABBAD ACADEMY')}</p><${ui.route==='home'?'h1':'div'} class="rs-series-title">${action(esc(course.name),'home','','class="rs-series-name"')}</${ui.route==='home'?'h1':'div'}><p class="rs-subtitle">${esc(course.home.subtitle||'')}</p>${!compact&&course.home.description?`<p class="rs-series-description">${esc(course.home.description)}</p>`:''}<div class="sp-row-actions rs-series-tools"></div></div></header><nav class="rs-tabs" aria-label="Series navigation">${tabs.map(([route,label])=>action(label,route,'',`aria-current="${active===route?'page':'false'}"`)).join('')}</nav><section class="sp-page rs-page${ui.route==='lesson'?' sp-reading-page':''}"></section><footer class="sp-footer"><span>Umm Abbad Academy</span><span>Learn with purpose. Return often.</span></footer>`;
- const coverTarget=inner.querySelector('.rs-series-cover');if(cover)coverTarget.append(cover);else coverTarget.innerHTML=`<img data-course-image="${esc(course.home.imageId)}" src="/shared/assets/lilac-600.webp" alt="${esc(course.home.imageAlt||course.name)}">`;
+ const coverTarget=inner.querySelector('.rs-series-cover'),nameCover=tafseerCourseCover(course);if(nameCover){coverTarget.classList.add('tafseer-name-artwork');coverTarget.setAttribute('role','img');coverTarget.setAttribute('aria-label',course.name);coverTarget.innerHTML=nameCover;inner.classList.add('rs-tafseer');}else if(cover)coverTarget.append(cover);else coverTarget.innerHTML=`<img data-course-image="${esc(course.home.imageId)}" src="/shared/assets/lilac-600.webp" alt="${esc(course.home.imageAlt||course.name)}">`;
  const target=inner.querySelector('.rs-page');
  if(ui.route==='home')target.innerHTML=recordingList({entries,loaded,more});
  else if(ui.route==='recording')target.innerHTML=!loaded&&!entries.some(e=>e.id===ui.recordingId)?'<p class="rs-empty">Loading your recording…</p>':recordingDetail(entries.find(e=>e.id===ui.recordingId),course);
  else if(ui.route==='lessons')target.innerHTML=readingList(independentReadings(course,guides,entries));
  else if(ui.route==='about')target.innerHTML=`<section class="rs-about"><p class="sp-eyebrow">ABOUT THIS SERIES</p><h1>${esc(course.home.headline||course.name)}</h1><p class="rs-about-subtitle">${esc(course.home.subtitle)}</p><p>${esc(course.home.description)}</p>${course.home.caption?`<p class="rs-muted">${esc(course.home.caption)}</p>`:''}</section>`;
  else {const linked=ui.route==='lesson'&&entries.find(e=>e.readingIds.includes(ui.lessonId));if(linked){const back=original.querySelector('.sp-reading-toolbar [data-sp=lesson]');if(back&&back.textContent.includes('Recorded lesson')){back.dataset.sp='recording';back.dataset.id=linked.id;back.textContent='← Recording';}else original.insertAdjacentHTML('afterbegin',action('← Back to recording','recording',linked.id,'class="rs-back"'));}target.append(original);}
+ replaceTafseerArtwork(root,course);
 }
 
 // Used only by private author previews; no operational website rights are inferred.
