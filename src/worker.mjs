@@ -1,3 +1,4 @@
+import {dashboardSnapshot} from './dashboard.mjs';
 import {circlesNavigation,programmeSnapshot} from './navigation.mjs';
 import {publicCatalogue,catalogueAccess,permittedGuideBindings,websitePresentation} from './circles.mjs';
 import {academyAuthority,accessGate,joinAudience} from './access.mjs';
@@ -37,7 +38,7 @@ async function route(request,env,store,fetcher){
  if(path==='/api/config'&&method==='GET')return json({academyOrigin:env.ACADEMY_ORIGIN,localPreview:env.ENVIRONMENT==='local',authorityMode:env.AUTHORITY_MODE||'WEBSITE'});
  if(method==='POST'||method==='PUT'||method==='DELETE')originCheck(request,env);
  if(path==='/auth/login'&&method==='POST')return forwardSignIn(request,env,store,await bodyJSON(request.body,4096),fetcher);
- if(path==='/auth/exchange'&&method==='POST'){const result=await exchange(await bodyJSON(request.body,4096),env,store);return json({signedIn:true,accountId:result.accountId},200,{'Set-Cookie':result.cookie});}
+ if(path==='/auth/exchange'&&method==='POST'){const previous=parseCookie(request),result=await exchange(await bodyJSON(request.body,4096),env,store);if(previous)await store.run('UPDATE sessions SET revoked=1 WHERE token_hash=?',[await sha256(previous)]);return json({signedIn:true,accountId:result.accountId},200,{'Set-Cookie':result.cookie});}
  const token=parseCookie(request);if(!token)throw fail('Sign in to Academy to continue.',401,'SIGN_IN_REQUIRED');const actor=await store.actor(await sha256(token),Date.now(),{allowExpiredStatus:path==='/auth/refresh'||path==='/auth/logout'});
  if((path==='/auth/refresh'||path==='/auth/access')&&method==='POST'){
   if(!actor.source_ref)throw fail('Sign in to Academy to refresh this session.',401);if(path==='/auth/refresh'&&actor.verified_at>=Date.now()-boundedAge(env,true))return json({verifiedAt:actor.verified_at});
@@ -46,11 +47,12 @@ async function route(request,env,store,fetcher){
   try{await academyCommand(env,store,'/internal/website/status',{sourceRef:actor.source_ref},fetcher);const current=await store.actor(actor.token_hash);return json({verifiedAt:current.verified_at});}finally{await store.run('DELETE FROM refresh_claims WHERE account_id=? AND claim_id=?',[actor.account_id,claimId]);}
  }
  if(path==='/auth/academy'&&method==='POST'){const input=await bodyJSON(request.body,4096);if(!actor.source_ref||!safeToken(input.challenge)||!safeToken(input.state))throw fail('Reopen Academy from the website.',401);let library;
-  if(input.navigation&&!['alimiyah','reboot','arabic-intensive','hifz'].includes(input.navigation))throw fail('Choose an authorised programme.',403);if(input.navigation&&input.library)throw fail('Choose one destination.');
+  if(input.navigation&&!['alimiyah','reboot','arabic-intensive','hifz'].includes(input.navigation))throw fail('Choose an authorised programme.',403);if([input.navigation,input.library,input.dashboard].filter(Boolean).length>1)throw fail('Choose one destination.');
   if(input.library){const website=await websiteAccess(store,actor,id(input.library.websiteId)),lessonId=input.library.lessonId?id(input.library.lessonId):null;if(lessonId){const document=website.published_key?await objectJSON(env.CONTENT,website.published_key):null;if(!document?.lessons.some(l=>l.id===lessonId))throw fail('Choose a published lesson for the Library return.',404);}library={websiteId:website.website_id,lessonId};}
-  const result=await academyCommand(env,store,'/internal/website/open-academy',{sourceRef:actor.source_ref,challenge:input.challenge,state:input.state,...(library?{library}:{}),...(input.navigation?{navigation:input.navigation}:{})},fetcher);if(!safeToken(result.code))throw fail('Academy could not prepare the handoff.',503);return json({code:result.code});}
+  const result=await academyCommand(env,store,'/internal/website/open-academy',{sourceRef:actor.source_ref,challenge:input.challenge,state:input.state,...(library?{library}:{}),...(input.navigation?{navigation:input.navigation}:{}),...(input.dashboard?{dashboard:input.dashboard}:{})},fetcher);if(!safeToken(result.code))throw fail('Academy could not prepare the handoff.',503);return json({code:result.code});}
  if(path==='/auth/logout'&&method==='POST'){await store.run('UPDATE sessions SET revoked=1 WHERE token_hash=?',[actor.token_hash]);return json({signedOut:true},200,{'Set-Cookie':cookie('',0)});}
  if(path==='/api/me'&&method==='GET')return json({accountId:actor.account_id,displayName:actor.display_name,globalAdmin:Boolean(actor.global_admin),verifiedAt:actor.verified_at});
+ if(path==='/api/circles/dashboard'&&method==='POST')return json(await dashboardSnapshot(env,store,actor,await bodyJSON(request.body,4096),fetcher));
  if(path==='/api/circles/navigation'&&method==='GET')return json(await circlesNavigation(env,store,actor));
  if(path==='/api/circles/classrooms/mothers'&&method==='GET'){if(!(await programmeSnapshot(store,actor)).includes('mothers'))throw fail('Mothers of the Ummah membership is required.',403);return json({title:'Mothers of the Ummah',materialsConnected:false});}
  if(path==='/api/circles/access'&&method==='GET')return json(await catalogueAccess(store,actor,url.searchParams.getAll('website')));

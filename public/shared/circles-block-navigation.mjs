@@ -13,10 +13,11 @@ export function circleBlockNavigation(document){
  const templates=new Map(),rendered=new WeakMap();
  return (signedIn,navigation)=>{
   for(let card of document.querySelectorAll('.hub-panel[data-home-area]')){
-   const area=card.dataset.homeArea;if(!['academy','mothers','tafseer','hifz'].includes(area))continue;
+   const area=card.dataset.homeArea;if(!['academy','mothers','tafseer','hifz','arabic-adventures'].includes(area))continue;
    if(!templates.has(area))templates.set(area,{html:card.innerHTML,href:card.getAttribute('href'),action:card.getAttribute('data-action')});
+   card.hidden=Boolean(signedIn&&(area==='arabic-adventures'||area==='hifz'&&!navigation?.hifz||area==='academy'&&!navigation?.academia.length||area==='mothers'&&!navigation?.mothers&&!navigation?.shortCourses.length));
    const template=templates.get(area),signature=JSON.stringify([signedIn,navigation,area]);if(rendered.get(card)===signature)continue;
-   const direct=signedIn&&(area==='tafseer'||area==='hifz'&&navigation?.hifz),tag=signedIn&&!direct?'SECTION':'A';
+   const direct=signedIn&&(area==='tafseer'||area==='arabic-adventures'||area==='hifz'&&navigation?.hifz),tag=signedIn&&!direct?'SECTION':'A';
    if(card.tagName!==tag){const replacement=document.createElement(tag);for(const attr of card.attributes)replacement.setAttribute(attr.name,attr.value);card.replaceWith(replacement);card=replacement;}
    card.innerHTML=template.html;card.removeAttribute('data-circles-login');card.removeAttribute('data-programme-key');card.removeAttribute('target');card.removeAttribute('rel');
    if(!signedIn){card.href=template.href||'/?login=1';if(template.action)card.setAttribute('data-action',template.action);}
