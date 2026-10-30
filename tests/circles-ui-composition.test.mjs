@@ -5,7 +5,7 @@ const read=path=>readFile(join(build,path),'utf8');
 test('the complete podcast UI has its local module dependencies, native login and dashboard',options,async()=>{
  const files=[];async function visit(dir){for(const item of await readdir(dir,{withFileTypes:true})){const path=join(dir,item.name);if(item.isDirectory())await visit(path);else if(/\.(mjs|html)$/.test(path))files.push(path);}}await visit(join(build,'circles'));
  for(const file of files){const source=await readFile(file,'utf8'),refs=file.endsWith('.mjs')?[...source.matchAll(/(?:from\s*|import\s*)['"](\.[^'"]+)['"]/g)].map(m=>m[1]):[...source.matchAll(/(?:src|href)="([^"?]+)(?:\?[^\"]*)?"/g)].map(m=>m[1]).filter(p=>/\.(?:m?js|css)$/.test(p)&&!p.startsWith('/'));
-  for(const ref of refs)assert((await stat(resolve(dirname(file),ref))).isFile(),file+' → '+ref);
+  for(const ref of refs)assert((await stat(resolve(dirname(file),ref.split(/[?#]/)[0]))).isFile(),file+' → '+ref);
  }
  const index=await read('index.html');assert(index.includes('homepage-layout.js'));assert(index.includes('/circles-login.mjs'));assert(!/src="(?:layout|text)-editor/.test(index));
  for(const path of ['api.mjs','circles-login.mjs','circles-dashboard.mjs','shared/pin-entry.mjs'])assert.equal(await read(path),await readFile(new URL('../public/'+path,import.meta.url),'utf8'),path);
