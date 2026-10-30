@@ -13,3 +13,5 @@
 .site-header .account-controls{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.site-header .header-nav-button{border-radius:999px;min-height:40px;padding:9px 15px}
 
 .site-header .header-nav-button{display:inline-flex;align-items:center;justify-content:center;min-width:40px;width:40px;height:40px;padding:9px;border:0;border-radius:50%}
+
+.circles-header-dates{grid-column:1/-1;flex-basis:100%;width:100%;text-align:right;color:#7b6c74;font:400 11px/1.5 var(--sans,Arial,sans-serif)}.public-home-header:has(.circles-header-dates),.site-header:has(.circles-header-dates){flex-wrap:wrap}.circles-header-dates time{white-space:nowrap}@media(max-width:600px){.circles-header-dates{text-align:center;font-size:10px}}

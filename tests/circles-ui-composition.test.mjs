@@ -29,4 +29,7 @@ test('course presentation preserves the corrected categories and six-day five-fr
  assert.deepEqual(Array.from(context.AcademyPaidCourses,c=>c.key),['surah-al-kahf','tawakkul-mindset','stillness-in-my-salah','spending']);
  assert(context.AcademyApprovedFreeCourses.some(c=>c.key==='resilience'&&c.access==='free'));assert(context.AcademyTafseerStudies.some(c=>c.key==='ulumul-quran'));
  for(const now of [Date.parse('2026-10-30'),Date.parse('2026-11-06')]){const free=context.AcademyFreeLearning.homepageCourses(now),paid=context.AcademyFreeLearning.homepagePaidCourses(now);assert.equal(free.length,5);assert.equal(paid.length,1);assert(!free.some(c=>['ulumul-quran','mothers-baqarah'].includes(c.key)));}
+ const card=(await read('circles/app.js')).split('\n').find(line=>line.startsWith('function freeCourseCard('));
+ const inactive=runInNewContext(card+";freeCourseCard({key:'review',title:'Review',cover:'test.png',coverAlt:'Test'})",{esc:String});
+ assert.match(inactive,/aria-disabled="true"/);assert.match(inactive,/>Inactive<\/span>/);assert.doesNotMatch(inactive,/<a\b|href=|data-action=|data-free-course=/,'Free placeholders are inactive from the first render and every rotation');
 });

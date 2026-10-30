@@ -4,7 +4,7 @@ import {cp,readFile,writeFile,mkdir,stat} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {contentHash} from './reconciled-content.mjs';
-import {connectedCourseSource,connectedPodcastView,connectedCoursePage} from './circles-ui-adaptation.mjs';
+import {connectedCourseSource,connectedPodcastView,connectedCoursePage,inactiveFreeCourseCards} from './circles-ui-adaptation.mjs';
 import {legacyStudioDestination} from '../public/shared/circles-routes.mjs';
 
 const [designArg,destinationArg]=process.argv.slice(2);
@@ -41,9 +41,9 @@ if(podcastUI){
 // membership service. The original design checkout remains unchanged.
 const designApp=await readFile(join(circles,'app.js'),'utf8'),legacyMemberLinks=(designApp.match(/https:\/\/ummabbadacademy\.com\/my-account\//g)||[]).length;
 if(!legacyMemberLinks)throw Error('Review the current design login contract before preparing.');
-await writeFile(join(circles,'app.js'),designApp.replaceAll('https://ummabbadacademy.com/my-account/','/?login=1').replaceAll('href="/?login=1" target="_blank" rel="noopener noreferrer"','href="/?login=1"'));
+await writeFile(join(circles,'app.js'),inactiveFreeCourseCards(designApp).replaceAll('https://ummabbadacademy.com/my-account/','/?login=1').replaceAll('href="/?login=1" target="_blank" rel="noopener noreferrer"','href="/?login=1"'));
 const original=await readFile(join(circles,'index.html'),'utf8');
-const entry=`<script>const circlesEntryParams=new URLSearchParams(location.search);window.AcademyCirclesEntry={login:circlesEntryParams.get('login')==='1',area:circlesEntryParams.get('area')};circlesEntryParams.set('concept','circle');circlesEntryParams.set('view','website');circlesEntryParams.delete('role');circlesEntryParams.delete('collection');history.replaceState(null,'',location.pathname+'?'+circlesEntryParams);</script>`;
+const entry=`<script>const circlesEntryParams=new URLSearchParams(location.search);window.AcademyCirclesEntry={login:circlesEntryParams.get('login')==='1',area:circlesEntryParams.get('area'),workspace:circlesEntryParams.get('workspace'),public:circlesEntryParams.get('public')==='1'};circlesEntryParams.set('concept','circle');circlesEntryParams.set('view','website');circlesEntryParams.delete('role');circlesEntryParams.delete('collection');history.replaceState(null,'',location.pathname+'?'+circlesEntryParams);</script>`;
 const legacy=`<script>{const destination=(${legacyStudioDestination.toString()})(new URL(location.href));window.AcademyCirclesRedirecting=Boolean(destination);if(destination)location.replace(destination);}</script>`;
 const hostedDesign=original.replace(/\s*<script[^>]+src="layout-editor\.js[^"]*"[^>]*><\/script>/g,'').replace(/\s*<link[^>]+href="(?:layout-editor|text-editor)\.css[^"]*"[^>]*>/g,'');
 const connected=hostedDesign.replace('<head>','<head><base href="/circles/">'+legacy).replace('</head>','<link rel="stylesheet" href="/circles-login.css"></head>').replace('<script src="app.js',entry+'<script src="app.js').replace(/\s*<script src="text-editor\.js[^\"]*"><\/script>/,'').replace('</body>','<script type="module">if(!window.AcademyCirclesRedirecting)await import("/circles-login.mjs");</script></body>');

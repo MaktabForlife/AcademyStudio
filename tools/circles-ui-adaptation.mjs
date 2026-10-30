@@ -1,5 +1,14 @@
 // Keep the author's source checkout intact. The connected UI must rehearse the
 // hosted access boundary even on localhost; private editorial previews stay out.
+export function inactiveFreeCourseCards(source){
+ const card=source.split('\n').find(line=>line.startsWith('function freeCourseCard('));
+ if(!card||!card.includes('data-free-course=')||!card.includes('</a>'))throw Error('Review the free-course card contract.');
+ const inactive=card.replace('<a class="free-course-card ','<article class="circles-free-inactive free-course-card ')
+  .replace(' href="${esc(c.href)}" data-free-course="${esc(c.key)}"',' aria-disabled="true"')
+  .replace(' · Free course"',' · Free course · Inactive"').replace('>Free</span>','>Inactive</span>')
+  .replace("${i===0?'<span class=\"free-course-featured\">Featured</span>':''}",'').replace('</a>','</article>');
+ return source.replace(card,inactive);
+}
 export function connectedCourseSource(source){
  const preview="export const isLocalPreview = location => ";
  const missing="if(!response.ok)throw Error('The course could not be opened.');";

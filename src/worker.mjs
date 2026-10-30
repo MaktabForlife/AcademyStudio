@@ -1,4 +1,5 @@
 import {dashboardSnapshot} from './dashboard.mjs';
+import {publicHeaderDate} from './header-date.mjs';
 import {circlesNavigation,programmeSnapshot} from './navigation.mjs';
 import {publicCatalogue,catalogueAccess,permittedGuideBindings,websitePresentation} from './circles.mjs';
 import {academyAuthority,accessGate,joinAudience} from './access.mjs';
@@ -22,6 +23,7 @@ async function forwardSignIn(request,env,store,input,fetcher){
 }
 async function route(request,env,store,fetcher){
  const url=new URL(request.url),path=url.pathname,method=request.method;
+ if(path==='/api/public/header-date'&&method==='GET')return publicHeaderDate(request,env,fetcher);
  if(path==='/api/public/circles'&&method==='GET')return json(await publicCatalogue(env),200,{'Cache-Control':'public, max-age=60'});
  const publicCover=path.match(/^\/api\/public\/circles\/covers\/([a-f0-9]{64})$/);
  if(publicCover&&['GET','HEAD'].includes(method)){const object=await env.CONTENT.get('public/circles/covers/'+publicCover[1]);if(!object||!['image/png','image/jpeg','image/webp'].includes(object.httpMetadata?.contentType))throw fail('This cover is unavailable.',404);return new Response(method==='HEAD'?null:object.body,{headers:{'Content-Type':object.httpMetadata.contentType,'Cache-Control':'public, max-age=31536000, immutable','X-Content-Type-Options':'nosniff'}});}

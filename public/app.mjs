@@ -1,5 +1,6 @@
 import {pinEntry} from './shared/pin-entry.mjs';
 import {headerIcon} from './shared/header-icons.mjs';
+import {installHeaderDates} from './shared/header-dates.mjs';
 import {startReaderView} from './shared/reader-startup.mjs';
 import {protectAccountHistory} from './shared/account-history.mjs';
 import {mothersClassroom} from './shared/circles-navigation.mjs';
@@ -26,6 +27,7 @@ const currentSeriesRecordings=()=>seriesRecordings({media:delivery?.media||[],gu
 const freshDelivery=()=>({bindings:[],media:[],sessions:[],loaded:false,more:false,request:null,sessionRequest:null,serverOffset:0});
 const textEditor=readerEditing({root:$('course-reader'),identity,api,current:()=>current,route:()=>ui,showDraft(record){document.querySelectorAll('[data-reader-toolbar]').forEach(node=>node.hidden=true);beforeEditing={record:current,ui:structuredClone(ui),assets};current={...record,canEdit:true};assets=new Map(record.assets.map(a=>[a.asset_id,{...a,id:a.asset_id,url:a.url+'?draft=1'}]));ui={...ui,route:['recording','about'].includes(ui.route)?'home':ui.route,isPreview:true,completed:[],reflections:{}};draw();},showPublished(){document.querySelectorAll('[data-reader-toolbar]').forEach(node=>node.hidden=false);if(beforeEditing){current=beforeEditing.record;ui=beforeEditing.ui;assets=beforeEditing.assets;beforeEditing=null;draw();}},async refresh(){const id=current.websiteId;beforeEditing=null;await openWebsite(id);}});
 const pins=pinEntry($('sign-in-form'));
+installHeaderDates();
 function openSignIn(){pins.clear();$('sign-in-dialog').showModal();}
 $('sign-in-dialog').addEventListener('close',()=>{pins.clear();$('sign-in-status').textContent='';});
 const removeReaderToolbars=()=>document.querySelectorAll('[data-reader-toolbar]').forEach(node=>node.remove());
