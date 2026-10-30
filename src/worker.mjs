@@ -1,3 +1,4 @@
+import {publicCatalogue,catalogueAccess,permittedGuideBindings} from './circles.mjs';
 import {academyAuthority,accessGate,joinAudience} from './access.mjs';
 import {Store} from './database.mjs';
 import {fail,failure,json,bodyJSON,parseCookie,sha256,originCheck,cookie,id,text,integer,bytes,signedHeaders,safeToken,boundedAge} from './protocol.mjs';
@@ -19,6 +20,9 @@ async function forwardSignIn(request,env,store,input,fetcher){
 }
 async function route(request,env,store,fetcher){
  const url=new URL(request.url),path=url.pathname,method=request.method;
+ if(path==='/api/public/circles'&&method==='GET')return json(await publicCatalogue(env),200,{'Cache-Control':'public, max-age=60'});
+ const publicCover=path.match(/^\/api\/public\/circles\/covers\/([a-f0-9]{64})$/);
+ if(publicCover&&['GET','HEAD'].includes(method)){const object=await env.CONTENT.get('public/circles/covers/'+publicCover[1]);if(!object||!['image/png','image/jpeg','image/webp'].includes(object.httpMetadata?.contentType))throw fail('This cover is unavailable.',404);return new Response(method==='HEAD'?null:object.body,{headers:{'Content-Type':object.httpMetadata.contentType,'Cache-Control':'public, max-age=31536000, immutable','X-Content-Type-Options':'nosniff'}});}
  if(path==='/api/public/home'&&method==='GET'){
   const object=await env.CONTENT.get('public/home.json');if(!object)return json({title:'Umm Abbad Academy',cards:[],sessions:[],announcements:[]});
   const home=await bodyJSON(object.body),schedule=await env.CONTENT.get('public/schedule.json'),visible=new Set(home.cards.map(c=>c.offering_id));
@@ -43,6 +47,7 @@ async function route(request,env,store,fetcher){
   const result=await academyCommand(env,store,'/internal/website/open-academy',{sourceRef:actor.source_ref,challenge:input.challenge,state:input.state,...(library?{library}:{})},fetcher);if(!safeToken(result.code))throw fail('Academy could not prepare the handoff.',503);return json({code:result.code});}
  if(path==='/auth/logout'&&method==='POST'){await store.run('UPDATE sessions SET revoked=1 WHERE token_hash=?',[actor.token_hash]);return json({signedOut:true},200,{'Set-Cookie':cookie('',0)});}
  if(path==='/api/me'&&method==='GET')return json({accountId:actor.account_id,displayName:actor.display_name,globalAdmin:Boolean(actor.global_admin),verifiedAt:actor.verified_at});
+ if(path==='/api/circles/access'&&method==='GET')return json(await catalogueAccess(store,actor,url.searchParams.getAll('website')));
  if(path==='/api/websites'&&method==='GET'){
   // Start with this account's indexed rights, rather than scanning all sites for an OR condition.
   if(academyAuthority(env)){const stale=await store.first("SELECT p.offering_id FROM source_access_people p JOIN source_access_scopes s USING(offering_id) WHERE p.account_id=? AND s.authority='ACADEMY' AND s.enabled=1 AND (p.ready=0 OR p.generation<>s.generation OR p.verified_at<CASE WHEN ?=1 OR EXISTS(SELECT 1 FROM staff sf WHERE sf.account_id=p.account_id AND sf.offering_id=p.offering_id) THEN ? ELSE ? END) LIMIT 1",[actor.account_id,Number(actor.global_admin),Date.now()-boundedAge(env,true),Date.now()-boundedAge(env)]);if(stale)throw Object.assign(fail('Academy access needs to be confirmed.',409,'ACCESS_REFRESH_REQUIRED'),{offeringId:stale.offering_id});}
@@ -71,14 +76,14 @@ async function route(request,env,store,fetcher){
   if(action==='sessions'&&method==='GET'){if(!actor.global_admin&&!scope.live&&!scope.role)throw fail('Live-session access is required.',403);return json({sessions:await store.all('SELECT session_id,title,starts_at,ends_at,cancelled FROM timetable INDEXED BY timetable_public_offering WHERE offering_id=? AND cancelled=0 AND starts_at>=? ORDER BY starts_at,session_id LIMIT 200',[offeringId,Date.now()-86400_000]),serverTime:Date.now()});}
   if(action==='media'&&method==='GET'){
    const after=url.searchParams.get('after')||'',websiteId=url.searchParams.get('website');
-   if(websiteId){const site=await websiteAccess(store,actor,id(websiteId));if(site.offering_id!==offeringId)throw fail('Choose a website in this offering.',400);}
+   let mediaWebsite=null;if(websiteId){const site=await websiteAccess(store,actor,id(websiteId));if(site.offering_id!==offeringId)throw fail('Choose a website in this offering.',400);mediaWebsite=site;}
    const filter=websiteId?' AND x.website_id=?':'',tail=websiteId?[websiteId]:[],select='SELECT x.attachment_id,x.asset_id,x.website_id,x.title,x.lesson_id,x.lesson_date,x.cohort,x.audience,o.mime_type type',staff=actor.global_admin||scope.role;
    let rows=[];
    if(staff||scope.kind==='COURSE'&&scope.purchased)rows=await store.all(`${select} FROM attachments x JOIN objects o USING(asset_id) WHERE x.offering_id=? AND x.audience='RECORDING' AND x.published=1 AND x.attachment_id>?${filter} ORDER BY x.attachment_id LIMIT 51`,[offeringId,after,...tail]);
    // Unary + preserves the month value while removing column affinity: SQLite can
    // then use the substr expression index for each paid month, not scan the offer.
    else if(scope.kind==='TAFSEER')rows=await store.all(`${select} FROM paid_months m CROSS JOIN attachments x INDEXED BY attachments_month JOIN objects o USING(asset_id) WHERE m.account_id=? AND m.offering_id=? AND x.offering_id=m.offering_id AND substr(x.lesson_date,1,7)=+m.month AND x.cohort=m.cohort AND x.audience='RECORDING' AND x.published=1 AND x.attachment_id>?${filter} ORDER BY x.attachment_id LIMIT 51`,[actor.account_id,offeringId,after,...tail]);
-   return json({media:rows.slice(0,50),more:rows.length>50});
+   const media=rows.slice(0,50);return json({media,more:rows.length>50,mediaBindings:mediaWebsite?await permittedGuideBindings(env,mediaWebsite,media):[]});
   }
   if(method!=='POST')throw fail('This action needs a POST request.',405);const input=await bodyJSON(request.body,16384);
   if(action==='join'){await accessGate(store,actor,offeringId,{live:true});if(!actor.global_admin&&!scope.live&&!scope.role)throw fail('Current live-session access is required.',403);const session=await store.first('SELECT session_id,starts_at,ends_at,zoom_url,cancelled FROM timetable WHERE session_id=? AND offering_id=?',[id(input.sessionId),offeringId]),now=Date.now();if(!session||session.cancelled||now<session.starts_at-300_000||now>=session.ends_at||!session.zoom_url)throw fail('Joining is available from five minutes before the lesson until it ends.',403,'JOIN_CLOSED');await joinAudience(store,actor,offeringId,session,scope);return json({destination:session.zoom_url});}

@@ -4,11 +4,13 @@ import {createServer} from 'node:http';import {readFile,stat} from 'node:fs/prom
 const sitePort=Number(process.env.PREVIEW_PORT||8791),academyPort=sitePort+1;
 if(!Number.isInteger(sitePort)||sitePort<1024||sitePort>65534)throw Error('Choose a local preview port between 1024 and 65534.');
 const websiteOrigin='http://localhost:'+sitePort,academyOrigin='http://localhost:'+academyPort;
-const publicRoot=resolve(process.env.PREVIEW_PUBLIC_ROOT||'public'),f=await fixture({academy:true});
+const publicRoot=resolve(process.env.PREVIEW_PUBLIC_ROOT||'public'),circles=process.env.PREVIEW_CIRCLES==='1',f=await fixture({academy:true,authorityMode:circles?'ACADEMY':'WEBSITE'});
+if(circles){const {circlesFixture}=await import('../tests/circles-fixture.mjs');const x=await circlesFixture(f);await x.recover(8);}else{
 for(const [account,globalAdmin] of [[f.source.f.actors.global,1],[f.source.f.actors.studentA,0]])await f.run('INSERT INTO accounts VALUES(?,?,1,1,1,?,?)',account,'Synthetic Academy '+(globalAdmin?'Admin':'Learner'),Date.now(),globalAdmin);
 await f.run("INSERT INTO participation VALUES(?,'course',1,1,1,'')",f.source.f.actors.studentA);
 const {seedTimetables}=await import('../tests/timetable-fixture.mjs');await seedTimetables(f);await f.runtime.dispatchFetch('https://academy.test/__local/recover');
 if(process.env.PREVIEW_CONTENT_ROOT){const{seedReviewedWebsites}=await import('./seed-reviewed-websites.mjs');console.log(JSON.stringify({contentReview:await seedReviewedWebsites(f,process.env.PREVIEW_CONTENT_ROOT)}));}
+}
 const mime={'.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.woff2':'font/woff2','.woff':'font/woff','.wasm':'application/wasm','.bcmap':'application/octet-stream','.ftl':'text/plain'};
 const samplePdfUrl='https://archive.org/download/maktab-local-sample/sample.pdf';
 function syntheticPdf(){
@@ -24,6 +26,7 @@ async function handler(request,response,isAcademy){
  try{
   const pathname=new URL(request.url,'http://localhost').pathname;
   if(isAcademy&&pathname==='/__local/read-metrics'){if(request.method==='POST')f.source.resetMetrics();response.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});return response.end(JSON.stringify(f.source.metrics));}
+  if(circles&&isAcademy&&pathname==='/academy/foundations/'){response.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});return response.end('<!doctype html><title>Synthetic Foundations</title><h1>Foundations of Tafseer</h1><p>Synthetic public text for the local connection rehearsal. Recordings remain protected separately.</p>');}
   if(!pathname.startsWith('/api/')&&!pathname.startsWith('/auth/')&&!pathname.startsWith('/internal/')){
    if(!isAcademy)return await staticFile(pathname,request,response);
    if(pathname==='/academy/open-library/catalogue'){response.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});return response.end(JSON.stringify({books:[{id:'EXTERNAL:INTERNET_ARCHIVE:maktab-local-sample',title:'Synthetic Library PDF',pdfUrl:samplePdfUrl,resourceType:'EBOOK',subject:'Local rehearsal',learningAreaRefs:['GLOBAL:subject-1']}]}));}
@@ -42,7 +45,7 @@ async function handler(request,response,isAcademy){
   if(headers.get('Origin')===websiteOrigin)headers.set('Origin',f.env.WEBSITE_ORIGIN);else if(headers.get('Origin')===academyOrigin)headers.set('Origin',f.env.ACADEMY_ORIGIN);
   const result=await f.runtime.dispatchFetch((isAcademy?f.env.ACADEMY_ORIGIN:f.env.WEBSITE_ORIGIN)+request.url,{method:request.method,headers,...(['GET','HEAD'].includes(request.method)?{}:{body:Buffer.concat(chunks)})});
   const outputHeaders=Object.fromEntries(result.headers);outputHeaders['cache-control']='no-store';
-  if(pathname==='/api/config'||pathname==='/api/website-platform/config'||pathname==='/api/website-platform/exchange'){
+  if(pathname==='/api/public/circles'||pathname==='/api/config'||pathname==='/api/website-platform/config'||pathname==='/api/website-platform/exchange'){
    const body=(await result.text()).replaceAll(f.env.WEBSITE_ORIGIN,websiteOrigin).replaceAll(f.env.ACADEMY_ORIGIN,academyOrigin);delete outputHeaders['content-length'];response.writeHead(result.status,outputHeaders);return response.end(body);
   }
   response.writeHead(result.status,outputHeaders);if(request.method==='HEAD'||!result.body)return response.end();Readable.fromWeb(result.body).on('error',()=>response.destroy()).pipe(response);

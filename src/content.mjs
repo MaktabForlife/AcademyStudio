@@ -1,3 +1,4 @@
+import {carryGuideBindings} from './circles.mjs';
 import {sourceWebsiteGate} from './access.mjs';
 import {fail,id,text,month,sha256,bodyJSON} from './protocol.mjs';
 import {validatePackage} from './content-package.mjs';
@@ -24,7 +25,7 @@ export async function editWebsite(env,store,actor,websiteId,input){
  if(input.action==='save'){
   const document=structuredClone(input.document);const errors=validatePackage(document);if(errors.length)throw fail(errors.join(' '));
   await assertWebsiteAssets(store,websiteId,document);
-  const key=await saveContent(env,document,websiteId);historyKey=key;statements.push(store.statement('UPDATE websites SET draft_key=?,revision=? WHERE website_id=?',[key,revision,websiteId]));
+  const key=await saveContent(env,document,websiteId);await carryGuideBindings(env,website,document,key);historyKey=key;statements.push(store.statement('UPDATE websites SET draft_key=?,revision=? WHERE website_id=?',[key,revision,websiteId]));
  }else if(input.action==='publish'){
   if(!website.draft_key)throw fail('Save a draft first.');const document=await objectJSON(env.CONTENT,website.draft_key);const errors=validatePackage(document,{review:true});if(errors.length)throw fail(errors.join(' '));
   const refs=await assertWebsiteAssets(store,websiteId,document);
