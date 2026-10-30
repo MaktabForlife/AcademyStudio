@@ -85,20 +85,10 @@ Recovery selects at most two due mapped scopes, rechecks dirty revision/activati
 
 The actual Library/PDF browser fixture records source-native totals in `outputs/library-browser/result.json`. Two Library opens plus PDF rendering/Close, normal Academy session/catalogue/default reads, original-tab return and closed-opener fallback total 482 source rows in 59 queries on the synthetic fixture. This aggregate excludes the initial website PIN sign-in and is separate from the small handoff-only numbers. The fixture preserves Academy's existing Library permission/cache flow and uses one labelled synthetic public PDF; it does not enable private Module media. Library-wide growth/daily traffic/object-request estimates remain outstanding. Ordinary protected website reading/Join still performs zero Academy reads; entering Academy Library intentionally uses its existing Academy endpoints.
 
-## Current nine-website rehearsal
+## Parallel source-authority checkpoint — 29 October 2026
 
-Refreshed after the current-reference lookup and its metadata projection optimization. Synthetic local Workers/D1/R2 only; exact source content and IDs passed for all 91 lessons. Numbers count platform rows scanned, not API requests, and are not production traffic forecasts. Ordinary reading makes no Academy call. Published reader columns are content requests only: add separately gated artwork/media, timetable and status work to estimate a complete visit. Artwork is a 32-byte range request, not a PDF/video benchmark. Foundations is an Admin preservation rehearsal only; its learner-page location remains on hold.
+The later private media-inventory continuation is recorded in [MEDIA-INVENTORY.md](MEDIA-INVENTORY.md): eight queries/70 source rows/zero writes before and after adding 4,000 unrelated component references and unaccepted lessons. Its native protected PDF/range requests each read nine target rows and zero Academy rows. Tools are operator-only, with zero new scheduled daily D1 work. One measured inventory + PDF/range rehearsal totals 70 source + 18 target rows, excluding existing sign-in/access sync and setup. Actual media migration volume/traffic/object budgets remain unmeasured; no real inventory or byte transfer ran.
 
-| Website | Saved publication reader | Reviewed reader | Artwork range | Draft editor | Save | Publish | Restore |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| kahf | 5 | 50 | 10 | 41 | 47 | 101 | 12 |
-| saffat | 10 | 10 | 9 | 9 | 14 | 21 | 12 |
-| yaseen | 10 | 50 | 9 | 41 | 47 | 104 | 12 |
-| sajdah | 10 | 10 | 9 | 9 | 15 | 24 | 12 |
-| ankabut | 10 | 10 | 9 | 9 | 15 | 24 | 12 |
-| luqman | 10 | 10 | 9 | 9 | 15 | 24 | 12 |
-| muzammil | 10 | 45 | 9 | 37 | 43 | 94 | 12 |
-| qasas | 10 | 10 | 9 | 9 | 15 | 24 | 12 |
-| foundations | — | — | — | 61 | 67 | 180 | 12 |
+The latest access regression (`outputs/parallel-access-reads.json`) uses two synthetic mapped scopes and actual Academy PIN/sign-in/status code. Initial source sign-in reads 257 rows in 67 queries; after 4,000 unrelated pending events and scoped rights, the first proof-refresh sign-in reads 379 rows in 74 queries. No statement reaches 250 reads. This includes status/access preparation and ordered ACKs, not merely endpoint count. Explicit scoped role indexes and separate indexed pending branches avoid unrelated role/outbox scans. Ordinary subsequent website requests still perform zero Academy queries.
 
-Evidence: private local `outputs/independent-websites-20261028/native-rehearsal.json` in the parent project. The standalone preparation/rehearsal commands are in EDITORIAL-MIGRATION.md. Earlier pre-optimization figures are superseded by this table. These measurements do not accept daily aggregate budgets, maximum-reference packages, actual participant distributions or a production cutover.
+The initial importer advances a capped, checkpointed keyset page and uses current dirty snapshots; generation/revision guards prevent a concurrent source edit being replaced. Background no-sign-in and backlog tests require zero delivery failures, all phases done and ACK completion. Current per-scope roles/months/grants, source/session audiences, staff freshness, removal/replay and website-only month witnesses are checked independently. The final recovery uses reviewed reserved bounded prerequisite candidates and dependency guards; its initial-import timing/total is not a daily quota estimate. Actual pilot distributions/costs remain the deployment owner's bounded verification work.

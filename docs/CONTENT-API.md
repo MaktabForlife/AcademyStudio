@@ -64,3 +64,7 @@ The matching disabled source connector is commit `67b219f5` in `../Academy-websi
 ## Local integration evidence
 
 The native test fixture can run the current Academy authentication implementation and the new disabled source connector against disposable split Core/Admin stores. It does not use hosted credentials or data. `tests/academy-integration.test.mjs` proves single PIN sign-in, website cookie establishment, one-use return to Academy and queued suspension delivery. The prototype's tests and this local contract are not production acceptance or deployment approval.
+
+## Academy-authoritative parallel mode
+
+Set `AUTHORITY_MODE=ACADEMY` for the parallel target and configure distinct `ACADEMY_ORIGIN` (browser) and `ACADEMY_API_ORIGIN` (Worker). Additive `0002_parallel_access.sql` stores scope/person/website proof, website-only paid-month witnesses and private session audiences. Administrative enrolment/access/completion/attachment edits are rejected server-side with `ACADEMY_AUTHORITY`; content Save/Publish keeps source-authorised staff checks and never imports older content copies. `ACCESS_REFRESH_REQUIRED` identifies its offering for one coalesced `/auth/access` renewal; disabled source scopes fail closed. Master identity updates remain on the account stream. See [PARALLEL-ACCESS-PROTOCOL.md](PARALLEL-ACCESS-PROTOCOL.md) for exact semantics, limits, source migration and deployment handoff.
