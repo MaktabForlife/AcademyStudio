@@ -19,7 +19,7 @@ import {studioFixture} from './studio-access-fixture.mjs';
 test('guarded offering handover preserves purchases, rejects old writes, and makes batched Studio Save authoritative',{timeout:60000},async t=>{
  const {f,x,good,proxy,handover}=await studioFixture();try{
   await assert.rejects(f.run("UPDATE source_access_scopes SET authority='WEBSITE' WHERE offering_id='course'"),/GUARDED_HANDOVER/);
-  const transfer=await handover();assert.equal(await x.db.prepare('SELECT state FROM website_platform_access_ownership WHERE activity_key=?').bind(x.courseA).first('state'),'STUDIO');
+  const transfer=await handover();await assert.rejects(f.run("UPDATE source_access_scopes SET authority='ACADEMY' WHERE offering_id='course'"),/REVERSE_MIGRATION_REQUIRED/);assert.equal(await x.db.prepare('SELECT state FROM website_platform_access_ownership WHERE activity_key=?').bind(x.courseA).first('state'),'STUDIO');
   await assert.rejects(x.run('UPDATE course_subscription_decisions SET active=0 WHERE activity_key=? AND account_id=?',x.courseA,x.student),/STUDIO_ACCESS_MANAGED/);
   const view=await good({action:'read',accountId:x.student});assert.equal(view.person.purchased,1);assert.equal(view.canChangeStaff,false);
   const command={action:'save',revision:view.revision,change:{action:'access-batch',operationId:crypto.randomUUID(),changes:[{action:'participant',accountId:x.student,enrolled:false,live:false,purchased:true,cohort:''}]}};
@@ -196,5 +196,22 @@ test('a fresh authenticated Admin epoch can resume a prepared identity intent wi
 test('the server Admin proof never extends the underlying Academy session expiry',{timeout:60000},async()=>{
  const {f,x,good,handover}=await studioFixture();try{
   await handover();await good({action:'read'});const ref=await f.db.prepare('SELECT source_ref FROM sessions WHERE account_id=? ORDER BY expires_at DESC LIMIT 1').bind(f.source.f.actors.global).first('source_ref'),expiry=Date.now()+20_000;await x.run('UPDATE account_sessions SET expires_at=? WHERE session_id=(SELECT session_id FROM website_platform_sessions WHERE source_ref=?)',new Date(expiry).toISOString(),ref);await good({action:'read'});assert((await f.db.prepare('SELECT expires_at FROM sessions WHERE source_ref=?').bind(ref).first('expires_at'))<=expiry);
+ }finally{await f.close();}
+});
+
+test('a long reconciliation uses fresh master Global Admin authority rather than an expired learner-scope proof',{timeout:60000},async()=>{
+ const {f,x,good}=await studioFixture();try{
+  const transferId=crypto.randomUUID();await good({action:'handover-start',transferId});await x.run('UPDATE role_assignments SET active=active WHERE activity_key=?',x.courseA);await x.run("UPDATE role_assignments SET active=0 WHERE activity_key=? AND account_id=? AND role='PROGRAM_ADMIN'",x.courseA,f.source.f.actors.adminA);await assert.rejects(x.run("UPDATE role_assignments SET active=0 WHERE activity_key=? AND account_id=? AND role='STUDENT'",x.courseA,x.student),/STUDIO_ACCESS_MANAGED/);for(let i=0;i<9;i++){await good({action:'handover-reconcile',transferId});await x.recover(6);}await f.run('UPDATE source_access_people SET verified_at=? WHERE account_id=?',Date.now()-86400_000,f.source.f.actors.global);await good({action:'handover-page',transferId});const before=await f.db.prepare("SELECT revision FROM access_revisions WHERE offering_id='course'").first('revision');await signIn(f,'global');assert.equal(await f.db.prepare("SELECT revision FROM access_revisions WHERE offering_id='course'").first('revision'),before,'renewing identical rights must not invalidate the completed checkpoint');assert.equal((await good({action:'handover-commit',transferId})).state,'STUDIO');
+ }finally{await f.close();}
+});
+
+test('commit wins a racing abort and another current Global Admin can confirm the committed handover',{timeout:60000},async()=>{
+ const {f,x,good,proxy}=await studioFixture();try{
+  const cookie=await signIn(f,'global'),transferId=crypto.randomUUID();await good({action:'handover-start',transferId});for(let i=0;i<9;i++){await good({action:'handover-reconcile',transferId});await x.recover(6);}await good({action:'handover-page',transferId});
+  const {Store}=await import('../src/database.mjs'),{handover:targetHandover}=await import('../src/studio-access.mjs'),{sha256}=await import('../src/protocol.mjs'),store=new Store({...f.env,DB:f.db}),actor=await store.actor(await sha256(cookie.slice(cookie.indexOf('=')+1))),checkpoint=await f.db.prepare("SELECT * FROM access_handovers WHERE offering_id='course'").first(),original=store.batch.bind(store);let raced=false;
+  store.batch=async statements=>{if(!raced){raced=true;await targetHandover(new Store({...f.env,DB:f.db}),actor,'course',{action:'handover-commit',operationId:crypto.randomUUID(),transferId,after:checkpoint.cursor,count:checkpoint.checked,final:true});}return original(statements);};
+  await assert.rejects(targetHandover(store,actor,'course',{action:'handover-abort',operationId:crypto.randomUUID(),transferId}),e=>e.code==='CHANGE_CONFLICT');assert.equal(await f.db.prepare("SELECT phase FROM access_handovers WHERE offering_id='course'").first('phase'),'COMMITTED');assert.equal(await x.db.prepare('SELECT state FROM website_platform_access_ownership WHERE activity_key=?').bind(x.courseA).first('state'),'FROZEN');
+  await x.run('UPDATE global_role_assignments SET active=0 WHERE account_id=?',f.source.f.actors.global);await x.recover(8);const link=await x.db.prepare("SELECT login_link_id FROM accounts WHERE account_id='account-0001'").first('login_link_id');assert(link);
+  const login=await f.runtime.dispatchFetch('https://academy.test/api/account/login',{method:'POST',headers:{Origin:'https://academy.test','Content-Type':'application/json'},body:JSON.stringify({uniqueid:link,pin:'1234'})}),fresh=await login.json();assert.equal(login.status,200,JSON.stringify(fresh));const recovered=await proxy({action:'handover-commit',transferId},{headers:{Authorization:'Bearer '+fresh.token}});assert.equal(recovered.status,200,JSON.stringify(recovered.body));assert.equal(recovered.body.recovered,true);assert.equal(await x.db.prepare('SELECT state FROM website_platform_access_ownership WHERE activity_key=?').bind(x.courseA).first('state'),'STUDIO');
  }finally{await f.close();}
 });

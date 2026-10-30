@@ -45,3 +45,5 @@ CREATE TABLE source_session_revocations(source_ref TEXT PRIMARY KEY,revoked_at I
 CREATE INDEX access_members_account ON access_members(account_id,offering_id);
 CREATE TRIGGER access_revision_master AFTER UPDATE ON accounts WHEN OLD.display_name<>NEW.display_name OR OLD.active<>NEW.active OR OLD.admitted<>NEW.admitted OR OLD.epoch<>NEW.epoch OR OLD.global_admin<>NEW.global_admin BEGIN UPDATE access_revisions SET revision=revision+1 WHERE offering_id IN(SELECT offering_id FROM access_members WHERE account_id=NEW.account_id); END;
 CREATE TABLE source_access_master_fences(account_id TEXT NOT NULL,offering_id TEXT NOT NULL,epoch INTEGER NOT NULL,active INTEGER NOT NULL,admitted INTEGER NOT NULL,global_admin INTEGER NOT NULL,PRIMARY KEY(account_id,offering_id));
+CREATE TABLE source_access_rights_snapshots(account_id TEXT NOT NULL,offering_id TEXT NOT NULL,payload_hash TEXT NOT NULL,PRIMARY KEY(account_id,offering_id));
+CREATE TRIGGER access_authority_reverse_guard BEFORE UPDATE OF authority ON source_access_scopes WHEN OLD.authority='WEBSITE' AND NEW.authority='ACADEMY' BEGIN SELECT RAISE(ABORT,'REVERSE_MIGRATION_REQUIRED'); END;
