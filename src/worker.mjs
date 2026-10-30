@@ -92,7 +92,7 @@ async function route(request,env,store,fetcher){
   if(action==='resume')return json(await resumeProvision(env,store,actor,offeringId,input,fetcher));
  }
  if(path==='/api/admin/offerings'&&method==='GET'){
-  const offerings=actor.global_admin?await store.all('SELECT offering_id,title,kind FROM offerings ORDER BY offering_id LIMIT 200'):await store.all("SELECT o.offering_id,o.title,o.kind FROM staff s JOIN offerings o USING(offering_id) WHERE s.account_id=? AND s.role='ADMIN' ORDER BY o.offering_id LIMIT 200",[actor.account_id]);return json({offerings});
+  const offerings=actor.global_admin?await store.all("SELECT offering_id,title,kind FROM offerings WHERE kind IN('COURSE','TAFSEER') ORDER BY offering_id LIMIT 200"):await store.all("SELECT o.offering_id,o.title,o.kind FROM staff s JOIN offerings o USING(offering_id) WHERE s.account_id=? AND s.role='ADMIN' AND o.kind IN('COURSE','TAFSEER') ORDER BY o.offering_id LIMIT 200",[actor.account_id]);return json({offerings});
  }
  match=path.match(/^\/api\/admin\/([-A-Za-z0-9_:]+)(?:\/(files|recording))?$/);
  if(match){const offeringId=id(match[1]),sub=match[2];await store.scope(actor,offeringId,{admin:true});

@@ -1,0 +1,7 @@
+.circles-sign-in{box-sizing:border-box;width:min(460px,calc(100% - 32px));max-height:calc(100dvh - 32px);overflow:auto;border:1px solid #d9c9cb;border-radius:22px;padding:36px;background:#fcf9f5;color:#3c3036;box-shadow:0 28px 90px #382b3940;font-family:var(--sans,Arial,sans-serif)}
+.circles-sign-in::backdrop{background:#33252f70;backdrop-filter:blur(4px)}
+.circles-sign-in h2{font:400 36px/1.2 var(--serif,Georgia,serif);margin:12px 0 18px}.circles-sign-in p{font-size:15px;line-height:1.6}.circles-sign-in .eyebrow{font-size:11px;letter-spacing:.13em;text-transform:uppercase}
+.circles-sign-in-close{position:absolute;right:12px;top:10px;border:0;background:transparent;font-size:28px;min-width:44px;min-height:44px;cursor:pointer;color:inherit}
+.circles-sign-in form,.circles-sign-in nav{display:grid;gap:16px}.circles-sign-in label{display:grid;gap:7px;font-size:13px;font-weight:600}.circles-sign-in input{box-sizing:border-box;width:100%;border:1px solid #cbbfc0;border-radius:9px;background:#fffdfb;padding:13px;font:400 16px var(--sans,Arial,sans-serif);color:inherit}
+.circles-sign-in [hidden]{display:none!important}.circles-sign-in .btn{justify-content:center;min-height:46px}.circles-sign-in [role=status]{min-height:1.6em;margin-bottom:0}.circles-sign-in :focus-visible{outline:3px solid #7d4c68;outline-offset:3px}
+@media(max-width:420px){.circles-sign-in{padding:30px 22px}.circles-sign-in h2{font-size:30px}}
