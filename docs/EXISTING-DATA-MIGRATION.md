@@ -26,7 +26,7 @@ The adapter reopens the current source inventory and compares the accepted snaps
 
 Activation repeats source/target/byte verification before opening the already-published source material. Exact retries use the existing operation journal without duplicating records or rereading Academy. Rollback retires the run, closes only availability introduced by that run, and retains original bytes, metadata, editions and rights. A publication that existed before the migration stays published during rollback. Explicit withdrawal can close all selected source attachments. A retirement receipt permanently blocks a delayed activation from reopening the retired run. Fresh Global Admin recovery remains available if the source offering closes.
 
-These are migration operations, not a new-data entry path. The hosted launcher and fresh source/target preflight are still required before a real import. The current local restriction deliberately prevents these tests or copied snapshots from becoming hosted authority.
+These are migration operations, not a new-data entry path. This application-session adapter stays local-only. The separately approved account-owner import below uses a distinct control-plane transaction; synthetic sessions and copied snapshots never become hosted application authority.
 
 ## Verification
 
@@ -45,12 +45,33 @@ This copied-data rehearsal replays the archived source pages as explicit fixture
 
 The actual-copy totals are measured target admission work, including guards, operation/audit receipts and indexes. They exclude fixture setup, later activation/rollback, filesystem/R2 verification and a real source preflight. Its archive replay makes no source database calls. Routine target media never calls Academy. These numbers are not a complete migration/production traffic forecast.
 
-## Before the live import
+## Read-only preflight and approval
 
 A bounded live source preflight confirmed that both accepted scopes still match the copied head, source write version, generation, offering/kind, reviewed policy and all six component ids/digests. It read 42 source D1 rows and wrote none. Component scope-key comparison follows the source database's case-insensitive identity semantics; complete component identities/digests still match exactly. The existing source operator sign-in was refreshed without collecting a user's Academy PIN. Evidence: parent `outputs/circles-existing-data-migration-20261030/source-preflight-verified.json`.
 
 Automatic approval review initially rejected the target preflight because sending the copied identifiers to the website Cloudflare account needed explicit approval. You then approved that read-only preflight. It completed with 122 target rows read and zero written: all nine saved draft/publication pointers match, both Academy-authoritative scopes remain enabled, and none of the 49 proposed asset or attachment identifiers is present. Evidence: parent `outputs/circles-existing-data-migration-20261030/target-preflight.json`. Combined source/target preflight use was 164 rows read and zero written. This does not include object-byte verification or authorise an import.
 
-The concrete proposal is parent `outputs/circles-existing-data-migration-20261030/private-import-proposal.json`: copy/verify the eleven PDFs and admit the 49 original media/ownership/audience records as private, unpublished attachments. It changes no teaching editions or rights. The current adapter remains local-only; separately authorised live execution must preserve all of its guards. The approved read-only preflight does not authorise this hosted write.
+The concrete proposal is parent `outputs/circles-existing-data-migration-20261030/private-import-proposal.json`: copy/verify the eleven PDFs and admit the 49 original media/ownership/audience records as private, unpublished attachments. You then replied **continue** to this exact hosted-import approval request. That separate approval authorises the completed import below. It does not authorise publication, new teaching data or a UI deployment.
 
-At that import window, reconcile any intervening source/target changes and preserve the approved consistency/withdrawal handoff. A source preflight plus a target transaction is not a distributed transaction. Keep Academy serving and retain recovery copies; verify bounded real access before activation. No hosted write, deployment, DNS change, source deletion or retirement occurred in this continuation.
+## Approved private import completed
+
+The real parallel site now contains all 49 existing native media objects, their exact offering ownership and all 49 original recording attachments. Eleven PDF objects were copied (42,636,883 bytes); all were read back and verified against the staged/source SHA-256 values. Thirty-eight original YouTube ids remain reference-only. All attachments have `published=0`, including the six programme-only recordings. No learner availability was opened.
+
+`tools/existing-media-control-plane.mjs` builds a seven-statement account-owner transaction. Its approved private launcher and resource identifiers remain outside tracked source in the parent evidence directory. The existing named AcademyStudio OAuth profile authenticated the target operator; the default Academy profile was retained for read-only source checks. No application identity/session was invented, account promoted, Worker route added or runtime deployed. Account-owner authority is recorded explicitly in the operation and audit receipts.
+
+The launcher checked both source scopes with the native current inventory before copying and immediately before admission. It compared source head/write version, accepted component identities/digests, exact selected assets/attachments and current lesson visibility/links. It checked all nine target published JSON byte hashes and original draft/publication pointers. The transaction rechecked website revisions/pointers, offering kinds, Academy scope authority/generation/version/enabled state and absence of every planned media/attachment id. Concurrent conflicts reject the entire batch. [D1 batches roll back on failure](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch).
+
+PDFs use a private namespace containing the full plan hash. The operator reads and hashes an existing destination before any upload; mismatched bytes abort. An interrupted/unknown upload resumes by reading and hashing the destination. The upload also sends `If-None-Match: *`; REST documentation does not promise that PUT precondition, so isolation relies on the dedicated plan namespace and exact bytes rather than assuming REST conditional-put support. All source and staged bytes are retained.
+
+After admission, bounded primary-key queries compared all 49 objects, 49 owners, 49 attachments, the nine original website pointers and the operation receipt. All match; published attachments total zero. The SQL touches only objects, owners, attachments and operation/audit/guard metadata, so accounts, purchases/months/classes, website-only grants, timetable, editions, artwork and source data are untouched. The target transaction is atomic; source and target are separate systems. Publication still requires fresh source/target checks and bounded real-access acceptance. The local session adapter cannot activate this distinct control-plane receipt.
+
+| This hosted import window | Queries | D1 rows read | D1 rows written |
+| --- | ---: | ---: | ---: |
+| Two native source revalidations | 42 | 974 | 0 |
+| Target preflight, admission and post-verification | 17 | 756 | 791 |
+
+The target write total includes indexes, operation/audit receipts and insertion/removal of the transient guard. R2 operations: 31 reads (nine published documents, eleven absence checks and eleven PDF readbacks), eleven PDF writes. These totals exclude the earlier 164-row read-only preflight and local tests. No further live polling or repeat import was needed.
+
+Two additional synthetic control-plane tests pass: exact full-size private admission; website/authority conflict rejection; late-statement failure rolling back all prior inserts; duplicate rejection; and refusal of edited plans, publication or missing PDF proof. The prior thirteen focused tests remain passing evidence; 126 modules pass current syntax/configuration checks. Live learner playback/range acceptance is not claimed while all imported attachments remain unpublished.
+
+Private evidence in parent `outputs/circles-existing-data-migration-20261030/`: `live-source-revalidation.json`, `live-byte-receipts.json`, `live-admission-request.json`, `live-admission-response.json`, `live-import-verification.json` and `control-plane-tests.txt`. The receipt is recoverable without repeating the import. A retry checks the deterministic operation id and exact admitted records before doing any new writes. No UI deployment, public publication, DNS change, source deletion, new course/content or retirement occurred.
