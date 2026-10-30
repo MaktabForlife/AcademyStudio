@@ -46,7 +46,7 @@ export function recordingList({entries=[],loaded=true,more=false}={}){
 }
 export function readingList(readings=[]){return `<section><div class="rs-list-heading"><h1>Read</h1><span>${readings.length} ${readings.length===1?'reading':'readings'}</span></div><p class="rs-intro">Material to read and reflect on in its own right. Readings linked to a recording are kept with that lesson.</p><div class="rs-readings">${readings.map(l=>`<article class="rs-reading-card"><p class="sp-eyebrow">${esc(l.group||'READ & REFLECT')}</p><h2>${action(esc(l.title),'lesson',l.id)}</h2>${l.summary?`<p>${esc(l.summary)}</p>`:''}${action('Read <span aria-hidden="true">→</span>','lesson',l.id,'class="rs-reading-link"')}</article>`).join('')||'<p class="rs-empty">There are no separate readings in this series yet. You can find the companion readings on each recording’s page.</p>'}</div></section>`;}
 
-export function recordingWebsiteTabs(course,pages=course.pages){return [['home','Recordings'],['lessons','Read'],['about','About'],...(pages?.materials?[['materials','Materials']]:[]),...(pages?.sessions&&!tafseerCourseCover(course)?[['sessions','Sessions']]:[])];}
+export function recordingWebsiteTabs(course,pages=course.pages){return [['home','Recordings'],['lessons','Read'],['about','About'],...(pages?.materials?[['materials','Materials']]:[]),...(pages?.sessions&&course.displayIdentity?.kind!=='TAFSEER'&&!tafseerCourseCover(course)?[['sessions','Sessions']]:[])];}
 
 // Rearrange presentation only. The original reading nodes and authoring schema survive.
 export function presentRecordingWebsite(root,{course,ui,entries=[],guides=[],loaded=true,more=false,pages=course.pages}={}){

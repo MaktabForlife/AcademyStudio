@@ -9,7 +9,8 @@ export function catalogueLock(state='required'){
 
 export function circlesCatalogue(items,access=[]){
  const rights=new Map(access.map(r=>[r.websiteId,r]));
- const card=item=>{
+ const card=source=>{
+  const item=source.key==='foundations'?{...source,title:'Qur’anic Studies'}:source;
   const right=rights.get(item.websiteId),state=item.publicTextUrl?'free':right?.subscriptionStatus==='subscribed'?'subscribed':'required';
   const ornament=tafseerCover(item),label=item.key==='fatir'?'Text pending':item.title;
   const body=`${ornament||(item.cover?`<img src="${esc(item.cover)}" alt="" loading="lazy">`:'<span class="cover-circles"><i></i><i></i><i></i></span>')}${catalogueLock(state)}${!ornament?`<span class="collection-card-name">${esc(label)}</span>`:''}`;

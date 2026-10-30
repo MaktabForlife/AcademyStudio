@@ -25,6 +25,7 @@ async function staticFile(path,request,response,root=publicRoot){
 async function handler(request,response,isAcademy){
  try{
   const pathname=new URL(request.url,'http://localhost').pathname;
+  if(!isAcademy&&circles&&pathname==='/__local/responsive'){response.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});return response.end('<!doctype html><meta charset="utf-8"><title>Local Circles responsive check</title><style>body{margin:12px;font:14px system-ui;background:#e9e3df}.frames{display:flex;align-items:start;gap:20px;flex-wrap:wrap}iframe{height:880px;border:1px solid #b7a8ad;background:#fff}</style><h1>Local synthetic responsive check</h1><div class="frames">'+[320,390,768].map(w=>'<section><h2>'+w+'px</h2><iframe title="Circles '+w+'px" width="'+w+'" src="/"></iframe></section>').join('')+'</div>');}
   if(isAcademy&&pathname==='/__local/read-metrics'){if(request.method==='POST')f.source.resetMetrics();response.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});return response.end(JSON.stringify(f.source.metrics));}
   if(circles&&isAcademy&&pathname==='/academy/foundations/'){response.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});return response.end('<!doctype html><title>Synthetic Foundations</title><h1>Foundations of Tafseer</h1><p>Synthetic public text for the local connection rehearsal. Recordings remain protected separately.</p>');}
   if(!pathname.startsWith('/api/')&&!pathname.startsWith('/auth/')&&!pathname.startsWith('/internal/')){

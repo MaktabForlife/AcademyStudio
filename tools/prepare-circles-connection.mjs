@@ -13,7 +13,7 @@ export async function prepareCirclesConnection(directory,destination){
  await mkdir(output,{recursive:false,mode:0o700});await mkdir(join(output,'public/circles/covers'),{recursive:true,mode:0o700});
  const presentation=async(site,pending=false)=>{
   const document=JSON.parse(await read(pending?site.document:site.editions.reviewDraft)),palette=THEMES[document.theme]||THEMES.rose;
-  const item={key:site.key,title:site.title,kind:pending?'COURSE':site.kind,websiteId:pending?null:site.websiteId,pending,accent:palette.accent,soft:palette.soft};
+  const item={key:site.key,title:site.key==='foundations'?'Qur’anic Studies':site.title,kind:pending?'COURSE':site.kind,websiteId:pending?null:site.websiteId,pending,accent:palette.accent,soft:palette.soft};
   if(item.kind==='COURSE'){
    const declared=(pending?site.assets:site.artwork).find(a=>a.assetId===document.home.imageId),object=pending?declared:bundle.objects.find(o=>o.sha256===declared?.sha256);
    if(document.home.imageId&&(!declared||!object||!['image/png','image/jpeg','image/webp'].includes(object.mimeType)))throw Error('ORIGINAL_COURSE_COVER_REQUIRED');

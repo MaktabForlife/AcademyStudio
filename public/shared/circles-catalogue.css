@@ -1,4 +1,4 @@
-.has-circles-catalogue #homepage>:not(#public-cards),.has-circles-catalogue #my-learning>:not(#learning-cards){display:none}
+.has-circles-catalogue #my-learning>:not(#learning-cards){display:none}
 .connected-circles{display:block;padding:0 0 30px}
 .circles-collection-nav{display:flex;gap:6px;justify-content:flex-end;margin:0 0 26px;padding:12px 0;border-bottom:1px solid var(--circle-line)}
 .circles-collection-nav button{font:500 13px 'DM Sans',sans-serif;border:0;background:transparent;padding:12px 20px;border-radius:30px;color:var(--circle-ink)}

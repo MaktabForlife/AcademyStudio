@@ -1,3 +1,7 @@
+# Final Circles connection checkpoint — 30 October 2026
+
+The final local build includes UI `78765a78` and the single-circle public-home composition from `cd99cd7c`, with a separate connected catalogue, Qur’anic Studies display metadata, native Tafseer name artwork and no Tafseer Sessions tab. Course pictures/scheduling remain. The complete combined suite passes 105 tests against the deployed V108 source code with synthetic data. Browser evidence includes sign-in/Library return, permission-backed cards, legacy-route settling and 320px/390px/768px homepage frames. See [CIRCLES-ACADEMY-LINKING.md](CIRCLES-ACADEMY-LINKING.md). Known source/target media and six guidance-course mappings remain pending; no hosted operation occurred.
+
 # Circles and Academy linking — 30 October 2026
 
 The approved UI handoff `d344a868` is integrated locally with the V108 target authority baseline on `feature/circles-academy-linking`, in a separate checkout. Genuine catalogue access, exact permission-filtered recording-guide aliases, sign-in destinations, immutable mapping history and the V108 Library return are connected. Private Save/explicit Publish and source revocation tests pass. Prepared public metadata retains all seven original course pictures; six guidance courses, thirteen recording mappings and six additional references remain pending. The UI owner's checkout/server and both hosted systems are unchanged. See [CIRCLES-ACADEMY-LINKING.md](CIRCLES-ACADEMY-LINKING.md) for evidence, reproduction and the remaining release boundaries.

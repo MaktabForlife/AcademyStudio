@@ -29,14 +29,19 @@ const courseNames={
  'surah al qasas':'qasas',
  'surah as sajdah':'sajdah'
 };
+function courseKey(course){
+ if(course?.displayIdentity&&course.displayIdentity.kind!=='TAFSEER')return null;
+ if(course?.displayIdentity?.key&&Object.hasOwn(titles,course.displayIdentity.key))return course.displayIdentity.key;
+ return courseNames[(course?.name||'').toLowerCase().replace(/[-–—]/g,' ').replace(/\s+/g,' ').trim()];
+}
 export function tafseerDisplayCourse(course){
  if(!course)return course;
- const key=courseNames[(course.name||'').toLowerCase().replace(/[-–—]/g,' ').replace(/\s+/g,' ').trim()];
+ const key=courseKey(course);
  return key==='foundations'?{...course,name:'Qur’anic Studies',home:{...course.home,headline:'Qur’anic Studies',subtitle:'علوم القرآن'}}:course;
 }
 
 export function tafseerCourseCover(course){
- const name=course?.name||'',key=courseNames[name.toLowerCase().replace(/[-–—]/g,' ').replace(/\s+/g,' ').trim()];
+ const name=course?.name||'',key=courseKey(course);
  return key?tafseerCover({kind:'TAFSEER',key,title:key==='foundations'?'Qur’anic Studies':name}):'';
 }
 

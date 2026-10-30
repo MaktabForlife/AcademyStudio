@@ -1,4 +1,4 @@
-import {publicCatalogue,catalogueAccess,permittedGuideBindings} from './circles.mjs';
+import {publicCatalogue,catalogueAccess,permittedGuideBindings,websitePresentation} from './circles.mjs';
 import {academyAuthority,accessGate,joinAudience} from './access.mjs';
 import {Store} from './database.mjs';
 import {fail,failure,json,bodyJSON,parseCookie,sha256,originCheck,cookie,id,text,integer,bytes,signedHeaders,safeToken,boundedAge} from './protocol.mjs';
@@ -68,7 +68,7 @@ async function route(request,env,store,fetcher){
   if(action==='assets'){const website=await websiteAccess(store,actor,websiteId,{admin:true});return json({websiteId,offeringId:website.offering_id,...await attachedWebsiteAssets(store,websiteId,{assetId:url.searchParams.get('assetId'),after:url.searchParams.get('after')||''})});}
   const website=await websiteAccess(store,actor,websiteId,{admin:Boolean(action)}),key=action?website.draft_key:website.published_key,document=key?await objectJSON(env.CONTENT,key):null;
   const assets=await editionAssets(store,websiteId,document,{draft:Boolean(action)});
-  return json({websiteId,offeringId:website.offering_id,revision:website.revision,document,assets,enabled:Boolean(website.enabled),canEdit:Boolean(actor.global_admin||website.role==='ADMIN'),draftVersion:contentVersion(website.draft_key),publishedVersion:contentVersion(website.published_key),capabilities:{assessments:false,journal:false}});
+  return json({websiteId,offeringId:website.offering_id,kind:website.kind,presentation:await websitePresentation(env,website),revision:website.revision,document,assets,enabled:Boolean(website.enabled),canEdit:Boolean(actor.global_admin||website.role==='ADMIN'),draftVersion:contentVersion(website.draft_key),publishedVersion:contentVersion(website.published_key),capabilities:{assessments:false,journal:false}});
  }
  match=path.match(/^\/api\/media\/([-A-Za-z0-9_:]+)$/);if(match&&['GET','HEAD'].includes(method)){const row=await mediaGate(store,actor,match[1],{admin:url.searchParams.get('draft')==='1'});return streamMedia(env,row,request);}
  match=path.match(/^\/api\/offerings\/([-A-Za-z0-9_:]+)\/(sessions|media|join|enrol|provision|resume)$/);

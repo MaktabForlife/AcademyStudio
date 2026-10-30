@@ -15,6 +15,7 @@ test('published Circles cards are public with zero D1 reads; private metadata an
  const f=await fixture({academy:true,authorityMode:'ACADEMY'});try{
   await circlesFixture(f);f.source.resetMetrics();
   const r=await f.request('/api/public/circles'),data=ok(r);assert.equal(r.reads,0);assert.equal(f.source.metrics.queries,0);
+  assert.equal(data.items.find(i=>i.key==='foundations').title,'Qur’anic Studies');
   assert.equal(data.items.find(i=>i.key==='foundations').publicTextUrl,'https://academy.test/academy/foundations/');
   assert.equal(data.items.find(i=>i.key==='unmapped-course').websiteId,null);assert(!JSON.stringify(data).includes('must-not-leak'));
   const cover=new Uint8Array([137,80,78,71]),digest=await sha256(cover);await f.content.put('public/circles/covers/'+digest,cover,{httpMetadata:{contentType:'image/png'}});
@@ -59,7 +60,7 @@ test('recording companions join only the exact currently permitted native feed i
  const f=await fixture({academy:true,authorityMode:'ACADEMY'});try{
   const x=await circlesFixture(f),cookie=await signIn(f);f.source.resetMetrics();
   const feed=ok(await f.request('/api/offerings/course/media?website=site-course',{cookie}));assert.deepEqual(feed.mediaBindings,[x.binding]);
-  const document=ok(await f.request('/api/websites/site-course',{cookie})).document;assert.deepEqual(document,x.doc);
+  const record=ok(await f.request('/api/websites/site-course',{cookie}));assert.equal(record.kind,'COURSE');assert.equal(record.presentation.kind,'COURSE');const document=record.document;assert.deepEqual(document,x.doc);
   const guides=bindRecordingGuides(recordingGuides(document),feed.media,feed.mediaBindings),entries=seriesRecordings({media:feed.media,guides});assert.equal(entries[0].summary,'A synthetic summary for connection testing.');
   assert(recordingDetail(entries[0],document).includes('data-recording-start="135"'));
   assert.equal((await f.request('/api/media/circles-pdf-attachment',{cookie,headers:{Range:'bytes=0-7'}})).status,206);

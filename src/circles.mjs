@@ -11,7 +11,7 @@ export async function publicCatalogue(env){
  const data=await bodyJSON(object.body,128_000);
  if(data.format!=='CIRCLES_PUBLIC_CATALOGUE_V1'||!Array.isArray(data.items)||data.items.length>200)throw fail('The learning catalogue needs review.',503);
  const seen=new Set(),items=data.items.map(item=>{
-  const key=id(item.key),kind=item.kind,title=String(item.title||'').slice(0,200);
+  const key=id(item.key),kind=item.kind,title=key==='foundations'?'Qur’anic Studies':String(item.title||'').slice(0,200);
   if(seen.has(key)||!['TAFSEER','COURSE'].includes(kind)||!title)throw fail('The learning catalogue needs review.',503);
   seen.add(key);
   const pending=item.pending===true,websiteId=!pending&&item.websiteId?id(item.websiteId):null;
@@ -27,6 +27,13 @@ export async function publicCatalogue(env){
    accent:colour(item.accent)||'#805764',soft:colour(item.soft)||'#eee2df'};
  });
  return {items};
+}
+
+export async function websitePresentation(env,website){
+ // A missing/unavailable presentation snapshot cannot become a content gate.
+ let items=[];try{items=(await publicCatalogue(env)).items;}catch{}
+ const matches=items.filter(i=>i.websiteId===website.website_id&&i.kind===website.kind&&!i.pending);
+ return {kind:website.kind,...(matches.length===1?{key:matches[0].key,title:matches[0].title}:{})};
 }
 
 // One bounded, account-scoped lookup. Staff authority permits opening a website
