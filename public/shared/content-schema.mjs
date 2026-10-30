@@ -5,10 +5,10 @@ import {validateCourse,referencedAssets} from './model.mjs';
 // the shared model: new editorial fields need an intentional contract change.
 const fields={
  course:'format id name tag theme home lessons pages menu sessionOptions materials updatedAt editorialLayout academyMediaIds sourceEdition',
- home:'headline subtitle description imageId imageAlt caption journeyTitle themes',
+ home:'headline subtitle description imageId imageAlt caption journeyTitle themes recordingLayout',
  theme:'id label title arabic description lessonId',
  lesson:'id title group summary sections sourceEdition accent moduleId journal',section:'id title label blocks sourceKey sourcePages',
- block:'id type aside text arabic translation reference attribution items leftArabic leftMeaning rightArabic rightMeaning assetId alt caption tint graphic presentation ordered emphasis sourceKey sourcePage legacyNoteKey',
+ block:'id type aside text arabic translation reference attribution items leftArabic leftMeaning rightArabic rightMeaning assetId alt caption tint graphic crop presentation ordered emphasis sourceKey sourcePage legacyNoteKey',
  pages:'sessions materials assessments',menu:'home lessons sessions materials assessments',
  sessionOptions:'showTeacher showNotes',materials:'intro files',file:'id assetId title description'
 };
