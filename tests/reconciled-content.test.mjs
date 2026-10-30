@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {chooseDraft,matchRecording,seedReconciledFixture} from '../tools/reconciled-content.mjs';
+import {chooseDraft,matchRecording,reconcileRecording,seedReconciledFixture} from '../tools/reconciled-content.mjs';
 import {bindRecordingGuides} from '../public/shared/media-bindings.mjs';
 test('reconciliation retains a newer draft and holds divergent source edits',()=>{
  const base={id:'course',text:'original'},current={...base,text:'new private edit'},incoming={...base,text:'recording companion'};
@@ -17,6 +17,14 @@ test('recordings match stable video/lesson identities within the same offering w
  assert.equal(matchRecording([reference,reference],'tafseer',source).status,'AMBIGUOUS_NATIVE_REFERENCE');
  assert.equal(matchRecording([reference],'tafseer',{...source,lessonId:'original',videoId:'different00'}).status,'LESSON_VIDEO_CONFLICT');
  assert.equal(matchRecording([{...reference,state:'HIDDEN'}],'tafseer',source).status,'SOURCE_HIDDEN');
+});
+test('resolved metadata separates the source pending declaration from current mapping and publication state',()=>{
+ const native={offeringId:'tafseer',sourceLessonId:'native',kind:'YOUTUBE',youtubeId:'abc12345678',linked:true,state:'PUBLISHED',date:'2026-01-01',cohorts:['original-class']},source={lessonId:'editorial',videoId:'abc12345678',nativeMappingPending:true};
+ const resolved=reconcileRecording([native],'tafseer',source);
+ assert.equal(resolved.status,'MATCHED');assert.equal(resolved.nativeMappingPending,false);assert.equal(resolved.sourceNativeMappingPending,true);assert.equal(source.nativeMappingPending,true);
+ const pending=reconcileRecording([],'tafseer',{...source,nativeMappingPending:false});assert.equal(pending.status,'NATIVE_MAPPING_PENDING');assert.equal(pending.nativeMappingPending,true);assert.equal(pending.sourceNativeMappingPending,false);
+ const inherited=reconcileRecording([native],'tafseer',{lessonId:'editorial',videoId:source.videoId},true);assert.equal(inherited.sourceNativeMappingPending,true);assert.equal(inherited.nativeMappingPending,false);
+ const hidden=reconcileRecording([{...native,state:'HIDDEN'}],'tafseer',source);assert.equal(hidden.status,'SOURCE_HIDDEN');assert.equal(hidden.nativeMappingPending,false,'Identity can be resolved while delivery stays hidden');
 });
 test('reconciled fixture adapter refuses hosted and source-authority environments before mutation',async()=>{
  for(const env of [{ENVIRONMENT:'parallel',AUTHORITY_MODE:'ACADEMY'},{ENVIRONMENT:'local',AUTHORITY_MODE:'ACADEMY'},{ENVIRONMENT:'isolated-preview'}])await assert.rejects(seedReconciledFixture({env},'/unused'),/DISPOSABLE_LOCAL_FIXTURE_REQUIRED/);

@@ -16,6 +16,12 @@ export function matchRecording(references,offeringId,source){
  if(candidates.length!==1)return {status:candidates.length?'AMBIGUOUS_NATIVE_REFERENCE':'NATIVE_MAPPING_PENDING',native:null};
  const native=candidates[0];return {status:native.state==='PUBLISHED'?'MATCHED':'SOURCE_'+native.state,native,dateDiscrepancy:Boolean(source.lessonDate&&source.lessonDate!==native.date)};
 }
+export function reconcileRecording(references,offeringId,source,manifestPending=null){
+ const match=matchRecording(references,offeringId,source);
+ return {...source,editorialLessonId:source.lessonId,...match,
+  sourceNativeMappingPending:typeof source.nativeMappingPending==='boolean'?source.nativeMappingPending:typeof manifestPending==='boolean'?manifestPending:null,
+  nativeMappingPending:match.native===null};
+}
 
 export async function prepareReconciledContent(config,destination){
  const root=resolve(destination);await mkdir(join(root,'objects'),{recursive:true,mode:0o700});
@@ -42,13 +48,13 @@ export async function prepareReconciledContent(config,destination){
   for(const ref of [...prior.published.media,...prior.draft.media,...candidate.media]){
    if(!ref.byteKey)continue;const path=join(privateRoot,'objects',ref.byteKey),bytes=await readFile(path);if(contentHash(bytes)!==ref.sha256)throw Error('BUILDER_ASSET_CHECKSUM_CHANGED');const saved=await put(bytes,ref.mimeType==='application/pdf'?'.pdf':'.bin');assets.set(saved.sha256,{...saved,mimeType:ref.mimeType});
   }
-  const recordings=(sources.recordings||[]).map(source=>({...source,editorialLessonId:source.lessonId,...matchRecording(academy.references,prior.offeringId,source)}));
+  const recordings=(sources.recordings||[]).map(source=>reconcileRecording(academy.references,prior.offeringId,source,sources.nativeMappingPending));
   const materials=(sources.materials||[]).map(source=>{
    const native=academy.references.filter(r=>r.offeringId===prior.offeringId&&r.kind==='PDF'&&r.linked&&academy.objects.some(o=>o.sourceObjectKey===r.resolvedObjectKey&&o.sha256===source.sha256));
    return {...source,localObject:pdfs.get(source.sha256)||null,status:native.length===1?'MATCHED':native.length?'MULTIPLE_SOURCE_ATTACHMENTS':'PDF_MAPPING_PENDING',native};
   });
   sites.push({key:item.key,websiteId:prior.websiteId,offeringId:prior.offeringId,title:prior.title,kind:item.key==='kahf'?'COURSE':'TAFSEER',
-   editions,draftSelection:selection.status,publishedPointerUnchanged:prior.published.key,existingDraftPointer:prior.draft.key,
+   editions,sourceManifest:await retain(item.sources),draftSelection:selection.status,publishedPointerUnchanged:prior.published.key,existingDraftPointer:prior.draft.key,
    lessons:selection.document.lessons.length,baseLessons:current.lessons.length,recordings,materials,artwork:candidate.media,existingPublishedArtwork:prior.published.media,
    mediaBindings:recordings.filter(r=>r.status==='MATCHED').map(r=>({editorialLessonId:r.editorialLessonId,nativeLessonId:r.native.sourceLessonId,assetId:'academy-asset-'+contentHash([prior.offeringId,r.native.sourceAssetId])})),
    academyPublishedLessons:academy.references.filter(r=>r.offeringId===prior.offeringId&&r.state==='PUBLISHED').length});
@@ -64,6 +70,7 @@ export async function prepareReconciledContent(config,destination){
  const assigned=new Set(sites.flatMap(s=>[...s.recordings.filter(r=>r.native).map(r=>JSON.stringify([r.native.offeringId,r.native.sourceLessonId,r.native.sourceAssetId])),...s.materials.flatMap(m=>m.native.map(r=>JSON.stringify([r.offeringId,r.sourceLessonId,r.sourceAssetId])))]));
  const unassignedAcademyReferences=academy.references.filter(r=>!assigned.has(JSON.stringify([r.offeringId,r.sourceLessonId,r.sourceAssetId]))).map(r=>({...r,associationStatus:'WEBSITE_ASSOCIATION_PENDING'}));
  const manifest={format:'CIRCLES_RECONCILED_CONTENT_V1',date:'2026-10-30',private:true,sourceCopy:await retain(config.academyCopy),sites,pending,unassignedAcademyReferences,objects:[...assets.values()],
+  mappingStatusContract:{canonical:'status',eligibleStatus:'MATCHED',identityPending:'nativeMappingPending',sourceDeclarationOnly:'sourceNativeMappingPending'},
   catalogue:config.catalogue||[],sourceDeleted:false,permissionsImported:false,published:false,hostedWrites:0,
   metrics:{academyRowsRead:academy.metrics.rowsRead+academy.metrics.preflightRowsRead,academyRowsWritten:academy.metrics.rowsWritten},
   totals:{websites:sites.length,readings:sites.reduce((n,w)=>n+w.lessons,0),recordings:sites.reduce((n,w)=>n+w.recordings.length,0),
