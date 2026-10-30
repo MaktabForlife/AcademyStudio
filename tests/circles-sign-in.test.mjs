@@ -35,6 +35,8 @@ test('selected destination is an allowlist; cancelled login does not exchange it
  assert.equal(learningDestination('studio'),'/studio/?manage=1');assert.equal(learningDestination('tafseer'),'/studio/?view=collections&collection=tafseer');
  for(const area of ['https://outside.test','//outside.test','admin','mothers','hifz'])assert.equal(learningDestination(area),null);
  assert.equal(accessArea('https://outside.test'),'general');
+ assert.equal(accessArea('arabic-adventures'),'arabic-adventures');
+ assert.equal(learningDestination('arabic-adventures'),null,'The new display area must not invent a course destination or authority');
  const paths=[];await assert.rejects(signInFromCircles(async path=>{paths.push(path);return {code:'not-used'};},{uniqueid:'synthetic',pin:'1234'},{current:()=>false}),{name:'AbortError'});assert.deepEqual(paths,['/auth/login']);
 });
 

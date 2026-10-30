@@ -1,7 +1,7 @@
 import {api,identity,changed} from './api.mjs';
 import {accessArea,learningDestination,signInFromCircles,openAcademyFromCircles} from './shared/circles-sign-in.mjs';
 
-const labels={general:'Your Academy account',academy:'Islamic Academia',tafseer:'Tafseer',courses:'Continuous learning',mothers:'Mothers of the Ummah',hifz:'Ma’had Arwa Hifz Academy',studio:'Studio'};
+const labels={general:'Your Academy account',academy:'Islamic Academia',tafseer:'Tafseer and Tadabbur',courses:'Continuous learning',mothers:'Mothers of the Ummah',hifz:'Ma’had Arwa Hifz Academy',studio:'Studio','arabic-adventures':'Arabic Adventures'};
 const dialog=document.createElement('dialog');dialog.id='circles-sign-in';dialog.className='circles-sign-in';dialog.setAttribute('aria-labelledby','circles-sign-in-title');
 dialog.innerHTML=`<button type="button" class="circles-sign-in-close" aria-label="Close sign-in">×</button><p class="eyebrow" id="circles-sign-in-area">Your Academy account</p><h2 id="circles-sign-in-title">Ahlan wa Sahlan</h2><div id="circles-login-fields"><p>Log in with your existing Academy account.</p><form id="circles-sign-in-form"><label>Academy account ID<input name="uniqueid" autocomplete="username" maxlength="160" required></label><label>PIN<input name="pin" type="password" inputmode="numeric" autocomplete="current-password" pattern="[0-9]{4}" maxlength="4" required></label><label id="circles-confirm-pin" hidden>Confirm your Academy PIN<input name="pinConfirmation" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4}" maxlength="4"></label><button type="submit" class="btn">Log in</button></form></div><div id="circles-account-links" hidden><p id="circles-account-greeting"></p><p id="circles-account-next"></p><nav aria-label="Your account"><button type="button" class="btn" id="circles-open-academy">Open Academy</button><a class="btn outline" href="/studio/?view=collections">My learning</a><a class="btn outline" href="/studio/?manage=1">Open Studio</a><button type="button" class="text-button" id="circles-sign-out">Sign out</button></nav></div><p id="circles-sign-in-status" role="status" aria-live="polite"></p>`;
 document.body.append(dialog);
@@ -18,7 +18,7 @@ function accountView(){
  const signedIn=Boolean(identity.account);element('circles-login-fields').hidden=signedIn;element('circles-account-links').hidden=!signedIn;
  element('circles-sign-in-title').textContent=signedIn?'Welcome back':'Ahlan wa Sahlan';element('circles-sign-in-area').textContent=labels[selected];
  element('circles-account-greeting').textContent=signedIn?'Assalaamu alaykum, '+identity.account.displayName+'.':'';
- element('circles-account-next').textContent=['academy','mothers','hifz'].includes(selected)?'Continue to Academy to open your programmes.':'Choose where you would like to continue.';
+ element('circles-account-next').textContent=['academy','mothers','hifz','arabic-adventures'].includes(selected)?'Continue to Academy to open your programmes.':'Choose where you would like to continue.';
  refreshHeader();
 }
 async function begin(area){selected=accessArea(area);message.textContent='';try{await ready;const destination=identity.account&&learningDestination(selected);if(destination){location.assign(destination);return;}accountView();if(!dialog.open)dialog.showModal();}catch{accountView();if(!dialog.open)dialog.showModal();message.textContent='Sign-in is temporarily unavailable. Please try again.';}}
