@@ -9,7 +9,7 @@ This is a local integration, not deployment or live ownership approval. It prese
 - Frozen design: `71dbd4f15433642787501162c216e87fe8a0a451`. Later Kahf `890d994` is not included.
 - New worktrees: `work/AcademyStudio-combined-candidate` and `work/Academy-combined-candidate`, each on `feature/academy-studio-combined-20261030`. The original four input branches/worktrees are preserved.
 
-Both histories are merged rather than replacing either input. The latest Circles public UI is retained byte for byte. Shared conflict resolution keeps the new header/date route beside the signed Studio-access route, current source identity/session/epoch guards beside the Library return metadata, and the source-test schema/service bindings required by the access bridge. The tests default to the paired combined source checkout, including additive schema0015. Tests/fixtures are synthetic and block external source network calls.
+Both histories are merged rather than replacing either input. The held Circles layout and public assets are preserved. A reviewed follow-up changes only shared/header-dates.mjs to recover unavailable dates while visible, retain a validated Hijri date for today across transient failures, and reset at midnight. Shared conflict resolution keeps the new header/date route beside the signed Studio-access route, current source identity/session/epoch guards beside the Library return metadata, and the source-test schema/service bindings required by the access bridge. The tests default to the paired combined source checkout, including additive schema0015. Tests/fixtures are synthetic and block external source network calls.
 
 ## Behavior retained
 
@@ -17,18 +17,18 @@ Academy remains master for identity/PIN/security, admission/suspension, staff, c
 
 Whole-Course purchase rights survive former participation; original paid month/cohort recording rights remain separate from website-only months and Surah grants. Source proofs and late deliveries cannot overwrite Studio rights after transfer. Identity-first enrolment keeps successful master-account creation recoverable without creating a duplicate or an implicit purchase.
 
-The combined UI retains the approved held placement: no short-Course links on the circle; confirmed purchased current/completed courses in My courses; staff-only authority is not a purchase; free-course cards are visible but inactive from first render and rotation. Global Admin has Learn/Teach/Admin. Daily Admin programme entries expand Info with all supplied lessons. Native Library/PDF/Home returns preserve the selected workspace and account-bound connector context. Course Home/Refresh keeps existing draft guards. Gregorian dates use Africa/Johannesburg; unavailable Hijri data remains explicitly unavailable.
+The combined UI retains the approved held placement: no short-Course links on the circle; confirmed purchased current/completed courses in My courses; staff-only authority is not a purchase; free-course cards are visible but inactive from first render and rotation. Global Admin has Learn/Teach/Admin. Daily Admin programme entries expand Info with all supplied lessons. Native Library/PDF/Home returns preserve the selected workspace and account-bound connector context. Course Home/Refresh keeps existing draft guards. Gregorian dates use Africa/Johannesburg; an unavailable Hijri date is never fabricated. Today's verified Hijri survives transient null/error responses. Missing lookups retry once a minute while visible; valid dates retain the existing fifteen-minute refresh policy. Hidden pages have no polling timer. Browser cache keys include the current day, and both cached values and in-flight responses are checked against today at rollover. The public shared cache/lookup remains unchanged and uses no D1.
 
 Mothers/Baqarah stays a separate Academy programme; its private teaching draft is not connected or published. Future five-minute free-programme links, queued Kahf editorial work, new recording adapters/media linking, and later placement/phone redesign work remain outside this candidate. Nothing planned is represented as implemented.
 
 ## Build and verification
 
-The prepared connected public artifact is ignored `local-content/combined-71dbd4f-review/public`, created with `tools/prepare-circles-login.mjs` from the frozen input. Do not deploy a raw design dist or native public directory over it. The design index SHA256 and build report are recorded in `local-content/combined-71dbd4f-review/build.json`.
+The prepared connected public artifact is ignored `local-content/combined-header-recovery-review/public`, created with `tools/prepare-circles-login.mjs` from the frozen input. Do not deploy a raw design dist or native public directory over it. The design index SHA256 and build report are recorded in `local-content/combined-header-recovery-review/build.json`.
 
 Run the combined native suite with:
 
 ```sh
-ACADEMY_SOURCE=../Academy-combined-candidate CIRCLES_UI_BUILD=local-content/combined-71dbd4f-review/public npm test
+ACADEMY_SOURCE=../Academy-combined-candidate CIRCLES_UI_BUILD=local-content/combined-header-recovery-review/public npm test
 ```
 
 The additional combined workflow verifies retained purchases in My courses after handover and source refresh, staff purchase separation, cached dashboard reuse, an actual Teach Library exchange, and received master suspension. Native tests also cover scoped permissions, PIN/account switching, Library return validation, date/header behavior, content/media boundaries, cancellation races and twelve-hour/sixty-second freshness. Source Course/monthly/Admin UI management checks are run separately.
@@ -38,3 +38,5 @@ Measured synthetic workflow rows: an Admin exact-account view reads115 source /6
 Browser review uses separate local ports8984/8985 and synthetic identities only. It verifies Global Admin modes/daily Info, native Teach and Learn Library/PDF/Home return, a learner-only workspace after account switching, and purchased-course opening/Home. The retained Circles preview8944/8945 is untouched. Final commits, test totals, immutable build/evidence hashes, screenshots and limitations are recorded in the parent `outputs/academy-studio-combined-20261030/VERIFICATION.json`.
 
 A release still requires the separate reviewer to assess this combined candidate and the human to approve deployment/schema changes. Any later live transfer requires current exact source/target reconciliation and backup. The optional same-offering revision-trigger write optimisation is deferred; no new access semantics were introduced for it.
+
+The date follow-up has eight date/service/fake-clock checks and32 affected composed UI/navigation/Library checks passing; the reviewer's original two reproductions also pass against the corrected module. The original172/172 full combined and51/51 source checks remain saved for the unchanged backend/source composition. See the final verification record for exact revisions and the single-file public artifact difference.
