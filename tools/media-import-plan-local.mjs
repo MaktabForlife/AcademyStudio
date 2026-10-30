@@ -5,6 +5,6 @@ const [pageFile,mappingFile,output,...extra]=process.argv.slice(2);
 if(!pageFile||!mappingFile||!output||extra.length)throw Error('Usage: node tools/media-import-plan-local.mjs PRIVATE_PAGE_JSON EXPLICIT_ASSOCIATIONS_JSON NEW_PRIVATE_PLAN_JSON');
 if(!resolve(output).startsWith('/private/tmp/academy-media-'))throw Error('Write plans inside a private /private/tmp/academy-media-… directory.');
 const read=async(file,max)=>{const value=await readFile(file);if(value.length>max)throw Error('MEDIA_INPUT_TOO_LARGE');return JSON.parse(value);};
-const plan=planMediaPage(await read(pageFile,240_000),{associations:await read(mappingFile,20_000)});
+const plan=planMediaPage(await read(pageFile,240_000),{associations:await read(mappingFile,300_000)});
 await writeFile(output,JSON.stringify(plan,null,2),{mode:0o600,flag:'wx'});
 console.log(JSON.stringify({objects:plan.objects.length,attachments:plan.attachments.length,held:plan.held.length,readyToPublish:false}));

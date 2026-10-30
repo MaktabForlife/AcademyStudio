@@ -12,9 +12,10 @@ export function planMediaPage(page,{associations=[]}={}){
  const s=page.source;id(s?.activityKey);id(s.offeringId);check(['COURSE','TAFSEER'].includes(s.kind),'MEDIA_SCOPE_INVALID');
  check(digest(s)===page.inventoryId,'MEDIA_INVENTORY_DIGEST_CHANGED');
  check(Array.isArray(page.lessons)&&page.lessons.length<=25,'MEDIA_LESSON_LIMIT');
- check(Array.isArray(associations)&&associations.length<=25,'MEDIA_ASSOCIATION_LIMIT');
- const mappings=new Map(),seen=new Set(),objects=new Map(),attachments=[],held=[];
- for(const mapping of associations){id(mapping.sourceLessonId);id(mapping.websiteId);check(!mappings.has(mapping.sourceLessonId),'MEDIA_MAPPING_DUPLICATE');mappings.set(mapping.sourceLessonId,mapping.websiteId);}
+ check(Array.isArray(associations)&&associations.length<=500,'MEDIA_ASSOCIATION_LIMIT');
+ const mappings=new Map(),usedMappings=new Set(),seen=new Set(),objects=new Map(),attachments=[],held=[];
+ const mappingKey=(lesson,asset=null)=>JSON.stringify([lesson,asset]);
+ for(const mapping of associations){id(mapping.sourceLessonId);id(mapping.websiteId);if(mapping.sourceAssetId!==undefined)id(mapping.sourceAssetId);const key=mappingKey(mapping.sourceLessonId,mapping.sourceAssetId);check(!mappings.has(key),'MEDIA_MAPPING_DUPLICATE');mappings.set(key,mapping.websiteId);}
  for(const lesson of page.lessons){
   const lessonId=id(lesson.sourceLessonId);check(!seen.has(lessonId),'MEDIA_LESSON_DUPLICATE');seen.add(lessonId);
   check(['SESSION','COURSE'].includes(lesson.scope)&&['PUBLISHED','DRAFT','HIDDEN','MISSING'].includes(lesson.state),'MEDIA_LESSON_INVALID');
@@ -23,9 +24,13 @@ export function planMediaPage(page,{associations=[]}={}){
    (lesson.publicationId===null||text(lesson.publicationId,180))&&Number.isSafeInteger(lesson.revision)&&lesson.revision>0,'MEDIA_PROVENANCE_INVALID');
   check(Array.isArray(lesson.cohorts)&&lesson.cohorts.length<=100,'MEDIA_COHORT_LIMIT');lesson.cohorts.forEach(id);
   if(lesson.scope==='SESSION')date(lesson.date);else check(s.kind==='COURSE'&&lesson.date==='','MEDIA_COURSE_COLLECTION_INVALID');
-  const websiteId=mappings.get(lessonId)||null,cohorts=s.kind==='COURSE'?['']:[...new Set(lesson.cohorts)],assetIds=new Set();
+  const lessonMapping=mappingKey(lessonId),cohorts=s.kind==='COURSE'?['']:[...new Set(lesson.cohorts)],assetIds=new Set();
+  if(mappings.has(lessonMapping))usedMappings.add(lessonMapping);
   for(const asset of lesson.assets){
    id(asset.sourceAssetId);check(!assetIds.has(asset.sourceAssetId),'MEDIA_ASSET_DUPLICATE');assetIds.add(asset.sourceAssetId);
+   const exactMapping=mappingKey(lessonId,asset.sourceAssetId);check(!(mappings.has(lessonMapping)&&mappings.has(exactMapping)),'MEDIA_MAPPING_AMBIGUOUS');
+   if(mappings.has(exactMapping))usedMappings.add(exactMapping);
+   const websiteId=mappings.get(exactMapping)||mappings.get(lessonMapping)||null;
    check(['PDF','MP4','YOUTUBE'].includes(asset.kind)&&text(asset.filename,180)&&text(asset.name,500),'MEDIA_ASSET_INVALID');
    check(typeof asset.linked==='boolean'&&typeof asset.sourceExpired==='boolean','MEDIA_ASSET_INVALID');
    const reasons=[];
@@ -50,7 +55,7 @@ export function planMediaPage(page,{associations=[]}={}){
     source:{sessionKey:lesson.sessionKey,runId:lesson.runId,publicationId:lesson.publicationId,revision:lesson.revision}});
   }
  }
- for(const lessonId of mappings.keys())check(seen.has(lessonId),'MEDIA_MAPPING_OUTSIDE_PAGE');
+ for(const key of mappings.keys())check(usedMappings.has(key),'MEDIA_MAPPING_OUTSIDE_PAGE');
  check(attachments.length<=1000,'MEDIA_ATTACHMENT_LIMIT');
  const plan={format:'WEBSITE_MEDIA_PLAN_V1',inventoryId:page.inventoryId,source:s,objects:[...objects.values()],attachments,held,
   readyToPublish:false,remaining:['VERIFY_SOURCE_STILL_CURRENT','VERIFY_PRIVATE_BYTES','CHECK_TARGET_OFFERING_AND_WEBSITE','REHEARSE_ATOMIC_ADMISSION_AND_WITHDRAWAL']};

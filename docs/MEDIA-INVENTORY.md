@@ -1,5 +1,7 @@
 # Private media inventory — local, 29 October 2026
 
+30 October continuation: the copied source inventory now has a private, resumable filesystem stage and exact asset-level website associations. Eleven original PDFs and 32 recording candidates are prepared locally; synthetic native target admission/withdrawal guards are rehearsed. The operational hosted admission/delta adapter remains pending. See [MEDIA-TRANSFER-REHEARSAL.md](MEDIA-TRANSFER-REHEARSAL.md). The original inventory-stage evidence below remains historical.
+
 This continuation prepares original PDF/recording references. The tools are operator-only: neither Worker nor scheduled recovery imports them. V108.0 remains the deployed checkpoint. No hosted query, real export, byte transfer, attachment admission or publication was performed.
 
 ## Source contract
