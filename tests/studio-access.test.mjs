@@ -149,3 +149,21 @@ test('a rejected Save acknowledges accepted authority deliveries so correcting a
   const corrected={...command,change:{...command.change,operationId:crypto.randomUUID(),changes:[{...command.change.changes[0],reason:'Verified correction after validation'}]}};assert.equal((await good(corrected,{activity:x.programA})).saved,true);
  }finally{await f.close();}
 });
+
+test('suspended people and archived paid offerings hand over acquired rights while master and live gates stay closed',{timeout:60000},async()=>{
+ const {f,x,handover,good}=await studioFixture();try{
+  const cookie=await signIn(f);await x.run('UPDATE accounts SET active=0 WHERE account_id=?',x.student);await x.run("UPDATE activities SET active=0,lifecycle='ARCHIVED' WHERE activity_key=?",x.courseA);await x.recover(12);
+  await handover();const row=await good({action:'read',accountId:x.student});assert.equal(row.person.purchased,1);assert.equal(row.person.active,0);assert.equal((await f.request('/api/websites/site-course',{cookie})).status,401);
+  await assert.rejects(x.run("UPDATE course_settings SET legacy_access_model='FREE' WHERE activity_key=?",x.courseA),/STUDIO_ACCESS_MANAGED/);
+  await x.run('UPDATE accounts SET active=1 WHERE account_id=?',x.student);await x.recover(8);ok(await f.request('/api/websites/site-course',{cookie}));assert.equal((await f.request('/api/offerings/course/join',{cookie,method:'POST',body:{sessionId:'course-session'}})).status,403);assert.equal(await f.db.prepare("SELECT live_enabled FROM source_access_scopes WHERE offering_id='course'").first('live_enabled'),0);
+ }finally{await f.close();}
+});
+
+test('received master mismatch fences Studio immediately, while unrelated live proof failures retain acquired materials',{timeout:60000},async()=>{
+ const {f,x,handover}=await studioFixture();try{
+  await handover();const cookie=await signIn(f),old=JSON.parse(await x.db.prepare('SELECT event_json FROM website_platform_outbox WHERE access_scope=? AND access_account=? ORDER BY version DESC LIMIT 1').bind(x.courseA,x.student).first('event_json')),stream='access:'+await (await import('../src/protocol.mjs')).sha256(JSON.stringify(['course',x.student]));
+  old.account.active=false;assert.equal((await f.deliver(old,{stream})).response.status,200);assert.equal((await f.request('/api/websites/site-course',{cookie})).body.code,'ACCESS_REFRESH_REQUIRED');
+  assert.equal((await f.deliver({type:'account',account:{...old.account,verifiedAt:Date.now()}})).response.status,200);assert.equal((await f.request('/api/websites/site-course',{cookie})).status,401);
+  old.account.active=true;old.blocked=true;assert.equal((await f.deliver({type:'account',account:{...old.account,verifiedAt:Date.now()}})).response.status,200);assert.equal((await f.deliver(old,{stream})).response.status,200);ok(await f.request('/api/websites/site-course',{cookie}));assert.equal((await f.request('/api/offerings/course/join',{cookie,method:'POST',body:{sessionId:'course-session'}})).body.code,'ACCESS_REFRESH_REQUIRED');
+ }finally{await f.close();}
+});
