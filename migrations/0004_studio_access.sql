@@ -2,6 +2,7 @@
 CREATE TABLE access_revisions(offering_id TEXT PRIMARY KEY REFERENCES offerings(offering_id),revision INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE access_members(offering_id TEXT NOT NULL REFERENCES offerings(offering_id),account_id TEXT NOT NULL REFERENCES accounts(account_id),PRIMARY KEY(offering_id,account_id));
 CREATE TABLE access_handovers(offering_id TEXT PRIMARY KEY REFERENCES offerings(offering_id),transfer_id TEXT NOT NULL UNIQUE,phase TEXT NOT NULL CHECK(phase IN('PREPARING','COMMITTED','ABORTED')),generation INTEGER NOT NULL,source_version INTEGER NOT NULL,revision INTEGER NOT NULL,cursor TEXT NOT NULL DEFAULT '',checked INTEGER NOT NULL DEFAULT 0,created_at INTEGER NOT NULL);
+CREATE TABLE access_handover_cancellations(transfer_id TEXT PRIMARY KEY,offering_id TEXT NOT NULL REFERENCES offerings(offering_id),cancelled_at INTEGER NOT NULL);
 CREATE INDEX paid_months_offering ON paid_months(offering_id,account_id,month,cohort);
 CREATE INDEX website_months_offering ON website_months(offering_id,account_id,month);
 CREATE INDEX source_people_offering ON source_access_people(offering_id,account_id);

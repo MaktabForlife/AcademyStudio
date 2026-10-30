@@ -215,3 +215,33 @@ test('commit wins a racing abort and another current Global Admin can confirm th
   const login=await f.runtime.dispatchFetch('https://academy.test/api/account/login',{method:'POST',headers:{Origin:'https://academy.test','Content-Type':'application/json'},body:JSON.stringify({uniqueid:link,pin:'1234'})}),fresh=await login.json();assert.equal(login.status,200,JSON.stringify(fresh));const recovered=await proxy({action:'handover-commit',transferId},{headers:{Authorization:'Bearer '+fresh.token}});assert.equal(recovered.status,200,JSON.stringify(recovered.body));assert.equal(recovered.body.recovered,true);assert.equal(await x.db.prepare('SELECT state FROM website_platform_access_ownership WHERE activity_key=?').bind(x.courseA).first('state'),'STUDIO');
  }finally{await f.close();}
 });
+
+test('abort cancels a checkpoint created while its empty target-status response is in flight',{timeout:60000},async()=>{
+ const {f,x,good,proxy}=await studioFixture();try{
+  const transferId=crypto.randomUUID();await good({action:'handover-start',transferId});for(let i=0;i<9;i++){await good({action:'handover-reconcile',transferId});await x.recover(6);}
+  assert.equal(await f.db.prepare("SELECT phase FROM access_handovers WHERE offering_id='course'").first('phase'),null);
+  const {pathToFileURL}=await import('node:url'),{studioAdmin}=await import(pathToFileURL(f.source.root+'/backend/src/academy/d1/web-platform/studio-admin.mjs'));
+  const session=await x.db.prepare('SELECT * FROM website_platform_sessions WHERE account_id=? ORDER BY expires_at DESC LIMIT 1').bind(f.source.f.actors.global).first(),auth={sid:session.session_id,state:{account:{account_id:session.account_id,credential_epoch:session.epoch}},context:JSON.parse(session.context_json)};
+  let interleaved=false;const aborted=await studioAdmin({...f.source.workers[0].bindings,ACADEMY_DB:x.db},auth,{activityKey:x.courseA,command:{action:'handover-abort',transferId}},{fetcher:async(url,options)=>{
+   const result=await f.runtime.dispatchFetch(url,options);if(!interleaved&&JSON.parse(options.body).command?.action==='handover-status'){assert.equal((await result.clone().json()).handover,null);interleaved=true;await good({action:'handover-page',transferId});}return result;
+  }});
+  assert(interleaved);assert.equal(aborted.state,'ACADEMY');assert.equal(await x.db.prepare('SELECT state FROM website_platform_access_ownership WHERE activity_key=?').bind(x.courseA).first('state'),'ACADEMY');assert.equal(await f.db.prepare("SELECT phase FROM access_handovers WHERE offering_id='course'").first('phase'),'ABORTED');assert.equal(await f.db.prepare("SELECT offering_id FROM access_handover_cancellations WHERE transfer_id=?").bind(transferId).first('offering_id'),'course');
+  for(const action of ['handover-begin','handover-page','handover-reconcile','handover-commit']){const r=await proxy({action,transferId});assert.equal(r.status,409,JSON.stringify(r.body));assert.equal(r.body.code,'HANDOVER_NOT_FROZEN');}
+  const again=await good({action:'handover-abort',transferId});assert.equal(again.replayed,true);assert.equal((await proxy({action:'handover-start',transferId})).body.code,'HANDOVER_CANCELLED');assert.equal(await f.db.prepare("SELECT authority FROM source_access_scopes WHERE offering_id='course'").first('authority'),'ACADEMY');
+  const cookie=await signIn(f,'global'),{Store}=await import('../src/database.mjs'),{handover:targetHandover}=await import('../src/studio-access.mjs'),{sha256}=await import('../src/protocol.mjs'),store=new Store({...f.env,DB:f.db}),actor=await store.actor(await sha256(cookie.slice(cookie.indexOf('=')+1))),checkpoint=await f.db.prepare("SELECT * FROM access_handovers WHERE offering_id='course'").first();
+  assert(await f.db.prepare('SELECT 1 FROM operations WHERE operation_id=?').bind('handover:'+transferId+':begin').first(),'the successful original begin has a receipt');await assert.rejects(targetHandover(store,actor,'course',{action:'handover-begin',operationId:'handover:'+transferId+':begin',transferId,generation:checkpoint.generation,sourceVersion:checkpoint.source_version}),e=>e.code==='HANDOVER_CANCELLED');
+  await x.run('UPDATE course_subscription_decisions SET active=0 WHERE activity_key=? AND account_id=?',x.courseA,x.student);
+ }finally{await f.close();}
+});
+
+test('abort before any target checkpoint permanently fences a delayed begin and old operation replay',{timeout:60000},async()=>{
+ const {f,x,good}=await studioFixture();try{
+  const transferId=crypto.randomUUID();await good({action:'handover-start',transferId});for(let i=0;i<9;i++){await good({action:'handover-reconcile',transferId});await x.recover(6);}
+  const cookie=await signIn(f,'global'),{Store}=await import('../src/database.mjs'),{handover:targetHandover}=await import('../src/studio-access.mjs'),{sha256}=await import('../src/protocol.mjs'),store=new Store({...f.env,DB:f.db}),actor=await store.actor(await sha256(cookie.slice(cookie.indexOf('=')+1))),scope=await f.db.prepare("SELECT generation,version FROM source_access_scopes WHERE offering_id='course'").first();
+  const begin={action:'handover-begin',operationId:'handover:'+transferId+':begin',transferId,generation:scope.generation,sourceVersion:scope.version},original=store.batch.bind(store);let delayed=false;
+  store.batch=async statements=>{if(!delayed){delayed=true;await good({action:'handover-abort',transferId});}return original(statements);};
+  await assert.rejects(targetHandover(store,actor,'course',begin),e=>e.code==='CHANGE_CONFLICT');assert(delayed);assert.equal(await f.db.prepare("SELECT phase FROM access_handovers WHERE offering_id='course'").first('phase'),null);assert.equal(await x.db.prepare('SELECT state FROM website_platform_access_ownership WHERE activity_key=?').bind(x.courseA).first('state'),'ACADEMY');
+  await assert.rejects(targetHandover(new Store({...f.env,DB:f.db}),actor,'course',begin),e=>e.code==='HANDOVER_CANCELLED');
+  const fresh=crypto.randomUUID();await good({action:'handover-start',transferId:fresh});for(let i=0;i<9;i++){await good({action:'handover-reconcile',transferId:fresh});await x.recover(6);}await good({action:'handover-page',transferId:fresh});await assert.rejects(targetHandover(new Store({...f.env,DB:f.db}),actor,'course',begin),e=>e.code==='HANDOVER_CANCELLED');assert.equal(await f.db.prepare("SELECT transfer_id FROM access_handovers WHERE offering_id='course'").first('transfer_id'),fresh);
+ }finally{await f.close();}
+});
