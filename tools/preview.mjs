@@ -4,7 +4,7 @@ import {createServer} from 'node:http';import {readFile,stat} from 'node:fs/prom
 const sitePort=Number(process.env.PREVIEW_PORT||8791),academyPort=sitePort+1;
 if(!Number.isInteger(sitePort)||sitePort<1024||sitePort>65534)throw Error('Choose a local preview port between 1024 and 65534.');
 const websiteOrigin='http://localhost:'+sitePort,academyOrigin='http://localhost:'+academyPort;
-const publicRoot=resolve(process.env.PREVIEW_PUBLIC_ROOT||'public'),circles=process.env.PREVIEW_CIRCLES==='1',f=await fixture({academy:true,authorityMode:circles?'ACADEMY':'WEBSITE'});
+const publicRoot=resolve(process.env.PREVIEW_PUBLIC_ROOT||'public'),circles=process.env.PREVIEW_CIRCLES==='1',f=await fixture({academy:true,authorityMode:circles?'ACADEMY':'WEBSITE',...(process.env.PREVIEW_NAVIGATION==='1'?{navigation:{mothers:'programA',alimiyah:'programB'},verification:{accountSeconds:43200,liveSeconds:43200,adminSeconds:60}}:{})});
 if(circles){const {circlesFixture}=await import('../tests/circles-fixture.mjs');const x=await circlesFixture(f);await x.recover(8);}else{
 for(const [account,globalAdmin] of [[f.source.f.actors.global,1],[f.source.f.actors.studentA,0]])await f.run('INSERT INTO accounts VALUES(?,?,1,1,1,?,?)',account,'Synthetic Academy '+(globalAdmin?'Admin':'Learner'),Date.now(),globalAdmin);
 await f.run("INSERT INTO participation VALUES(?,'course',1,1,1,'')",f.source.f.actors.studentA);
@@ -20,7 +20,7 @@ function syntheticPdf(){
 }
 async function staticFile(path,request,response,root=publicRoot){
  let file=resolve(root,'.'+decodeURIComponent(path));if(!file.startsWith(root+'/')&&file!==root)throw Error('Invalid file.');
- if((await stat(file)).isDirectory())file=resolve(file,'index.html');const data=await readFile(file);response.writeHead(200,{'Content-Type':mime[extname(file)]||'application/octet-stream','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});response.end(request.method==='HEAD'?undefined:data);
+ if((await stat(file)).isDirectory())file=resolve(file,'index.html');let data=await readFile(file);if(process.env.PREVIEW_NAVIGATION==='1'&&extname(file)==='.html'&&root===publicRoot)data=Buffer.from(data.toString().replace(/<body([^>]*)>/,'<body$1><aside role="note" style="padding:10px;text-align:center;background:#fff3cd;color:#493b16;font:14px system-ui">Local navigation review · Synthetic accounts and materials</aside>'));response.writeHead(200,{'Content-Type':mime[extname(file)]||'application/octet-stream','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});response.end(request.method==='HEAD'?undefined:data);
 }
 async function handler(request,response,isAcademy){
  try{

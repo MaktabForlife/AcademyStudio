@@ -1,3 +1,9 @@
+# Circles permission navigation — local preparation, 30 October 2026
+
+- The owner specified the circle blocks as navigation and confirmed that Mothers of the Ummah must use existing programme membership. Each short Course retains independent access. The paired source/target changes and local tests are in docs/CIRCLES-PERMISSION-NAVIGATION.md. No new role, grant, teaching publication, hosted schema or deployment has been applied.
+- Preserve live V108.3 and its 49 enabled original media attachments. The prepared navigation bundle uses approved UI e68d0b7; newer compact/layout-editor trials are excluded. Mothers currently has a membership-gated Studio landing with an explicit materials-pending notice; its separate author draft remains unpublished.
+- Keep these changes local pending fresh coordinated deployment approval. Normal navigation retains twelve-hour proofs, sensitive Admin checks remain sixty seconds, and presentation invalidation must never delay protected-access revocations.
+
 # Current connected UI baseline V108.3 — 30 October 2026
 
 - Circles completed the separately authorised UI-only deployment at 14:05:41 Riyadh: design `e68d0b780e9dc3ce3fe41d4f36738ca850854be7`, Worker `65fb4597-7eb3-4e57-b5bf-4e5d357f2b46`, deployment `3a381937-a72b-4c42-9f3e-45343b4d30e4`, 100% active. This checkout reconciles its five-file runtime patch and has a fresh prepared bundle at ignored local-content/circles-home-1083/public. Preserve this UI and its safe Arabic Adventures display/login area on future releases; it adds no course identity or rights. No migration redeployment is needed or performed for this reconciliation.

@@ -38,7 +38,7 @@ export async function websitePresentation(env,website){
 
 // One bounded, account-scoped lookup. Staff authority permits opening a website
 // but never supplies evidence of a purchase, paid month or individual grant.
-export async function catalogueAccess(store,actor,websiteIds){
+export async function catalogueAccess(store,actor,websiteIds,{navigationOnly=false}={}){
  if(!Array.isArray(websiteIds)||websiteIds.length>50)throw fail('Choose at most 50 learning websites.');
  const ids=[...new Set(websiteIds.map(id))];if(!ids.length)return {websites:[]};
  const rows=await store.all(`SELECT w.website_id,w.enabled,w.published_key,o.kind,o.active,
@@ -61,7 +61,7 @@ export async function catalogueAccess(store,actor,websiteIds){
   const staff=Boolean(actor.global_admin||row.role),parallel=academyAuthority(store.env)&&row.authority!=='WEBSITE';
   if(parallel){
    if(!actor.source_ref||!row.source_enabled||row.kind==='TAFSEER'&&!row.mapped)return base;
-   if(!row.ready||row.generation!==row.person_generation||row.verified_at<now-boundedAge(store.env,staff))return {...base,needsRefresh:true};
+   if(!row.ready||row.generation!==row.person_generation||row.verified_at<now-boundedAge(store.env,staff&&!navigationOnly))return {...base,needsRefresh:true};
   }
   const accessBasis=row.kind==='COURSE'&&row.purchased?'purchase':row.kind==='TAFSEER'&&row.paid?'paid-month':row.kind==='TAFSEER'&&row.granted?'website-grant':null;
   return {...base,canOpen:staff||Boolean(accessBasis),subscriptionStatus:accessBasis?'subscribed':'required',accessBasis};

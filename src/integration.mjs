@@ -1,3 +1,4 @@
+import {checkedProgrammes} from './navigation.mjs';
 import {accessStatements,fenceAccess} from './access.mjs';
 import {bodyJSON,bytes,verify,envelopePurpose,fail,id,text,integer,flag,sha256,safeToken,httpsURL} from './protocol.mjs';
 export async function signedInput(request,env){
@@ -25,6 +26,10 @@ export async function receive(request,env,store){
  else if(['access','access-scope'].includes(event.type)){statements.push(...await accessStatements(store,event,data.version,a=>accountStatements(store,a,{insertOnly:true})));extraSQL="NOT EXISTS(SELECT 1 FROM source_access_scopes WHERE offering_id=? AND authority='WEBSITE')";extraArgs=[event.offeringId||event.offering.id];}
  else if(event.type==='account'){
   if(data.stream!=='account:'+event.account.accountId)throw fail('Invalid account stream.');statements.push(...accountStatements(store,event.account));
+  const a=event.account;statements.push(store.statement('DELETE FROM circles_navigation WHERE account_id=? AND epoch<=?',[id(a.accountId),integer(a.epoch)]));
+  if(event.navigation){const programmes=checkedProgrammes(event.navigation);statements.push(store.statement('INSERT INTO circles_navigation SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM accounts WHERE account_id=? AND epoch=?)',[a.accountId,a.epoch,a.verifiedAt,JSON.stringify(programmes),a.accountId,a.epoch]));}
+ }else if(event.type==='navigation-invalidated'){
+  if(data.stream!=='account:'+event.accountId)throw fail('Invalid navigation stream.');statements.push(store.statement('DELETE FROM circles_navigation WHERE account_id=?',[id(event.accountId)]));
  }else if(event.type==='timetable'){
   const offer=event.offering,offeringId=id(offer.id);if(data.stream!=='timetable:'+offeringId||!['COURSE','TAFSEER','ACADEMY'].includes(offer.kind)||!Array.isArray(event.sessions)||event.sessions.length>200)throw fail('Invalid timetable publication.');
   if(event.mode!==undefined&&!['snapshot','delta'].includes(event.mode))throw fail('Choose a timetable snapshot or delta.');

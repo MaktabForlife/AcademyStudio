@@ -1,3 +1,4 @@
+import {circlesNavigation,programmeSnapshot} from './navigation.mjs';
 import {publicCatalogue,catalogueAccess,permittedGuideBindings,websitePresentation} from './circles.mjs';
 import {academyAuthority,accessGate,joinAudience} from './access.mjs';
 import {Store} from './database.mjs';
@@ -43,10 +44,13 @@ async function route(request,env,store,fetcher){
   try{await academyCommand(env,store,'/internal/website/status',{sourceRef:actor.source_ref},fetcher);const current=await store.actor(actor.token_hash);return json({verifiedAt:current.verified_at});}finally{await store.run('DELETE FROM refresh_claims WHERE account_id=? AND claim_id=?',[actor.account_id,claimId]);}
  }
  if(path==='/auth/academy'&&method==='POST'){const input=await bodyJSON(request.body,4096);if(!actor.source_ref||!safeToken(input.challenge)||!safeToken(input.state))throw fail('Reopen Academy from the website.',401);let library;
+  if(input.navigation&&!['alimiyah','reboot','arabic-intensive','hifz'].includes(input.navigation))throw fail('Choose an authorised programme.',403);if(input.navigation&&input.library)throw fail('Choose one destination.');
   if(input.library){const website=await websiteAccess(store,actor,id(input.library.websiteId)),lessonId=input.library.lessonId?id(input.library.lessonId):null;if(lessonId){const document=website.published_key?await objectJSON(env.CONTENT,website.published_key):null;if(!document?.lessons.some(l=>l.id===lessonId))throw fail('Choose a published lesson for the Library return.',404);}library={websiteId:website.website_id,lessonId};}
-  const result=await academyCommand(env,store,'/internal/website/open-academy',{sourceRef:actor.source_ref,challenge:input.challenge,state:input.state,...(library?{library}:{})},fetcher);if(!safeToken(result.code))throw fail('Academy could not prepare the handoff.',503);return json({code:result.code});}
+  const result=await academyCommand(env,store,'/internal/website/open-academy',{sourceRef:actor.source_ref,challenge:input.challenge,state:input.state,...(library?{library}:{}),...(input.navigation?{navigation:input.navigation}:{})},fetcher);if(!safeToken(result.code))throw fail('Academy could not prepare the handoff.',503);return json({code:result.code});}
  if(path==='/auth/logout'&&method==='POST'){await store.run('UPDATE sessions SET revoked=1 WHERE token_hash=?',[actor.token_hash]);return json({signedOut:true},200,{'Set-Cookie':cookie('',0)});}
  if(path==='/api/me'&&method==='GET')return json({accountId:actor.account_id,displayName:actor.display_name,globalAdmin:Boolean(actor.global_admin),verifiedAt:actor.verified_at});
+ if(path==='/api/circles/navigation'&&method==='GET')return json(await circlesNavigation(env,store,actor));
+ if(path==='/api/circles/classrooms/mothers'&&method==='GET'){if(!(await programmeSnapshot(store,actor)).includes('mothers'))throw fail('Mothers of the Ummah membership is required.',403);return json({title:'Mothers of the Ummah',materialsConnected:false});}
  if(path==='/api/circles/access'&&method==='GET')return json(await catalogueAccess(store,actor,url.searchParams.getAll('website')));
  if(path==='/api/websites'&&method==='GET'){
   // Start with this account's indexed rights, rather than scanning all sites for an OR condition.
