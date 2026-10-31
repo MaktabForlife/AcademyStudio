@@ -82,6 +82,8 @@ body.circles-ui-workspace{--ink:#44363f;--accent:#67515f;--soft:#eee5e8;--paper:
 #circles-dashboard .circles-attention{grid-column:auto}
 #circles-dashboard .circles-calendar{grid-column:1}
 #circles-dashboard .circles-tools{grid-column:2/4}
+#circles-dashboard .circles-dashboard-grid>.circles-curriculum{grid-column:1/-1!important;display:flex;padding:0;border:0;background:transparent;box-shadow:none}
+#circles-dashboard .circles-dashboard-grid:has(>.circles-curriculum)>:not(.circles-curriculum){grid-column:auto}
 #circles-dashboard .circles-areas>ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
 #circles-dashboard .circles-areas>ul>li{align-items:center;gap:10px;min-height:66px;padding:10px;border:1px solid #e7dfe1;border-radius:7px;background:#f8f4ef}
 #circles-dashboard .circles-dashboard-panel.circles-areas>ul>li p{font-size:11px;line-height:1.4;letter-spacing:.015em;margin:4px 0 0}

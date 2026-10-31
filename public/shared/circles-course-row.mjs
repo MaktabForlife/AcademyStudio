@@ -1,5 +1,6 @@
 import {esc} from './model.mjs';
 import {homepageFreeCourseHref} from './homepage-free-courses.mjs';
+import {learnCourses} from './circles-learn-courses.mjs';
 
 // Dates are ordering hints only; never infer completion or entitlement.
 export function coursePreview(courses,limit=6){
@@ -7,7 +8,7 @@ export function coursePreview(courses,limit=6){
 }
 
 export function purchasedCourseCards(courses){
- return courses.map(course=>`<a class="circles-purchased-course" href="${esc(course.href)}" aria-label="${esc(course.label)} · Your paid course">${course.cover?`<img src="${esc(course.cover)}" alt="" loading="lazy">`:''}<span><small>Your paid course</small><h3>${esc(course.label)}</h3></span><span aria-hidden="true">↗</span></a>`).join('');
+ return courses.map(course=>{const access=course.accessLabel||'Your paid course';return `<a class="circles-purchased-course" href="${esc(course.href)}" aria-label="${esc(course.label)} · ${esc(access)}">${course.cover?`<img src="${esc(course.cover)}" alt="" loading="lazy">`:''}<span><small>${esc(access)}</small><h3>${esc(course.label)}</h3></span><span aria-hidden="true">↗</span></a>`;}).join('');
 }
 
 // Keep the artwork and the five explicitly reactivated free-course bookmarks.
@@ -30,11 +31,11 @@ export function circlesCourseRow(document){
    placeholder.querySelector('.free-course-featured')?.remove();card.replaceWith(placeholder);
   }
  }
- return (signedIn,navigation)=>{
+ return (signedIn,navigation,mode)=>{
   const section=document.querySelector('#programmes.academy-free-courses');if(!section)return;
   if(!templates.has(section)){inactiveCards(section);templates.set(section,section.innerHTML);}
   arrange(section,signedIn);
-  const signature=JSON.stringify([signedIn,signedIn?navigation?.purchasedCourses:null]);
+  const signature=JSON.stringify([signedIn,mode,signedIn?navigation?.purchasedCourses:null,signedIn?navigation?.adminCourses:null]);
   if(rendered.get(section)===signature){inactiveCards(section);return;}
   section.innerHTML=templates.get(section);
   if(signedIn){
@@ -44,7 +45,7 @@ export function circlesCourseRow(document){
    section.querySelector('.branch-programme-intro').textContent='Your current and recent courses.';
    const all=document.createElement('a');all.href='/studio/?view=collections&collection=courses';all.className='circles-show-all-courses';all.textContent='Show all';all.setAttribute('aria-label','Show all courses');section.querySelector('.section-head').append(all);
    publicTrack.id='circles-purchased-course-row';publicTrack.classList.add('circles-purchased-course-row');publicTrack.setAttribute('aria-label','Your paid courses');
-   const courses=navigation?.purchasedCourses;
+   const courses=learnCourses(navigation,mode);
    publicTrack.innerHTML=!courses?'<p role="status">Loading your courses…</p>':courses.length?purchasedCourseCards(coursePreview(courses)):'<p>No paid courses are linked to this account.</p>';
   }
   // Store before the observer refreshes; unchanged output causes no mutations.

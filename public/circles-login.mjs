@@ -54,7 +54,7 @@ function refreshHeader(){
   if(identity.account&&!existing){const signout=document.createElement('button');signout.type='button';signout.className='circles-header-sign-out';signout.dataset.circlesSignOut='';signout.innerHTML=headerIcon('signout');signout.title='Sign out';signout.setAttribute('aria-label','Sign out');entry.after(signout);}else if(!identity.account)existing?.remove();
  }
  for(const entry of document.querySelectorAll('a[data-action="visitor-access"],a[href="https://ummabbadacademy.com/my-account/"],a[href="/circles/?login=1"],a[href="/?login=1"]')){const area=accessArea(entry.dataset.id);entry.href='/?login=1&area='+area;entry.removeAttribute('target');entry.removeAttribute('rel');if(!entry.dataset.action&&!entry.dataset.programmeKey)entry.dataset.circlesLogin='';}
- renderBlocks(Boolean(identity.account)&&!publicView,navigation);renderCourses(Boolean(identity.account)&&!publicView,navigation);dashboard.refresh();
+ renderBlocks(Boolean(identity.account)&&!publicView,navigation);renderCourses(Boolean(identity.account)&&!publicView,navigation,dashboard.mode);dashboard.refresh();
  const home=element('learning-circles');if(home){let status=element('circles-navigation-status');if(!status){status=document.createElement('p');status.id='circles-navigation-status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');home.append(status);}if(status.textContent!==homeMessage)status.textContent=homeMessage;status.hidden=!homeMessage;}
 }
 function closeAccountMenu({focus=false}={}){for(const menu of document.querySelectorAll('.circles-account-menu')){menu.hidden=true;const account=menu.parentElement.querySelector('.public-login');account?.setAttribute('aria-expanded','false');if(focus)account?.focus();}}
