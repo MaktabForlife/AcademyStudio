@@ -35,9 +35,9 @@ test('branded entry retains closed/preview gates and serves public content or un
 });
 
 test('branded route supports real paired Academy sign-in, rejects other origins, binds Library returns and revokes an account switch',async t=>{
- const f=await fixture({academy:true,authorityMode:'ACADEMY',websiteOrigin:origin,verification:{accountSeconds:43200,adminSeconds:60,liveSeconds:43200}});
+ const f=await fixture({academy:true,authorityMode:'ACADEMY',websiteOrigin:origin,websiteServerOrigin:'https://academy-studio-parallel.naidu-hajira.workers.dev',verification:{accountSeconds:43200,adminSeconds:60,liveSeconds:43200}});
  try{
-  await accessFixture(f);
+  const access=await accessFixture(f);await access.recover(2);
   const request=async(path,{method='GET',cookie,body,actionOrigin=origin}={})=>{
    let forwardingError;const r=await routeWebsite(new Request(origin+path,{method,headers:{...(cookie?{Cookie:cookie}:{}),...(method==='POST'?{Origin:actionOrigin,'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})}),async req=>{try{return await f.runtime.dispatchFetch(req.url,{method:req.method,headers:Object.fromEntries(req.headers),...(req.body?{body:req.body,duplex:'half'}:{}),redirect:'manual'});}catch(e){forwardingError=e;throw e;}});
    assert.equal(forwardingError,undefined,forwardingError?.message);
