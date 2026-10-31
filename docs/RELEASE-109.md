@@ -46,7 +46,7 @@ All49 local checks and eight small public/unsigned live HTTP checks passed. Post
 
 The UI exposed exact route patterns/Worker names rather than route IDs. Rollback can edit/remove those two saved rows unambiguously; the prior list was empty. Evidence, route/DNS screenshots, versions, preserved settings and rollback are in parent `outputs/academy-release-109-20261031/release-verification.json`. This activation approval has been fulfilled and does not authorise another release.
 
-Two UI observations were handed to the Circles owners for V109.1: featured free-course cards show “Inactive” while signed out, and the public Hijri date displayed unavailable. Native published catalogue23items and signed-out server denials passed. Their cause was not investigated through extra live reads, and no access rule was altered to change these labels.
+The Circles owners confirmed from the earlier owner instruction and prepared code that free-course “Inactive” labels are intentional during the UI hold. Do not reactivate them automatically for V109.1. The public Hijri date displayed unavailable during the one release visit; its cause remains unconfirmed. Existing retry/preservation logic must stay in place, and diagnosis should start locally. Native published catalogue23items and signed-out server denials passed. No access rule was altered. The correction is documented in parent notes/CIRCLES-V109-UI-BASE-2026-10-31.md.
 
 ## Rollback
 
