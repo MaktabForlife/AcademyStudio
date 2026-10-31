@@ -1,0 +1,15 @@
+# V109.2 coordinated release
+
+The owner approved deployment after all outstanding builds are complete and tested together. This feature checkout composes the reviewed Circles UI3549d68, the command-specific dashboard correction3f8ea9a and the recording-collections work. It preserves the verified V109.1.1 baselinecd71a919, both Cloudflare accounts, current identity/ownership/access gates, original media and43200/43200/60 verification ages. No Git push, DNS/router/Hifz change or retirement of Academy screens is included.
+
+The dashboard correction gives only the first Academy dashboard assembly a20-second deadline. Other commands and acknowledgements retain their existing deadlines. Identical pending loads share one request in the current browser controller. No automatic retry, wider permission cache or Worker-global account state is introduced. Historical Source evidence records cancellation at7994ms against the former8000ms deadline; underlying production query latency remains unmeasured.
+
+Global Admin Learn includes already-authorised paid Course cards with an Admin access label. Actual purchases remain distinct. No purchase or permission is created by this presentation change. Ordinary learners retain their existing rights and denied media checks.
+
+The recording build presents subject cards, recording lists and podcast pages, with published supporting text attached to the recording. Learner output excludes private processing/review evidence and unverified quotations. Monthly recording/cohort rights remain separate from retained website-only rights. The four prepared MOU lessons use guarded native Admin publication with exact retries; two Academic recordings remain held until exact native session/class/teacher mappings are confirmed. No recording is processed again automatically.
+
+Only the reviewed frozen asset composition may be deployed; never raw public/, private lesson packages, local preview adapters or fixture identities. Preserve the UI review's164-file starting manifest and record every additional overlay/hash. Source native assets use its existing Academy Pages allowlist. Keep live checks small: use local fixtures, one bounded management/schema check per account and the minimum essential public/authenticated release checks. Do not repeatedly reload a failed dashboard.
+
+Release receipts, tests, scoped schema evidence and rollback metadata are stored in the parent outputs/academy-release-1092-20261031 directory. This document records release scope; deployment status is established only by the final release-verification.json receipt.
+
+The Source API and externally bound academy_split_coordinator must be deployed from the same Source release commit. The coordinator embeds the schema layout/column mapping for the new Core companion table. Preserve its two D1 bindings, existing Durable Object namespace/class and existing migration tag; no namespace migration or public route is required. Apply the additive Core schema before this matching runtime update. Preserve the coordinator rollback version85bc4f9e-6290-4f1a-b494-371e1afa4886 alongside the Source/Target rollback metadata.
