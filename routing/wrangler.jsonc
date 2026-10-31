@@ -1,0 +1,15 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "maktab-website-router",
+  "account_id": "c9a3e355b3d7a795880b1d36a1dbe123",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-10-31",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    {"pattern": "maktab4life.org/*", "zone_id": "3199f3903d600451476f9070fd7dbd13"},
+    {"pattern": "www.maktab4life.org/*", "zone_id": "3199f3903d600451476f9070fd7dbd13"}
+  ],
+  "observability": {"enabled": true, "head_sampling_rate": 0.1}
+}

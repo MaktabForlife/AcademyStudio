@@ -1,0 +1,49 @@
+# V109: Circles and Studio at maktab4life.org
+
+Status: locally prepared and tested, not deployed. Domain activation awaits the separate approval required by the agreed roadmap. No new data, rights transfer or content publication is part of this release.
+
+## Proposed routing
+
+- Keep domain registration and the active DNS zone in Academy account `c9a3e355b3d7a795880b1d36a1dbe123`. Zone `3199f3903d600451476f9070fd7dbd13` is active; Cloudflare Registrar remains the registrar. The five existing DNS records were inspected read-only: apex/www CNAME to Academy Pages, Hifz CNAME to Hifz Pages, and two TXT records. Leave all five intact.
+- Add only `maktab4life.org/*` and `www.maktab4life.org/*` to the new `maktab-website-router` Worker in that account. No wildcard subdomain route. The router has no database, bucket, credential or scheduled binding.
+- Keep the existing Studio Worker, D1 and private R2 buckets in account `2b01ca929611669e032703ff19f7098f`, repository AcademyStudio. Forward requests to its fixed Cloudflare address; do not accept an upstream from a URL or browser header. Cross-account HTTP is used because same-account service bindings cannot connect these accounts.
+- The homepage and Studio are served at `https://maktab4life.org`. HTTP and www GET/HEAD redirect temporarily to that canonical address. Existing `/academy/...` and `/account/...` bookmarks redirect to the same path in Academy Pages, preserving query/fragment and staying outside Studio's credential handling. Mutations to these old entry addresses are rejected with instructions to reopen the right application.
+- Hifz remains on its existing address. Academy Learn/Teach/Admin, Library and user management remain available on Academy Pages. No screen retirement or service move.
+
+This avoids moving the entire registered zone, its Hifz and TXT configuration between accounts. It adds a network hop and one routing Worker invocation per forwarded HTTP request in the Academy account; it is not a reduction in Worker requests. A later approved zone/account transfer could remove that hop, but is outside V109. Cloudflare requires an owned active zone for a direct Worker Custom Domain and does not allow creating one on a hostname with an existing CNAME: https://developers.cloudflare.com/workers/configuration/routing/custom-domains/ . Existing proxied DNS records support the proposed route: https://developers.cloudflare.com/workers/configuration/routing/routes/ .
+
+## Release composition and permissions
+
+Start from deployed V108.8, Source runtime `934550c1`, Target `83a3789`, documented by `8d01eed1` and `3892a9e`. All fourteen handovers/publications, original rights,49 original enabled media, thirteen new Course links, MOU Baqarah, monthly access and existing R2 catalogue/content remain in place. No database migration, bulk reconciliation, resource copy or content import is required.
+
+Use `wrangler.launch.jsonc` with **only** `local-content/release-109/public`. The preparation tool copies the exact161 verified V108.8 asset files and compares their hashes. It retains the exclusion of the obsolete anonymous Imra'tun payload and private author packages. Raw `public/` is not the approved composition. The latest GUI review checkpoint `193943a61dd870ceb870253ab42371477f6c74d1` is separately held; its prototype sign-in/editor adapters must not be deployed. UI refinement can follow independently after a reviewed handoff.
+
+The launch entry reuses the connected entry's real Academy authority, admission/session/credential epoch, signed deliveries, local entitlement, current scoped staff checks, revocation, generation, publication and Join gates. No browser or routing header grants permission. The router preserves the browser's exact Origin; only `https://maktab4life.org` is accepted for Studio actions. Keep43,200/43,200/60-second verification bounds and all existing Source41/Target17 bindings. Private responses stay private/no-store; media upload and range bodies are streamed, redirects are not followed on behalf of the user, and transport failure returns503 without falling through to another application.
+
+Update only Source `WEBSITE_PLATFORM_ORIGIN` to `https://maktab4life.org` in the paired `Academy-studio-launch-109` branch. Source Academy origin/API and Hifz remain unchanged. Library/dashboard returns are tested against the new exact Studio origin. Signed server delivery retains its original signature and path. The Studio Cloudflare browser URL redirects to the new address; internal signed POST deliveries continue to work on it. Known sessions are not copied across origins: users may need to sign in once on the new domain. Keep host-only Secure/HttpOnly/SameSite cookies; do not widen cookie domains or re-use a raw PIN.
+
+The public launch removes the parallel-testing banner and adds a canonical homepage link. Private reader/builder/API routes retain noindex. Routing metadata can affect discovery only and cannot authenticate an action.
+
+## Reads and local verification
+
+The router makes no D1 or R2 operation. It forwards one ordinary request and performs no permission/timetable rebuild, analytics write, retry loop or background sweep. Existing public R2 snapshots remain the source for the homepage/catalogue. Local acceptance measured zero public database reads and twelve Studio rows for the synthetic entitled website read, with zero Academy queries for those routine reads. This is an operation fixture, not a daily usage estimate; sign-in, fresh Admin authority and explicit Academy navigation still have their existing bounded costs.
+
+Saved local evidence in the parent `outputs/academy-v109-readiness-20261031`:
+
+- `local-launch-final.log`: eight routing/launch tests, including actual Workers streaming, paired Academy sign-in and exact-origin Library return, account switching, suspension and closed/preview gates.
+- `local-regression-tests.log`:36 existing tests for twelve-hour renewal, paid-month/cohort versus Surah-only rights, policy invalidation, revocation, scoped permissions, MOU Join, navigation and recovery. The4,000 unrelated-record fixture remains bounded.
+- Source, Target and router dry runs; generated Target/router binding types; current official Workers type definitions reviewed. Local Miniflare is capped at2026-09-28, so those runtime tests use that installed date; production configs retain their supported reviewed dates. No local test claims production DNS/TLS acceptance.
+- Exact frozen asset manifest and configuration comparison. No hosted SQL, live app load/login, learner playback or Zoom Join was performed for this review.
+
+Cloudflare management inspection is read-only. The new Studio account currently exposes no zone/custom-domain binding for maktab4life.org. Source DNS and domain ownership were read from Cloudflare UI. The saved Source CLI metadata attempt returned expired/invalid authentication; do not treat it as current version/route confirmation or repeat it without renewing authentication. Recheck matching deployed versions, current routes and bindings once at the approved cutover.
+
+## Approved-cutover procedure (not executed)
+
+1. Obtain explicit approval for replacing the apex/www front door using this reviewed composition. Renew existing operator authentication; do not request expanded DNS permissions merely for route activation. Read one bounded management batch and stop for unrelated deployment/route/binding drift. Baseline Source Worker `66dc30f9-bc88-4729-9e23-5edbc9a96493`, Pages `4559ae9b-132d-427b-b683-1f35cfea913e`, Target Worker `ff02fc61-f459-49f7-8ab1-8598e6c01b27`. Current route IDs/settings must be saved before enabling the new routes.
+2. Deploy the router first with `routing/wrangler.staged.jsonc`, which has **no active routes** and no workers.dev address. This cannot take over the public domain. Do not deploy the route-bearing configuration at this stage.
+3. Deploy Target using `wrangler.launch.jsonc`, its pinned Studio account/profile, the frozen composition and preserved existing secrets/bindings. Activate the router's two exact routes using `routing/wrangler.jsonc`; promptly deploy the paired Source Worker origin configuration. There is a short cross-account transition window; do not present this as an atomic or zero-interruption operation. No Source Pages rebuild is required because its frontend is unchanged.
+4. Check only matching management versions/bindings/routes and a small public/unsigned HTTP batch: root, www redirect, old Academy bookmark redirect, public catalogue/cover, unsigned website/media denial. Perform any necessary user-assisted sign-in/return check once, not repeated dashboards or table reads. Use existing V108.8 rights/publication evidence, rather than re-scanning or republishing.
+
+## Rollback
+
+Restore the existing Target version `ff02fc61-f459-49f7-8ab1-8598e6c01b27` and Source `66dc30f9-bc88-4729-9e23-5edbc9a96493` (or the actual revalidated pre-cutover versions), and remove only the two new router routes using the saved route IDs. Existing Pages domains/DNS records remain in place and resume serving the old homepage. The original Cloudflare Studio URL works again with its original Website Origin configuration. No rights/content/database rollback or R2 overwrite is needed. Preserve unrelated routes and all five DNS records.

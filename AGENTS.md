@@ -1,3 +1,10 @@
+# V109 prepared locally — 31 October 2026
+
+- Feature branch `feature/academy-studio-launch-109`, based on verified V108.8. No V109 code deployment, route activation, DNS, content publication, schema change or Git push has occurred. The agreed roadmap requires separate approval for the branded domain cutover; preparation does not activate it.
+- Proposed launch uses an unbound routing Worker in the existing Academy account for only `maktab4life.org/*` and `www.maktab4life.org/*`, forwarding to Studio in its existing separate account. All five current DNS records and Hifz stay unchanged. See paired Studio `docs/RELEASE-109.md` and parent `outputs/academy-v109-readiness-20261031`.
+- Preserve Source41/Target17 bindings,43200/43200/60, current master/scoped authority, all original rights/media and14 completed handovers. No database/resource copy or republication is needed. Studio launch assets must use `local-content/release-109/public`, copied and hash-checked from frozen V108.8; never raw public/. The newer GUI checkpoint193943a is a separate held review draft.
+- Keep live checks small. Local acceptance passes; current hosted versions/routes must be rechecked after existing operator authentication is renewed and before any approved activation. This turn used no hosted SQL or application loads. Domain/DNS was inspected read-only in Cloudflare; the saved CLI management attempt returned expired/invalid authentication and was not repeated.
+
 # V108.8 deployed and verified —31October2026
 
 - Academy Worker66dc30f9-bc88-4729-9e23-5edbc9a96493, Pages4559ae9b-132d-427b-b683-1f35cfea913e; Studio Workerff02fc61-f459-49f7-8ab1-8598e6c01b27. Runtime source934550c1 and target83a3789. Source0016–0019 and target0005–0008 additive schemas are active.41/17 bindings and43200/43200/60 are preserved.
