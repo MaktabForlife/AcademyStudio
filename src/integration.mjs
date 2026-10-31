@@ -32,6 +32,8 @@ export async function receive(request,env,store){
   if(data.stream!=='account:'+event.accountId)throw fail('Invalid navigation stream.');statements.push(store.statement('DELETE FROM circles_navigation WHERE account_id=?',[id(event.accountId)]));
  }else if(event.type==='timetable'){
   const offer=event.offering,offeringId=id(offer.id);if(data.stream!=='timetable:'+offeringId||!['COURSE','TAFSEER','ACADEMY'].includes(offer.kind)||!Array.isArray(event.sessions)||event.sessions.length>200)throw fail('Invalid timetable publication.');
+  // A durable historical marker wins over delayed or stale live snapshots.
+  if(offer.kind==='COURSE'&&await store.first('SELECT 1 FROM completed_course_registrations WHERE offering_id=?',[offeringId])){event.sessions=[];event.mode='snapshot';}
   if(event.mode!==undefined&&!['snapshot','delta'].includes(event.mode))throw fail('Choose a timetable snapshot or delta.');
   const cancelled=(event.cancelledIds||[]).map(value=>id(value));if(cancelled.length>200)throw fail('Keep each cancellation batch bounded.');const ids=[...event.sessions.map(s=>id(s.id)),...cancelled];
   const existing=await store.all('SELECT session_id,offering_id FROM timetable WHERE session_id IN(SELECT value FROM json_each(?))',[JSON.stringify(ids)]);if(existing.some(row=>row.offering_id!==offeringId))throw fail('A session belongs to another offering.',409);

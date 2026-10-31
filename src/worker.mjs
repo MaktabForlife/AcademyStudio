@@ -110,13 +110,14 @@ async function route(request,env,store,fetcher){
   const offerings=actor.global_admin?await store.all("SELECT offering_id,title,kind FROM offerings WHERE kind IN('COURSE','TAFSEER') ORDER BY offering_id LIMIT 200"):await store.all("SELECT o.offering_id,o.title,o.kind FROM staff s JOIN offerings o USING(offering_id) WHERE s.account_id=? AND s.role='ADMIN' AND o.kind IN('COURSE','TAFSEER') ORDER BY o.offering_id LIMIT 200",[actor.account_id]);return json({offerings});
  }
  match=path.match(/^\/api\/admin\/([-A-Za-z0-9_:]+)(?:\/(files|recording))?$/);
- if(match){const offeringId=id(match[1]),sub=match[2];await store.scope(actor,offeringId,{admin:true});
+ if(match){const offeringId=id(match[1]),sub=match[2],adminScope=await store.scope(actor,offeringId,{admin:true});
   if(method==='GET'&&sub==='files')return json({offeringId,...await offeringWebsiteAssets(store,offeringId,{assetId:url.searchParams.get('assetId'),after:url.searchParams.get('after')||''})});
   if(method==='PUT'&&sub==='files')return json(await upload(env,store,actor,offeringId,request));
   if(sub==='recording'&&method==='PUT')return json(await recording(env,store,actor,offeringId,{action:'part',assetId:url.searchParams.get('assetId'),partNumber:Number(url.searchParams.get('partNumber'))},request));
   if(sub==='recording'&&method==='POST')return json(await recording(env,store,actor,offeringId,await bodyJSON(request.body,1_000_000),request));
   if(method==='POST')return json(await change(env,store,actor,offeringId,await bodyJSON(request.body)));
   if(method==='GET'){const after=url.searchParams.get('after')||'';return json({
+   canManageContent:!academyAuthority(env)||Boolean(adminScope.studioAuthority),
    participants:await store.all('SELECT p.*,a.display_name FROM participation p JOIN accounts a USING(account_id) WHERE p.offering_id=? AND p.account_id>? ORDER BY p.account_id LIMIT 51',[offeringId,after]),
    websites:await store.all('SELECT website_id,title,completion_month,revision,enabled FROM websites WHERE offering_id=? ORDER BY website_id LIMIT 100',[offeringId]),
    card:await store.first('SELECT * FROM cards WHERE offering_id=?',[offeringId]),
