@@ -1,6 +1,7 @@
 import {academyAuthority} from './access.mjs';
 import {bodyJSON,boundedAge,fail,id} from './protocol.mjs';
 import {contentVersion} from './content-package.mjs';
+import {recordedSupport} from './recorded-support.mjs';
 
 // Only deliberately published, whitelisted card metadata crosses this boundary.
 // Private migration manifests and author exports are never public catalogue input.
@@ -86,10 +87,10 @@ export async function carryGuideBindings(env,website,document,key){
  const saved=await env.CONTENT.put(guideBindingsKey(website.website_id,edition),JSON.stringify(value),{onlyIf:{etagDoesNotMatch:'*'},httpMetadata:{contentType:'application/json'}});
  if(!saved){const existing=await readBindings(env,website.website_id,edition);if(JSON.stringify(existing)!==JSON.stringify(value.bindings))throw fail('This edition has different recording links. Review the existing mapping.',409,'RECORDING_MAPPING_CONFLICT');}
 }
-export async function permittedGuideBindings(env,website,media){
+export async function permittedGuideBindings(env,website,media,store){
  const edition=contentVersion(website.published_key);
  if(!/^[a-f0-9]{64}$/.test(edition||'')||!media.length)return [];
- const bindings=await readBindings(env,website.website_id,edition);if(!bindings)return [];
+ const support=store&&website.programme_key==='mothers'?await recordedSupport(env,store,website,edition):null,bindings=support?.bindings??await readBindings(env,website.website_id,edition);if(!bindings)return [];
  const counts=new Map();for(const b of bindings)counts.set(b.editorialLessonId,(counts.get(b.editorialLessonId)||0)+1);
  return bindings.filter(b=>counts.get(b.editorialLessonId)===1&&media.some(r=>r.attachment_id&&['video/youtube','video/mp4'].includes(r.type)&&r.asset_id===b.assetId&&r.lesson_id===b.nativeLessonId));
 }

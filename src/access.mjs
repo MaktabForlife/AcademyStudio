@@ -27,7 +27,12 @@ export function liveAccess(row,scope,now=Date.now()){
  return windows.length?windows.some(w=>w.active&&classes.has(w.classId.toLowerCase())&&(!w.start||w.start<=today)&&(!w.end||w.end>=today)):!row.has_allocation&&classes.size===1;
 }
 export async function sourceWebsiteGate(store,actor,website){
- const scope=await accessGate(store,actor,website.offering_id,{admin:Boolean(website.role)});if(scope&&website.kind==='TAFSEER'){const mapped=await store.first('SELECT enabled FROM source_access_websites WHERE offering_id=? AND website_id=?',[website.offering_id,website.website_id]);if(!mapped?.enabled)throw fail('This Surah is unavailable in Academy.',403);}return scope;
+ const scope=await accessGate(store,actor,website.offering_id,{admin:Boolean(website.role)});
+ if(scope&&website.kind==='TAFSEER'){
+  const programme=await store.first("SELECT 1 FROM programme_offerings WHERE programme_key='mothers' AND offering_id=?",[website.offering_id]);
+  const mapped=programme?await store.first('SELECT enabled FROM programme_subjects WHERE offering_id=? AND website_id=?',[website.offering_id,website.website_id]):await store.first('SELECT enabled FROM source_access_websites WHERE offering_id=? AND website_id=?',[website.offering_id,website.website_id]);
+  if(!mapped?.enabled)throw fail('This programme subject is unavailable.',403);
+ }return scope;
 }
 export async function accessStatements(store,event,version,accountStatements){
  if(!academyAuthority(store.env))throw fail('Academy access projection is disabled.',409,'ACADEMY_AUTHORITY_DISABLED');
@@ -39,6 +44,7 @@ export async function accessStatements(store,event,version,accountStatements){
   const seen=new Set();for(const w of event.websites){id(w.website_id);date(w.completion_date);if(seen.has(w.website_id))throw fail('Duplicate source website.');seen.add(w.website_id);const mapped=await store.first('SELECT offering_id FROM websites WHERE website_id=?',[w.website_id]);if(!mapped||mapped.offering_id!==offer)throw fail('Source website mapping needs review.',409);}
   out.push(store.statement('INSERT INTO offerings VALUES(?,?,?,?,0) ON CONFLICT(offering_id) DO UPDATE SET active=excluded.active WHERE offerings.kind=excluded.kind',[offer,event.offering.kind,text(event.offering.title),flag(event.enabled)]),store.statement(`INSERT INTO source_access_scopes(offering_id,generation,version,enabled,live_enabled,timezone,classes_json) VALUES(?,?,?,?,?,?,?) ON CONFLICT(offering_id) DO UPDATE SET generation=excluded.generation,version=excluded.version,enabled=excluded.enabled,live_enabled=excluded.live_enabled,timezone=excluded.timezone,classes_json=excluded.classes_json `,[offer,generation,version,flag(event.enabled),flag(event.liveEnabled),text(event.timezone,100),JSON.stringify(event.classes.map(id))]),store.statement('UPDATE source_access_websites SET enabled=0 WHERE offering_id=?',[offer]));
   if(event.offering.kind==='COURSE'){const model=event.accessModel||'PAID';if(!['FREE','PAID'].includes(model))throw fail('Invalid Course access model.');out.push(store.statement('INSERT INTO course_access_models VALUES(?,?) ON CONFLICT(offering_id) DO UPDATE SET access_model=excluded.access_model WHERE NOT EXISTS(SELECT 1 FROM course_publications p WHERE p.offering_id=excluded.offering_id AND p.access_model<>excluded.access_model)',[offer,model]));}
+ if(event.programmeKey!==undefined){if(event.programmeKey!=='mothers'||event.offering.kind!=='TAFSEER'||event.accessModel!=='MONTHLY')throw fail('Invalid independent monthly programme.');const prior=await store.first('SELECT offering_id FROM programme_offerings WHERE programme_key=?',[event.programmeKey]);if(prior&&prior.offering_id!==offer)throw fail('This programme already has a different native identity.',409,'PROGRAMME_MAPPING_CONFLICT');out.push(store.statement("INSERT INTO programme_offerings VALUES('mothers',?,'MONTHLY') ON CONFLICT(programme_key) DO NOTHING",[offer]));}
  for(const w of event.websites)out.push(store.statement('INSERT INTO source_access_websites VALUES(?,?,?) ON CONFLICT(website_id) DO UPDATE SET enabled=excluded.enabled',[w.website_id,offer,flag(Boolean(w.active))]),store.statement('UPDATE websites SET completion_date=?,completion_month=? WHERE website_id=?',[w.completion_date,w.completion_date.slice(0,7),w.website_id]));
  }else{
   const accountId=id(event.account.accountId),p=event.participation;if(!p||!Array.isArray(p.windows)||p.windows.length>100||!Array.isArray(event.months)||event.months.length>512||!Array.isArray(event.websiteMonths)||event.websiteMonths.length>240||!Array.isArray(event.grants)||event.grants.length>128||![null,'ADMIN','TEACHER'].includes(event.role))throw fail('Invalid source access snapshot.');
@@ -67,10 +73,16 @@ export async function joinAudience(store,actor,offeringId,session,scope){
  const source=await accessGate(store,actor,offeringId,{live:true});if(!source)return;
  if(actor.global_admin||scope.role==='ADMIN')return;
  const audience=await store.first('SELECT * FROM source_session_audiences WHERE session_id=?',[session.session_id]);if(!audience)throw fail('Academy session audience has not been confirmed.',403,'JOIN_AUDIENCE');
- const teachers=JSON.parse(audience.teacher_ids_json).map(v=>v.toLowerCase());if(scope.role==='TEACHER'&&teachers.includes(actor.account_id.toLowerCase()))return;
- if(source.course&&scope.live)return;
- if(!source.course&&scope.enrolled&&source.live_enabled){const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:source.timezone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(session.starts_at)).map(p=>[p.type,p.value])),day=parts.year+'-'+parts.month+'-'+parts.day,classes=new Set(JSON.parse(source.classes_json).map(v=>v.toLowerCase())),sessionClasses=JSON.parse(audience.class_ids_json).map(v=>v.toLowerCase()),windows=JSON.parse(source.windows_json||'[]');
-  if(windows.length?windows.some(w=>w.active&&classes.has(w.classId.toLowerCase())&&sessionClasses.includes(w.classId.toLowerCase())&&(!w.start||w.start<=day)&&(!w.end||w.end>=day)):!source.has_allocation&&classes.size===1&&sessionClasses.some(c=>classes.has(c)))return;
- }
+ if(permittedSessionAudience(actor,scope,source,audience,session))return;
  throw fail('This session belongs to another Academy audience.',403,'JOIN_AUDIENCE');
+}
+export function permittedSessionAudience(actor,scope,source,audience,session){
+ if(!source||actor.global_admin||scope.role==='ADMIN')return true;
+ if(!audience?.teacher_ids_json||!audience.class_ids_json)return false;
+ const teachers=JSON.parse(audience.teacher_ids_json).map(v=>v.toLowerCase());if(scope.role==='TEACHER'&&teachers.includes(actor.account_id.toLowerCase()))return true;
+ if(source.course&&scope.live)return true;
+ if(!source.course&&scope.enrolled&&source.live_enabled){const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:source.timezone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(session.starts_at)).map(p=>[p.type,p.value])),day=parts.year+'-'+parts.month+'-'+parts.day,classes=new Set(JSON.parse(source.classes_json).map(v=>v.toLowerCase())),sessionClasses=JSON.parse(audience.class_ids_json).map(v=>v.toLowerCase()),windows=JSON.parse(source.windows_json||'[]');
+  if(windows.length?windows.some(w=>w.active&&classes.has(w.classId.toLowerCase())&&sessionClasses.includes(w.classId.toLowerCase())&&(!w.start||w.start<=day)&&(!w.end||w.end>=day)):!source.has_allocation&&classes.size===1&&sessionClasses.some(c=>classes.has(c)))return true;
+ }
+ return false;
 }

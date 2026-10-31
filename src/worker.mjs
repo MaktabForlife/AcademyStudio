@@ -1,9 +1,11 @@
+import {mouClassroom} from './mou-classroom.mjs';
 import {coursePublication} from './course-publication.mjs';
 import {dashboardSnapshot} from './dashboard.mjs';
 import {publicHeaderDate} from './header-date.mjs';
 import {circlesNavigation,programmeSnapshot} from './navigation.mjs';
 import {publicCatalogue,catalogueAccess,permittedGuideBindings,websitePresentation} from './circles.mjs';
 import {academyAuthority,accessGate,joinAudience} from './access.mjs';
+import {recordingScopedDocument} from './recorded-support.mjs';
 import {Store} from './database.mjs';
 import {fail,failure,json,bodyJSON,parseCookie,sha256,originCheck,cookie,id,text,integer,bytes,signedHeaders,safeToken,boundedAge} from './protocol.mjs';
 import {receive,exchange} from './integration.mjs';
@@ -58,7 +60,7 @@ async function route(request,env,store,fetcher){
  if(path==='/api/me'&&method==='GET')return json({accountId:actor.account_id,displayName:actor.display_name,globalAdmin:Boolean(actor.global_admin),verifiedAt:actor.verified_at});
  if(path==='/api/circles/dashboard'&&method==='POST')return json(await dashboardSnapshot(env,store,actor,await bodyJSON(request.body,4096),fetcher));
  if(path==='/api/circles/navigation'&&method==='GET')return json(await circlesNavigation(env,store,actor));
- if(path==='/api/circles/classrooms/mothers'&&method==='GET'){if(!(await programmeSnapshot(store,actor)).includes('mothers'))throw fail('Mothers of the Ummah membership is required.',403);return json({title:'Mothers of the Ummah',materialsConnected:false});}
+ if(path==='/api/circles/classrooms/mothers'&&method==='GET'){return json(await mouClassroom(store,actor));}
  if(path==='/api/circles/access'&&method==='GET')return json(await catalogueAccess(store,actor,url.searchParams.getAll('website')));
  if(path==='/api/websites'&&method==='GET'){
   // Start with this account's indexed rights, rather than scanning all sites for an OR condition.
@@ -78,9 +80,10 @@ async function route(request,env,store,fetcher){
   if(method!=='GET')throw fail('Use GET to read website content.',405);
   if(action==='history'){await websiteAccess(store,actor,websiteId,{admin:true});return json({history:await store.all('SELECT revision,action,created_at,actor_id FROM website_history WHERE website_id=? AND revision<? ORDER BY revision DESC LIMIT 51',[websiteId,Number(url.searchParams.get('before'))||Number.MAX_SAFE_INTEGER])});}
   if(action==='assets'){const website=await websiteAccess(store,actor,websiteId,{admin:true});return json({websiteId,offeringId:website.offering_id,...await attachedWebsiteAssets(store,websiteId,{assetId:url.searchParams.get('assetId'),after:url.searchParams.get('after')||''})});}
-  const website=await websiteAccess(store,actor,websiteId,{admin:Boolean(action)}),key=action?website.draft_key:website.published_key,document=key?await objectJSON(env.CONTENT,key):null;
+  const website=await websiteAccess(store,actor,websiteId,{admin:Boolean(action)}),key=action?website.draft_key:website.published_key;
+  const rawDocument=key?await objectJSON(env.CONTENT,key):null,{document,contentAccess}=rawDocument&&!action?await recordingScopedDocument(env,store,actor,website,rawDocument):{document:rawDocument,contentAccess:{mode:'FULL_TEXT'}};
   const assets=await editionAssets(store,websiteId,document,{draft:Boolean(action)});
-  return json({websiteId,offeringId:website.offering_id,kind:website.kind,presentation:await websitePresentation(env,website),revision:website.revision,document,assets,enabled:Boolean(website.enabled),canEdit:Boolean(actor.global_admin||website.role==='ADMIN'),draftVersion:contentVersion(website.draft_key),publishedVersion:contentVersion(website.published_key),capabilities:{assessments:false,journal:false}});
+  return json({websiteId,offeringId:website.offering_id,kind:website.kind,presentation:await websitePresentation(env,website),revision:website.revision,document,contentAccess,assets,enabled:Boolean(website.enabled),canEdit:Boolean(actor.global_admin||website.role==='ADMIN'),draftVersion:contentVersion(website.draft_key),publishedVersion:contentVersion(website.published_key),capabilities:{assessments:false,journal:false}});
  }
  match=path.match(/^\/api\/media\/([-A-Za-z0-9_:]+)$/);if(match&&['GET','HEAD'].includes(method)){const row=await mediaGate(store,actor,match[1],{admin:url.searchParams.get('draft')==='1'});return streamMedia(env,row,request);}
  match=path.match(/^\/api\/offerings\/([-A-Za-z0-9_:]+)\/(sessions|media|join|enrol|provision|resume)$/);
@@ -95,7 +98,7 @@ async function route(request,env,store,fetcher){
    // Unary + preserves the month value while removing column affinity: SQLite can
    // then use the substr expression index for each paid month, not scan the offer.
    else if(scope.kind==='TAFSEER')rows=await store.all(`${select} FROM paid_months m CROSS JOIN attachments x INDEXED BY attachments_month JOIN objects o USING(asset_id) WHERE m.account_id=? AND m.offering_id=? AND x.offering_id=m.offering_id AND substr(x.lesson_date,1,7)=+m.month AND x.cohort=m.cohort AND x.audience='RECORDING' AND x.published=1 AND x.attachment_id>?${filter} ORDER BY x.attachment_id LIMIT 51`,[actor.account_id,offeringId,after,...tail]);
-   const media=rows.slice(0,50);return json({media,more:rows.length>50,mediaBindings:mediaWebsite?await permittedGuideBindings(env,mediaWebsite,media):[]});
+   const media=rows.slice(0,50);return json({media,more:rows.length>50,mediaBindings:mediaWebsite?await permittedGuideBindings(env,mediaWebsite,media,store):[]});
   }
   if(method!=='POST')throw fail('This action needs a POST request.',405);const input=await bodyJSON(request.body,16384);
   if(action==='join'){await accessGate(store,actor,offeringId,{live:true});if(!actor.global_admin&&!scope.live&&!scope.role)throw fail('Current live-session access is required.',403);const session=await store.first('SELECT session_id,starts_at,ends_at,zoom_url,cancelled FROM timetable WHERE session_id=? AND offering_id=?',[id(input.sessionId),offeringId]),now=Date.now();if(!session||session.cancelled||now<session.starts_at-300_000||now>=session.ends_at||!session.zoom_url)throw fail('Joining is available from five minutes before the lesson until it ends.',403,'JOIN_CLOSED');await joinAudience(store,actor,offeringId,session,scope);return json({destination:session.zoom_url});}

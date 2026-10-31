@@ -22,7 +22,7 @@ export async function studioAccess(request,env,store,fetcher){
  const offer=id(input.offeringId),command=input.command||{};if(!command.action?.startsWith('handover-'))await store.scope(actor,offer,{admin:true});let result;
  if(command.action==='read')result=await readAccess(store,actor,offer,command);
  else if(command.action==='save'){
-  if(!['access-batch','participant','paid-months','website-months','surah-grant','staff'].includes(command.change?.action))throw fail('Choose a supported access change.');
+  if(!['access-batch','participant','paid-months','website-months','surah-grant','staff','mou-subject'].includes(command.change?.action))throw fail('Choose a supported access change.');
   const expected=integer(command.revision),options={expectedSQL:revisionSQL,expectedArgs:[offer,expected]};
   // Native Save preserves exact operation receipts, scope checks and mutation guards.
   result=await change(env,store,actor,offer,command.change,options);

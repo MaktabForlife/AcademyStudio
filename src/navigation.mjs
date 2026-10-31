@@ -1,3 +1,4 @@
+import {mouDefinition,studioMouVisible} from './programme-policy.mjs';
 import {fail,id,boundedAge} from './protocol.mjs';
 import {publicCatalogue,catalogueAccess} from './circles.mjs';
 export const programmeLabels={alimiyah:'Aalimiyah',reboot:'Reboot Your Maktab','arabic-intensive':'Arabic Intensive',mothers:'Mothers of the Ummah',hifz:'Hifz Academy'};
@@ -8,7 +9,9 @@ export function checkedProgrammes(value){
 export async function programmeSnapshot(store,actor){
  const row=await store.first('SELECT epoch,verified_at,programmes_json FROM circles_navigation WHERE account_id=?',[actor.account_id]);
  if(!row||row.epoch!==actor.epoch||row.verified_at<Date.now()-boundedAge(store.env))throw fail('Confirm your programme access to continue.',409,'ACCESS_REFRESH_REQUIRED');
- return checkedProgrammes({programmes:JSON.parse(row.programmes_json)});
+ const programmes=checkedProgrammes({programmes:JSON.parse(row.programmes_json)}),mou=await mouDefinition(store);
+ if(mou?.authority==='WEBSITE'){const current=programmes.filter(k=>k!=='mothers');if(await studioMouVisible(store,actor,mou))current.push('mothers');return current;}
+ return programmes;
 }
 export async function circlesNavigation(env,store,actor){
  const programmes=await programmeSnapshot(store,actor),items=(await publicCatalogue(env)).items.filter(i=>i.kind==='COURSE'&&i.websiteId&&!i.pending);

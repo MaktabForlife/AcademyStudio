@@ -1,4 +1,5 @@
 import {carryGuideBindings} from './circles.mjs';
+import {saveRecordedSupport} from './recorded-support.mjs';
 import {sourceWebsiteGate} from './access.mjs';
 import {fail,id,text,month,sha256,bodyJSON} from './protocol.mjs';
 import {validatePackage} from './content-package.mjs';
@@ -6,21 +7,23 @@ import {assertWebsiteAssets} from './website-assets.mjs';
 export async function objectJSON(bucket,key,limit=1_500_000){const object=await bucket.get(key);if(!object||object.size>limit)throw fail('The saved edition is unavailable.',503);return bodyJSON(object.body,limit);}
 export async function saveContent(env,document,websiteId=document.id){const encoded=JSON.stringify(document);if(new TextEncoder().encode(encoded).length>1_500_000)throw fail('This website edition is too large.',413);const hash=await sha256(encoded),key='websites/'+encodeURIComponent(websiteId)+'/versions/'+hash+'.json';await env.CONTENT.put(key,encoded,{httpMetadata:{contentType:'application/json'}});return key;}
 export async function websiteAccess(store,actor,websiteId,{admin=false}={}){
- const row=await store.first(`SELECT w.*,o.kind,o.active,p.purchased,s.role,(SELECT access_model FROM course_access_models m WHERE m.offering_id=o.offering_id) access_model,
+ const row=await store.first(`SELECT w.*,o.kind,o.active,p.purchased,s.role,(SELECT programme_key FROM programme_offerings mp WHERE mp.offering_id=o.offering_id) programme_key,(SELECT access_model FROM course_access_models m WHERE m.offering_id=o.offering_id) access_model,
+  EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=? AND m.offering_id=w.offering_id UNION ALL SELECT 1 FROM website_months m WHERE m.account_id=? AND m.offering_id=w.offering_id) retained_text,
   EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=? AND m.offering_id=w.offering_id AND m.month=w.completion_month UNION ALL SELECT 1 FROM website_months m WHERE m.account_id=? AND m.offering_id=w.offering_id AND m.month=w.completion_month) paid,
   EXISTS(SELECT 1 FROM surah_grants g WHERE g.account_id=? AND g.website_id=w.website_id) granted
   FROM websites w JOIN offerings o USING(offering_id)
   LEFT JOIN participation p ON p.account_id=? AND p.offering_id=w.offering_id
-  LEFT JOIN staff s ON s.account_id=? AND s.offering_id=w.offering_id WHERE w.website_id=?`,[actor.account_id,actor.account_id,actor.account_id,actor.account_id,actor.account_id,id(websiteId)]);
+  LEFT JOIN staff s ON s.account_id=? AND s.offering_id=w.offering_id WHERE w.website_id=?`,[actor.account_id,actor.account_id,actor.account_id,actor.account_id,actor.account_id,actor.account_id,actor.account_id,id(websiteId)]);
  if(!row||!row.active)throw fail('This website is unavailable.',404);await sourceWebsiteGate(store,actor,row);
  if(admin){await store.scope(actor,row.offering_id,{admin:true});return row;}
  const staff=actor.global_admin||row.role==='ADMIN'||row.role==='TEACHER';
- if(!staff&&!(row.kind==='COURSE'&&(row.purchased||row.access_model==='FREE')||row.kind==='TAFSEER'&&(row.paid||row.granted)))throw fail('Your account does not have this material.',403,'MATERIAL_ACCESS_REQUIRED');
+ if(!staff&&!(row.kind==='COURSE'&&(row.purchased||row.access_model==='FREE')||row.kind==='TAFSEER'&&(row.paid||row.granted||row.programme_key==='mothers'&&row.retained_text)))throw fail('Your account does not have this material.',403,'MATERIAL_ACCESS_REQUIRED');
  if(!row.enabled||!row.published_key)throw fail('This website is not published.',404);return row;
 }
 export async function editWebsite(env,store,actor,websiteId,input){
  input={...input,websiteId};const website=await websiteAccess(store,actor,websiteId,{admin:true}),hash=await store.requestHash(website.offering_id,input),old=await store.replay(actor.account_id,input.operationId,hash);if(old)return old;
  if(input.revision!==website.revision)throw fail('This website changed elsewhere. Reopen the saved draft.',409);
+ if(input.action==='recording-support')return saveRecordedSupport(env,store,actor,website,input);
  const revision=website.revision+1,statements=[];let historyKey=website.draft_key;
  if(input.action==='save'){
   const document=structuredClone(input.document);const errors=validatePackage(document);if(errors.length)throw fail(errors.join(' '));
