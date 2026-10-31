@@ -4,7 +4,7 @@ import {circlesDashboard} from './circles-dashboard.mjs';
 import {headerIcon} from './shared/header-icons.mjs';
 import {installHeaderDates} from './shared/header-dates.mjs';
 import {readRemembered,rememberVerified,forgetRemembered} from './shared/remembered-accounts.mjs';
-import {circleBlockNavigation} from './shared/circles-block-navigation.mjs';
+import {circleBlockNavigation} from './shared/circles-block-navigation.mjs?v=109.1';
 import {circlesCourseRow} from './shared/circles-course-row.mjs';
 import {api,identity,changed} from './api.mjs';
 import {accessArea,signInFromCircles,openAcademyFromCircles} from './shared/circles-sign-in.mjs';

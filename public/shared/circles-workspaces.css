@@ -1,0 +1,56 @@
+/* V109.1: the existing circle remains the signed-in hub. Only presentation
+   changes here; native navigation, authority and teaching palettes remain. */
+.circle .single-circle-home.circles-button-dashboard .circle-hub-frame{height:auto!important;min-height:0!important;aspect-ratio:auto!important;overflow:visible}
+.circle .single-circle-home.circles-button-dashboard #animated-hub{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1.75fr) minmax(0,1fr);align-items:center;gap:clamp(24px,2.5vw,40px);width:100%!important;max-width:none!important;height:auto!important;min-height:0!important;margin:0!important;padding:36px 0 48px!important;transform:none!important;isolation:isolate}
+.circle .single-circle-home.circles-button-dashboard .circles-programme-column{display:flex;flex-direction:column;gap:14px;min-width:0;position:relative;z-index:2}
+.circle .single-circle-home.circles-button-dashboard .circles-programme-column-left{grid-column:1;grid-row:1}
+.circle .single-circle-home.circles-button-dashboard .circles-programme-column-right{grid-column:3;grid-row:1}
+.circle .single-circle-home.circles-button-dashboard .hub-orb{grid-column:2;grid-row:1;position:relative!important;inset:auto!important;display:flex!important;flex-direction:column;align-items:center;justify-content:center;width:100%!important;height:auto!important;min-height:0!important;max-width:560px;aspect-ratio:1;border-radius:50%!important;margin:auto!important;padding:clamp(22px,3.2vw,48px)!important;transform:none!important;opacity:1!important;z-index:1;box-sizing:border-box;overflow:hidden;animation:none!important}
+.circle .single-circle-home.circles-button-dashboard .hub-orb h1{font-size:clamp(32px,4.3vw,62px)!important;line-height:1.08!important;letter-spacing:-.035em;margin:0 0 22px!important;max-width:100%;text-align:center}
+.circle .single-circle-home.circles-button-dashboard .hub-orb .hub-academy-tagline{font-size:clamp(21px,2.35vw,34px)!important;line-height:1.25!important;margin:0!important;text-align:center}
+.circle .single-circle-home.circles-button-dashboard .hub-orb .hub-academy-signoff{font-size:clamp(12px,1.1vw,15px)!important;line-height:1.5!important;margin:28px 0 0!important;text-align:center}
+.circle .single-circle-home.circles-button-dashboard .circles-programme-column .hub-panel{position:static!important;inset:auto!important;width:100%!important;max-width:none!important;height:auto!important;min-height:0!important;margin:0!important;transform:none!important;opacity:1!important;animation:none!important;box-shadow:none!important;box-sizing:border-box}
+.circle .single-circle-home.circles-button-dashboard .circles-programme-column .hub-panel.circles-navigation-group{display:block;padding:0!important;border:0;background:transparent!important;overflow:visible}
+.circle .single-circle-home.circles-button-dashboard .circles-navigation-cards{gap:14px}
+.circle .single-circle-home.circles-button-dashboard .circles-plain-card{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;min-width:0;min-height:82px!important;padding:20px 22px!important;border-radius:6px!important;text-decoration:none;box-shadow:none;transition:filter .15s,box-shadow .15s}
+.circle .single-circle-home.circles-button-dashboard .circles-programme-column .hub-panel.circles-plain-card{min-height:82px!important}
+.circle .single-circle-home.circles-button-dashboard .circles-plain-card h3{font:400 clamp(23px,2.1vw,30px)/1.18 var(--serif,Georgia,serif)!important;overflow-wrap:anywhere;margin:0!important}
+.circle .single-circle-home.circles-button-dashboard .circles-plain-card>span{font-size:20px;flex:none}
+.circle .single-circle-home.circles-button-dashboard .circles-plain-card:hover{filter:brightness(.97);box-shadow:0 4px 14px #49394310}
+.circle .single-circle-home.circles-button-dashboard .hub-panel[hidden],.circle .single-circle-home.circles-button-dashboard .circles-programme-column[hidden]{display:none!important}
+@media(max-width:920px){
+ .circle .single-circle-home.circles-button-dashboard #animated-hub{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;padding:24px 0 32px!important}
+ .circle .single-circle-home.circles-button-dashboard .hub-orb{grid-column:1/-1;grid-row:1;width:min(100%,440px)!important;padding:40px!important}
+ .circle .single-circle-home.circles-button-dashboard .hub-orb h1{font-size:clamp(38px,7vw,54px)!important}
+ .circle .single-circle-home.circles-button-dashboard .hub-orb .hub-academy-tagline{font-size:28px!important}
+ .circle .single-circle-home.circles-button-dashboard .circles-programme-column{align-self:start;grid-row:2}
+ .circle .single-circle-home.circles-button-dashboard .circles-programme-column-left{grid-column:1}
+ .circle .single-circle-home.circles-button-dashboard .circles-programme-column-right{grid-column:2}
+}
+@media(max-width:560px){
+ .circle .single-circle-home.circles-button-dashboard #animated-hub{grid-template-columns:minmax(0,1fr);gap:18px}
+ .circle .single-circle-home.circles-button-dashboard .hub-orb{padding:30px!important}
+ .circle .single-circle-home.circles-button-dashboard .hub-orb h1{font-size:clamp(32px,9vw,46px)!important;margin-bottom:18px!important}
+ .circle .single-circle-home.circles-button-dashboard .hub-orb .hub-academy-tagline{font-size:clamp(21px,5.8vw,28px)!important}
+ .circle .single-circle-home.circles-button-dashboard .hub-orb .hub-academy-signoff{font-size:12px!important;margin-top:20px!important}
+ .circle .single-circle-home.circles-button-dashboard .circles-programme-column{grid-column:1;gap:12px}
+ .circle .single-circle-home.circles-button-dashboard .circles-programme-column-right{grid-row:3}
+ .circle .single-circle-home.circles-button-dashboard .circles-plain-card{min-height:72px!important;padding:18px 20px!important}
+}
+
+/* Shared Studio / administrative shells. Per-course ink and accent variables
+   are intentionally retained inside teaching material and live previews. */
+body.circles-ui-workspace{--ink:#44363f;--accent:#67515f;--soft:#eee5e8;--paper:#f8f5ef;--line:#e1d7ce;background:var(--paper);color:var(--ink);font-family:'DM Sans',Arial,sans-serif}
+.circles-ui-workspace :is(.site-header,.pb-header){background:#fffdf8;border-bottom:1px solid var(--line);padding-block:12px}
+.circles-ui-workspace :is(.brand strong,.pb-brand){font-family:'Libre Caslon Display',Georgia,serif;font-size:24px;font-weight:400;color:var(--ink)}
+.circles-ui-workspace :is(.website-list-panel,.admin-panel,.studio-heading,.design-note,.page-outline,.editor-pane,.preview-toolbar,.studio-mobile-nav){border-color:var(--line);color:var(--ink)}
+.circles-ui-workspace :is(.website-list-card,.admin-panel,.editor-card,fieldset){border-color:var(--line);background:#fffdf8;border-radius:12px;box-shadow:none}
+.circles-ui-workspace :is(h1,h2,.studio-heading strong,.outline-heading strong){font-family:'Libre Caslon Display',Georgia,serif;font-weight:400;letter-spacing:-.02em}
+.circles-ui-workspace :is(.admin-tabs,.toolbar,.heading-actions,.segmented) button{min-height:44px;font-family:'DM Sans',Arial,sans-serif;box-shadow:none}
+.circles-ui-workspace :is(button,input,select,textarea){font-family:'DM Sans',Arial,sans-serif}
+.circles-ui-workspace :is(button.primary,.admin-tabs [aria-current=page]){background:var(--accent);border-color:var(--accent);color:#fffdf8}
+.circles-ui-workspace :is(input,select,textarea){border-color:var(--line);background:#fffdf8;color:var(--ink);border-radius:7px}
+.circles-ui-workspace :is(a,button,input,select,textarea,summary):focus-visible{outline:3px solid #a07a89;outline-offset:3px}
+.circles-ui-workspace :is([lang=ar],.sp-arabic){font-family:Amiri,serif}
+@media(max-width:600px){.circles-ui-workspace :is(.brand strong,.pb-brand){font-size:20px}.circles-ui-workspace .website-list-panel{padding:20px;margin-block:20px}}
+@media(prefers-reduced-motion:reduce){.circles-button-dashboard *{animation:none!important;transition:none!important}}

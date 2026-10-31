@@ -10,7 +10,30 @@ export function circleBlockChoices(area,navigation){
 }
 
 export function circleBlockNavigation(document){
- const templates=new Map(),rendered=new WeakMap();
+ const templates=new Map(),rendered=new WeakMap(),layouts=new WeakMap();
+ function arrange(signedIn){
+  const home=document.querySelector('.single-circle-home'),hub=home?.querySelector('#animated-hub');if(!hub)return;
+  home.classList.toggle('circles-button-dashboard',signedIn);
+  let layout=layouts.get(hub);
+  if(signedIn){
+   if(!layout){
+    layout={markers:new Map(),columns:[]};
+    for(const side of ['left','right']){const column=document.createElement('div');column.className='circles-programme-column circles-programme-column-'+side;layout.columns.push(column);hub.append(column);}
+    layouts.set(hub,layout);
+   }
+   for(const [index,areas]of [['hifz','academy'],['tafseer','mothers']].entries()){
+    const column=layout.columns[index];
+    for(const area of areas){const card=hub.querySelector('.hub-panel[data-home-area="'+area+'"]');if(!card||card.parentElement===column)continue;
+     if(!layout.markers.has(area)){const marker=document.createComment('circle '+area);card.before(marker);layout.markers.set(area,marker);}
+     column.append(card);
+    }
+    column.hidden=[...column.children].every(card=>card.hidden);
+   }
+  }else if(layout){
+   for(const [area,marker]of layout.markers){const card=hub.querySelector('.hub-panel[data-home-area="'+area+'"]');if(card)marker.replaceWith(card);else marker.remove();}
+   layout.columns.forEach(column=>column.remove());layouts.delete(hub);
+  }
+ }
  return (signedIn,navigation)=>{
   for(let card of document.querySelectorAll('.hub-panel[data-home-area]')){
    const area=card.dataset.homeArea;if(!['academy','mothers','tafseer','hifz','arabic-adventures'].includes(area))continue;
@@ -29,5 +52,6 @@ export function circleBlockNavigation(document){
    }
    rendered.set(card,signature);
   }
+  arrange(signedIn);
  };
 }

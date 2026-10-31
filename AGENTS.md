@@ -1,3 +1,9 @@
+# V109.1 UI release authorised — 31 October 2026
+
+- The owner explicitly requested the centred signed-in dashboard circle with separated columns of programme buttons, mobile adaptation, Circles styling throughout the existing pages, and deployment for review as V109.1. This supersedes the earlier UI-only deployment hold within that scope.
+- Work in this owned feature/circles-ui-1091 checkout, based on deployed V109 runtime e14e5b9/documentation1611d12. Compose only an explicit reviewed overlay on the 161-file frozen launch-109 tree via tools/prepare-ui-1091.mjs. Use wrangler.ui-1091.jsonc; never publish raw public/ or workspace preview/editor/credential adapters.
+- Preserve the real login, contexts, account-bound Home return, PIN/account switching, branded/direct server origins, 43200/43200/60, Target17/Source42 bindings, inactive free-card hold and existing date recovery. No role/media/right/content/schema/DNS or Git push is included. Source native styles are in the separately owned Academy-workspaces-ui-109 branch; coordinate the release.
+
 # V109 deployed and verified — 31 October 2026
 
 - The owner explicitly approved “﷽ activate now”. Activation is complete at https://maktab4life.org. Studio Worker264c7f1c-3254-4da9-960f-6a8ec35f4d72, Source Workere303f1da-fb24-4526-99f6-b9865177d008 and domain router464d8adb-2c2b-4ca8-bde4-e97327fc0f7a are100% active. Source Pages4559ae9b-132d-427b-b683-1f35cfea913e is unchanged. Runtime commits Source18ed9708/Targete14e5b9.
