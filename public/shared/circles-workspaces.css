@@ -54,3 +54,5 @@ body.circles-ui-workspace{--ink:#44363f;--accent:#67515f;--soft:#eee5e8;--paper:
 .circles-ui-workspace :is([lang=ar],.sp-arabic){font-family:Amiri,serif}
 @media(max-width:600px){.circles-ui-workspace :is(.brand strong,.pb-brand){font-size:20px}.circles-ui-workspace .website-list-panel{padding:20px;margin-block:20px}}
 @media(prefers-reduced-motion:reduce){.circles-button-dashboard *{animation:none!important;transition:none!important}}
+
+.academy-brand .circles-release-version{display:block;margin-top:4px;color:#796a72;font:500 11px/1.4 'DM Sans',Arial,sans-serif;letter-spacing:.04em}

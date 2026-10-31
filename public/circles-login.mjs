@@ -30,6 +30,8 @@ function renderRemembered(){
 function showHomeMessage(text){homeMessage=text;refreshHeader();}
 function refreshHeader(){
  const brand=document.querySelector('a.academy-brand');if(brand)brand.href='/';
+ const release=document.querySelector('meta[name="academy-release-version"]')?.content,brandCopy=brand?.querySelector('.brand-copy');
+ if(release&&brandCopy){let label=brandCopy.querySelector('.circles-release-version');if(!label){label=document.createElement('span');label.className='circles-release-version';brandCopy.append(label);}if(label.textContent!=='V'+release)label.textContent='V'+release;}
  const skip=document.querySelector('a.skip-link');if(skip)skip.href=location.pathname+location.search+'#experience';
  for(let entry of document.querySelectorAll('[data-access-login]')){
   const accountEntry=entry.classList.contains('public-login');

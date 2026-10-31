@@ -1,3 +1,7 @@
+# V109.1.1 homepage version label — 31 October 2026
+
+- The owner requested adding the homepage version to the live V109.1 website. Deploy this small website-only follow-up as V109.1.1, preserving the exact V109.1 composition and Source Pages/API. Use tools/prepare-ui-10911.mjs and wrangler.ui-10911.jsonc. All prior rights/content/origin/binding/domain guards remain.
+
 # V109.1 UI release authorised — 31 October 2026
 
 - The owner explicitly requested the centred signed-in dashboard circle with separated columns of programme buttons, mobile adaptation, Circles styling throughout the existing pages, and deployment for review as V109.1. This supersedes the earlier UI-only deployment hold within that scope.
