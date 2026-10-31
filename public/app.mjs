@@ -4,6 +4,7 @@ import {installHeaderDates} from './shared/header-dates.mjs';
 import {startReaderView} from './shared/reader-startup.mjs';
 import {protectAccountHistory} from './shared/account-history.mjs';
 import {mothersClassroom} from './shared/circles-navigation.mjs';
+import {openAcademyFromCircles} from './shared/circles-sign-in.mjs';
 import {applicationPath as websiteApplicationPath,collectionKind} from './shared/circles-routes.mjs';
 const appPath=websiteApplicationPath(document);
 import {circlesHome,learningBranches,homeBranch} from './shared/circles-home.mjs';
@@ -20,7 +21,7 @@ import {readerEditing} from './reader-editing.mjs';
 import {api,mutate,identity,changed,downloadJSON} from './api.mjs';
 import {esc} from './shared/model.mjs';import {renderCourse} from './shared/student.mjs';
 const $=id=>document.getElementById(id);let current=null,assets=new Map(),urls=new Set(),ui=null,config=null,adminModule=null,generation=0;
-let beforeEditing=null,delivery=null,joinTimer=null,mediaEpoch=0,activeRecording=null;
+let beforeEditing=null,delivery=null,joinTimer=null,mediaEpoch=0,activeRecording=null,managementHandoff=null;
 const recordingPlayer=companionPlayer({workspace:$('reader-workspace'),panel:$('companion-player')});
 const currentRecordingGuides=()=>bindRecordingGuides(recordingGuides(current?.document),delivery?.media||[],delivery?.bindings||[]);
 const currentSeriesRecordings=()=>seriesRecordings({media:delivery?.media||[],guides:currentRecordingGuides(),pendingIds:current?.canEdit&&current.localReview?.edition==='reviewDraft'?current.localReview.unmappedEditorialLessonIds:[]});
@@ -35,9 +36,9 @@ const show=name=>{if(name!=='course-reader'){removeReaderToolbars();closeMedia()
 const status=message=>$('status').textContent=message;
 const time=value=>new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short'}).format(new Date(value));
 function closeMedia(){mediaEpoch++;activeRecording=null;recordingPlayer.close();for(const video of $('media-body').querySelectorAll('video'))video.pause();$('media-body').replaceChildren();$('media-dialog').close();}
-function clear(){pins.clear();clearTimeout(joinTimer);closeMedia();removeReaderToolbars();textEditor.clear();beforeEditing=null;generation++;delivery=null;current=null;ui=null;for(const url of urls)URL.revokeObjectURL(url);urls.clear();assets.clear();$('course-reader').replaceChildren();$('learning-cards').replaceChildren();$('administration').replaceChildren();$('account-name').textContent='';$('account-menu').open=false;$('account-menu').hidden=true;$('sign-in-button').hidden=false;$('sign-out-button').hidden=true;$('manage-button').hidden=true;$('academy-button').hidden=true;show(appPath==='/studio/'?'my-learning':'homepage');}
+function clear(){managementHandoff?.close();pins.clear();clearTimeout(joinTimer);closeMedia();removeReaderToolbars();textEditor.clear();beforeEditing=null;generation++;delivery=null;current=null;ui=null;for(const url of urls)URL.revokeObjectURL(url);urls.clear();assets.clear();$('course-reader').replaceChildren();$('learning-cards').replaceChildren();$('administration').replaceChildren();$('account-name').textContent='';$('account-menu').open=false;$('account-menu').hidden=true;$('sign-in-button').hidden=false;$('sign-out-button').hidden=true;$('manage-button').hidden=true;$('academy-button').hidden=true;show(appPath==='/studio/'?'my-learning':'homepage');}
 protectAccountHistory({window,identity,clear});
-window.addEventListener('website-account-changed',()=>{textEditor.clear();beforeEditing=null;});
+window.addEventListener('website-account-changed',()=>{managementHandoff?.close();textEditor.clear();beforeEditing=null;});
 window.addEventListener('website-session-ended',event=>{clear();if(event.detail?.externalAccountChange){location.reload();return;}status('Your session changed. Sign in to Academy to continue.');});
 async function profile(){try{const me=await api('/api/me',{optionalSession:!identity.account});identity.account=me;$('account-name').textContent=me.displayName;$('account-menu').hidden=false;$('sign-in-button').hidden=true;$('sign-out-button').hidden=false;$('manage-button').hidden=false;$('academy-button').hidden=false;return me;}catch{return null;}}
 function renderPublicCircle(){const branch=homeBranch(new URLSearchParams(location.search).get('branch'));let host=$('public-circle-home')||$('homepage').querySelector('.hero');host.id='public-circle-home';host.className='circles-home-host';host.innerHTML=circlesHome(branch);$('learning-branches').innerHTML=learningBranches(branch);}
@@ -137,6 +138,7 @@ $('manage-button').onclick=async()=>{if(!textEditor.canLeave())return;textEditor
 $('close-media').onclick=closeMedia;
 $('media-dialog').addEventListener('cancel',closeMedia);
 document.addEventListener('click',event=>{
+ if(event.target.closest('[data-academy-management]')){event.preventDefault();if(!textEditor.canLeave())return;if(!identity.account){openSignIn();return;}if(config?.isolatedPreview){status('Academy management is disconnected in this preview.');return;}managementHandoff?.close();managementHandoff=openAcademyFromCircles({academyOrigin:config.academyOrigin,request:api,dashboard:{mode:'admin',tool:'home'},onError:status});return;}
  const branch=event.target.closest('[data-home-branch]');if(branch&&!event.metaKey&&!event.ctrlKey){event.preventDefault();if(!textEditor.canLeave())return;show('homepage');history.pushState(null,'',branch.getAttribute('href'));renderPublicCircle();return;}
  const collections=event.target.closest('[data-home-collections]');if(collections&&!event.metaKey&&!event.ctrlKey){event.preventDefault();void library().catch(e=>status(e.message));return;}
  if(event.target.closest('[data-home-replay]')){renderPublicCircle();return;}

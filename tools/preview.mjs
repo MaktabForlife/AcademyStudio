@@ -3,7 +3,8 @@ import {createServer} from 'node:http';import {readFile,stat} from 'node:fs/prom
 // Disposable, synthetic data only. These origins never contact a hosted account.
 const sitePort=Number(process.env.PREVIEW_PORT||8791),academyPort=sitePort+1;
 if(!Number.isInteger(sitePort)||sitePort<1024||sitePort>65534)throw Error('Choose a local preview port between 1024 and 65534.');
-const websiteOrigin='http://localhost:'+sitePort,academyOrigin='http://localhost:'+academyPort;
+const previewHost=process.env.PREVIEW_HOST||'localhost';if(!['localhost','127.0.0.1'].includes(previewHost))throw Error('Use a loopback preview host.');
+const websiteOrigin='http://'+previewHost+':'+sitePort,academyOrigin='http://'+previewHost+':'+academyPort;
 const publicRoot=resolve(process.env.PREVIEW_PUBLIC_ROOT||'public'),circles=process.env.PREVIEW_CIRCLES==='1',f=await fixture({academy:true,authorityMode:circles?'ACADEMY':'WEBSITE',...(process.env.PREVIEW_NAVIGATION==='1'?{dashboard:true,navigation:{mothers:'programA',alimiyah:'programB'},verification:{accountSeconds:43200,liveSeconds:43200,adminSeconds:60}}:{})});
 if(circles){const {circlesFixture}=await import('../tests/circles-fixture.mjs');const x=await circlesFixture(f);await x.recover(8);}else{
 for(const [account,globalAdmin] of [[f.source.f.actors.global,1],[f.source.f.actors.studentA,0]])await f.run('INSERT INTO accounts VALUES(?,?,1,1,1,?,?)',account,'Synthetic Academy '+(globalAdmin?'Admin':'Learner'),Date.now(),globalAdmin);
