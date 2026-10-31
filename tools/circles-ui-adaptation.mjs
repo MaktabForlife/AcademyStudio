@@ -1,3 +1,5 @@
+import {activeHomepageFreeCourseKeys} from '../public/shared/homepage-free-courses.mjs';
+
 // Keep the author's source checkout intact. The connected UI must rehearse the
 // hosted access boundary even on localhost; private editorial previews stay out.
 export function inactiveFreeCourseCards(source){
@@ -8,6 +10,19 @@ export function inactiveFreeCourseCards(source){
   .replace(' · Free course"',' · Free course · Inactive"').replace('>Free</span>','>Inactive</span>')
   .replace("${i===0?'<span class=\"free-course-featured\">Featured</span>':''}",'').replace('</a>','</article>');
  return source.replace(card,inactive);
+}
+// Apply to the frozen connected homepage, not the author's source bundle.
+// Unknown/unrequested cards stay inactive, including on featured-row rotation.
+export function activateHomepageFreeCourseCards(source){
+ if(source.includes('function inactiveFreeCourseCard('))return source;
+ const card=source.split('\n').find(line=>line.startsWith('function freeCourseCard('));
+ if(!card||!card.includes('<article class="circles-free-inactive free-course-card ')||!card.includes(' aria-disabled="true"')||!card.includes('>Inactive</span>')||!card.endsWith('</article>`;}'))throw Error('Review the inactive homepage card contract.');
+ const active=card.replace('<article class="circles-free-inactive free-course-card ','<a class="free-course-card ')
+  .replace(' aria-disabled="true"',' href="/circles/free-learning.html?course=${encodeURIComponent(c.key)}" data-free-course="${esc(c.key)}"')
+  .replace(' · Free course · Inactive"',' · Free course"').replace('>Inactive</span>','>Free</span>')
+  .replace('</article>','</a>')
+  .replace('return `','if(!'+JSON.stringify(activeHomepageFreeCourseKeys)+'.includes(c.key))return inactiveFreeCourseCard(c,i);return `');
+ return source.replace(card,card.replace('function freeCourseCard(','function inactiveFreeCourseCard(')+'\n'+active);
 }
 export function connectedCourseSource(source){
  const preview="export const isLocalPreview = location => ";
