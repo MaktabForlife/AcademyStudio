@@ -6,9 +6,12 @@ import {saveContent} from './content.mjs';
 import {validatePackage} from './content-package.mjs';
 export async function change(env,store,actor,offeringId,input,guardOptions={}){
  if(input.action==='mou-subject')return bindMouSubject(store,actor,offeringId,input,guardOptions);
- if(!guardOptions.collect&&['access-batch','participant','paid-months','website-months','staff','surah-grant','completion-month','completion-date','enrolment-decision','website-create','attachment'].includes(input.action))await rejectAuthorityWrite(store,offeringId);
- const scope=guardOptions.collect?null:await store.scope(actor,offeringId,{admin:true});const statements=[];const s=(sql,args=[])=>statements.push(store.statement(sql,args));
- if(input.action==='access-batch'){
+ if(!guardOptions.collect&&['content-batch','access-batch','participant','paid-months','website-months','staff','surah-grant','completion-month','completion-date','enrolment-decision','website-create','attachment'].includes(input.action))await rejectAuthorityWrite(store,offeringId);
+ const scope=guardOptions.collect?guardOptions.scope||null:await store.scope(actor,offeringId,{admin:true});const statements=[];const s=(sql,args=[])=>statements.push(store.statement(sql,args));
+ if(input.action==='content-batch'){
+  if(!Array.isArray(input.changes)||!input.changes.length||input.changes.length>25)throw fail('Save up to 25 reviewed media references together.');
+  const seen=new Set();for(const item of input.changes){if(!['youtube','attachment'].includes(item.action))throw fail('A media batch cannot change learning access.');const key=item.action+':'+id(item.action==='youtube'?item.assetId:item.attachmentId);if(seen.has(key))throw fail('Choose each media reference once.');seen.add(key);statements.push(...await change(env,store,actor,offeringId,item,{collect:true,scope}));}
+ }else if(input.action==='access-batch'){
   if(!Array.isArray(input.changes)||!input.changes.length||input.changes.length>40)throw fail('Save up to 40 access changes together.');
   const people=input.changes.filter(item=>item.action==='participant'),ids=people.map(item=>id(item.accountId));if(new Set(ids).size!==ids.length)throw fail('Choose each participant once per Save.');
   if(people.length){const rows=await store.all("SELECT a.account_id,p.purchased FROM json_each(?) j JOIN accounts a ON a.account_id=j.value LEFT JOIN participation p ON p.account_id=a.account_id AND p.offering_id=?",[JSON.stringify(ids),offeringId]),previous=new Map(rows.map(r=>[r.account_id,r.purchased]));
@@ -59,7 +62,7 @@ export async function change(env,store,actor,offeringId,input,guardOptions={}){
   const previous=await store.first('SELECT offering_id FROM attachments WHERE attachment_id=?',[id(input.attachmentId)]);if(previous&&previous.offering_id!==offeringId)throw fail('This attachment belongs elsewhere.',403);
   // Historical Course recordings need no invented date or live session. Monthly
   // programmes still require their exact recording date for retained rights.
-  const lessonDate=scope?.kind==='COURSE'&&(input.lessonDate==null||input.lessonDate==='')?'':date(input.lessonDate);
+  const lessonDate=(scope?.kind==='COURSE'||input.audience==='WEBSITE')&&(input.lessonDate==null||input.lessonDate==='')?'':date(input.lessonDate);
   s(`INSERT INTO attachments VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(attachment_id) DO UPDATE SET website_id=excluded.website_id,asset_id=excluded.asset_id,lesson_id=excluded.lesson_id,lesson_date=excluded.lesson_date,cohort=excluded.cohort,title=excluded.title,audience=excluded.audience,published=excluded.published`,[input.attachmentId,offeringId,websiteId,assetId,id(input.lessonId),lessonDate,text(input.cohort||'',180),text(input.title),input.audience,flag(input.published)]);
  }else if(input.action==='youtube'){
   if(!/^[A-Za-z0-9_-]{11}$/.test(input.videoId||''))throw fail('Choose a valid YouTube recording.');const assetId=id(input.assetId);
@@ -71,7 +74,7 @@ export async function change(env,store,actor,offeringId,input,guardOptions={}){
   if(input.state==='APPROVED')s('INSERT INTO participation VALUES(?,?,1,0,0,\'\') ON CONFLICT(account_id,offering_id) DO UPDATE SET enrolled=1',[target,offeringId]);
  }else throw fail('Unknown administration action.');
  if(guardOptions.collect)return statements;
- return store.mutate(actor,offeringId,input,statements,{saved:true},{...guardOptions,global:input.action==='staff'||input.action==='access-batch'&&input.changes.some(c=>c.action==='staff'),studio:['access-batch','participant','paid-months','website-months','staff','surah-grant','completion-month','completion-date','enrolment-decision','website-create','attachment'].includes(input.action)});
+ return store.mutate(actor,offeringId,input,statements,{saved:true},{...guardOptions,global:input.action==='staff'||input.action==='access-batch'&&input.changes.some(c=>c.action==='staff'),studio:['content-batch','access-batch','participant','paid-months','website-months','staff','surah-grant','completion-month','completion-date','enrolment-decision','website-create','attachment'].includes(input.action)});
 }
 export async function upload(env,store,actor,offeringId,request){
  await store.scope(actor,offeringId,{admin:true});const url=new URL(request.url),assetId=id(url.searchParams.get('assetId')),operationId=id(url.searchParams.get('operationId')),filename=text(url.searchParams.get('filename')||'File');
