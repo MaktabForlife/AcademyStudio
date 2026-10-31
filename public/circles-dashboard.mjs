@@ -21,6 +21,7 @@ export function circlesDashboard({onUpdate,openAcademy,show=()=>true,onWorkspace
   finally{if(current===ticket&&generation===identity.generation){pending=false;onUpdate();}}
  }
  function clear(){ticket++;cache.clear();data=null;available=[];mode=null;pending=false;error='';refresh();}
+ window.addEventListener('website-course-policy-changed',()=>{const visible=Boolean(data)&&show();ticket++;cache.clear();data=null;pending=false;if(visible&&identity.account)void load(mode);else refresh();});
  document.addEventListener('click',event=>{
   if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
   const choice=event.target.closest('[data-circles-workspace]');if(choice){event.preventDefault();event.stopImmediatePropagation();onWorkspace();if(choice.dataset.circlesWorkspace!==mode)void load(choice.dataset.circlesWorkspace);return;}

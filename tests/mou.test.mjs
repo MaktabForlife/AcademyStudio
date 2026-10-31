@@ -65,7 +65,7 @@ test('MOU published sessions keep exact class/teacher/time/cancellation gates an
  await f.run('UPDATE source_session_audiences SET class_ids_json=?,teacher_ids_json=? WHERE session_id=?',JSON.stringify([klass]),JSON.stringify([teacher]),session.id);
  await f.run('UPDATE timetable SET starts_at=?,cancelled=1 WHERE session_id=?',Date.now()+120_000,session.id);assert.equal((await f.request(session.joinPath,{cookie,method:'POST',body:{sessionId:session.id}})).status,403);
  const publicSnapshot=await f.content.get('public/schedule.json');assert(!await publicSnapshot.text().then(x=>x.includes('zoom.us')));
- await f.run('UPDATE source_access_people SET verified_at=? WHERE account_id=? AND offering_id=?',Date.now()-43200_001,student,offer);assert.equal((await f.request(session.joinPath,{cookie,method:'POST',body:{sessionId:session.id}})).body.code,'ACCESS_REFRESH_REQUIRED');await signIn(f,'studentB');
+ await f.run('UPDATE source_access_people SET verified_at=? WHERE account_id=? AND offering_id=?',Date.now()-43200_001,student,offer);assert.equal((await f.request(session.joinPath,{cookie,method:'POST',body:{sessionId:session.id}})).body.code,'ACCESS_REFRESH_REQUIRED');await signIn(f,'studentB');ok(await f.request('/auth/access',{cookie,method:'POST',body:{offeringId:offer}}));
  await db.prepare("INSERT INTO program_publication_lifecycle VALUES(?,'mou-publication','CANCELLED',?)").bind(scope,new Date().toISOString()).run();await recover(12);
  assert.equal(await f.db.prepare('SELECT cancelled FROM timetable WHERE session_id=?').bind(session.id).first('cancelled'),1,'Actual Source cancellation reaches the stored target publication');
  assert(!ok(await f.request('/api/circles/classrooms/mothers',{cookie})).timetable.sessions.some(s=>s.id===session.id));assert.equal((await f.request(session.joinPath,{cookie,method:'POST',body:{sessionId:session.id}})).status,403);
@@ -77,6 +77,7 @@ test('MOU native content operations preserve independent recording lessons and e
  const admin=await signIn(f,'adminB'),student=await signIn(f,'studentB'),wrongAdmin=await signIn(f,'adminA');
  const document=await f.content.get('websites/site-course/versions/seed.json').then(x=>x.json()),websiteId='mou-native-created-site',date=new Date().toISOString().slice(0,10);
  const change=body=>f.request('/api/admin/'+offer,{cookie:admin,method:'POST',body:{operationId:crypto.randomUUID(),...body}});
+ ok(await f.request('/auth/access',{cookie:wrongAdmin,method:'POST',body:{offeringId:offer}}));
  const input={action:'website-create',websiteId,title:'Synthetic native MOU',document};
  assert.equal((await f.request('/api/admin/'+offer,{cookie:wrongAdmin,method:'POST',body:{operationId:crypto.randomUUID(),...input}})).status,403);
  ok(await change(input));ok(await change({action:'youtube',assetId:'mou-native-recording',videoId:'abcdefghijk',title:'Synthetic recording only'}));
@@ -97,7 +98,7 @@ test('MOU native content operations preserve independent recording lessons and e
 });
 
 test('ongoing MOU support is isolated by recorded lesson/month/cohort, without invented completion or timetable',async t=>{
- const {f,offer,register,recover,handover,save}=await mouFixture(t);ok(await register());await recover();await handover();
+ const {f,db,scope,offer,register,recover,handover,save}=await mouFixture(t);ok(await register());await recover();await handover();
  const {newCourse,newLesson,newSection,newBlock}=await import('../public/shared/model.mjs');
  const admin=await signIn(f,'adminB'),student=await signIn(f,'studentB'),other=await signIn(f,'studentA'),websiteId='mou-ongoing-support';
  const timetableBefore=await f.db.prepare('SELECT count(*) n FROM timetable WHERE offering_id=?').bind(offer).first('n');
@@ -148,4 +149,7 @@ test('ongoing MOU support is isolated by recorded lesson/month/cohort, without i
  ok(await save({action:'surah-grant',accountId:f.source.f.actors.studentA,websiteId,enabled:true,reason:'Deliberate text-only grant'}));const granted=ok(await f.request('/api/websites/'+websiteId,{cookie:other}));assert.equal(granted.contentAccess.mode,'FULL_TEXT');assert(JSON.stringify(granted.document).includes('MARCH_PRIVATE_SUPPORT'));ok(await f.request('/api/media/mou-full-pdf-link',{cookie:other}));assert.equal((await f.request('/api/media/mou-support-link-feb',{cookie:other})).status,403);
  ok(await save({action:'paid-months',changes:[{accountId:f.source.f.actors.studentB,month:'2026-02',cohort:'original-mou-cohort',paid:false,reason:'Synthetic removal'}]}));
  const removed=ok(await f.request('/api/websites/'+websiteId,{cookie:student}));assert.equal(removed.document.lessons.length,0,'May recording-only rights do not leak another month or unassigned notes');
+ await db.prepare("UPDATE activities SET active=0,lifecycle='ARCHIVED' WHERE activity_key=?").bind(scope).run();await recover(12);
+ ok(await f.request('/auth/access',{cookie:student,method:'POST',body:{offeringId:offer}}));
+ const archived=ok(await f.request('/api/circles/classrooms/mothers',{cookie:student}));assert.equal(archived.programme.state,'MATERIALS_ONLY');assert.equal(archived.timetable.state,'LIVE_ACCESS_REQUIRED');assert.equal(archived.subjects[0].website.canOpen,true);ok(await f.request('/api/media/mou-support-link-may',{cookie:student}));
 });

@@ -30,7 +30,7 @@ export async function mouClassroom(store,actor){
    result.subjects[0]={...subjects[0],state:published?'PUBLISHED':'PREPARING',website:{id:website.website_id,title:website.title,completionMonth:website.completion_month,canOpen:published,canEdit,...(published?{href:'/studio/?website='+encodeURIComponent(website.website_id)}:{}),...(canEdit?{editorHref:'/builder/?website='+encodeURIComponent(website.website_id)}:{})}};result.materialsConnected=published;
   }else result.subjects[0]={...subjects[0],state:'LOCKED'};
  }
- if(!staff&&!scope.live_entitled){result.timetable.state='LIVE_ACCESS_REQUIRED';return result;}
+ if(!definition.live_enabled||!staff&&!scope.live_entitled){result.timetable.state='LIVE_ACCESS_REQUIRED';return result;}
  await accessGate(store,actor,offer,{live:true,admin:staff});
  const snapshot=await store.first('SELECT version FROM stream_heads WHERE stream=?',['timetable:'+offer]);
  if(!snapshot){result.timetable.state='PENDING';return result;}

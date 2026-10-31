@@ -1,4 +1,5 @@
 import {bindMouSubject} from './mou-classroom.mjs';
+import {changeCoursePolicy} from './course-policy.mjs';
 import {academyAuthority,rejectAuthorityWrite} from './access.mjs';
 import {fail,id,text,integer,flag,month,date,sha256,bytes,httpsURL} from './protocol.mjs';
 import {fileKind,newCourse} from '../public/shared/model.mjs';
@@ -6,6 +7,7 @@ import {saveContent} from './content.mjs';
 import {validatePackage} from './content-package.mjs';
 export async function change(env,store,actor,offeringId,input,guardOptions={}){
  if(input.action==='mou-subject')return bindMouSubject(store,actor,offeringId,input,guardOptions);
+ if(input.action==='course-policy')return changeCoursePolicy(store,actor,offeringId,input,guardOptions);
  if(!guardOptions.collect&&['content-batch','access-batch','participant','paid-months','website-months','staff','surah-grant','completion-month','completion-date','enrolment-decision','website-create','attachment'].includes(input.action))await rejectAuthorityWrite(store,offeringId);
  const scope=guardOptions.collect?guardOptions.scope||null:await store.scope(actor,offeringId,{admin:true});const statements=[];const s=(sql,args=[])=>statements.push(store.statement(sql,args));
  if(input.action==='content-batch'){

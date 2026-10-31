@@ -2,6 +2,7 @@ import {academyAuthority} from './access.mjs';
 import {bodyJSON,boundedAge,fail,id} from './protocol.mjs';
 import {contentVersion} from './content-package.mjs';
 import {recordedSupport} from './recorded-support.mjs';
+import {coursePolicyEpoch} from './course-policy.mjs';
 
 // Only deliberately published, whitelisted card metadata crosses this boundary.
 // Private migration manifests and author exports are never public catalogue input.
@@ -41,32 +42,35 @@ export async function websitePresentation(env,website){
 // but never supplies evidence of a purchase, paid month or individual grant.
 export async function catalogueAccess(store,actor,websiteIds,{navigationOnly=false}={}){
  if(!Array.isArray(websiteIds)||websiteIds.length>50)throw fail('Choose at most 50 learning websites.');
- const ids=[...new Set(websiteIds.map(id))];if(!ids.length)return {websites:[]};
- const rows=await store.all(`SELECT w.website_id,w.enabled,w.published_key,o.kind,o.active,
+ const ids=[...new Set(websiteIds.map(id))],policyEpoch=await coursePolicyEpoch(store);if(!ids.length)return {websites:[],coursePolicyEpoch:policyEpoch};
+ const rows=await store.all(`SELECT w.website_id,w.offering_id,w.enabled,w.published_key,o.kind,o.active,cm.access_model,cr.revision policy_revision,
+  EXISTS(SELECT 1 FROM source_access_master_fences f WHERE f.account_id=? AND f.offering_id=w.offering_id) fenced,
   p.purchased,sf.role,sc.authority,sc.enabled source_enabled,sc.generation,
   ap.ready,ap.generation person_generation,ap.verified_at,sw.enabled mapped,
   EXISTS(SELECT 1 FROM paid_months pm WHERE pm.account_id=? AND pm.offering_id=w.offering_id AND pm.month=w.completion_month
    UNION ALL SELECT 1 FROM website_months wm WHERE wm.account_id=? AND wm.offering_id=w.offering_id AND wm.month=w.completion_month) paid,
   EXISTS(SELECT 1 FROM surah_grants sg WHERE sg.account_id=? AND sg.website_id=w.website_id) granted
   FROM json_each(?) r JOIN websites w ON w.website_id=r.value JOIN offerings o USING(offering_id)
+  LEFT JOIN course_access_models cm ON cm.offering_id=w.offering_id LEFT JOIN course_policy_revisions cr ON cr.offering_id=w.offering_id
   LEFT JOIN participation p ON p.offering_id=w.offering_id AND p.account_id=?
   LEFT JOIN staff sf ON sf.offering_id=w.offering_id AND sf.account_id=?
   LEFT JOIN source_access_scopes sc ON sc.offering_id=w.offering_id
   LEFT JOIN source_access_people ap ON ap.offering_id=w.offering_id AND ap.account_id=?
   LEFT JOIN source_access_websites sw ON sw.website_id=w.website_id AND sw.offering_id=w.offering_id`,
- [actor.account_id,actor.account_id,actor.account_id,JSON.stringify(ids),actor.account_id,actor.account_id,actor.account_id]);
+ [actor.account_id,actor.account_id,actor.account_id,actor.account_id,JSON.stringify(ids),actor.account_id,actor.account_id,actor.account_id]);
  const found=new Map(rows.map(r=>[r.website_id,r])),now=Date.now();
  return {websites:ids.map(websiteId=>{
-  const row=found.get(websiteId),base={websiteId,canOpen:false,subscriptionStatus:'required',accessBasis:null,needsRefresh:false};
+  const row=found.get(websiteId),base={websiteId,canOpen:false,subscriptionStatus:'required',accessBasis:null,needsRefresh:false,coursePolicy:row?.kind==='COURSE'&&row.access_model?{offeringId:row.offering_id,model:row.access_model,revision:row.policy_revision||0}:null};
   if(!row?.active||!row.enabled||!row.published_key)return base;
-  const staff=Boolean(actor.global_admin||row.role),parallel=academyAuthority(store.env)&&row.authority!=='WEBSITE';
+  const staff=Boolean(actor.global_admin||row.role),free=row.kind==='COURSE'&&row.access_model==='FREE',parallel=academyAuthority(store.env)&&row.authority!=='WEBSITE';
+  if(academyAuthority(store.env)&&!row.source_enabled)return base;if(row.fenced)return {...base,needsRefresh:true};
   if(parallel){
    if(!actor.source_ref||!row.source_enabled||row.kind==='TAFSEER'&&!row.mapped)return base;
-   if(!row.ready||row.generation!==row.person_generation||row.verified_at<now-boundedAge(store.env,staff&&!navigationOnly))return {...base,needsRefresh:true};
+   if((!free||staff)&&(!row.ready||row.generation!==row.person_generation||row.verified_at<now-boundedAge(store.env,staff&&!navigationOnly)))return {...base,needsRefresh:true};
   }
-  const accessBasis=row.kind==='COURSE'&&row.purchased?'purchase':row.kind==='TAFSEER'&&row.paid?'paid-month':row.kind==='TAFSEER'&&row.granted?'website-grant':null;
-  return {...base,canOpen:staff||Boolean(accessBasis),subscriptionStatus:accessBasis?'subscribed':'required',accessBasis};
- })};
+  const accessBasis=row.kind==='COURSE'&&row.purchased?'purchase':free?'free':row.kind==='TAFSEER'&&row.paid?'paid-month':row.kind==='TAFSEER'&&row.granted?'website-grant':null;
+  return {...base,canOpen:staff||Boolean(accessBasis),subscriptionStatus:free?'free':accessBasis?'subscribed':'required',accessBasis};
+ }),coursePolicyEpoch:policyEpoch};
 }
 
 export function guideBindingsKey(websiteId,edition){return `websites/${id(websiteId)}/recording-bindings/${edition}.json`;}

@@ -19,7 +19,7 @@ export class Store {
    FROM offerings o LEFT JOIN participation p ON p.offering_id=o.offering_id AND p.account_id=?
    LEFT JOIN completed_course_registrations h USING(offering_id)
    LEFT JOIN staff s ON s.offering_id=o.offering_id AND s.account_id=? WHERE o.offering_id=? AND o.active=1`,[actor.account_id,actor.account_id,offeringId]);if(row)this.scopes.set(cacheKey,row);}
-  if(!row)throw fail('This offering is unavailable.',404);row={...row,live_entitled:Boolean(row.live)};const source=await accessGate(this,actor,offeringId,{admin:admin||teacher||Boolean(row.role)});if(source)row={...row,live:liveAccess(source,row),studioAuthority:Boolean(source.studio)};
+  if(!row)throw fail('This offering is unavailable.',404);row={...row,live_entitled:Boolean(row.live)};const source=await accessGate(this,actor,offeringId,{admin:admin||teacher||Boolean(row.role)});row={...row,live:liveAccess(source,row),studioAuthority:Boolean(source?.studio)};
   if(row.completed_course)row.live=false;
   if(admin||teacher){if(!actor.global_admin&&row.role!=='ADMIN'&&!(teacher&&row.role==='TEACHER'))throw fail('Your account cannot manage this offering.',403);if(actor.verified_at<Date.now()-boundedAge(this.env,true))throw fail('Refresh your Academy account before administration.',401,'ADMIN_STATUS_EXPIRED');}
   return row;

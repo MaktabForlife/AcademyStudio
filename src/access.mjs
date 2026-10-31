@@ -1,8 +1,11 @@
 import {fail,id,integer,flag,text,month,date,boundedAge,sha256} from './protocol.mjs';
 export const academyAuthority=env=>env.AUTHORITY_MODE==='ACADEMY';
+export const freeCourse=scope=>scope?.kind==='COURSE'&&scope.access_model==='FREE';
 export async function accessGate(store,actor,offeringId,{admin=false,live=false}={}){
  if(!academyAuthority(store.env))return null;admin=admin||Boolean(actor.global_admin);
- const row=await store.first(`SELECT s.*,p.generation person_generation,p.verified_at,p.ready,p.windows_json,p.has_allocation,p.course FROM source_access_scopes s LEFT JOIN source_access_people p ON p.offering_id=s.offering_id AND p.account_id=? WHERE s.offering_id=?`,[actor.account_id,offeringId]);
+ const row=await store.first(`SELECT s.*,o.kind,m.access_model,p.generation person_generation,p.verified_at,p.ready,p.windows_json,p.has_allocation,p.course FROM source_access_scopes s JOIN offerings o USING(offering_id) LEFT JOIN course_access_models m USING(offering_id) LEFT JOIN source_access_people p ON p.offering_id=s.offering_id AND p.account_id=? WHERE s.offering_id=?`,[actor.account_id,offeringId]);
+ const free=freeCourse(row)&&!admin;
+ if(free&&await store.first('SELECT 1 FROM source_access_master_fences WHERE account_id=? AND offering_id=?',[actor.account_id,offeringId]))throw Object.assign(fail('Confirm the current Academy master account before continuing.',409,'ACCESS_REFRESH_REQUIRED'),{offeringId});
  if(row?.authority==='WEBSITE'){
   const handover=await store.first("SELECT phase FROM access_handovers WHERE offering_id=?",[offeringId]);
   if(handover?.phase!=='COMMITTED')throw fail('This offering needs a guarded access handover.',409,'HANDOVER_REQUIRED');
@@ -14,6 +17,7 @@ export async function accessGate(store,actor,offeringId,{admin=false,live=false}
  const liveAge=Math.max(30,Math.min(86400,Number(store.env.LIVE_ACCESS_MAX_AGE_SECONDS)||boundedAge(store.env)/1000))*1000,maxAge=live?Math.min(liveAge,boundedAge(store.env,admin)):boundedAge(store.env,admin);
  if(row&&!row.enabled)throw fail('This offering is unavailable in Academy.',403,'SOURCE_SCOPE_UNAVAILABLE');
  if(live&&row?.live_enabled===0)throw fail('Live entry is closed for this offering.',403,'JOIN_CLOSED');
+ if(free)return row.authority==='WEBSITE'?{...row,studio:true}:row;
  if(!row?.ready||row.person_generation!==row.generation||row.verified_at<Date.now()-maxAge)throw Object.assign(fail('Academy access needs to be confirmed.',409,'ACCESS_REFRESH_REQUIRED'),{offeringId});return row?.authority==='WEBSITE'?{...row,studio:true}:row;
 }
 export async function rejectAuthorityWrite(store,offeringId){
@@ -22,7 +26,7 @@ export async function rejectAuthorityWrite(store,offeringId){
  throw fail('Manage enrolment and access in Academy while both systems run in parallel.',409,'ACADEMY_AUTHORITY');
 }
 export function liveAccess(row,scope,now=Date.now()){
- if(!row)return Boolean(scope.live);if(!row.live_enabled||!scope.live||!scope.enrolled||row.studio&&!row.ready)return false;if(row.course)return true;
+ if(!row)return freeCourse(scope)||Boolean(scope.live);if(!row.live_enabled)return false;if(freeCourse(scope))return true;if(!scope.live||!scope.enrolled||row.studio&&!row.ready)return false;if(row.course)return true;
  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:row.timezone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(now)).map(p=>[p.type,p.value])),today=parts.year+'-'+parts.month+'-'+parts.day,windows=JSON.parse(row.windows_json||'[]'),classes=new Set(JSON.parse(row.classes_json).map(c=>c.toLowerCase()));
  return windows.length?windows.some(w=>w.active&&classes.has(w.classId.toLowerCase())&&(!w.start||w.start<=today)&&(!w.end||w.end>=today)):!row.has_allocation&&classes.size===1;
 }
@@ -50,7 +54,7 @@ export async function accessStatements(store,event,version,accountStatements){
   const seen=new Set();for(const w of event.websites){id(w.website_id);date(w.completion_date);if(seen.has(w.website_id))throw fail('Duplicate source website.');seen.add(w.website_id);const mapped=await store.first('SELECT offering_id FROM websites WHERE website_id=?',[w.website_id]);if(!mapped||mapped.offering_id!==offer)throw fail('Source website mapping needs review.',409);}
   out.push(store.statement('INSERT INTO offerings VALUES(?,?,?,?,0) ON CONFLICT(offering_id) DO UPDATE SET active=excluded.active WHERE offerings.kind=excluded.kind',[offer,event.offering.kind,text(event.offering.title),flag(event.enabled)]),store.statement(`INSERT INTO source_access_scopes(offering_id,generation,version,enabled,live_enabled,timezone,classes_json) VALUES(?,?,?,?,?,?,?) ON CONFLICT(offering_id) DO UPDATE SET generation=excluded.generation,version=excluded.version,enabled=excluded.enabled,live_enabled=excluded.live_enabled,timezone=excluded.timezone,classes_json=excluded.classes_json `,[offer,generation,version,flag(event.enabled),flag(Boolean(event.liveEnabled)&&!completed&&!historical),text(event.timezone,100),JSON.stringify(event.classes.map(id))]),store.statement('UPDATE source_access_websites SET enabled=0 WHERE offering_id=?',[offer]));
   if(completed)out.push(store.statement('INSERT INTO completed_course_registrations VALUES(?,?,?,?) ON CONFLICT(offering_id) DO NOTHING',[offer,id(completed.registrationId),id(completed.websiteId),completed.packageSha256]));
-  if(event.offering.kind==='COURSE'){const model=event.accessModel||'PAID';if(!['FREE','PAID'].includes(model))throw fail('Invalid Course access model.');out.push(store.statement('INSERT INTO course_access_models VALUES(?,?) ON CONFLICT(offering_id) DO UPDATE SET access_model=excluded.access_model WHERE NOT EXISTS(SELECT 1 FROM course_publications p WHERE p.offering_id=excluded.offering_id AND p.access_model<>excluded.access_model)',[offer,model]));}
+  if(event.offering.kind==='COURSE'){const model=event.accessModel||'PAID';if(!['FREE','PAID'].includes(model))throw fail('Invalid Course access model.');out.push(store.statement(`INSERT INTO course_access_models VALUES(?,?) ON CONFLICT(offering_id) DO UPDATE SET access_model=excluded.access_model WHERE COALESCE((SELECT authority FROM source_access_scopes s WHERE s.offering_id=excluded.offering_id),'ACADEMY')<>'WEBSITE'`,[offer,model]));}
  if(event.programmeKey!==undefined){if(event.programmeKey!=='mothers'||event.offering.kind!=='TAFSEER'||event.accessModel!=='MONTHLY')throw fail('Invalid independent monthly programme.');const prior=await store.first('SELECT offering_id FROM programme_offerings WHERE programme_key=?',[event.programmeKey]);if(prior&&prior.offering_id!==offer)throw fail('This programme already has a different native identity.',409,'PROGRAMME_MAPPING_CONFLICT');out.push(store.statement("INSERT INTO programme_offerings VALUES('mothers',?,'MONTHLY') ON CONFLICT(programme_key) DO NOTHING",[offer]));}
  for(const w of event.websites)out.push(store.statement('INSERT INTO source_access_websites VALUES(?,?,?) ON CONFLICT(website_id) DO UPDATE SET enabled=excluded.enabled',[w.website_id,offer,flag(Boolean(w.active))]),store.statement('UPDATE websites SET completion_date=?,completion_month=? WHERE website_id=?',[w.completion_date,w.completion_date.slice(0,7),w.website_id]));
  }else{
@@ -80,6 +84,7 @@ export async function joinAudience(store,actor,offeringId,session,scope){
  const source=await accessGate(store,actor,offeringId,{live:true});if(!source)return;
  if(actor.global_admin||scope.role==='ADMIN')return;
  const audience=await store.first('SELECT * FROM source_session_audiences WHERE session_id=?',[session.session_id]);if(!audience)throw fail('Academy session audience has not been confirmed.',403,'JOIN_AUDIENCE');
+ if(freeCourse(scope)&&JSON.parse(audience.class_ids_json).length&&(!source.ready||source.person_generation!==source.generation||source.verified_at<Date.now()-boundedAge(store.env)))throw Object.assign(fail('Confirm the current class allocation for this session.',409,'ACCESS_REFRESH_REQUIRED'),{offeringId});
  if(permittedSessionAudience(actor,scope,source,audience,session))return;
  throw fail('This session belongs to another Academy audience.',403,'JOIN_AUDIENCE');
 }
@@ -87,8 +92,9 @@ export function permittedSessionAudience(actor,scope,source,audience,session){
  if(!source||actor.global_admin||scope.role==='ADMIN')return true;
  if(!audience?.teacher_ids_json||!audience.class_ids_json)return false;
  const teachers=JSON.parse(audience.teacher_ids_json).map(v=>v.toLowerCase());if(scope.role==='TEACHER'&&teachers.includes(actor.account_id.toLowerCase()))return true;
- if(source.course&&scope.live)return true;
- if(!source.course&&scope.enrolled&&source.live_enabled){const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:source.timezone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(session.starts_at)).map(p=>[p.type,p.value])),day=parts.year+'-'+parts.month+'-'+parts.day,classes=new Set(JSON.parse(source.classes_json).map(v=>v.toLowerCase())),sessionClasses=JSON.parse(audience.class_ids_json).map(v=>v.toLowerCase()),windows=JSON.parse(source.windows_json||'[]');
+ const course=source.kind==='COURSE'||source.course,sessionClasses=JSON.parse(audience.class_ids_json).map(v=>v.toLowerCase());
+ if(course&&(scope.live||freeCourse(scope))&&!sessionClasses.length)return true;
+ if((course?(scope.live||freeCourse(scope)):scope.enrolled)&&source.live_enabled){const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:source.timezone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(session.starts_at)).map(p=>[p.type,p.value])),day=parts.year+'-'+parts.month+'-'+parts.day,classes=new Set(JSON.parse(source.classes_json).map(v=>v.toLowerCase())),windows=JSON.parse(source.windows_json||'[]');
   if(windows.length?windows.some(w=>w.active&&classes.has(w.classId.toLowerCase())&&sessionClasses.includes(w.classId.toLowerCase())&&(!w.start||w.start<=day)&&(!w.end||w.end>=day)):!source.has_allocation&&classes.size===1&&sessionClasses.some(c=>classes.has(c)))return true;
  }
  return false;

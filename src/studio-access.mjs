@@ -2,6 +2,7 @@ import {academyAuthority} from './access.mjs';
 import {signedInput,receive} from './integration.mjs';
 import {fail,id,integer,sha256,boundedAge} from './protocol.mjs';
 import {change} from './admin.mjs';
+import {coursePolicy} from './course-policy.mjs';
 import {beginProvision,resumeProvision} from './enrolment.mjs';
 
 const revisionSQL='COALESCE((SELECT revision FROM access_revisions WHERE offering_id=?),0)=?';
@@ -22,10 +23,11 @@ export async function studioAccess(request,env,store,fetcher){
  const offer=id(input.offeringId),command=input.command||{};if(!command.action?.startsWith('handover-'))await store.scope(actor,offer,{admin:true});let result;
  if(command.action==='read')result=await readAccess(store,actor,offer,command);
  else if(command.action==='save'){
-  if(!['access-batch','participant','paid-months','website-months','surah-grant','staff','mou-subject'].includes(command.change?.action))throw fail('Choose a supported access change.');
+  if(!['access-batch','participant','paid-months','website-months','surah-grant','staff','mou-subject','course-policy'].includes(command.change?.action))throw fail('Choose a supported access change.');
   const expected=integer(command.revision),options={expectedSQL:revisionSQL,expectedArgs:[offer,expected]};
   // Native Save preserves exact operation receipts, scope checks and mutation guards.
   result=await change(env,store,actor,offer,command.change,options);
+  if(command.change.action==='course-policy')result={...result,coursePolicy:await coursePolicy(store,offer)};
  }else if(command.action==='provision')result=await beginProvision(store,actor,offer,command.input||{});
  else if(command.action==='resume')result=await resumeProvision(env,store,actor,offer,command.input||{},fetcher);
  else if(command.action?.startsWith('handover-'))result=await handover(store,actor,offer,command);
@@ -37,7 +39,8 @@ export async function studioAccess(request,env,store,fetcher){
 export async function readAccess(store,actor,offer,input){
  const scope=await store.scope(actor,offer,{admin:true});const current=await revision(store,offer),after=input.after?id(input.after):'',accountId=input.accountId?id(input.accountId):null;
  const ownership=await store.first('SELECT s.authority,h.phase FROM source_access_scopes s LEFT JOIN access_handovers h USING(offering_id) WHERE s.offering_id=?',[offer]);
- if(input.known?.revision===current&&input.known?.after===after&&input.known?.accountId===accountId)return {notModified:true,revision:current,ownership};
+ const policy=scope.kind==='COURSE'?await coursePolicy(store,offer):null;
+ if(input.known?.revision===current&&input.known?.after===after&&input.known?.accountId===accountId)return {notModified:true,revision:current,ownership,coursePolicy:policy};
  const participants=await store.all(`SELECT m.account_id,a.display_name,a.active,a.admitted,COALESCE(p.enrolled,0) enrolled,COALESCE(p.live,0) live,COALESCE(p.purchased,0) purchased,COALESCE(p.cohort,'') cohort,s.role,s.can_create_account FROM access_members m JOIN accounts a USING(account_id) LEFT JOIN participation p ON p.account_id=m.account_id AND p.offering_id=m.offering_id LEFT JOIN staff s ON s.account_id=m.account_id AND s.offering_id=m.offering_id WHERE m.offering_id=? AND m.account_id>? ORDER BY m.account_id LIMIT 26`,[offer,after]);
  const websites=await store.all('SELECT website_id,title,completion_month,enabled FROM websites WHERE offering_id=? ORDER BY website_id LIMIT 129',[offer]);if(websites.length>128)throw fail('This offering needs a narrower website selector.',409);
  let person=null;
@@ -47,7 +50,7 @@ export async function readAccess(store,actor,offer,input){
   person={...account,months,websiteMonths:websiteMonths.map(m=>m.month),grants,liveFacts:await store.first('SELECT windows_json,has_allocation,course,verified_at,ready FROM source_access_people WHERE account_id=? AND offering_id=?',[accountId,offer])};
  }
  const pendingJobs=await store.all("SELECT operation_id,state,account_id FROM provisioning INDEXED BY provisioning_pending_actor WHERE offering_id=? AND actor_id=? AND state<>'COMPLETE' ORDER BY operation_id LIMIT 11",[offer,actor.account_id]);
- return {revision:current,ownership,kind:scope.kind,pendingJobs,canLinkAccount:Boolean(actor.global_admin),canChangeStaff:Boolean(actor.global_admin&&!academyAuthority(store.env)),participants:participants.slice(0,25),more:participants.length>25,next:participants.length>25?participants[24].account_id:null,websites,person};
+ return {revision:current,ownership,kind:scope.kind,coursePolicy:policy,pendingJobs,canLinkAccount:Boolean(actor.global_admin),canChangeStaff:Boolean(actor.global_admin&&!academyAuthority(store.env)),participants:participants.slice(0,25),more:participants.length>25,next:participants.length>25?participants[24].account_id:null,websites,person};
 }
 
 export async function handover(store,actor,offer,input){

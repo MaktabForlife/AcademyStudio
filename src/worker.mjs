@@ -6,6 +6,7 @@ import {circlesNavigation,programmeSnapshot} from './navigation.mjs';
 import {publicCatalogue,catalogueAccess,permittedGuideBindings,websitePresentation} from './circles.mjs';
 import {academyAuthority,accessGate,joinAudience} from './access.mjs';
 import {recordingScopedDocument} from './recorded-support.mjs';
+import {coursePolicy,coursePolicyEpoch} from './course-policy.mjs';
 import {Store} from './database.mjs';
 import {fail,failure,json,bodyJSON,parseCookie,sha256,originCheck,cookie,id,text,integer,bytes,signedHeaders,safeToken,boundedAge} from './protocol.mjs';
 import {receive,exchange} from './integration.mjs';
@@ -45,19 +46,20 @@ async function route(request,env,store,fetcher){
  if(method==='POST'||method==='PUT'||method==='DELETE')originCheck(request,env);
  if(path==='/auth/login'&&method==='POST')return forwardSignIn(request,env,store,await bodyJSON(request.body,4096),fetcher);
  if(path==='/auth/exchange'&&method==='POST'){const previous=parseCookie(request),result=await exchange(await bodyJSON(request.body,4096),env,store);if(previous)await store.run('UPDATE sessions SET revoked=1 WHERE token_hash=?',[await sha256(previous)]);return json({signedIn:true,accountId:result.accountId},200,{'Set-Cookie':result.cookie});}
- const token=parseCookie(request);if(!token)throw fail('Sign in to Academy to continue.',401,'SIGN_IN_REQUIRED');const actor=await store.actor(await sha256(token),Date.now(),{allowExpiredStatus:path==='/auth/refresh'||path==='/auth/logout'});
+ const token=parseCookie(request);if(!token)throw fail('Sign in to Academy to continue.',401,'SIGN_IN_REQUIRED');const actor=await store.actor(await sha256(token),Date.now(),{allowExpiredStatus:path==='/auth/refresh'||path==='/auth/access'||path==='/auth/logout'});
  if((path==='/auth/refresh'||path==='/auth/access')&&method==='POST'){
+  const input=await bodyJSON(request.body,4096),offeringId=input.offeringId?id(input.offeringId):undefined;
   if(!actor.source_ref)throw fail('Sign in to Academy to refresh this session.',401);if(path==='/auth/refresh'&&actor.verified_at>=Date.now()-boundedAge(env,true))return json({verifiedAt:actor.verified_at});
   const claimId=crypto.randomUUID(),claimed=await store.all('INSERT INTO refresh_claims VALUES(?,?,?) ON CONFLICT(account_id) DO UPDATE SET claim_id=excluded.claim_id,expires_at=excluded.expires_at WHERE refresh_claims.expires_at<? RETURNING claim_id',[actor.account_id,claimId,Date.now()+30_000,Date.now()]);
   if(!claimed.length)throw fail('Your account refresh is already in progress. Retry the action shortly.',409,'REFRESH_PENDING');
-  try{await academyCommand(env,store,'/internal/website/status',{sourceRef:actor.source_ref},fetcher);const current=await store.actor(actor.token_hash);return json({verifiedAt:current.verified_at});}finally{await store.run('DELETE FROM refresh_claims WHERE account_id=? AND claim_id=?',[actor.account_id,claimId]);}
+  try{await academyCommand(env,store,'/internal/website/status',{sourceRef:actor.source_ref,...(offeringId?{offeringId}:{})},fetcher);const current=await store.actor(actor.token_hash);return json({verifiedAt:current.verified_at});}finally{await store.run('DELETE FROM refresh_claims WHERE account_id=? AND claim_id=?',[actor.account_id,claimId]);}
  }
  if(path==='/auth/academy'&&method==='POST'){const input=await bodyJSON(request.body,4096);if(!actor.source_ref||!safeToken(input.challenge)||!safeToken(input.state))throw fail('Reopen Academy from the website.',401);let library;
   if(input.navigation&&!['alimiyah','reboot','arabic-intensive','hifz'].includes(input.navigation))throw fail('Choose an authorised programme.',403);if([input.navigation,input.library,input.dashboard].filter(Boolean).length>1)throw fail('Choose one destination.');
   if(input.library){const website=await websiteAccess(store,actor,id(input.library.websiteId)),lessonId=input.library.lessonId?id(input.library.lessonId):null;if(lessonId){const document=website.published_key?await objectJSON(env.CONTENT,website.published_key):null;if(!document?.lessons.some(l=>l.id===lessonId))throw fail('Choose a published lesson for the Library return.',404);}library={websiteId:website.website_id,lessonId};}
   const result=await academyCommand(env,store,'/internal/website/open-academy',{sourceRef:actor.source_ref,challenge:input.challenge,state:input.state,...(library?{library}:{}),...(input.navigation?{navigation:input.navigation}:{}),...(input.dashboard?{dashboard:input.dashboard}:{})},fetcher);if(!safeToken(result.code))throw fail('Academy could not prepare the handoff.',503);return json({code:result.code});}
  if(path==='/auth/logout'&&method==='POST'){await store.run('UPDATE sessions SET revoked=1 WHERE token_hash=?',[actor.token_hash]);return json({signedOut:true},200,{'Set-Cookie':cookie('',0)});}
- if(path==='/api/me'&&method==='GET')return json({accountId:actor.account_id,displayName:actor.display_name,globalAdmin:Boolean(actor.global_admin),verifiedAt:actor.verified_at});
+ if(path==='/api/me'&&method==='GET')return json({accountId:actor.account_id,displayName:actor.display_name,globalAdmin:Boolean(actor.global_admin),verifiedAt:actor.verified_at,coursePolicyEpoch:await coursePolicyEpoch(store)});
  if(path==='/api/circles/dashboard'&&method==='POST')return json(await dashboardSnapshot(env,store,actor,await bodyJSON(request.body,4096),fetcher));
  if(path==='/api/circles/navigation'&&method==='GET')return json(await circlesNavigation(env,store,actor));
  if(path==='/api/circles/classrooms/mothers'&&method==='GET'){return json(await mouClassroom(store,actor));}
@@ -68,7 +70,7 @@ async function route(request,env,store,fetcher){
   const after=url.searchParams.get('after')||'',parallel=academyAuthority(env),sourceFilter=parallel?` AND EXISTS(SELECT 1 FROM source_access_scopes x WHERE x.offering_id=w.offering_id AND (x.authority='WEBSITE' OR x.enabled=1 AND EXISTS(SELECT 1 FROM source_access_people ap WHERE ap.offering_id=x.offering_id AND ap.account_id=? AND ap.ready=1 AND ap.generation=x.generation AND ap.verified_at>=CASE WHEN ?=1 OR EXISTS(SELECT 1 FROM staff sf WHERE sf.account_id=ap.account_id AND sf.offering_id=ap.offering_id) THEN ? ELSE ? END) AND (o.kind<>'TAFSEER' OR EXISTS(SELECT 1 FROM source_access_websites sw WHERE sw.website_id=w.website_id AND sw.enabled=1))))`:'',sourceArgs=parallel?[actor.account_id,Number(actor.global_admin),Date.now()-boundedAge(env,true),Date.now()-boundedAge(env)]:[],rows=actor.global_admin?
    await store.all(`SELECT w.website_id,w.title,w.offering_id,w.completion_month,w.enabled FROM websites w JOIN offerings o USING(offering_id) WHERE w.website_id>? AND o.active=1${sourceFilter} ORDER BY w.website_id LIMIT 51`,[after,...sourceArgs]):
    await store.all(`WITH mine AS (
-    SELECT w.website_id FROM participation p JOIN offerings o USING(offering_id) JOIN websites w USING(offering_id) WHERE p.account_id=? AND p.purchased=1 AND o.kind='COURSE'
+    SELECT w.website_id FROM participation p JOIN offerings o USING(offering_id) JOIN websites w USING(offering_id) WHERE p.account_id=? AND p.purchased=1 AND o.kind='COURSE' AND COALESCE((SELECT access_model FROM course_access_models m WHERE m.offering_id=p.offering_id),'PAID')='PAID'
     UNION SELECT w.website_id FROM paid_months p JOIN offerings o USING(offering_id) JOIN websites w ON w.offering_id=p.offering_id AND w.completion_month=p.month WHERE p.account_id=? AND o.kind='TAFSEER'
     UNION SELECT w.website_id FROM website_months m JOIN websites w ON w.offering_id=m.offering_id AND w.completion_month=m.month WHERE m.account_id=?
     UNION SELECT w.website_id FROM staff s JOIN websites w USING(offering_id) WHERE s.account_id=?
@@ -83,7 +85,7 @@ async function route(request,env,store,fetcher){
   const website=await websiteAccess(store,actor,websiteId,{admin:Boolean(action)}),key=action?website.draft_key:website.published_key;
   const rawDocument=key?await objectJSON(env.CONTENT,key):null,{document,contentAccess}=rawDocument&&!action?await recordingScopedDocument(env,store,actor,website,rawDocument):{document:rawDocument,contentAccess:{mode:'FULL_TEXT'}};
   const assets=await editionAssets(store,websiteId,document,{draft:Boolean(action)});
-  return json({websiteId,offeringId:website.offering_id,kind:website.kind,presentation:await websitePresentation(env,website),revision:website.revision,document,contentAccess,assets,enabled:Boolean(website.enabled),canEdit:Boolean(actor.global_admin||website.role==='ADMIN'),draftVersion:contentVersion(website.draft_key),publishedVersion:contentVersion(website.published_key),capabilities:{assessments:false,journal:false,liveSessions:!website.completed_course}});
+  return json({websiteId,offeringId:website.offering_id,kind:website.kind,programmeKey:website.programme_key||null,coursePolicy:website.kind==='COURSE'?await coursePolicy(store,website.offering_id):null,presentation:await websitePresentation(env,website),revision:website.revision,document,contentAccess,assets,enabled:Boolean(website.enabled),canEdit:Boolean(actor.global_admin||website.role==='ADMIN'),draftVersion:contentVersion(website.draft_key),publishedVersion:contentVersion(website.published_key),capabilities:{assessments:false,journal:false,liveSessions:!website.completed_course}});
  }
  match=path.match(/^\/api\/media\/([-A-Za-z0-9_:]+)$/);if(match&&['GET','HEAD'].includes(method)){const row=await mediaGate(store,actor,match[1],{admin:url.searchParams.get('draft')==='1'});return streamMedia(env,row,request);}
  match=path.match(/^\/api\/offerings\/([-A-Za-z0-9_:]+)\/(sessions|media|join|enrol|provision|resume)$/);
@@ -116,7 +118,7 @@ async function route(request,env,store,fetcher){
   if(sub==='recording'&&method==='PUT')return json(await recording(env,store,actor,offeringId,{action:'part',assetId:url.searchParams.get('assetId'),partNumber:Number(url.searchParams.get('partNumber'))},request));
   if(sub==='recording'&&method==='POST')return json(await recording(env,store,actor,offeringId,await bodyJSON(request.body,1_000_000),request));
   if(method==='POST')return json(await change(env,store,actor,offeringId,await bodyJSON(request.body)));
-  if(method==='GET'){const after=url.searchParams.get('after')||'';return json({
+  if(method==='GET'){const after=url.searchParams.get('after')||'';return json({coursePolicy:await coursePolicy(store,offeringId),
    canManageContent:!academyAuthority(env)||Boolean(adminScope.studioAuthority),
    participants:await store.all('SELECT p.*,a.display_name FROM participation p JOIN accounts a USING(account_id) WHERE p.offering_id=? AND p.account_id>? ORDER BY p.account_id LIMIT 51',[offeringId,after]),
    websites:await store.all('SELECT website_id,title,completion_month,revision,enabled FROM websites WHERE offering_id=? ORDER BY website_id LIMIT 100',[offeringId]),
