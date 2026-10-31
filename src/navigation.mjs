@@ -29,5 +29,9 @@ export async function circlesNavigation(env,store,actor){
   FROM json_each(?) r JOIN websites w ON w.website_id=r.value`,[JSON.stringify([...purchased])]):[];
  const latest=new Map(dates.map(r=>[r.website_id,r.latest_class]));
  const purchasedCourses=items.filter(i=>purchased.has(i.websiteId)).map(i=>({key:i.key,label:i.title,href:'/studio/?website='+encodeURIComponent(id(i.websiteId)),cover:i.cover,latestClass:latest.get(i.websiteId)||null})).sort((a,b)=>(b.latestClass||0)-(a.latestClass||0)||a.label.localeCompare(b.label));
- return {academia:['alimiyah','reboot','arabic-intensive'].filter(k=>programmes.includes(k)).map(key=>({key,label:programmeLabels[key]})),mothers:programmes.includes('mothers'),hifz:programmes.includes('hifz')?'https://hifz.maktab4life.org/':null,tafseer:'/studio/?view=collections&collection=tafseer',shortCourses:items.filter(i=>permitted.has(i.websiteId)).map(i=>({label:i.title,href:'/studio/?website='+encodeURIComponent(id(i.websiteId))})),purchasedCourses};
+ // Surface existing Global Admin reader access separately from actual purchases.
+ // Reuse the already checked local rights/policy result; never grant or buy here.
+ const adminPaid=new Set(actor.global_admin?rights.websites.filter(r=>r.canOpen&&r.coursePolicy?.model==='PAID').map(r=>r.websiteId):[]);
+ const adminCourses=items.filter(i=>adminPaid.has(i.websiteId)).map(i=>({key:i.key,label:i.title,href:'/studio/?website='+encodeURIComponent(id(i.websiteId)),cover:i.cover,accessLabel:'Admin access'}));
+ return {academia:['alimiyah','reboot','arabic-intensive'].filter(k=>programmes.includes(k)).map(key=>({key,label:programmeLabels[key]})),mothers:programmes.includes('mothers'),hifz:programmes.includes('hifz')?'https://hifz.maktab4life.org/':null,tafseer:'/studio/?view=collections&collection=tafseer',shortCourses:items.filter(i=>permitted.has(i.websiteId)).map(i=>({label:i.title,href:'/studio/?website='+encodeURIComponent(id(i.websiteId))})),purchasedCourses,adminCourses};
 }

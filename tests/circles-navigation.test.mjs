@@ -20,6 +20,9 @@ test('native programme membership filters circle menus independently of short Co
   const inherited=ok(await f.request('/api/circles/navigation',{cookie:admin}));assert(inherited.mothers);assert.equal(inherited.academia.length,1);
   assert.equal(mine.purchasedCourses.length,1);assert.equal(mine.purchasedCourses[0].href,'/studio/?website=site-course');
   assert.deepEqual(theirs.purchasedCourses,[]);assert.deepEqual(inherited.purchasedCourses,[],'Staff authority alone never becomes a purchased course');
+  assert.deepEqual(mine.adminCourses,[]);assert.deepEqual(theirs.adminCourses,[]);
+  assert.equal(inherited.adminCourses.length,1);assert.equal(inherited.adminCourses[0].href,'/studio/?website=site-course');assert.equal(inherited.adminCourses[0].accessLabel,'Admin access');
+  assert.equal((await f.request('/api/websites/site-course',{cookie:admin})).status,200,'The existing Global Admin reader gate already permits the course without a purchase');
   const previousClass=Date.now()-86400000;await f.run("UPDATE timetable SET starts_at=?,ends_at=? WHERE offering_id='course'",previousClass,previousClass+3600000);
   const completed=ok(await f.request('/api/circles/navigation',{cookie}));assert.equal(completed.purchasedCourses.length,1,'A completed class does not expire purchased course content');assert.equal(completed.purchasedCourses[0].latestClass,previousClass);
   await f.run('UPDATE accounts SET verified_at=? WHERE account_id=?',Date.now()-61_000,f.source.f.actors.global);await f.run('UPDATE source_access_people SET verified_at=? WHERE account_id=?',Date.now()-61_000,f.source.f.actors.global);f.source.resetMetrics();ok(await f.request('/api/circles/navigation',{cookie:admin}));assert.equal(f.source.metrics.queries,0,'An ordinary staff menu is not a sensitive Admin operation');assert.notEqual((await f.request('/api/websites/site-course/edit',{cookie:admin})).status,200,'The destination retains the sensitive Admin freshness check');
