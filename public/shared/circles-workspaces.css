@@ -56,3 +56,68 @@ body.circles-ui-workspace{--ink:#44363f;--accent:#67515f;--soft:#eee5e8;--paper:
 @media(prefers-reduced-motion:reduce){.circles-button-dashboard *{animation:none!important;transition:none!important}}
 
 .academy-brand .circles-release-version{display:block;margin-top:4px;color:#796a72;font:500 11px/1.4 'DM Sans',Arial,sans-serif;letter-spacing:.04em}
+
+/* Local review: the working panels below the circle, shared by all role views. */
+#circles-dashboard{padding:24px 0 32px;scroll-margin-top:20px}
+#circles-dashboard .circles-dashboard-heading{gap:16px;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid #dfd4d7}
+#circles-dashboard .circles-dashboard-heading .eyebrow{font-size:10px;letter-spacing:.14em;margin:0;color:#8c6879}
+#circles-dashboard .circles-dashboard-heading h2{font-family:'Libre Caslon Display',Georgia,serif;font-size:34px;line-height:1.12;letter-spacing:-.025em;margin:5px 0 6px}
+#circles-dashboard .circles-dashboard-heading p:last-child{font-size:11px;color:#796c74;margin:0}
+#circles-dashboard :is(button,.circles-dashboard-link){display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:8px 13px;border-color:#dacdd2;border-radius:7px;font:500 12px/1.3 'DM Sans',Arial,sans-serif;text-align:center;white-space:normal;transition:background .15s,border-color .15s}
+#circles-dashboard :is(button,.circles-dashboard-link):hover{background:#eee5e9;border-color:#a88d9a}
+#circles-dashboard [data-circles-dashboard-refresh]{background:#68515f;border-color:#68515f;color:#fffdf8;flex:none}
+#circles-dashboard [data-circles-dashboard-refresh]:hover{background:#56414e}
+#circles-dashboard .circles-dashboard-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:stretch}
+#circles-dashboard .circles-dashboard-panel{min-width:0;padding:18px;border-radius:10px;border-color:#e2d7db;background:#fffcf8;box-shadow:0 2px 5px #43313b03}
+#circles-dashboard .circles-dashboard-panel h3{font-family:'Libre Caslon Display',Georgia,serif;font-size:24px;line-height:1.15;letter-spacing:-.015em;margin:0 0 14px;color:#493842}
+#circles-dashboard .circles-dashboard-panel h4{font:600 11px/1.5 'DM Sans',Arial,sans-serif;letter-spacing:.035em;color:#79616e;padding-top:12px;margin:14px 0 8px}
+#circles-dashboard .circles-dashboard-panel :is(p,.circles-dashboard-empty){font-size:12px;line-height:1.55;color:#796c74;margin:5px 0 10px}
+#circles-dashboard .circles-dashboard-panel strong{font-size:13px;line-height:1.45;color:#493842}
+#circles-dashboard .circles-dashboard-panel li{gap:12px;padding:11px 0;border-color:#eee6e8}
+#circles-dashboard .circles-dashboard-panel li>div{min-width:0}
+#circles-dashboard .circles-dashboard-panel li>button,#circles-dashboard .circles-dashboard-link{flex:none}
+/* Semantic sections keep the same visual and keyboard reading order. */
+#circles-dashboard .circles-areas{grid-column:1/3}
+#circles-dashboard .circles-week{grid-column:3}
+#circles-dashboard .circles-attention{grid-column:auto}
+#circles-dashboard .circles-calendar{grid-column:1}
+#circles-dashboard .circles-tools{grid-column:2/4}
+#circles-dashboard .circles-areas>ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+#circles-dashboard .circles-areas>ul>li{align-items:center;gap:10px;min-height:66px;padding:10px;border:1px solid #e7dfe1;border-radius:7px;background:#f8f4ef}
+#circles-dashboard .circles-dashboard-panel.circles-areas>ul>li p{font-size:11px;line-height:1.4;letter-spacing:.015em;margin:4px 0 0}
+#circles-dashboard .circles-week>ul{max-height:270px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;padding-right:4px;margin:4px 0 12px}
+#circles-dashboard .circles-programme-entry summary{gap:10px;padding:3px 0}
+#circles-dashboard .circles-session-info{display:inline-flex;align-items:center;justify-content:center;flex:none;width:32px;height:32px;padding:0;border:1px solid #d8c8d0;border-radius:50%;color:#76596a;text-decoration:none;font-size:20px;background:#f6edf1}
+#circles-dashboard details[open] .circles-session-info{background:#68515f;color:#fffdf8;border-color:#68515f}
+#circles-dashboard .circles-day-lessons{padding:5px 0 3px}
+#circles-dashboard .circles-day-lessons li{padding:9px 0}
+#circles-dashboard .circles-day-lessons h4{margin-top:7px}
+#circles-dashboard nav[aria-label="Dashboard tools"]{display:grid;gap:8px;grid-template-columns:repeat(3,minmax(0,1fr))}
+#circles-dashboard nav[aria-label="Dashboard tools"] button{justify-content:center;padding:10px 13px;background:#f8f4ef}
+#circles-dashboard :is(button,a,summary):focus-visible{outline:3px solid #ab7e96;outline-offset:3px}
+@media(max-width:1100px){
+ #circles-dashboard .circles-dashboard-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #circles-dashboard .circles-areas{grid-column:1}
+ #circles-dashboard .circles-week{grid-column:2}
+ #circles-dashboard .circles-calendar{grid-column:auto}
+ #circles-dashboard .circles-tools{grid-column:1/-1}
+ #circles-dashboard .circles-areas>ul{grid-template-columns:1fr}
+}
+@media(max-width:700px){
+ #circles-dashboard .circles-dashboard-grid{grid-template-columns:1fr;gap:12px}
+ #circles-dashboard nav[aria-label="Dashboard tools"]{grid-template-columns:1fr}
+ #circles-dashboard .circles-dashboard-grid>.circles-dashboard-panel{grid-column:1!important}
+ #circles-dashboard .circles-dashboard-panel{padding:18px}
+ #circles-dashboard .circles-dashboard-heading{align-items:center;gap:12px}
+ #circles-dashboard .circles-dashboard-heading h2{font-size:28px}
+ #circles-dashboard .circles-dashboard-heading button{max-width:100px;font-size:11px}
+ #circles-dashboard .circles-week>ul{max-height:none;overflow:visible;padding-right:0}
+ #circles-dashboard .circles-dashboard-panel li{flex-wrap:nowrap}
+ #circles-dashboard .circles-areas>ul{grid-template-columns:1fr}
+ #circles-dashboard :is(button,.circles-dashboard-link){min-height:42px}
+}
+
+/* The signed-in dashboard ends at its working panels. Public-view switching
+   removes circles-button-dashboard and restores these homepage sections. */
+.circle .single-circle-home.circles-button-dashboard~#academy-news,
+.circle .single-circle-home.circles-button-dashboard~#academy-news~*{display:none!important}

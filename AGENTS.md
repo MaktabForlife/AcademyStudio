@@ -1,3 +1,9 @@
+# Current homepage work — LOCAL ONLY, 31 October 2026
+
+- Latest owner instruction in Circles migration: “add the current version to the home page. dont deploy”. V109.1.1 had already completed; no rollback was requested. All further homepage-reference/course activation work stays local pending review and new deployment approval.
+- Local9031 must reuse the single CURRENT V109.1.1 homepage label and the owner’s18:42 public-reference arrangement. Preserve the signed-in dashboard button columns and browser text/layout drafts. The frozen deployed109.1.1 asset tree stays read-only.
+- Migration owns the isolated five-card activation patch on feature/circles-homecourse-active. The five requested free cards supersede their former inactive hold; await and compose its tested patch instead of duplicating it. All existing rights, native routes, R2 content, bindings and origins remain intact.
+
 # V109.1.1 homepage version label — 31 October 2026
 
 - The owner requested adding the homepage version to the live V109.1 website. Deploy this small website-only follow-up as V109.1.1, preserving the exact V109.1 composition and Source Pages/API. Use tools/prepare-ui-10911.mjs and wrangler.ui-10911.jsonc. All prior rights/content/origin/binding/domain guards remain.
