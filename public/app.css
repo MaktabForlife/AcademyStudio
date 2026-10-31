@@ -14,4 +14,6 @@
 
 .site-header .header-nav-button{display:inline-flex;align-items:center;justify-content:center;min-width:40px;width:40px;height:40px;padding:9px;border:0;border-radius:50%}
 
+#my-learning.mou-active>p,#my-learning.mou-active>h1{display:none}.mou-programme{display:grid;gap:24px}.mou-programme>header{position:relative;padding-right:80px}.mou-programme>header h1{font-size:clamp(32px,5vw,60px);margin:16px 0}.mou-programme [data-mou-refresh]{position:absolute;top:24px;right:24px;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:9px;border-radius:50%}.mou-programme>section>h2{margin-top:0}.mou-programme time{overflow-wrap:anywhere}
+
 .circles-header-dates{grid-column:1/-1;flex-basis:100%;width:100%;text-align:right;color:#7b6c74;font:400 11px/1.5 var(--sans,Arial,sans-serif)}.public-home-header:has(.circles-header-dates),.site-header:has(.circles-header-dates){flex-wrap:wrap}.circles-header-dates time{white-space:nowrap}@media(max-width:600px){.circles-header-dates{text-align:center;font-size:10px}}

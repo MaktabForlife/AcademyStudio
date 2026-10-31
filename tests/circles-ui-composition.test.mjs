@@ -20,7 +20,7 @@ test('the connected composition keeps private course/MOU payloads and localhost 
   assert.deepEqual(await source.resolveCoursePlayback({key:'resilience'},{id:'abcdefghijk'},0,{location:{hostname:'localhost'}}),{mode:'pending'});
   assert.deepEqual(await source.loadCourseSource({key:'surah-al-kahf',access:'paid'},{location:{hostname:'localhost'},fetcher:()=>assert.fail('No private payload fallback'),adapter:{loadCourse:async()=>({access:'denied'})}}),{mode:'locked'});
  }finally{delete globalThis.AcademyConnectedCirclesUI;}
- const publicPayloads=await readdir(join(build,'circles/free-learning'));assert.deepEqual(publicPayloads.sort(),['imratun-muminah.json','ulumul-quran-notes.pdf','ulumul-quran.json']);
+ const publicPayloads=await readdir(join(build,'circles/free-learning'));assert.deepEqual(publicPayloads.sort(),['ulumul-quran-notes.pdf','ulumul-quran.json']);
  assert((await read('circles/free-learning.html')).includes('AcademyConnectedCirclesUI=true'));assert((await read('circles/podcast-view.mjs')).includes('Materials coming soon'));
  const subject=await read('circles/academy/mothers/surah-al-baqarah/index.html');assert(subject.includes('AcademyConnectedCirclesUI=true'));assert(subject.includes('/studio/?classroom=mothers'));
 });

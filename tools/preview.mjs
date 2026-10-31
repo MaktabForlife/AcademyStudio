@@ -1,16 +1,25 @@
-import {createServer} from 'node:http';import {readFile,stat} from 'node:fs/promises';import {resolve,extname} from 'node:path';import {Readable} from 'node:stream';import {fixture} from '../tests/fixture.mjs';
+import {createServer} from 'node:http';import {readFile,stat} from 'node:fs/promises';import {resolve,extname} from 'node:path';import {pathToFileURL} from 'node:url';import {Readable} from 'node:stream';import {fixture as localFixture} from '../tests/fixture.mjs';
 
 // Disposable, synthetic data only. These origins never contact a hosted account.
 const sitePort=Number(process.env.PREVIEW_PORT||8791),academyPort=sitePort+1;
 if(!Number.isInteger(sitePort)||sitePort<1024||sitePort>65534)throw Error('Choose a local preview port between 1024 and 65534.');
 const previewHost=process.env.PREVIEW_HOST||'localhost';if(!['localhost','127.0.0.1'].includes(previewHost))throw Error('Use a loopback preview host.');
 const websiteOrigin='http://'+previewHost+':'+sitePort,academyOrigin='http://'+previewHost+':'+academyPort;
-const publicRoot=resolve(process.env.PREVIEW_PUBLIC_ROOT||'public'),circles=process.env.PREVIEW_CIRCLES==='1',f=await fixture({academy:true,authorityMode:circles?'ACADEMY':'WEBSITE',...(process.env.PREVIEW_NAVIGATION==='1'?{dashboard:true,navigation:{mothers:'programA',alimiyah:'programB'},verification:{accountSeconds:43200,liveSeconds:43200,adminSeconds:60}}:{})});
+const publicRoot=resolve(process.env.PREVIEW_PUBLIC_ROOT||'public'),circles=process.env.PREVIEW_CIRCLES==='1',mou=Boolean(process.env.MOU_BACKEND_ROOT);
+if(mou&&(!circles||process.env.PREVIEW_NAVIGATION!=='1'))throw Error('The paired MOU preview requires the synthetic Circles navigation fixture.');
+const fixture=mou?(await import(pathToFileURL(resolve(process.env.MOU_BACKEND_ROOT,'tests/fixture.mjs')))).fixture:localFixture;
+const f=await fixture({academy:true,authorityMode:circles?'ACADEMY':'WEBSITE',...(mou?{mou:true}:{}),...(process.env.PREVIEW_NAVIGATION==='1'?{dashboard:true,navigation:{mothers:mou?'programB':'programA',alimiyah:mou?'programA':'programB'},verification:{accountSeconds:43200,liveSeconds:43200,adminSeconds:60}}:{})});
 if(circles){const {circlesFixture}=await import('../tests/circles-fixture.mjs');const x=await circlesFixture(f);await x.recover(8);}else{
 for(const [account,globalAdmin] of [[f.source.f.actors.global,1],[f.source.f.actors.studentA,0]])await f.run('INSERT INTO accounts VALUES(?,?,1,1,1,?,?)',account,'Synthetic Academy '+(globalAdmin?'Admin':'Learner'),Date.now(),globalAdmin);
 await f.run("INSERT INTO participation VALUES(?,'course',1,1,1,'')",f.source.f.actors.studentA);
 const {seedTimetables}=await import('../tests/timetable-fixture.mjs');await seedTimetables(f);await f.runtime.dispatchFetch('https://academy.test/__local/recover');
 if(process.env.PREVIEW_CONTENT_ROOT){const{seedReviewedWebsites}=await import('./seed-reviewed-websites.mjs');console.log(JSON.stringify({contentReview:await seedReviewedWebsites(f,process.env.PREVIEW_CONTENT_ROOT)}));}
+}
+if(mou){
+ const native=async(path,body,token)=>{const response=await f.runtime.dispatchFetch('https://academy.test'+path,{method:'POST',headers:{Origin:'https://academy.test','Content-Type':'application/json','X-Academy-Workspace':'ADMIN',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(body)});const value=await response.json();if(response.status!==200)throw Error(JSON.stringify(value));return value;};
+ const token=(await native('/api/account/login',{uniqueid:'separation-global',pin:'1234'})).token;
+ await native('/api/admin/platform/programme-studio/register',{programmeKey:'mothers',accessModel:'MONTHLY',noMediaMigration:true,operationId:crypto.randomUUID()},token);
+ for(let i=0;i<12;i++){const response=await f.runtime.dispatchFetch('https://academy.test/__local/recover');if(response.status!==200)throw Error(await response.text());}
 }
 const mime={'.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.woff2':'font/woff2','.woff':'font/woff','.wasm':'application/wasm','.bcmap':'application/octet-stream','.ftl':'text/plain'};
 const samplePdfUrl='https://archive.org/download/maktab-local-sample/sample.pdf';
@@ -53,6 +62,6 @@ async function handler(request,response,isAcademy){
 }
 const servers=[createServer((r,s)=>handler(r,s,false)),createServer((r,s)=>handler(r,s,true))];
 try{await Promise.all(servers.map((server,i)=>new Promise((resolve,reject)=>{server.once('error',reject);server.listen(sitePort+i,'127.0.0.1',resolve);})));
- console.log(JSON.stringify({website:websiteOrigin,academy:academyOrigin,data:'Disposable synthetic data; resets when stopped',accounts:[{id:'separation-global',pin:'1234',role:'Admin'},{id:'separation-studentA',pin:'1234',role:'Learner'}],publicRoot}));
+ console.log(JSON.stringify({website:websiteOrigin,academy:academyOrigin,data:'Disposable synthetic data; resets when stopped',accounts:[{id:'separation-global',pin:'1234',role:'Admin'},{id:mou?'separation-studentB':'separation-studentA',pin:'1234',role:mou?'MOU learner':'Learner'}],publicRoot,pairedMouBackend:mou}));
 }catch(error){for(const server of servers)server.close();await f.close();throw error;}
 let closing=false;async function close(){if(closing)return;closing=true;for(const server of servers)server.close();await f.close();process.exit(0);}process.on('SIGINT',close);process.on('SIGTERM',close);

@@ -14,17 +14,26 @@ export function seriesRecordings({media=[],guides=[],pendingIds=[]}={}){
  const unique=new Map(),entries=[];
  for(const row of media.filter(video)){const key=row.asset_id||row.attachment_id,previous=unique.get(key),reviewed=r=>guides.some(g=>g.lessonId===r.lesson_id&&g.status==='reviewed');if(!previous||reviewed(row)&&!reviewed(previous))unique.set(key,row);}
  for(const row of [...unique.values()].sort((a,b)=>String(a.lesson_date||'').localeCompare(String(b.lesson_date||''))||String(a.attachment_id).localeCompare(String(b.attachment_id)))){
-  const guide=guides.find(g=>g.lessonId===row.lesson_id&&g.status==='reviewed');
-  entries.push({id:row.attachment_id,row,title:guide?.title||row.title||'Recorded lesson',summary:guide?.summary||'',date:row.lesson_date,readingIds:guide?.readingId?[guide.readingId]:[],topics:guide?.topics||[],quote:guide?.quote});
+  const companions=guides.filter(g=>g.lessonId===row.lesson_id&&g.status==='reviewed'),guide=companions[0];
+  const readingIds=[...new Set(companions.map(g=>g.readingId).filter(Boolean))];
+  const topics=[...new Map(companions.flatMap(g=>g.topics||[]).map(topic=>[JSON.stringify([topic.start,topic.title]),topic])).values()].sort((a,b)=>a.start-b.start);
+  entries.push({id:row.attachment_id,row,title:guide?.title||row.title||'Recorded lesson',summary:guide?.summary||'',date:row.lesson_date,readingIds,topics,quote:guide?.quote});
  }
  const pending=new Set(pendingIds);
- for(const guide of guides)if(pending.has(sourceId(guide))&&!entries.some(e=>e.row?.lesson_id===guide.lessonId))entries.push({id:'pending:'+sourceId(guide),pending:true,title:guide.title,summary:guide.summary||'',readingIds:guide.readingId?[guide.readingId]:[],topics:guide.topics||[],quote:guide.quote});
+ for(const guide of guides)if(pending.has(sourceId(guide))&&!entries.some(e=>e.row?.lesson_id===guide.lessonId)){
+  const id='pending:'+sourceId(guide),existing=entries.find(e=>e.id===id);
+  if(existing){if(guide.readingId&&!existing.readingIds.includes(guide.readingId))existing.readingIds.push(guide.readingId);}
+  else entries.push({id,pending:true,title:guide.title,summary:guide.summary||'',readingIds:guide.readingId?[guide.readingId]:[],topics:guide.topics||[],quote:guide.quote});
+ }
  return entries;
 }
 
 // An association is explicit in the source, never inferred from reading order.
 export function independentReadings(course,guides=[],entries=[]){
- const linked=new Set([...guides.map(g=>g.readingId),...entries.flatMap(e=>e.readingIds||[])]);
+ // The server has already filtered this document's text. If a recording is
+ // unavailable (including a deliberate text-only grant), its permitted support
+ // must still be reachable from Read. An association never grants playback.
+ const linked=new Set(entries.flatMap(e=>e.readingIds||[]));
  return (course.lessons||[]).filter(l=>!linked.has(l.id));
 }
 const action=(label,route,id='',extra='')=>`<button type="button" data-sp="${route==='recording'?'recording':route==='lesson'?'lesson':'route'}" ${['recording','lesson'].includes(route)?`data-id="${esc(id)}"`:`data-route="${esc(route)}"`} ${extra}>${label}</button>`;
@@ -44,7 +53,7 @@ export function recordingDetail(entry,course){
 export function recordingList({entries=[],loaded=true,more=false}={}){
  return `<section aria-labelledby="rs-recordings-title"><div class="rs-list-heading"><h2 id="rs-recordings-title">Recordings</h2><span>${entries.length}${more?'+':''} ${entries.length===1?'lesson':'lessons'}</span></div><div class="rs-episodes">${entries.map((e,i)=>`<article class="rs-episode-card"><div class="rs-card-meta"><span>RECORDING ${String(i+1).padStart(2,'0')}</span>${e.date?`<time datetime="${esc(e.date)}">${esc(date(e.date))}</time>`:''}${e.pending?'<span>Link pending</span>':''}${e.duration?`<span>${Math.round(e.duration/60)} min</span>`:''}</div><h3>${action(esc(e.title),'recording',e.id)}</h3>${e.summary?`<p class="rs-card-summary">${esc(e.summary)}</p>`:''}<div class="rs-card-actions">${playback(e)}${action('View lesson <span aria-hidden="true">→</span>','recording',e.id,'class="rs-view-lesson"')}</div></article>`).join('')||`<p class="rs-empty">${loaded?'No recordings are available here yet.':'Loading your recordings…'}</p>`}</div>${more?'<button type="button" data-more-media class="rs-more">Show more recordings ↓</button>':''}</section>`;
 }
-export function readingList(readings=[]){return `<section><div class="rs-list-heading"><h1>Read</h1><span>${readings.length} ${readings.length===1?'reading':'readings'}</span></div><p class="rs-intro">Material to read and reflect on in its own right. Readings linked to a recording are kept with that lesson.</p><div class="rs-readings">${readings.map(l=>`<article class="rs-reading-card"><p class="sp-eyebrow">${esc(l.group||'READ & REFLECT')}</p><h2>${action(esc(l.title),'lesson',l.id)}</h2>${l.summary?`<p>${esc(l.summary)}</p>`:''}${action('Read <span aria-hidden="true">→</span>','lesson',l.id,'class="rs-reading-link"')}</article>`).join('')||'<p class="rs-empty">There are no separate readings in this series yet. You can find the companion readings on each recording’s page.</p>'}</div></section>`;}
+export function readingList(readings=[]){return `<section><div class="rs-list-heading"><h1>Read</h1><span>${readings.length} ${readings.length===1?'reading':'readings'}</span></div><p class="rs-intro">Read and reflect. Supporting readings are also available from the recordings you can open.</p><div class="rs-readings">${readings.map(l=>`<article class="rs-reading-card"><p class="sp-eyebrow">${esc(l.group||'READ & REFLECT')}</p><h2>${action(esc(l.title),'lesson',l.id)}</h2>${l.summary?`<p>${esc(l.summary)}</p>`:''}${action('Read <span aria-hidden="true">→</span>','lesson',l.id,'class="rs-reading-link"')}</article>`).join('')||'<p class="rs-empty">There are no separate readings in this series yet. You can find the companion readings on each recording’s page.</p>'}</div></section>`;}
 
 export function recordingWebsiteTabs(course,pages=course.pages){return [['home','Recordings'],['lessons','Read'],['about','About'],...(pages?.materials?[['materials','Materials']]:[]),...(pages?.sessions&&course.displayIdentity?.kind!=='TAFSEER'&&!tafseerCourseCover(course)?[['sessions','Sessions']]:[])];}
 

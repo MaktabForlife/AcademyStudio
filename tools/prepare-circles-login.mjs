@@ -1,6 +1,6 @@
 // Compose the current public design with the existing native backend frontend.
 // Writes only a new local review directory. No hosting, content/access imports.
-import {cp,readFile,writeFile,mkdir,stat} from 'node:fs/promises';
+import {cp,readFile,writeFile,mkdir,stat,rm} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {contentHash} from './reconciled-content.mjs';
@@ -22,6 +22,10 @@ const circles=join(publicRoot,'circles');await mkdir(circles,{mode:0o700});
 const files=['index.html','app.js','style.css','circle-mobile.css','academy-brand.css','academy-branches.css','public-circle-hero.css','mothers-library.css','mothers-library.js','mothers-timetable.js','free-learning-art.css','free-learning-catalogue.js','free-learning.js','free-learning-model.mjs','free-learning-view.css','free-learning-view.mjs','free-learning.html','memorisation-catalogue.js','memorisation.js','memorisation.css','prospectus-2027.html','prospectus-2027.js','prospectus.css','assets','free-learning'];
 const declared=[...designIndex.matchAll(/(?:src|href)="([^"?]+)(?:\?[^\"]*)?"/g)].map(m=>m[1]).filter(file=>/^[-A-Za-z0-9_]+\.(?:css|m?js)$/.test(file)&&!['text-editor.js','text-editor.css','layout-editor.js','layout-editor.css'].includes(file));
 for(const file of new Set([...files,...declared]))await cp(join(design,'dist',file),join(circles,file),{recursive:true});
+// Imra’tun now uses the editable native Course policy. Do not ship an anonymous
+// author-content duplicate that would bypass a later PAID setting. The two
+// intentionally public Ulumul resources and original source copies stay intact.
+await rm(join(circles,'free-learning/imratun-muminah.json'),{force:true});
 // New shared podcast modules are copied as UI only, never their private bundles.
 let podcastUI=false;
 try{await stat(join(design,'dist/course-source.mjs'));podcastUI=true;}catch(error){if(error.code!=='ENOENT')throw error;}

@@ -17,11 +17,23 @@ test('series entries preserve permitted native identities and do not make denied
  assert(!seriesRecordings({guides,pendingIds:[]}).length);
 });
 
-test('Read contains only readings without an explicit recording association and leaves the source intact',()=>{
+test('Read keeps authorised support reachable without recording access and leaves source associations intact',()=>{
  const course={lessons:[{id:'separate',title:'Separate reading'},{id:'linked',title:'Linked reading'},{id:'pending',title:'Pending companion'},{id:'other',title:'No guessed association'}]};
  const before=structuredClone(course),guides=[guide('one','linked'),guide('two','pending')];
- assert.deepEqual(independentReadings(course,guides).map(l=>l.id),['separate','other']);assert.deepEqual(course,before);
+ assert.deepEqual(independentReadings(course,guides).map(l=>l.id),['separate','linked','pending','other']);assert.deepEqual(course,before);
+ assert.deepEqual(independentReadings(course,guides,[{readingIds:['linked']}]).map(l=>l.id),['separate','pending','other']);
  assert.deepEqual(independentReadings(course,[],[{readingIds:['other']}]).map(l=>l.id),['separate','linked','pending']);
+});
+
+test('one native recorded lesson retains zero or multiple supporting readings without timetable sessions',()=>{
+ const media=[row('one'),row('recording-only')],guides=[guide('one','read-one'),guide('one','read-two'),guide('one','read-one')];
+ const before=structuredClone({media,guides}),entries=seriesRecordings({media,guides});
+ assert.equal(entries.length,2);const accompanied=entries.find(e=>e.row.lesson_id==='one'),only=entries.find(e=>e.row.lesson_id==='recording-only');
+ assert.deepEqual(accompanied.readingIds,['read-one','read-two']);assert.deepEqual(only.readingIds,[]);assert.equal(accompanied.topics.length,1);
+ const html=recordingDetail(accompanied,{lessons:[{id:'read-one',title:'First reading'},{id:'read-two',title:'Second reading'}]});
+ assert.match(html,/First reading/);assert.match(html,/Second reading/);assert.match(recordingDetail(only,{lessons:[]}),/data-material="attachment-recording-only"/);
+ assert.doesNotMatch(recordingDetail(only,{lessons:[]}),/Read alongside/);assert.deepEqual({media,guides},before);
+ assert.equal(seriesRecordings({guides}).length,0,'Supporting text alone must not become recording lessons');
 });
 
 test('episode details expose full reviewed summary and native timed topics, while pending details have no playback',()=>{

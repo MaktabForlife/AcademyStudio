@@ -28,6 +28,6 @@ test('the composed catalogue adds notices only to free display, preserving four 
  const source=await read('circles/podcast-view.mjs');assert(source.includes("${freeCatalogue.map(coverCard).join('')}${forthcomingCourseNotices.map(comingSoonCard).join('')}"));
  assert.match(await read('circles/free-learning.html'),/href="\/course-notices.css"/);
  assert.doesNotMatch(await read('circles/academy/mothers/surah-al-baqarah/index.html'),/course-notices.css/);
- const imratun=JSON.parse(await read('circles/free-learning/imratun-muminah.json'));
- assert.match(JSON.stringify(imratun),/Qana|Contentment/i,'Existing Qana’ah material remains inside Imra’tun Mu’minah');
+ assert(context.AcademyApprovedFreeCourses.some(c=>c.key==='imratun-muminah'));
+ await assert.rejects(()=>read('circles/free-learning/imratun-muminah.json'),{code:'ENOENT'},'Imra’tun and its Qana’ah support now use native protected content, without an anonymous static duplicate');
 });
