@@ -19,6 +19,6 @@ test('capabilities and version labels use existing rows; rejected content never 
   const rejected=await f.request('/api/websites/site-course/edit',{cookie:admin,method:'POST',body:{operationId:crypto.randomUUID(),action:'save',revision:0,document:edit.body.document}});assert.equal(rejected.status,400);assert.equal(await f.db.prepare("SELECT revision FROM websites WHERE website_id='site-course'").first('revision'),0);
   delete edit.body.document.paymentStatus;edit.body.document.pages.assessments=true;
   const accepted=await f.request('/api/websites/site-course/edit',{cookie:admin,method:'POST',body:{operationId:crypto.randomUUID(),action:'save',revision:0,document:edit.body.document}});assert.equal(accepted.status,200,JSON.stringify(accepted.body));
-  const saved=await f.request('/api/websites/site-course/edit',{cookie:admin});assert.deepEqual(saved.body.document,edit.body.document);assert.equal(saved.body.draftVersion,await sha256(JSON.stringify(edit.body.document)));assert.deepEqual(saved.body.capabilities,{assessments:false,journal:false});
+  const saved=await f.request('/api/websites/site-course/edit',{cookie:admin});assert.deepEqual(saved.body.document,edit.body.document);assert.equal(saved.body.draftVersion,await sha256(JSON.stringify(edit.body.document)));assert.deepEqual(saved.body.capabilities,{assessments:false,journal:false,liveSessions:true});
  }finally{await f.close();}
 });

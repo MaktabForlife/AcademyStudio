@@ -12,7 +12,18 @@ export async function change(env,store,actor,offeringId,input,guardOptions={}){
  const scope=guardOptions.collect?guardOptions.scope||null:await store.scope(actor,offeringId,{admin:true});const statements=[];const s=(sql,args=[])=>statements.push(store.statement(sql,args));
  if(input.action==='content-batch'){
   if(!Array.isArray(input.changes)||!input.changes.length||input.changes.length>25)throw fail('Save up to 25 reviewed media references together.');
-  const seen=new Set();for(const item of input.changes){if(!['youtube','attachment'].includes(item.action))throw fail('A media batch cannot change learning access.');const key=item.action+':'+id(item.action==='youtube'?item.assetId:item.attachmentId);if(seen.has(key))throw fail('Choose each media reference once.');seen.add(key);statements.push(...await change(env,store,actor,offeringId,item,{collect:true,scope}));}
+  const seen=new Set();for(const item of input.changes){if(!['youtube','attachment'].includes(item.action))throw fail('A media batch cannot change learning access.');const key=item.action+':'+id(item.action==='youtube'?item.assetId:item.attachmentId);if(seen.has(key))throw fail('Choose each media reference once.');seen.add(key);}
+  const attachments=input.changes.filter(item=>item.action==='attachment');let batchFacts=null;
+  if(attachments.length){
+   const assetIds=[...new Set(attachments.map(item=>id(item.assetId)))],websiteIds=[...new Set(attachments.filter(item=>item.websiteId).map(item=>id(item.websiteId)))],attachmentIds=attachments.map(item=>id(item.attachmentId));
+   const [assets,websites,previous]=await store.batch([
+    store.statement('SELECT o.asset_id,o.mime_type FROM json_each(?) j JOIN objects o ON o.asset_id=j.value JOIN asset_owners x ON x.asset_id=o.asset_id AND x.offering_id=?',[JSON.stringify(assetIds),offeringId]),
+    store.statement('SELECT w.website_id FROM json_each(?) j JOIN websites w ON w.website_id=j.value AND w.offering_id=?',[JSON.stringify(websiteIds),offeringId]),
+    store.statement('SELECT a.attachment_id,a.offering_id FROM json_each(?) j JOIN attachments a ON a.attachment_id=j.value',[JSON.stringify(attachmentIds)])
+   ]);
+   batchFacts={assets:new Map(assets.results.map(row=>[row.asset_id,row])),websites:new Set(websites.results.map(row=>row.website_id)),previous:new Map(previous.results.map(row=>[row.attachment_id,row]))};
+  }
+  for(const item of input.changes)statements.push(...await change(env,store,actor,offeringId,item,{collect:true,scope,batchFacts}));
  }else if(input.action==='access-batch'){
   if(!Array.isArray(input.changes)||!input.changes.length||input.changes.length>40)throw fail('Save up to 40 access changes together.');
   const people=input.changes.filter(item=>item.action==='participant'),ids=people.map(item=>id(item.accountId));if(new Set(ids).size!==ids.length)throw fail('Choose each participant once per Save.');
@@ -58,10 +69,10 @@ export async function change(env,store,actor,offeringId,input,guardOptions={}){
  }else if(input.action==='card'){
   s(`INSERT INTO cards VALUES(?,?,?,?,?,0) ON CONFLICT(offering_id) DO UPDATE SET title=excluded.title,description=excluded.description,display_label=excluded.display_label,visible=excluded.visible,revision=cards.revision+1`,[offeringId,text(input.title),text(input.description||'',2000),text(input.displayLabel||''),flag(input.visible)]);
  }else if(input.action==='attachment'){
-  const assetId=id(input.assetId),asset=await store.first('SELECT o.mime_type FROM objects o JOIN asset_owners x USING(asset_id) WHERE o.asset_id=? AND x.offering_id=?',[assetId,offeringId]);if(!asset)throw fail('Choose a file owned by this offering.',403);
-  const websiteId=input.websiteId?id(input.websiteId):null;if(websiteId&&!await store.first('SELECT website_id FROM websites WHERE website_id=? AND offering_id=?',[websiteId,offeringId]))throw fail('Choose a website in this offering.');
+  const assetId=id(input.assetId),asset=guardOptions.batchFacts?guardOptions.batchFacts.assets.get(assetId):await store.first('SELECT o.mime_type FROM objects o JOIN asset_owners x USING(asset_id) WHERE o.asset_id=? AND x.offering_id=?',[assetId,offeringId]);if(!asset)throw fail('Choose a file owned by this offering.',403);
+  const websiteId=input.websiteId?id(input.websiteId):null;if(websiteId&&!(guardOptions.batchFacts?guardOptions.batchFacts.websites.has(websiteId):await store.first('SELECT website_id FROM websites WHERE website_id=? AND offering_id=?',[websiteId,offeringId])))throw fail('Choose a website in this offering.');
   if(!['WEBSITE','RECORDING'].includes(input.audience)||input.audience==='WEBSITE'&&(!websiteId||!['application/pdf','image/png','image/jpeg','image/webp'].includes(asset.mime_type)))throw fail('Website-only rights cannot grant recordings.');
-  const previous=await store.first('SELECT offering_id FROM attachments WHERE attachment_id=?',[id(input.attachmentId)]);if(previous&&previous.offering_id!==offeringId)throw fail('This attachment belongs elsewhere.',403);
+  const previous=guardOptions.batchFacts?guardOptions.batchFacts.previous.get(id(input.attachmentId)):await store.first('SELECT offering_id FROM attachments WHERE attachment_id=?',[id(input.attachmentId)]);if(previous&&previous.offering_id!==offeringId)throw fail('This attachment belongs elsewhere.',403);
   // Historical Course recordings need no invented date or live session. Monthly
   // programmes still require their exact recording date for retained rights.
   const lessonDate=(scope?.kind==='COURSE'||input.audience==='WEBSITE')&&(input.lessonDate==null||input.lessonDate==='')?'':date(input.lessonDate);
