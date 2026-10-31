@@ -5,7 +5,7 @@ import {saveContent} from './content.mjs';
 import {validatePackage} from './content-package.mjs';
 export async function change(env,store,actor,offeringId,input,guardOptions={}){
  if(!guardOptions.collect&&['access-batch','participant','paid-months','website-months','staff','surah-grant','completion-month','completion-date','enrolment-decision','website-create','attachment'].includes(input.action))await rejectAuthorityWrite(store,offeringId);
- if(!guardOptions.collect)await store.scope(actor,offeringId,{admin:true});const statements=[];const s=(sql,args=[])=>statements.push(store.statement(sql,args));
+ const scope=guardOptions.collect?null:await store.scope(actor,offeringId,{admin:true});const statements=[];const s=(sql,args=[])=>statements.push(store.statement(sql,args));
  if(input.action==='access-batch'){
   if(!Array.isArray(input.changes)||!input.changes.length||input.changes.length>40)throw fail('Save up to 40 access changes together.');
   const people=input.changes.filter(item=>item.action==='participant'),ids=people.map(item=>id(item.accountId));if(new Set(ids).size!==ids.length)throw fail('Choose each participant once per Save.');
@@ -55,7 +55,10 @@ export async function change(env,store,actor,offeringId,input,guardOptions={}){
   const websiteId=input.websiteId?id(input.websiteId):null;if(websiteId&&!await store.first('SELECT website_id FROM websites WHERE website_id=? AND offering_id=?',[websiteId,offeringId]))throw fail('Choose a website in this offering.');
   if(!['WEBSITE','RECORDING'].includes(input.audience)||input.audience==='WEBSITE'&&(!websiteId||!['application/pdf','image/png','image/jpeg','image/webp'].includes(asset.mime_type)))throw fail('Website-only rights cannot grant recordings.');
   const previous=await store.first('SELECT offering_id FROM attachments WHERE attachment_id=?',[id(input.attachmentId)]);if(previous&&previous.offering_id!==offeringId)throw fail('This attachment belongs elsewhere.',403);
-  s(`INSERT INTO attachments VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(attachment_id) DO UPDATE SET website_id=excluded.website_id,asset_id=excluded.asset_id,lesson_id=excluded.lesson_id,lesson_date=excluded.lesson_date,cohort=excluded.cohort,title=excluded.title,audience=excluded.audience,published=excluded.published`,[input.attachmentId,offeringId,websiteId,assetId,id(input.lessonId),date(input.lessonDate),text(input.cohort||'',180),text(input.title),input.audience,flag(input.published)]);
+  // Historical Course recordings need no invented date or live session. Monthly
+  // programmes still require their exact recording date for retained rights.
+  const lessonDate=scope?.kind==='COURSE'&&(input.lessonDate==null||input.lessonDate==='')?'':date(input.lessonDate);
+  s(`INSERT INTO attachments VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(attachment_id) DO UPDATE SET website_id=excluded.website_id,asset_id=excluded.asset_id,lesson_id=excluded.lesson_id,lesson_date=excluded.lesson_date,cohort=excluded.cohort,title=excluded.title,audience=excluded.audience,published=excluded.published`,[input.attachmentId,offeringId,websiteId,assetId,id(input.lessonId),lessonDate,text(input.cohort||'',180),text(input.title),input.audience,flag(input.published)]);
  }else if(input.action==='youtube'){
   if(!/^[A-Za-z0-9_-]{11}$/.test(input.videoId||''))throw fail('Choose a valid YouTube recording.');const assetId=id(input.assetId);
   s('INSERT INTO objects VALUES(?,NULL,?,?,0,NULL,?)',[assetId,'video/youtube',text(input.title),input.videoId]);s('INSERT INTO asset_owners VALUES(?,?)',[assetId,offeringId]);
