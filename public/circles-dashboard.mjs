@@ -10,7 +10,8 @@ export function circlesDashboard({onUpdate,openAcademy,show=()=>true,onWorkspace
    nav.setAttribute('aria-label','Your workspaces');nav.innerHTML=(identity.account.globalAdmin?['learn','teach','admin']:available.length?available:['learn']).map(key=>`<button type="button" data-circles-workspace="${key}" aria-pressed="${key===mode}"${pending?' disabled':''}>${key==='learn'?'Learn':key==='teach'?'Teach':'Admin'}</button>`).join('');
   }
   let host=document.getElementById('circles-dashboard');if(!signed||!show()){host?.remove();return;}if(!hero)return;
-  if(!host){host=document.createElement('section');host.id='circles-dashboard';host.className='circles-dashboard';host.setAttribute('aria-label','Your Academy dashboard');hero.after(host);}
+  if(!host){host=document.createElement('section');host.id='circles-dashboard';host.className='circles-dashboard';host.setAttribute('aria-label','Your Academy dashboard');}
+  const anchor=document.querySelector('#programmes.circles-dashboard-courses')||hero;if(anchor.nextElementSibling!==host)anchor.after(host);
   const html=data&&!pending?dashboardHTML(data):`<div class="circles-dashboard-panel"><h2>Your Academy dashboard</h2><p role="status">${pending?'Loading your Academy dashboard…':'Your dashboard could not be loaded.'}</p>${error?'<p>Open Academy or try again to check your dashboard.</p>':''}<button type="button" data-circles-dashboard-refresh${pending?' disabled':''}>${pending?'Loading…':'Try again'}</button><button type="button" data-circles-dashboard-home>Open Academy</button></div>`;
   if(renderedHost!==host||renderedHTML!==html){renderedHost=host;renderedHTML=html;host.innerHTML=html;}
  }

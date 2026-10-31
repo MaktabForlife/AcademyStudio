@@ -121,3 +121,25 @@ body.circles-ui-workspace{--ink:#44363f;--accent:#67515f;--soft:#eee5e8;--paper:
    removes circles-button-dashboard and restores these homepage sections. */
 .circle .single-circle-home.circles-button-dashboard~#academy-news,
 .circle .single-circle-home.circles-button-dashboard~#academy-news~*{display:none!important}
+
+/* Owned courses are a compact row directly beneath the signed-in circle. */
+.circle #programmes.circles-dashboard-courses{padding:24px 0 26px;margin:0;border-bottom:1px solid #dfd4d7}
+.circle #programmes.circles-dashboard-courses .section-head{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:8px}
+.circle #programmes.circles-dashboard-courses .eyebrow{font-size:10px;letter-spacing:.14em;color:#8c6879;margin:0 0 6px}
+.circle #programmes.circles-dashboard-courses h2{font:400 32px/1.15 'Libre Caslon Display',Georgia,serif;letter-spacing:-.02em;margin:0}
+.circle #programmes.circles-dashboard-courses .branch-programme-intro{font-size:12px;line-height:1.5;margin:0 0 16px;color:#796c74}
+.circle #programmes.circles-dashboard-courses .circles-show-all-courses{font:500 12px/1.5 'DM Sans',Arial,sans-serif;color:#68515f;text-decoration:underline;text-underline-offset:4px;white-space:nowrap}
+.circle #programmes.circles-dashboard-courses .circles-purchased-course-row{gap:12px;padding-bottom:3px;scroll-snap-type:x proximity}
+.circle #programmes.circles-dashboard-courses .circles-purchased-course{flex-basis:270px;min-height:112px;padding:16px;gap:14px;border-radius:8px;background:#f0e6e3;border-color:#e2d3d8;scroll-snap-align:start}
+.circle #programmes.circles-dashboard-courses .circles-purchased-course img{width:54px;height:72px;border-radius:3px}
+.circle #programmes.circles-dashboard-courses .circles-purchased-course h3{font:400 23px/1.15 'Libre Caslon Display',Georgia,serif;margin:7px 0 0}
+.circle #programmes.circles-dashboard-courses .circles-purchased-course small{font-size:10px;color:#796c74}
+.circle #programmes.circles-dashboard-courses .circles-purchased-course-row>p{font-size:13px;color:#796c74;margin:0;padding:12px 16px;border:1px solid #e4dadd;border-radius:7px;background:#fffcf8;flex:1}
+@media(max-width:700px){.circle #programmes.circles-dashboard-courses h2{font-size:28px}.circle #programmes.circles-dashboard-courses .circles-purchased-course{flex-basis:245px}.circle #programmes.circles-dashboard-courses .circles-show-all-courses{padding:12px 0}}
+
+/* Local owner follow-up: the programme links share a two-line button height. */
+.circle .single-circle-home.circles-button-dashboard{--programme-button-height:104px}
+.circle .single-circle-home.circles-button-dashboard #animated-hub .circles-programme-column .circles-plain-card{height:var(--programme-button-height)!important;min-height:var(--programme-button-height)!important;max-height:var(--programme-button-height)!important;padding:16px 20px!important;box-sizing:border-box;align-items:center}
+.circle .single-circle-home.circles-button-dashboard #animated-hub .circles-programme-column .circles-plain-card h3{font-size:clamp(22px,1.85vw,27px)!important;line-height:1.18!important}
+@media(max-width:920px){.circle .single-circle-home.circles-button-dashboard{--programme-button-height:100px}}
+@media(max-width:560px){.circle .single-circle-home.circles-button-dashboard{--programme-button-height:96px}.circle .single-circle-home.circles-button-dashboard #animated-hub .circles-programme-column .circles-plain-card{padding:14px 18px!important}.circle .single-circle-home.circles-button-dashboard #animated-hub .circles-programme-column .circles-plain-card h3{font-size:23px!important}}

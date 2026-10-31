@@ -1,6 +1,11 @@
 import {esc} from './model.mjs';
 import {homepageFreeCourseHref} from './homepage-free-courses.mjs';
 
+// Dates are ordering hints only; never infer completion or entitlement.
+export function coursePreview(courses,limit=6){
+ return courses.slice(0,limit);
+}
+
 export function purchasedCourseCards(courses){
  return courses.map(course=>`<a class="circles-purchased-course" href="${esc(course.href)}" aria-label="${esc(course.label)} · Your paid course">${course.cover?`<img src="${esc(course.cover)}" alt="" loading="lazy">`:''}<span><small>Your paid course</small><h3>${esc(course.label)}</h3></span><span aria-hidden="true">↗</span></a>`).join('');
 }
@@ -8,7 +13,12 @@ export function purchasedCourseCards(courses){
 // Keep the artwork and the five explicitly reactivated free-course bookmarks.
 // Other free cards retain their existing inactive presentation.
 export function circlesCourseRow(document){
- const templates=new WeakMap(),rendered=new WeakMap();
+ const templates=new WeakMap(),rendered=new WeakMap(),positions=new WeakMap();
+ function arrange(section,signedIn){
+  section.classList.toggle('circles-dashboard-courses',signedIn);
+  if(signedIn){const hero=document.querySelector('#learning-circles');if(!hero)return;if(!positions.has(section)){const marker=document.createComment('public courses');section.before(marker);positions.set(section,marker);}if(hero.nextElementSibling!==section)hero.after(section);}
+  else if(positions.has(section)){positions.get(section).replaceWith(section);positions.delete(section);}
+ }
  function inactiveCards(root){
   for(const card of root.querySelectorAll('a[data-free-course]')){
    if(homepageFreeCourseHref(card.dataset.freeCourse))continue;
@@ -23,18 +33,19 @@ export function circlesCourseRow(document){
  return (signedIn,navigation)=>{
   const section=document.querySelector('#programmes.academy-free-courses');if(!section)return;
   if(!templates.has(section)){inactiveCards(section);templates.set(section,section.innerHTML);}
+  arrange(section,signedIn);
   const signature=JSON.stringify([signedIn,signedIn?navigation?.purchasedCourses:null]);
   if(rendered.get(section)===signature){inactiveCards(section);return;}
   section.innerHTML=templates.get(section);
   if(signedIn){
-   const publicTrack=section.querySelector('#free-course-reel'),freeCards=[...(publicTrack?.querySelectorAll('.free-course-card:not(.paid-course-card)')||[])];
+   const publicTrack=section.querySelector('#free-course-reel');
    section.querySelector('.eyebrow').textContent='Your learning';
    section.querySelector('h2').textContent='My courses';
-   section.querySelector('.branch-programme-intro').textContent='Your current and completed paid courses, with the latest classes first.';
+   section.querySelector('.branch-programme-intro').textContent='Your current and recent courses.';
+   const all=document.createElement('a');all.href='/studio/?view=collections&collection=courses';all.className='circles-show-all-courses';all.textContent='Show all';all.setAttribute('aria-label','Show all courses');section.querySelector('.section-head').append(all);
    publicTrack.id='circles-purchased-course-row';publicTrack.classList.add('circles-purchased-course-row');publicTrack.setAttribute('aria-label','Your paid courses');
    const courses=navigation?.purchasedCourses;
-   publicTrack.innerHTML=!courses?'<p role="status">Loading your courses…</p>':courses.length?purchasedCourseCards(courses):'<p>No paid courses are linked to this account.</p>';
-   if(freeCards.length){const free=document.createElement('section');free.className='circles-free-placeholders';free.setAttribute('aria-labelledby','circles-free-placeholders-title');free.innerHTML='<h3 id="circles-free-placeholders-title">Free courses</h3><div class="free-course-reel" aria-label="Free courses"></div>';free.querySelector('.free-course-reel').append(...freeCards);section.append(free);}
+   publicTrack.innerHTML=!courses?'<p role="status">Loading your courses…</p>':courses.length?purchasedCourseCards(coursePreview(courses)):'<p>No paid courses are linked to this account.</p>';
   }
   // Store before the observer refreshes; unchanged output causes no mutations.
   rendered.set(section,signature);
