@@ -1,3 +1,9 @@
+# V108.7 deployed; approved ownership handover awaits Global Admin sign-in — 31 October 2026
+
+- V108.7 is deployed and verified. Academy Worker740bafda-78ec-45b8-8b41-f17af7b26cd7, Pages3c19a1ed-2435-4ae4-aa32-002c62dcc568; Studio Worker62d221de-e180-4ae0-b3ce-bcd2ba5914dd. All39/17 bindings and43200/43200/60 preserved. Exact154 prepared website assets unchanged. No content/media/schema/DNS/retirement/push changes.
+- You explicitly approved the actual development handover and deploy when ready. The code release is complete; no handover commands have been sent. The available native session is Teststudent, not Global Admin. A native account switcher is open in Chrome. Continue the approved guarded protocol after real Global Admin sign-in; never fabricate an actor/session or substitute Cloudflare operator access for application authority.
+- Current transferable scopes are Tafseer and Surah Al Kahf, covering9 websites. Five other Course records are unmapped and stay in Academy. Scoped backups match15 member/offering pairs,108 historical month/cohort rows and2 purchases. Keep live checks small. Evidence: parent outputs/academy-studio-handover-20261031/release-verification.json; operator page /academy/website-platform/handover/. This adds one explicit bounded step per click with no automatic reads.
+
 # V108.6 deployed and verified —31October2026
 
 - Reviewed combined Circles/dashboard/access administration and Hijri recovery are deployed. Source Worker fc08d93a-ecbe-49d6-8e29-20664b0bb7ec, Pages 4a4f2f74-c6ce-4b15-ab05-2af8f46ced16; Studio Worker a55c3615-0acf-401c-8e05-1254d65327a6. Preserve these releases and the additive schemas. All39/17 bindings and43200/43200/60 are intact.
