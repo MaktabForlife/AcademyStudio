@@ -1,6 +1,6 @@
 # V108.8 coordinated integration
 
-Release candidate on `feature/academy-studio-integration-1088`. Deployment is approved when the combined checks pass. This document does not claim deployment or ownership activation has occurred.
+V108.8 is deployed and verified from `feature/academy-studio-integration-1088`, including all approved native handovers, content publication and catalogue links.
 
 Keep live checks small to limit database usage. Use disposable local Workers/D1/R2 for permission and content checks; retain the saved bounded hosted preflights in the parent project's `outputs/academy-release-1088-20261031`.
 
@@ -29,3 +29,13 @@ Use the normal authenticated native importer at `/import/`. It verifies content/
 Deploy only the reviewed frozen Circles asset composition, not the raw `public/` directory. Remove its obsolete anonymous Imra’tun payload while retaining deliberately public Ulumul material. Update the small public R2 catalogue only after the exact native websites are published. Its display metadata never grants access.
 
 Use the existing Cloudflare addresses and the separate Studio Cloudflare account. V109 domain/DNS launch at maktab4life.org, retiring Academy screens and unrelated builder changes are outside this release.
+
+## Deployment and activation verification
+
+V108.8 is deployed on the existing Cloudflare addresses. Source runtime934550c1, Worker66dc30f9-bc88-4729-9e23-5edbc9a96493 and Pages4559ae9b-132d-427b-b683-1f35cfea913e; target runtime83a3789 and Workerff02fc61-f459-49f7-8ab1-8598e6c01b27. All41/17 bindings and43200/43200/60 remain intact.
+
+Actual native Global Admin authority completed14 guarded handovers. All13 reviewed Course websites and the independent MOU Baqarah website are published, with59 prepared recordings; MOU has26 recordings and its56 published timetable sessions. Four Courses are paid, including the original Kahf; ten are free. Existing acquisition records, original49 enabled media and old MOU media were preserved. The final read-only postflight checked1072 rows with0 writes and no unresolved access delivery/checkpoint. It excludes the required protocol, schema and publication work.
+
+The public R2 catalogue now contains23 items: its10 original entries are unchanged and13 verified native Course links were added.13 content-addressed public covers are uploaded. Five small unsigned HTTP requests confirmed the display catalogue, one cover and two sign-in denials; the catalogue assertion uses the deployed safe display projection rather than the private storage shape. No daily allowance estimate is implied. Live learner playback, Zoom Join and mobile/audio QA were not exercised; permission and workflow behavior were tested locally.
+
+The user can now prepare UI releases on this baseline. Use the reviewed composition at local-content/release-1088-final/public, never a direct raw public/ deployment: obsolete anonymous Imra’tun content and private author bundles must remain excluded. DNS/V109 launch, screen retirement and Git push remain outside this release. Exact private receipts are under the parent outputs/academy-release-1088-20261031.
