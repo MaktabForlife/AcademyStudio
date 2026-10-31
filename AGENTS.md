@@ -1,3 +1,9 @@
+# V108.6 deployed and verified —31October2026
+
+- Reviewed combined Circles/dashboard/access administration and Hijri recovery are deployed. Source Worker fc08d93a-ecbe-49d6-8e29-20664b0bb7ec, Pages 4a4f2f74-c6ce-4b15-ab05-2af8f46ced16; Studio Worker a55c3615-0acf-401c-8e05-1254d65327a6. Preserve these releases and the additive schemas. All39/17 bindings and43200/43200/60 are intact.
+- Academy remains access owner; no live offering transfer is activated. Preserve existing accounts, rights, all49 original enabled media IDs and additional existing metadata. The current total attachment count is94, with70 enabled;49 refers to the original receipt package, not the whole table. Do not reset or republish other records. Eight small unsigned checks passed; private role/media behavior remains locally verified.
+- This deployment approval is fulfilled. Future deployment or live ownership transfer needs explicit approval; any transfer also requires current reconciliation and backup. No DNS/retirement/push. Evidence: private parent outputs/academy-studio-release-1086-20261031/release-verification.json and docs/RELEASE-1086.md.
+
 # V108.6 combined release approved — 31 October 2026
 
 - You explicitly said “deploy” after the combined local review passed. Release the reviewed Circles/access integration and date-header recovery as V108.6, with its additive source0015/target0004 structures. Preserve existing screens, all49 enabled original media, current bindings and43200/43200/60. Keep live checks small.
