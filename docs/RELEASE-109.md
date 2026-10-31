@@ -1,6 +1,6 @@
 # V109: Circles and Studio at maktab4life.org
 
-Status: locally prepared and tested, not deployed. Domain activation awaits the separate approval required by the agreed roadmap. No new data, rights transfer or content publication is part of this release.
+Status: deployed and verified on31October2026 after the owner approved “﷽ activate now”. Live at https://maktab4life.org. Source Worker `e303f1da-fb24-4526-99f6-b9865177d008`, Studio `264c7f1c-3254-4da9-960f-6a8ec35f4d72`, router `464d8adb-2c2b-4ca8-bde4-e97327fc0f7a`; each100% active. Source Pages is unchanged. No new data, rights transfer or content publication was part of this release.
 
 ## Proposed routing
 
@@ -38,12 +38,15 @@ Saved local evidence in the parent `outputs/academy-v109-readiness-20261031`:
 
 Cloudflare management inspection is read-only. The new Studio account currently exposes no zone/custom-domain binding for maktab4life.org. Source DNS and domain ownership were read from Cloudflare UI. The first Source CLI metadata attempt returned expired/invalid authentication. Wrangler then refreshed the existing sign-in, and one bounded Source/Target metadata check confirmed the V108.8 versions and all41/17 bindings unchanged. The existing CLI profile lacks zone/read and workers_routes/write, so current DNS and the empty Worker-route list were read in the existing Cloudflare UI. Do not expand CLI permissions for this release. Use that UI for the two approved routes. Recheck only if the actual cutover is delayed or another release changes the saved baseline.
 
-## Approved-cutover procedure (not executed)
+## Completed activation
 
-1. Obtain explicit approval for replacing the apex/www front door using this reviewed composition. Use the existing renewed operator authentication and saved matching metadata; do not request expanded permissions merely for route activation. If needed because of delay or another release, read one bounded management batch and stop for unrelated deployment/route/binding drift. Baseline Source Worker `66dc30f9-bc88-4729-9e23-5edbc9a96493`, Pages `4559ae9b-132d-427b-b683-1f35cfea913e`, Target Worker `ff02fc61-f459-49f7-8ab1-8598e6c01b27`. Current route list is empty in the saved Cloudflare UI evidence. Save the new route IDs/settings after enabling the exact reviewed routes.
-2. Deploy the router first with `routing/wrangler.staged.jsonc`, which has **no active routes** and no workers.dev address. This cannot take over the public domain. Do not deploy the route-bearing configuration at this stage.
-3. Deploy Target using `wrangler.launch.jsonc`, its pinned Studio account/profile, the frozen composition and preserved existing secrets/bindings. Activate the router's two exact routes in the already authorised Cloudflare UI, using `routing/wrangler.jsonc` as the reviewed specification; promptly deploy the paired Source Worker origin configuration. Do not run the route-bearing config through the restricted CLI profile. There is a short cross-account transition window; do not present this as an atomic or zero-interruption operation. No Source Pages rebuild is required because its frontend is unchanged.
-4. Check only matching management versions/bindings/routes and a small public/unsigned HTTP batch: root, www redirect, old Academy bookmark redirect, public catalogue/cover, unsigned website/media denial. Perform any necessary user-assisted sign-in/return check once, not repeated dashboards or table reads. Use existing V108.8 rights/publication evidence, rather than re-scanning or republishing.
+The owner approved the domain switch. A fresh bounded management preflight matched the tested V108.8 versions/bindings. The router was staged without routes, then Studio was deployed with the frozen assets. The existing Cloudflare UI activated exactly the apex/www routes (both fail closed on request-limit exhaustion), and the paired Source deployment set the browser and direct transport addresses. No additional CLI permissions were requested.
+
+All49 local checks and eight small public/unsigned live HTTP checks passed. Postflight matched42 Source bindings (all41 originals plus the plain transport address),17 Target bindings and43,200/43,200/60; the router has no bindings. Source Pages and all five DNS records remain unchanged. One signed-out public browser visit rendered the live homepage. No real learner sign-in, playback/Join, production SQL, content or schema operation was performed. The original rights/publication evidence was reused.
+
+The UI exposed exact route patterns/Worker names rather than route IDs. Rollback can edit/remove those two saved rows unambiguously; the prior list was empty. Evidence, route/DNS screenshots, versions, preserved settings and rollback are in parent `outputs/academy-release-109-20261031/release-verification.json`. This activation approval has been fulfilled and does not authorise another release.
+
+Two UI observations were handed to the Circles owners for V109.1: featured free-course cards show “Inactive” while signed out, and the public Hijri date displayed unavailable. Native published catalogue23items and signed-out server denials passed. Their cause was not investigated through extra live reads, and no access rule was altered to change these labels.
 
 ## Rollback
 
