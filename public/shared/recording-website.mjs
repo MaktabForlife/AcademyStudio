@@ -1,6 +1,7 @@
 import {esc} from './model.mjs';
 import {recordingStart,recordingTopics} from './recording-companion.mjs';
 import {tafseerCourseCover,replaceTafseerArtwork,tafseerDisplayCourse} from './tafseer-cover.mjs';
+import {renderCourse,renderBlock} from './student.mjs';
 
 const video=row=>row?.attachment_id&&['video/youtube','video/mp4'].includes(row.type);
 const sourceId=guide=>guide.editorialLessonId||guide.lessonId;
@@ -58,7 +59,8 @@ export function readingList(readings=[]){return `<section><div class="rs-list-he
 export function recordingWebsiteTabs(course,pages=course.pages){return [['home','Recordings'],['lessons','Read'],['about','About'],...(pages?.materials?[['materials','Materials']]:[]),...(pages?.sessions&&course.displayIdentity?.kind!=='TAFSEER'&&!tafseerCourseCover(course)?[['sessions','Sessions']]:[])];}
 
 // Rearrange presentation only. The original reading nodes and authoring schema survive.
-export function presentRecordingWebsite(root,{course,ui,entries=[],guides=[],loaded=true,more=false,pages=course.pages}={}){
+export function presentRecordingWebsite(root,{course,ui,assets,entries=[],guides=[],loaded=true,more=false,pages=course.pages}={}){
+ const document=root.ownerDocument;
  course=tafseerDisplayCourse(course);
  const inner=root.querySelector('.sp-inner'),page=root.querySelector('.sp-page');if(!inner||!page)return;
  const original=document.createElement('div');original.className='rs-original-reading';
@@ -71,7 +73,17 @@ export function presentRecordingWebsite(root,{course,ui,entries=[],guides=[],loa
  const coverTarget=inner.querySelector('.rs-series-cover'),nameCover=tafseerCourseCover(course);if(nameCover){coverTarget.classList.add('tafseer-name-artwork');coverTarget.setAttribute('role','img');coverTarget.setAttribute('aria-label',course.name);coverTarget.innerHTML=nameCover;inner.classList.add('rs-tafseer');}else if(cover)coverTarget.append(cover);else coverTarget.innerHTML=`<img data-course-image="${esc(course.home.imageId)}" src="/shared/assets/lilac-600.webp" alt="${esc(course.home.imageAlt||course.name)}">`;
  const target=inner.querySelector('.rs-page');
  if(ui.route==='home')target.innerHTML=recordingList({entries,loaded,more});
- else if(ui.route==='recording')target.innerHTML=!loaded&&!entries.some(e=>e.id===ui.recordingId)?'<p class="rs-empty">Loading your recording…</p>':recordingDetail(entries.find(e=>e.id===ui.recordingId),course);
+ else if(ui.route==='recording'){
+  const entry=entries.find(e=>e.id===ui.recordingId),inline=course.displayIdentity?.readerLayout==='podcast-inline';target.innerHTML=!loaded&&!entry?'<p class="rs-empty">Loading your recording…</p>':recordingDetail(inline&&entry?{...entry,quote:null}:entry,course);
+  if(course.displayIdentity?.readerLayout==='podcast-inline'&&entry?.row&&!entry.pending){
+   const readings=course.lessons.filter(l=>l.sourceEdition===true&&(entries.length===1||entry.readingIds.includes(l.id))),collection=document.createElement('section');collection.className='rs-inline-readings';
+   collection.innerHTML='<h2>Read alongside</h2>';
+   for(const reading of readings){const holder=document.createElement('div');holder.innerHTML=renderCourse(course,{...ui,route:'lesson',lessonId:reading.id},assets);const article=holder.querySelector('.sp-lesson-article');if(!article)continue;article.id='recording-reading-'+reading.id;article.classList.add('rs-embedded-reading');const heading=article.querySelector('.sp-page-title');heading.id='recording-title-'+reading.id;article.setAttribute('aria-labelledby',heading.id);collection.append(article);}
+   if(readings.length)target.querySelector('.rs-episode').append(collection);
+   const primary=course.lessons.filter(l=>l.sourceEdition===false&&entry.readingIds.includes(l.id)),closing=primary.flatMap(l=>l.sections).filter(s=>s.sourceKey==='recording-application:'+entry.row.lesson_id),quotes=primary.flatMap(l=>l.sections.flatMap(s=>s.blocks)).filter(b=>b.type==='quote'&&b.sourceKey==='recording-quote:'+entry.row.lesson_id);
+   for(const section of closing){const end=document.createElement('section');end.className='rs-inline-closing';end.innerHTML='<h2>'+esc(section.title)+'</h2>'+section.blocks.map(b=>renderBlock(b,ui,assets)).join('');if(quotes.length){const words=document.createElement('aside');words.className='rs-words';words.innerHTML='<h3>Words to carry</h3>'+quotes.map(b=>renderBlock(b,ui,assets)).join('');const first=end.querySelector('.sp-block');if(first)first.after(words);else end.append(words);}target.querySelector('.rs-episode').append(end);}
+  }
+ }
  else if(ui.route==='lessons')target.innerHTML=readingList(independentReadings(course,guides,entries));
  else if(ui.route==='about')target.innerHTML=`<section class="rs-about"><p class="sp-eyebrow">ABOUT THIS SERIES</p><h1>${esc(course.home.headline||course.name)}</h1><p class="rs-about-subtitle">${esc(course.home.subtitle)}</p><p>${esc(course.home.description)}</p>${course.home.caption?`<p class="rs-muted">${esc(course.home.caption)}</p>`:''}</section>`;
  else {const linked=ui.route==='lesson'&&entries.find(e=>e.readingIds.includes(ui.lessonId));if(linked){const back=original.querySelector('.sp-reading-toolbar [data-sp=lesson]');if(back&&back.textContent.includes('Recorded lesson')){back.dataset.sp='recording';back.dataset.id=linked.id;back.textContent='← Recording';}else original.insertAdjacentHTML('afterbegin',action('← Back to recording','recording',linked.id,'class="rs-back"'));}target.append(original);}

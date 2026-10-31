@@ -23,7 +23,7 @@ export async function publicCatalogue(env){
    if(key!=='foundations'||url.origin!==new URL(env.ACADEMY_ORIGIN).origin||!url.pathname.startsWith('/academy/')||url.username||url.password)throw fail('The public reading link needs review.',503);
    publicTextUrl=url.href;
   }
-  return {key,kind,title,websiteId,pending,publicTextUrl,
+  return {key,kind,title,websiteId,pending,publicTextUrl,readerLayout:item.readerLayout==='podcast-inline'?'podcast-inline':null,
    cover:/^[a-f0-9]{64}$/.test(item.coverSha256||'')?'/api/public/circles/covers/'+item.coverSha256:null,
    accent:colour(item.accent)||'#805764',soft:colour(item.soft)||'#eee2df'};
  });
@@ -34,7 +34,7 @@ export async function websitePresentation(env,website){
  // A missing/unavailable presentation snapshot cannot become a content gate.
  let items=[];try{items=(await publicCatalogue(env)).items;}catch{}
  const matches=items.filter(i=>i.websiteId===website.website_id&&i.kind===website.kind&&!i.pending);
- return {kind:website.kind,...(matches.length===1?{key:matches[0].key,title:matches[0].title}:{})};
+ return {kind:website.kind,...(matches.length===1?{key:matches[0].key,title:matches[0].title,...(matches[0].readerLayout?{readerLayout:matches[0].readerLayout}:{})}:{})};
 }
 
 // One bounded, account-scoped lookup. Staff authority permits opening a website

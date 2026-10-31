@@ -106,3 +106,10 @@
 .circles-theme .sp-hero-image:has(.tafseer-name-artwork)::before{display:none}
 @media(min-width:760px){.circles-theme .rs-tafseer.rs-shell .rs-series-header{grid-template-columns:174px minmax(0,1fr)}.circles-theme .rs-tafseer.rs-shell .rs-series-header.rs-compact{grid-template-columns:110px minmax(0,1fr)}}
 @media(max-width:359px){.circles-theme .rs-tafseer.rs-shell .rs-series-header,.circles-theme .rs-tafseer.rs-shell .rs-series-header.rs-compact{grid-template-columns:82px minmax(0,1fr)}}
+
+.circles-theme .rs-inline-readings{margin-top:32px;border-top:1px solid var(--circle-rule);padding-top:24px;min-width:0}
+.circles-theme .rs-embedded-reading{margin:28px 0;padding-top:22px;border-top:1px solid var(--circle-rule);overflow-wrap:anywhere;min-width:0}
+.circles-theme .rs-embedded-reading .sp-page-title{font-size:clamp(25px,4vw,36px)}
+.circles-theme .rs-embedded-reading textarea{max-width:100%;box-sizing:border-box}
+
+.circles-theme .rs-inline-closing{margin-top:32px;padding:24px;border:1px solid var(--circle-rule);border-radius:12px;background:var(--circle-surface);min-width:0}

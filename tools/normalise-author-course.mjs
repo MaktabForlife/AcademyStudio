@@ -32,7 +32,7 @@ export function authorYouTube(value){
 
 // An offline adapter only. It cannot create identities, rights, attachments,
 // publication pointers or hosted media. Originals stay immutable in the source.
-export function normaliseAuthorCourse(input,{key,additionalRecordings=[]}={}){
+export function normaliseAuthorCourse(input,{key,additionalRecordings=[],reviewedPrimaryRecording=false}={}){
  if(!/^[a-z0-9-]+$/.test(key||''))throw Error('Choose a stable reviewed Course key.');
  const source=structuredClone(input.document||input.course||input),recordings=new Map(),editorial=[];
  const select=(value,kind)=>{
@@ -114,7 +114,9 @@ export function normaliseAuthorCourse(input,{key,additionalRecordings=[]}={}){
  for(let index=0;index<source.lessons.length;index++){
   const original=source.lessons[index],reading=document.lessons[index];
   const prose=original.sections.filter(section=>section.transcriptSummary===true).flatMap(section=>section.blocks).find(block=>block.type==='text'&&block.text?.trim());
-  if(prose){const overview=reading.sections.flatMap(section=>section.blocks).find(block=>block.sourceKey?.startsWith('recording:'));if(overview)overview.text=prose.text;}
+  const primary=reviewedPrimaryRecording&&source.recordingCompanion===true&&original.sourceEdition===false,summary=primary&&original.summary?.trim()?original.summary:prose?.text;
+  if(summary){const overview=reading.sections.flatMap(section=>section.blocks).find(block=>block.sourceKey?.startsWith('recording:'));if(overview)overview.text=summary;}
+  if(primary){const owned=[...recordings.values()].filter(r=>r.readingIds.includes(original.id));if(owned.length===1)for(let s=0;s<original.sections.length;s++)if(original.sections[s].transcriptSummary===true&&!reading.sections[s].sourceKey)reading.sections[s].sourceKey='recording-application:'+owned[0].lessonId;}
  }
  const issues=validatePackage(document,{review:true});
  const blocks=new Map(document.lessons.flatMap(lesson=>lesson.sections.flatMap(section=>section.blocks.map(block=>[block.id,block]))));

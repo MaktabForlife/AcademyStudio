@@ -3,7 +3,7 @@ import {contentVersion} from './content-package.mjs';
 import {referencedAssets} from '../public/shared/model.mjs';
 
 const pair=(reading,section)=>JSON.stringify([reading,section]);
-const sourceLesson=key=>typeof key==='string'?key.match(/^recording(?:-quote|-topics|-application)?:(.+)$/)?.[1]:null;
+const sourceLesson=key=>typeof key==='string'?key.match(/^recording(?:-quote|-topics|-application|-reflection)?:(.+)$/)?.[1]:null;
 const parseObject=async(env,key)=>{const o=await env.CONTENT.get(key);if(!o||o.size>1_500_000)throw fail('The saved recording support needs review.',503);return bodyJSON(o.body,1_500_000);};
 
 export async function recordedSupport(env,store,website,edition=contentVersion(website.published_key)){
