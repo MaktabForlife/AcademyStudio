@@ -30,7 +30,7 @@ if(podcastUI){
  const read=file=>readFile(join(circles,file),'utf8');
  await writeFile(join(circles,'course-source.mjs'),connectedCourseSource(await read('course-source.mjs')));
  await writeFile(join(circles,'podcast-view.mjs'),connectedPodcastView(await read('podcast-view.mjs')));
- for(const file of ['free-learning.html','academy/mothers/surah-al-baqarah/index.html'])await writeFile(join(circles,file),connectedCoursePage(await read(file)));
+ for(const file of ['free-learning.html','academy/mothers/surah-al-baqarah/index.html'])await writeFile(join(circles,file),connectedCoursePage(await read(file),{catalogueNotices:file==='free-learning.html'}));
  const context=await read('mothers-podcast-context.js');
  await writeFile(join(circles,'mothers-podcast-context.js'),context.replace("homeHref:'../../../?concept=circle&view=mothers&branch=academy&embed=1#mothers-subjects'","homeHref:'/studio/?classroom=mothers'"));
  const subject=await read('academy/mothers/surah-al-baqarah/index.html');
