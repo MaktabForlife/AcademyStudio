@@ -36,3 +36,19 @@ test('learning, teaching and programme Admin dashboards retain their individual 
   }
  }
 });
+
+test('Admin curriculum is one checked navigation action without an activity list; Learn and Teach keep their own areas',()=>{
+ const activities=[{activityKey:'PROGRAM:one',name:'Private programme',roles:['PROGRAM_ADMIN']},{activityKey:'COURSE:two',name:'Private course',roles:['ADMIN'],destinationHref:'/studio/?website=owned'}];
+ for(const adminBadge of ['Global Admin','Admin']){
+  const html=dashboardHTML(summary({adminBadge,activities}));
+  const section=html.split('<section class="circles-dashboard-panel circles-areas circles-curriculum">')[1].split('</section>')[0];
+  assert.equal((section.match(/data-circles-academy-action=/g)||[]).length,1);
+  assert(section.includes('Manage Curriculum'));assert(section.includes('&quot;tool&quot;:&quot;curriculum&quot;'));
+  assert(!section.includes('<ul>'));assert(!section.includes('Private programme'));assert(!section.includes('Private course'));
+  assert(!html.includes('Manage programmes and courses'));
+ }
+ for(const mode of ['learn','teach']){
+  const html=dashboardHTML(summary({mode,activities})),section=panel(html,mode==='learn'?'Continue learning':'Continue teaching');
+  assert(section.includes('Private programme'));assert(section.includes('Private course'));assert(!html.includes('circles-curriculum'));
+ }
+});
