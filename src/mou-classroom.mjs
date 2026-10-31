@@ -43,7 +43,7 @@ export async function mouClassroom(store,actor){
  // List only this actor's real audience. Eligibility is time-independent, but
  // expires with the proof; a browser timer cannot turn a denied gate into true.
  result.timetable.sessions=sessions.filter(s=>permittedSessionAudience(actor,scope,source,s,s)).map(s=>{
-  const eligibleToJoin=Boolean(definition.live_enabled&&(staff||scope.live_entitled)&&source.ready&&eligibleUntil>now&&s.has_zoom);
+  const eligibleToJoin=Boolean(definition.live_enabled&&(staff||scope.live)&&source.ready&&eligibleUntil>now&&s.has_zoom);
   return {id:s.session_id,title:s.title,startsAt:s.starts_at,endsAt:s.ends_at,timezone:s.timezone||definition.timezone,classIds:JSON.parse(s.class_ids_json||'[]'),classes:JSON.parse(s.classes_json||'null')||JSON.parse(s.class_ids_json||'[]').map(id=>({id,label:null})),teacherLabels:JSON.parse(s.teacher_labels||'[]'),joinOpensAt:s.starts_at-300_000,eligibleToJoin,eligibilityExpiresAt:Math.min(eligibleUntil,s.ends_at),canJoin:Boolean(eligibleToJoin&&now>=s.starts_at-300_000&&now<s.ends_at),joinPath:'/api/offerings/'+encodeURIComponent(offer)+'/join'};
  });
  result.timetable.state=result.timetable.sessions.length?'PUBLISHED':'NO_UPCOMING_SESSIONS';
