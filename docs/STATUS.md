@@ -1,3 +1,7 @@
+# New Course first-publication setup — local candidate, 31 October 2026
+
+Automatic Studio registration and guarded access handover now start from an accepted first publication for newly created Courses. Drafts and ordinary reads do not start jobs; copies do not clone purchases. Existing/historical Courses remain excluded. Deployment, additive schemas and the absent source activation flag remain with the separate release owner. See [COURSE-PUBLICATION.md](COURSE-PUBLICATION.md) and the paired source feature branch. Local evidence is recorded in the parent outputs/academy-course-publication-20261031.
+
 # Circles homepage and Tafseer — 30 October 2026
 
 Circles is now the homepage in the prepared local review, with native learning/readers and staff management under `/studio/`. Tafseer continues through the existing Academy login directly to its selected native Studio catalogue; signed-in visitors continue directly. Existing Surah ids/editions/rights remain unchanged, old root bookmarks retain their website/edition/reading context, and Home returns to Circles. Ten focused regressions and 133-module checks pass; Chrome verifies the connected path and bookmark/home behavior. The running local backend and sessions were retained. No hosted change or media activation occurred. Future rollout must preserve the deployment owner's completed V108.1 verification policy and use a later release label. See [CIRCLES-LOGIN-CONNECTION.md](CIRCLES-LOGIN-CONNECTION.md).

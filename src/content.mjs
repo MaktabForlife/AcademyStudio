@@ -6,7 +6,7 @@ import {assertWebsiteAssets} from './website-assets.mjs';
 export async function objectJSON(bucket,key,limit=1_500_000){const object=await bucket.get(key);if(!object||object.size>limit)throw fail('The saved edition is unavailable.',503);return bodyJSON(object.body,limit);}
 export async function saveContent(env,document,websiteId=document.id){const encoded=JSON.stringify(document);if(new TextEncoder().encode(encoded).length>1_500_000)throw fail('This website edition is too large.',413);const hash=await sha256(encoded),key='websites/'+encodeURIComponent(websiteId)+'/versions/'+hash+'.json';await env.CONTENT.put(key,encoded,{httpMetadata:{contentType:'application/json'}});return key;}
 export async function websiteAccess(store,actor,websiteId,{admin=false}={}){
- const row=await store.first(`SELECT w.*,o.kind,o.active,p.purchased,s.role,
+ const row=await store.first(`SELECT w.*,o.kind,o.active,p.purchased,s.role,(SELECT access_model FROM course_access_models m WHERE m.offering_id=o.offering_id) access_model,
   EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=? AND m.offering_id=w.offering_id AND m.month=w.completion_month UNION ALL SELECT 1 FROM website_months m WHERE m.account_id=? AND m.offering_id=w.offering_id AND m.month=w.completion_month) paid,
   EXISTS(SELECT 1 FROM surah_grants g WHERE g.account_id=? AND g.website_id=w.website_id) granted
   FROM websites w JOIN offerings o USING(offering_id)
@@ -15,7 +15,7 @@ export async function websiteAccess(store,actor,websiteId,{admin=false}={}){
  if(!row||!row.active)throw fail('This website is unavailable.',404);await sourceWebsiteGate(store,actor,row);
  if(admin){await store.scope(actor,row.offering_id,{admin:true});return row;}
  const staff=actor.global_admin||row.role==='ADMIN'||row.role==='TEACHER';
- if(!staff&&!(row.kind==='COURSE'&&row.purchased||row.kind==='TAFSEER'&&(row.paid||row.granted)))throw fail('Your account does not have this material.',403,'MATERIAL_ACCESS_REQUIRED');
+ if(!staff&&!(row.kind==='COURSE'&&(row.purchased||row.access_model==='FREE')||row.kind==='TAFSEER'&&(row.paid||row.granted)))throw fail('Your account does not have this material.',403,'MATERIAL_ACCESS_REQUIRED');
  if(!row.enabled||!row.published_key)throw fail('This website is not published.',404);return row;
 }
 export async function editWebsite(env,store,actor,websiteId,input){

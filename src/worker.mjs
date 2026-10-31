@@ -1,3 +1,4 @@
+import {coursePublication} from './course-publication.mjs';
 import {dashboardSnapshot} from './dashboard.mjs';
 import {publicHeaderDate} from './header-date.mjs';
 import {circlesNavigation,programmeSnapshot} from './navigation.mjs';
@@ -36,6 +37,7 @@ async function route(request,env,store,fetcher){
   return json(home,200,{'Cache-Control':'public, max-age=60'});
  }
  if(path==='/internal/academy/events'&&method==='POST'){const result=await receive(request,env,store);if(result.changedOffering)await publishSchedule(env,store,result.changedOffering);return json(result);}
+ if(path==='/internal/studio/course-publication'&&method==='POST')return json(await coursePublication(request,env,store));
  if(path==='/internal/studio/access'&&method==='POST')return json(await studioAccess(request,env,store,fetcher));
  if(path==='/api/config'&&method==='GET')return json({academyOrigin:env.ACADEMY_ORIGIN,localPreview:env.ENVIRONMENT==='local',authorityMode:env.AUTHORITY_MODE||'WEBSITE'});
  if(method==='POST'||method==='PUT'||method==='DELETE')originCheck(request,env);
@@ -89,7 +91,7 @@ async function route(request,env,store,fetcher){
    let mediaWebsite=null;if(websiteId){const site=await websiteAccess(store,actor,id(websiteId));if(site.offering_id!==offeringId)throw fail('Choose a website in this offering.',400);mediaWebsite=site;}
    const filter=websiteId?' AND x.website_id=?':'',tail=websiteId?[websiteId]:[],select='SELECT x.attachment_id,x.asset_id,x.website_id,x.title,x.lesson_id,x.lesson_date,x.cohort,x.audience,o.mime_type type',staff=actor.global_admin||scope.role;
    let rows=[];
-   if(staff||scope.kind==='COURSE'&&scope.purchased)rows=await store.all(`${select} FROM attachments x JOIN objects o USING(asset_id) WHERE x.offering_id=? AND x.audience='RECORDING' AND x.published=1 AND x.attachment_id>?${filter} ORDER BY x.attachment_id LIMIT 51`,[offeringId,after,...tail]);
+   if(staff||scope.kind==='COURSE'&&(scope.purchased||scope.access_model==='FREE'))rows=await store.all(`${select} FROM attachments x JOIN objects o USING(asset_id) WHERE x.offering_id=? AND x.audience='RECORDING' AND x.published=1 AND x.attachment_id>?${filter} ORDER BY x.attachment_id LIMIT 51`,[offeringId,after,...tail]);
    // Unary + preserves the month value while removing column affinity: SQLite can
    // then use the substr expression index for each paid month, not scan the offer.
    else if(scope.kind==='TAFSEER')rows=await store.all(`${select} FROM paid_months m CROSS JOIN attachments x INDEXED BY attachments_month JOIN objects o USING(asset_id) WHERE m.account_id=? AND m.offering_id=? AND x.offering_id=m.offering_id AND substr(x.lesson_date,1,7)=+m.month AND x.cohort=m.cohort AND x.audience='RECORDING' AND x.published=1 AND x.attachment_id>?${filter} ORDER BY x.attachment_id LIMIT 51`,[actor.account_id,offeringId,after,...tail]);

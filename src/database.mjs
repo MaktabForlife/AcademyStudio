@@ -15,7 +15,7 @@ export class Store {
   if(!allowExpiredStatus&&row.verified_at<now-boundedAge(this.env))throw fail('Your Academy account status needs to be refreshed.',401,'STATUS_EXPIRED');return row;
  }
  async scope(actor,offeringId,{admin=false,teacher=false}={}){
-  id(offeringId);const cacheKey=actor.account_id+':'+offeringId;let row=this.scopes.get(cacheKey);if(!row){row=await this.first(`SELECT o.*,p.enrolled,p.live,p.purchased,p.cohort,s.role,s.can_create_account
+  id(offeringId);const cacheKey=actor.account_id+':'+offeringId;let row=this.scopes.get(cacheKey);if(!row){row=await this.first(`SELECT o.*,p.enrolled,p.live,p.purchased,p.cohort,s.role,(SELECT access_model FROM course_access_models m WHERE m.offering_id=o.offering_id) access_model,s.can_create_account
    FROM offerings o LEFT JOIN participation p ON p.offering_id=o.offering_id AND p.account_id=?
    LEFT JOIN staff s ON s.offering_id=o.offering_id AND s.account_id=? WHERE o.offering_id=? AND o.active=1`,[actor.account_id,actor.account_id,offeringId]);if(row)this.scopes.set(cacheKey,row);}
   if(!row)throw fail('This offering is unavailable.',404);const source=await accessGate(this,actor,offeringId,{admin:admin||teacher||Boolean(row.role)});if(source)row={...row,live:liveAccess(source,row)};

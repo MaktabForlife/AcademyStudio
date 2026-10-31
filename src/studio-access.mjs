@@ -52,6 +52,11 @@ export async function readAccess(store,actor,offer,input){
 
 export async function handover(store,actor,offer,input){
  if(!actor.global_admin)throw fail('Only Global Admin can hand over an offering.',403);if(actor.verified_at<Date.now()-boundedAge(store.env,true))throw fail('Refresh current Academy Global Admin authority.',401,'ADMIN_STATUS_EXPIRED');
+ return handoverSteps(store,offer,input,{actorId:actor.account_id,mutate:(...args)=>store.mutate(actor,...args)});
+}
+
+// Shared checkpoint algorithm; callers supply their own narrow authorization.
+export async function handoverSteps(store,offer,input,execution){
  const transfer=id(input.transferId),row=await store.first('SELECT * FROM access_handovers WHERE offering_id=?',[offer]),source=await store.first('SELECT * FROM source_access_scopes WHERE offering_id=?',[offer]);
  if(input.action==='handover-status')return {handover:row};
  const canonical={...input,operationId:id(input.operationId)},current=await revision(store,offer);
@@ -62,16 +67,16 @@ export async function handover(store,actor,offer,input){
   if(cancellation)return {phase:'ABORTED',cancelled:true,replayed:true};
   // Cancel even before a checkpoint exists. A durable transfer tombstone fences
   // an in-flight begin after Academy has safely unlocked its own controls.
-  return store.mutate(actor,offer,canonical,[store.statement('INSERT INTO access_handover_cancellations VALUES(?,?,?)',[transfer,offer,Date.now()]),store.statement("UPDATE access_handovers SET phase='ABORTED' WHERE offering_id=? AND transfer_id=? AND phase='PREPARING'",[offer,transfer])],{phase:'ABORTED',cancelled:true},{global:true,masterGlobal:true,allowInactive:true,expectedSQL:"EXISTS(SELECT 1 FROM source_access_scopes WHERE offering_id=? AND authority='ACADEMY') AND NOT EXISTS(SELECT 1 FROM access_handovers WHERE offering_id=? AND phase='COMMITTED') AND NOT EXISTS(SELECT 1 FROM access_handover_cancellations WHERE transfer_id=?)",expectedArgs:[offer,offer,transfer]});
+  return execution.mutate(offer,canonical,[store.statement('INSERT INTO access_handover_cancellations VALUES(?,?,?)',[transfer,offer,Date.now()]),store.statement("UPDATE access_handovers SET phase='ABORTED' WHERE offering_id=? AND transfer_id=? AND phase='PREPARING'",[offer,transfer])],{phase:'ABORTED',cancelled:true},{global:true,masterGlobal:true,allowInactive:true,expectedSQL:"EXISTS(SELECT 1 FROM source_access_scopes WHERE offering_id=? AND authority='ACADEMY') AND NOT EXISTS(SELECT 1 FROM access_handovers WHERE offering_id=? AND phase='COMMITTED') AND NOT EXISTS(SELECT 1 FROM access_handover_cancellations WHERE transfer_id=?)",expectedArgs:[offer,offer,transfer]});
  }
  if(cancellation)throw fail('This handover was cancelled. Start a new transfer.',409,'HANDOVER_CANCELLED');
- const previous=await store.replay(actor.account_id,canonical.operationId,await store.requestHash(offer,canonical));if(previous)return previous;
+ const previous=await store.replay(execution.actorId,canonical.operationId,await store.requestHash(offer,canonical));if(previous)return previous;
  if(input.action==='handover-begin'){
   if(source?.authority!=='ACADEMY'||!source.enabled||row&&row.phase!=='ABORTED')throw fail('This offering already has a handover. Resume or recover it.',409,'HANDOVER_CONFLICT');
   if(source.generation!==input.generation||source.version!==input.sourceVersion)throw fail('Reconcile the current Academy scope first.',409);
-  return store.mutate(actor,offer,canonical,[store.statement("INSERT INTO access_handovers VALUES(?,?,'PREPARING',?,?,?,'',0,?) ON CONFLICT(offering_id) DO UPDATE SET transfer_id=excluded.transfer_id,phase=excluded.phase,generation=excluded.generation,source_version=excluded.source_version,revision=excluded.revision,cursor='',checked=0,created_at=excluded.created_at",[offer,transfer,source.generation,source.version,current,Date.now()])],{phase:'PREPARING'},{global:true,masterGlobal:true,expectedSQL:revisionSQL+" AND EXISTS(SELECT 1 FROM source_access_scopes WHERE offering_id=? AND authority='ACADEMY' AND generation=? AND version=?) AND NOT EXISTS(SELECT 1 FROM access_handovers WHERE offering_id=? AND phase<>'ABORTED') AND NOT EXISTS(SELECT 1 FROM access_handover_cancellations WHERE transfer_id=?)",expectedArgs:[offer,current,offer,source.generation,source.version,offer,transfer]});
+  return execution.mutate(offer,canonical,[store.statement("INSERT INTO access_handovers VALUES(?,?,'PREPARING',?,?,?,'',0,?) ON CONFLICT(offering_id) DO UPDATE SET transfer_id=excluded.transfer_id,phase=excluded.phase,generation=excluded.generation,source_version=excluded.source_version,revision=excluded.revision,cursor='',checked=0,created_at=excluded.created_at",[offer,transfer,source.generation,source.version,current,Date.now()])],{phase:'PREPARING'},{global:true,masterGlobal:true,expectedSQL:revisionSQL+" AND EXISTS(SELECT 1 FROM source_access_scopes WHERE offering_id=? AND authority='ACADEMY' AND generation=? AND version=?) AND NOT EXISTS(SELECT 1 FROM access_handovers WHERE offering_id=? AND phase<>'ABORTED') AND NOT EXISTS(SELECT 1 FROM access_handover_cancellations WHERE transfer_id=?)",expectedArgs:[offer,current,offer,source.generation,source.version,offer,transfer]});
  }
- const old=await store.replay(actor.account_id,canonical.operationId,await store.requestHash(offer,canonical));if(old)return old;
+ const old=await store.replay(execution.actorId,canonical.operationId,await store.requestHash(offer,canonical));if(old)return old;
  if(!row||row.transfer_id!==transfer||row.phase!=='PREPARING')throw fail('This handover cannot accept another step.',409,'HANDOVER_CONFLICT');
  const expectedSQL="EXISTS(SELECT 1 FROM access_handovers h JOIN source_access_scopes s USING(offering_id) WHERE h.offering_id=? AND h.transfer_id=? AND h.phase='PREPARING' AND h.cursor=? AND h.revision=COALESCE((SELECT revision FROM access_revisions r WHERE r.offering_id=h.offering_id),0) AND s.authority='ACADEMY' AND s.generation=h.generation AND s.version=h.source_version) AND NOT EXISTS(SELECT 1 FROM access_handover_cancellations WHERE transfer_id=?)",expectedArgs=[offer,transfer,row.cursor,transfer];
  if(input.action==='handover-page'){
@@ -82,12 +87,12 @@ export async function handover(store,actor,offer,input){
    const stream='access:'+await sha256(JSON.stringify([offer,account.toLowerCase()]));checks.push({account,stream,version:integer(person.version,1)});
   }
   const matches=await store.first(`SELECT count(*) n FROM json_each(?) j JOIN source_access_people p ON p.account_id=json_extract(j.value,'$.account') AND p.offering_id=? JOIN stream_heads h ON h.stream=json_extract(j.value,'$.stream') WHERE p.ready=1 AND p.generation=? AND p.version=json_extract(j.value,'$.version') AND h.version=p.version`,[JSON.stringify(checks),offer,row.generation]);if(matches.n!==checks.length)throw fail('Reconcile the final Academy access page before handover.',409,'HANDOVER_PENDING');
-  return store.mutate(actor,offer,canonical,[store.statement('UPDATE access_handovers SET cursor=?,checked=checked+? WHERE offering_id=?',[cursor,checks.length,offer])],{phase:'PREPARING',cursor,checked:row.checked+checks.length},{global:true,masterGlobal:true,expectedSQL,expectedArgs});
+  return execution.mutate(offer,canonical,[store.statement('UPDATE access_handovers SET cursor=?,checked=checked+? WHERE offering_id=?',[cursor,checks.length,offer])],{phase:'PREPARING',cursor,checked:row.checked+checks.length},{global:true,masterGlobal:true,expectedSQL,expectedArgs});
  }
  if(input.action==='handover-commit'){
   if(await store.first('SELECT 1 FROM access_members WHERE offering_id=? AND account_id>? LIMIT 1',[offer,row.cursor]))throw fail('Check every target participant before handing over.',409,'HANDOVER_PARTICIPANTS');
   if(input.after!==row.cursor||input.count!==row.checked||input.final!==true)throw fail('Confirm the complete current Academy checkpoint.',409);
-  return store.mutate(actor,offer,canonical,[store.statement("UPDATE access_handovers SET phase='COMMITTED' WHERE offering_id=?",[offer]),store.statement("UPDATE source_access_scopes SET authority='WEBSITE' WHERE offering_id=?",[offer])],{phase:'COMMITTED',authority:'WEBSITE'},{global:true,masterGlobal:true,expectedSQL,expectedArgs});
+  return execution.mutate(offer,canonical,[store.statement("UPDATE access_handovers SET phase='COMMITTED' WHERE offering_id=?",[offer]),store.statement("UPDATE source_access_scopes SET authority='WEBSITE' WHERE offering_id=?",[offer])],{phase:'COMMITTED',authority:'WEBSITE'},{global:true,masterGlobal:true,expectedSQL,expectedArgs});
  }
  throw fail('Unknown handover step.');
 }
