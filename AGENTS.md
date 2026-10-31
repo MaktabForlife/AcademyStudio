@@ -1,3 +1,8 @@
+# V108.6 combined release approved — 31 October 2026
+
+- You explicitly said “deploy” after the combined local review passed. Release the reviewed Circles/access integration and date-header recovery as V108.6, with its additive source0015/target0004 structures. Preserve existing screens, all49 enabled original media, current bindings and43200/43200/60. Keep live checks small.
+- This approves deployment only: Academy remains access/enrolment owner. No live offering transfer, new media/publication, DNS, retirement or Git push. Preserve the separately owned original candidates and held later UI/Kahf/free links. See docs/RELEASE-1086.md and private parent outputs/academy-studio-release-1086-20261031.
+
 # V108.5 circle block correction deployed — 30 October 2026
 
 - The requested placement correction is live: Worker 18f63abd-ea89-471c-8ab7-acbc7309d4e1, deployment afb3fcd8-d397-4be2-9e66-609fd3768958, 100% traffic. Login returns to the circle homepage; permission-filtered choices are attached to their existing blocks. Nine native checks and seven bounded hosted checks pass, with a browser-verified native Academy handoff on local synthetic data. Exact approved e68d0b7 layout retained; no newer UI trials were composed. All 17 target bindings and the 43200/43200/60 policy are preserved. No source deployment, SQL/R2 write, permission or media change. See docs/CIRCLES-BLOCK-NAVIGATION.md and the private parent outputs/circles-block-navigation-20261030/release-verification.json. Preserve this connected navigation on later approved UI compositions.
