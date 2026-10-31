@@ -15,6 +15,31 @@ export async function recordedSupport(env,store,website,edition=contentVersion(w
  store.recordedSupportCache.set(cacheKey,value);return value;
 }
 
+// Preserve explicit parent associations through ordinary wording/layout edits.
+// New sections and changed source identities are never inferred. This returns
+// a D1 pointer statement for the editor's existing atomic save, rather than
+// making an index visible before the fresh authority/revision guard commits.
+export async function carryRecordedSupport(env,store,website,document,key){
+ if(website.programme_key!=='mothers')return [];
+ const edition=contentVersion(key),draft=contentVersion(website.draft_key),published=contentVersion(website.published_key);
+ if(edition===draft)return [];
+ const existing=await recordedSupport(env,store,website,edition);if(existing)return [];
+ const prior=await recordedSupport(env,store,website,draft)??await recordedSupport(env,store,website,published);if(!prior)return [];
+ const declared=new Map();for(const reading of document.lessons)for(const section of reading.sections)declared.set(pair(reading.id,section.id),section);
+ const mentioned=new Set([...declared.values()].flatMap(s=>s.blocks.map(b=>sourceLesson(b.sourceKey)).filter(Boolean))),bindings=prior.bindings.filter(b=>mentioned.has(b.editorialLessonId));
+ const native=await store.all(`SELECT x.lesson_id,x.asset_id FROM attachments x JOIN objects o USING(asset_id) WHERE x.website_id=? AND x.offering_id=? AND x.audience='RECORDING' AND o.mime_type IN('video/youtube','video/mp4') AND x.lesson_id IN(SELECT value FROM json_each(?)) LIMIT 401`,[website.website_id,website.offering_id,JSON.stringify([...new Set([...prior.sections.flatMap(s=>s.lessonIds),...prior.bindings.map(b=>b.nativeLessonId)])])]);
+ if(native.length>400)throw fail('This website needs a narrower support review.',409);
+ const validBindings=bindings.filter(b=>native.some(n=>n.lesson_id===b.nativeLessonId&&n.asset_id===b.assetId)),byEditorial=new Map(validBindings.map(b=>[b.editorialLessonId,b]));
+ const sections=prior.sections.filter(s=>{
+  const section=declared.get(pair(s.readingId,s.sectionId));if(!section||s.lessonIds.some(l=>!native.some(n=>n.lesson_id===l)))return false;
+  if(s.access==='ANY'&&(!Array.isArray(section.sourcePages)||!section.sourcePages.length||section.sourcePages.some(p=>!Number.isInteger(p)||p<1)||section.blocks.some(b=>sourceLesson(b.sourceKey))))return false;
+  return section.blocks.every(b=>{const editorial=sourceLesson(b.sourceKey);return !editorial||byEditorial.has(editorial)&&s.lessonIds.includes(byEditorial.get(editorial).nativeLessonId);});
+ });
+ const value={format:'RECORDING_SUPPORT_V1',websiteId:website.website_id,edition,bindings:validBindings,sections},encoded=JSON.stringify(value),objectKey='websites/'+website.website_id+'/recording-support/'+await sha256(encoded)+'.json';
+ await env.CONTENT.put(objectKey,encoded,{httpMetadata:{contentType:'application/json'}});
+ return [store.statement('INSERT INTO website_recording_support VALUES(?,?,?) ON CONFLICT DO NOTHING',[website.website_id,edition,objectKey])];
+}
+
 // Native content administration selects immutable metadata only after the same
 // fresh account/scope/revision guard as the website editor. Uncommitted R2 bytes
 // are unreachable; a failed/stale save cannot alter an already published view.
