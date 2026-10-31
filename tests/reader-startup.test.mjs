@@ -1,7 +1,12 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';
-import {startReaderView} from '../public/shared/reader-startup.mjs';
+import {startReaderView,readerHasLiveSessions} from '../public/shared/reader-startup.mjs';
 import {protectAccountHistory} from '../public/shared/account-history.mjs';
 const main=()=>({hidden:false,attributes:new Map(),setAttribute(k,v){this.attributes.set(k,v);},removeAttribute(k){this.attributes.delete(k);}});
+test('a completed Course never loads a timetable even when its saved author document contains a Sessions page',()=>{
+ const record={kind:'COURSE',document:{pages:{sessions:true}},capabilities:{liveSessions:false}};
+ assert.equal(readerHasLiveSessions(record),false);assert.equal(readerHasLiveSessions({...record,capabilities:{liveSessions:true}}),true);
+ assert.equal(readerHasLiveSessions({...record,kind:'TAFSEER',capabilities:{liveSessions:true}}),false);assert.equal(readerHasLiveSessions(null),false);
+});
 test('initial reader HTML hides the legacy page before any application module or request runs',async()=>{
  const html=await readFile(new URL('../public/index.html',import.meta.url),'utf8');
  assert.match(html,/<main[^>]+id="main"[^>]+aria-busy="true"[^>]+hidden>/);

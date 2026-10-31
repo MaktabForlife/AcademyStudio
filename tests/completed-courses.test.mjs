@@ -15,6 +15,17 @@ async function setup(t){
 }
 const input=()=>({operationId:crypto.randomUUID(),name:'Reviewed historical Course',accessModel:'PAID',confirmCompleted:true,websiteId:crypto.randomUUID(),packageSha256:'a'.repeat(64)});
 
+test('the historical marker disables Sessions in the website contract and closes stale timetable Join for every role',async t=>{
+ const f=await fixture();t.after(()=>f.close());
+ await f.run("INSERT INTO completed_course_registrations VALUES('course',?,?,?)",crypto.randomUUID(),'site-course','b'.repeat(64));
+ for(const role of ['admin','learner']){
+  const {cookie}=await f.login(role),site=ok(await f.request('/api/websites/site-course',{cookie}));
+  assert.equal(site.document.pages.sessions,true);assert.equal(site.capabilities.liveSessions,false);
+  assert.deepEqual(ok(await f.request('/api/offerings/course/sessions',{cookie})).sessions,[]);
+  const join=await f.request('/api/offerings/course/join',{cookie,method:'POST',body:{sessionId:'course-session'}});assert.equal(join.status,403);assert.equal(join.body.code,'JOIN_CLOSED');
+ }
+});
+
 test('Global Admin registers a completed recording Course without timetable, purchases or automatic ownership change',async t=>{
  const {f,db,register,recover,proxy}=await setup(t),body=input(),made=ok(await register(body)),activity=made.activityKey;
  assert.equal(made.liveEnabled,false);assert.equal(ok(await register(body)).replayed,true);
@@ -51,4 +62,18 @@ test('completed registration requires actual Global Admin and preserves independ
  const conflict=await register({...input(),courseId:first.courseId});assert.equal(conflict.status,409);
  assert.deepEqual((await db.prepare('SELECT * FROM course_subscription_decisions WHERE activity_key=?').bind(first.activityKey).all()).results,saved);
  await recover();assert.equal(await f.db.prepare('SELECT count(*) n FROM participation WHERE offering_id=? AND purchased=1').bind(second.courseId).first('n'),0);
+});
+
+test('an exact existing Course can be renamed and adopted without merging its duplicate or accepting a revoked Global Admin',async t=>{
+ const {f,db,call,register,recover,token}=await setup(t),list=ok(await call('/api/admin/platform/courses/list',{},token));
+ const draft=async()=>ok(await call('/api/admin/platform/courses/save',{operationId:crypto.randomUUID(),details:{name:'Spending',accessModel:'PAID',timezone:list.timezone,weekdays:[],sessions:[]}},token));
+ const visible=await draft(),hidden=await draft(),student=f.source.f.actors.studentA;
+ for(const course of [visible,hidden])await db.prepare("INSERT INTO course_subscription_decisions(account_id,activity_key,active,updated_at,updated_by_account_id) VALUES(?,?,1,'2026-10-31',?)").bind(student,'COURSE:'+course.courseId,f.source.f.actors.global).run();
+ const before=(await db.prepare('SELECT * FROM course_subscription_decisions WHERE activity_key IN(?,?) ORDER BY activity_key').bind('COURSE:'+visible.courseId,'COURSE:'+hidden.courseId).all()).results;
+ const made=ok(await register({...input(),courseId:visible.courseId,name:'The Qur’anic Framework of Spending'}));assert.equal(made.courseId,visible.courseId);
+ const get=async course=>ok(await call('/api/admin/platform/courses/get',course,token)).course;
+ assert.equal((await get(visible)).details.name,'The Qur’anic Framework of Spending');assert.equal((await get(visible)).stage,'COMPLETE');assert.equal((await get(hidden)).details.name,'Spending');
+ assert.deepEqual((await db.prepare('SELECT * FROM course_subscription_decisions WHERE activity_key IN(?,?) ORDER BY activity_key').bind('COURSE:'+visible.courseId,'COURSE:'+hidden.courseId).all()).results,before);
+ await recover();assert.equal(await f.db.prepare('SELECT purchased FROM participation WHERE account_id=? AND offering_id=?').bind(student,visible.courseId).first('purchased'),1);assert.equal(await f.db.prepare('SELECT count(*) n FROM source_access_scopes WHERE offering_id=?').bind(hidden.courseId).first('n'),0);
+ await db.prepare("UPDATE global_role_assignments SET active=0 WHERE account_id=? AND role='GLOBAL_ADMIN'").bind(f.source.f.actors.global).run();const denied=await register(input());assert([401,403].includes(denied.status),JSON.stringify(denied.body));
 });
