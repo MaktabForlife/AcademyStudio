@@ -54,19 +54,23 @@ body.circles-programme-page{
 .circles-programme-page.has-circles-catalogue #main #my-learning>h1{display:block}
 .circles-programme-page .circles-collection-nav{margin-bottom:20px;justify-content:flex-start}
 .circles-programme-page :is(.rs-tabs,.circles-collection-nav){display:flex;gap:4px;flex-wrap:wrap;overflow:visible;border:0;border-bottom:1px solid var(--line);padding:0 0 10px}
-.circles-programme-page :is(.rs-tabs,.circles-collection-nav) button{min-height:40px;padding:9px 15px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--rose-dark);font:500 13px/1.4 'DM Sans',Arial,sans-serif}
-.circles-programme-page :is(.rs-tabs,.circles-collection-nav) button[aria-current=page]{background:var(--rose);border-color:var(--rose);color:var(--paper)}
+.circles-programme-page :is(.rs-tabs,.circles-collection-nav) button,.circles-programme-page .student-course .rs-tabs button{min-height:40px;padding:9px 15px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--rose-dark);font:500 13px/1.4 'DM Sans',Arial,sans-serif}
+.circles-programme-page :is(.rs-tabs,.circles-collection-nav) button[aria-current=page],.circles-programme-page .student-course .rs-tabs button[aria-current=page]{background:var(--rose);border-color:var(--rose);color:var(--paper)}
 .circles-programme-page .student-course .sp-inner{max-width:none;margin:0;padding:0;background:transparent;border:0;--sp-accent:var(--rose);--circle-rule:var(--line);--circle-tint:var(--rose-soft)}
 .circles-programme-page .rs-series-header,.circles-programme-page .rs-series-header.rs-compact,.circles-programme-page .rs-tafseer.rs-shell .rs-series-header,.circles-programme-page .rs-tafseer.rs-shell .rs-series-header.rs-compact{grid-template-columns:74px minmax(0,1fr);gap:20px;padding:12px 0 22px}
 .circles-programme-page .student-course .rs-series-name{font:400 36px/1.15 'Libre Caslon Display',Georgia,serif;color:var(--ink);min-height:0}
 .circles-programme-page .rs-series-title{margin:0}
 .circles-programme-page .rs-series-cover img{max-height:86px}
 .circles-programme-page .rs-series-description{margin-top:8px}
+.circles-programme-page .student-course .rs-series-tools button{border-radius:8px}
+.circles-programme-page .rs-list-heading :is(h1,h2){font-size:26px}
+.circles-programme-page .student-course .rs-episode-card h3 button{font:600 16px/1.4 'DM Sans',Arial,sans-serif}
 .circles-programme-page .mou-programme>header.card{padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
 .circles-programme-page .mou-programme>header h1{font-size:36px;line-height:1.15;margin:0}
 .circles-programme-page .mou-programme>header .eyebrow{font-size:10px;letter-spacing:.14em;color:#97727d;margin:0 0 8px}
 .circles-programme-page [data-mou-refresh]{display:none}
 .circles-programme-page .mou-programme{gap:20px}
+.circles-programme-page .mou-programme h2{font-size:26px}
 .circles-programme-page .site-footer{border-color:var(--line);color:var(--muted)}
 .circles-programme-page #learning-branches:empty,.circles-programme-page #status:empty{display:none}
 @media(max-width:800px){
@@ -81,7 +85,7 @@ body.circles-programme-page{
  .circles-programme-page .programme-dashboard-bar{justify-content:stretch}
  .circles-programme-page .programme-dashboard-link{width:100%}
  .circles-programme-page main{padding-top:16px}
- .circles-programme-page :is(.rs-tabs,.circles-collection-nav) button{min-height:44px}
+ .circles-programme-page :is(.rs-tabs,.circles-collection-nav) button,.circles-programme-page .student-course .rs-tabs button{min-height:44px}
  .circles-programme-page #my-learning>h1,.circles-programme-page .mou-programme>header h1,.circles-programme-page .student-course .rs-series-name{font-size:30px}
  .circles-programme-page .rs-series-header,.circles-programme-page .rs-series-header.rs-compact,.circles-programme-page .rs-tafseer.rs-shell .rs-series-header,.circles-programme-page .rs-tafseer.rs-shell .rs-series-header.rs-compact{grid-template-columns:64px minmax(0,1fr)}
 }
