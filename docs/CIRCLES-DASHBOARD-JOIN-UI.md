@@ -1,0 +1,15 @@
+# Dashboard Join and actions
+
+The adapter consumes the reviewed Source dashboard DTO. Source must expose `nativeJoinVersion:1`, `studioJoinVersion:1`, exact native/Studio references, and checked activity ownership metadata. Target retains the independently reviewed native resolver and existing Studio Join endpoint. Circles supplies the learning-circle/view/CSS, `getNavigation:()=>navigation` from login, the stable course-row anchor and final public packaging.
+
+An explicit Join click synchronously opens a blank window and clears its opener. Native references call only `/api/circles/lesson-join` with the current selected mode and exact join key/date. Studio references call only `/api/offerings/:offeringId/join` with the exact projected session ID. There is no ownership fallback, session/title inference, saved URL or per-card API call. A denied native request never retries via Studio.
+
+Before replacing that window, the controller checks the same account/generation, current selected mode, visible dashboard, exact data/row/reference and current five-minute-to-session-end window. Refresh, account/view/public changes close pending placeholders; delayed responses cannot navigate. Blocked popups and invalid/non-HTTPS destinations fail closed. The native/Studio server remains authority for enrolment, paid/live access, publication, calendar, cancellation, epoch and revocation.
+
+The displayed circle updates locally at the next opening/start/end or minute boundary, pauses while hidden and makes no background network request. Global Admin's programme entry opens all its real current timetable rows, including earlier/cancelled rows; View timetable exposes the full returned week beyond the six-slice summary. FYA View all keeps all returned actions. Learn and Teach Calendar open viewing dialogs; Admin retains the checked calendar editor route.
+
+Admin Media uses named current-scope activities. Checked STUDIO ownership uses only the exact Studio offering management address. FROZEN is unavailable. Academy/unmapped native rows use the checked Admin `media` destination. The Studio editor independently verifies the offering occurs in its fresh authorised list. No data is attached or published through dashboard navigation.
+
+Private dialogs and local timers are removed when changing account/workspace or visiting the public site. The dashboard sits immediately after the old hero and before the course rail. The unchanged-refresh DOM check prevents observer loops; the course arranger must anchor after the dashboard when present.
+
+Focused tests cover the real adapter DOM/actions, exact timing, native/Studio routing, popup blocking, malformed destinations, duplicate clicks, delayed identity/view/reference/public/clock changes, owner-aware Media, all sessions/FYA, shared mode navigation and neutral Home. `linkedom` is an exact development-only dependency for these DOM checks. Actual paired browser and independent/final combined release checks are recorded separately; passing these tests does not declare the full release ready.
