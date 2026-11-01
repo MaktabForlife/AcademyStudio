@@ -25,7 +25,8 @@ export async function publicCatalogue(env){
    publicTextUrl=url.href;
   }
   return {key,kind,title,websiteId,pending,publicTextUrl,readerLayout:item.readerLayout==='podcast-inline'?'podcast-inline':null,
-   cover:/^[a-f0-9]{64}$/.test(item.coverSha256||'')?'/api/public/circles/covers/'+item.coverSha256:null,
+   recordings:Number.isSafeInteger(item.recordingCount)&&item.recordingCount>=0?item.recordingCount:null,
+   cover:key==='tawakkul-mindset'?'/shared/assets/tawakkul-mindset-approved.png':/^[a-f0-9]{64}$/.test(item.coverSha256||'')?'/api/public/circles/covers/'+item.coverSha256:null,
    accent:colour(item.accent)||'#805764',soft:colour(item.soft)||'#eee2df'};
  });
  return {items};
@@ -35,7 +36,7 @@ export async function websitePresentation(env,website){
  // A missing/unavailable presentation snapshot cannot become a content gate.
  let items=[];try{items=(await publicCatalogue(env)).items;}catch{}
  const matches=items.filter(i=>i.websiteId===website.website_id&&i.kind===website.kind&&!i.pending);
- return {kind:website.kind,...(matches.length===1?{key:matches[0].key,title:matches[0].title,...(matches[0].readerLayout?{readerLayout:matches[0].readerLayout}:{})}:{})};
+ return {kind:website.kind,...(matches.length===1?{key:matches[0].key,title:matches[0].title,...(matches[0].key==='tawakkul-mindset'?{cover:matches[0].cover}:{}),...(matches[0].readerLayout?{readerLayout:matches[0].readerLayout}:{})}:{})};
 }
 
 // One bounded, account-scoped lookup. Staff authority permits opening a website

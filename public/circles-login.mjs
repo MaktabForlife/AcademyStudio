@@ -5,16 +5,17 @@ import {headerIcon} from './shared/header-icons.mjs';
 import {installHeaderDates} from './shared/header-dates.mjs';
 import {readRemembered,rememberVerified,forgetRemembered} from './shared/remembered-accounts.mjs';
 import {circleBlockNavigation,dashboardProgrammeChoice} from './shared/circles-block-navigation.mjs?v=workspace-separation-1';
+import {publicHome} from './shared/public-home.mjs';
 import {circlesCourseRow} from './shared/circles-course-row.mjs';
 import {api,identity,changed} from './api.mjs';
 import {dashboardWorkspace,dashboardHomeHref,readDashboardView,rememberDashboardView,clearDashboardView,dashboardViewStorage} from './shared/dashboard-home.mjs';
 import {accessArea,signInFromCircles,openAcademyFromCircles} from './shared/circles-sign-in.mjs';
 
-const labels={general:'Your Academy account',academy:'Islamic Academia',tafseer:'Tafseer and Tadabbur',courses:'Your classrooms',mothers:'Classrooms to nurture minds',hifz:'Ma’had Arwa Hifz Academy',studio:'Studio','arabic-adventures':'Arabic Adventures'};
+const labels={general:'Your Academy account',academy:'Islamic Academia',tafseer:'Tafseer and Tadabbur',courses:'Your classrooms',mothers:'Mothers of the Ummah',hifz:'Ma’had Arwa Hifz Academy',studio:'Studio','arabic-adventures':'Arabic Adventures'};
 const dialog=document.createElement('dialog');dialog.id='circles-sign-in';dialog.className='circles-sign-in';dialog.setAttribute('aria-labelledby','circles-sign-in-title');
 dialog.innerHTML=`<button type="button" class="circles-sign-in-close" aria-label="Close sign-in">×</button><p class="eyebrow" id="circles-sign-in-area">Your Academy account</p><h2 id="circles-sign-in-title">Ahlan wa Sahlan</h2><p id="circles-sign-in-intro">Log in with your existing Academy account.</p><section id="circles-remembered-accounts" aria-label="Remembered accounts"></section><form id="circles-sign-in-form"><label>Academy account ID<input name="uniqueid" autocomplete="username" maxlength="160" required></label><label>PIN<input name="pin" type="password" inputmode="numeric" autocomplete="off" readonly pattern="[0-9]{4}" maxlength="4" required></label><label id="circles-confirm-pin" hidden>Confirm your Academy PIN<input name="pinConfirmation" type="password" inputmode="numeric" autocomplete="off" readonly pattern="[0-9]{4}" maxlength="4"></label><label class="circles-remember-choice"><input type="checkbox" name="rememberId" checked>Remember my ID on this browser</label><button type="submit" class="btn">Log in</button></form><p id="circles-sign-in-status" role="status" aria-live="polite"></p>`;
 document.body.append(dialog);
-const element=id=>document.getElementById(id),form=element('circles-sign-in-form'),message=element('circles-sign-in-status'),renderBlocks=circleBlockNavigation(document),renderCourses=circlesCourseRow(document);
+const element=id=>document.getElementById(id),form=element('circles-sign-in-form'),message=element('circles-sign-in-status'),renderBlocks=circleBlockNavigation(document),renderCourses=circlesCourseRow(document),refinePublicHome=publicHome(document);
 const pins=pinEntry(form);
 installHeaderDates();
 const initialEntry=window.AcademyCirclesEntry||{},initialWorkspace=initialEntry.workspace||new URLSearchParams(location.search).get('workspace');
@@ -28,7 +29,7 @@ function renderRemembered(){
  for(const row of rows){const line=document.createElement('div');line.className='circles-remembered-row';const choose=document.createElement('button');choose.type='button';choose.className='circles-remembered-choice';choose.textContent=(row.name?row.name+' · ':'')+row.id;choose.onclick=()=>{form.elements.uniqueid.value=row.id;form.elements.pin.value='';form.elements.pinConfirmation.value='';delete form.dataset.setup;element('circles-confirm-pin').hidden=true;form.elements.pinConfirmation.required=false;message.textContent='';pins.focus();};const forget=document.createElement('button');forget.type='button';forget.className='circles-forget-account';forget.textContent='Forget';forget.setAttribute('aria-label','Forget '+row.id);forget.onclick=()=>{forgetRemembered(storage(),config?.academyOrigin,row.id);renderRemembered();};line.append(choose,forget);host.append(line);}
  const all=document.createElement('button');all.type='button';all.className='circles-forget-account';all.textContent='Forget all remembered IDs';all.onclick=()=>{forgetRemembered(storage(),config?.academyOrigin);renderRemembered();};host.append(all);
 }
-function showHomeMessage(text){homeMessage=text;refreshHeader();}
+function showHomeMessage(text){homeMessage=text;dashboard.message?.(text);refreshHeader();}
 function refreshHeader(){
  if(identity.account&&dashboard.data?.mode){rememberDashboardView(dashboardViewStorage(),identity.account.accountId,dashboard.data.mode);const url=new URL(location.href);if(url.searchParams.get('workspace')!==dashboard.data.mode){url.searchParams.set('workspace',dashboard.data.mode);history.replaceState(null,'',url);}}
  const brand=document.querySelector('a.academy-brand');if(brand)brand.href=publicView?'/?public=1':identity.account?dashboardHomeHref(dashboard.mode):'/';
@@ -56,7 +57,7 @@ function refreshHeader(){
   if(identity.account&&!existing){const signout=document.createElement('button');signout.type='button';signout.className='circles-header-sign-out';signout.dataset.circlesSignOut='';signout.innerHTML=headerIcon('signout');signout.title='Sign out';signout.setAttribute('aria-label','Sign out');entry.after(signout);}else if(!identity.account)existing?.remove();
  }
  for(const entry of document.querySelectorAll('a[data-action="visitor-access"],a[href="https://ummabbadacademy.com/my-account/"],a[href="/circles/?login=1"],a[href="/?login=1"]')){const area=accessArea(entry.dataset.id);entry.href='/?login=1&area='+area;entry.removeAttribute('target');entry.removeAttribute('rel');if(!entry.dataset.action&&!entry.dataset.programmeKey)entry.dataset.circlesLogin='';}
- renderBlocks(Boolean(identity.account)&&!publicView,navigation);renderCourses(Boolean(identity.account)&&!publicView,navigation,dashboard.mode);dashboard.refresh();
+ refinePublicHome();renderBlocks(Boolean(identity.account)&&!publicView,navigation);renderCourses(Boolean(identity.account)&&!publicView,navigation,dashboard.mode);dashboard.refresh();
  const home=element('learning-circles');if(home){let status=element('circles-navigation-status');if(!status){status=document.createElement('p');status.id='circles-navigation-status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');home.append(status);}if(status.textContent!==homeMessage)status.textContent=homeMessage;status.hidden=!homeMessage;}
 }
 function closeAccountMenu({focus=false}={}){for(const menu of document.querySelectorAll('.circles-account-menu')){menu.hidden=true;const account=menu.parentElement.querySelector('.public-login');account?.setAttribute('aria-expanded','false');if(focus)account?.focus();}}

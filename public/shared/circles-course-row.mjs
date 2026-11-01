@@ -1,3 +1,4 @@
+import {accessBadge} from './access-badge.mjs';
 import {esc} from './model.mjs';
 import {homepageFreeCourseHref} from './homepage-free-courses.mjs';
 import {learnCourses} from './circles-learn-courses.mjs';
@@ -8,7 +9,7 @@ export function coursePreview(courses,limit=6){
 }
 
 export function purchasedCourseCards(courses){
- return courses.map(course=>{const access=course.accessLabel||'Your paid course';return `<a class="circles-purchased-course" href="${esc(course.href)}" aria-label="${esc(course.label)} · ${esc(access)}">${course.cover?`<img src="${esc(course.cover)}" alt="" loading="lazy">`:'<span class="course-cover-fallback" aria-hidden="true"></span>'}<span class="course-artwork-caption"><small>${esc(access)}</small><h3>${esc(course.label)}</h3>${Number.isSafeInteger(course.recordings)?`<span class="course-recording-count">${course.recordings>1000?'1000+':course.recordings} ${course.recordings===1?'recording':'recordings'}</span>`:''}</span></a>`;}).join('');
+ return courses.map(course=>{const access=course.accessLabel||'Your paid course';return `<a class="circles-purchased-course" href="${esc(course.href)}" aria-label="${esc(course.label)} · ${esc(access)}">${course.cover?`<img src="${esc(course.cover)}" alt="" loading="lazy">`:'<span class="course-cover-fallback" aria-hidden="true"></span>'}<span class="course-artwork-caption"><small>${esc(access)}</small><h3>${esc(course.label)}</h3>${Number.isSafeInteger(course.recordings)?`<span class="course-recording-count">${course.recordings>1000?'1000+':course.recordings} ${course.recordings===1?'recording':'recordings'}</span>`:''}${accessBadge(course.accessState||'subscribed')}</span></a>`;}).join('');
 }
 
 // Keep the artwork and the five explicitly reactivated free-course bookmarks.

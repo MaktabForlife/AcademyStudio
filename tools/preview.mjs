@@ -10,7 +10,7 @@ const homeReview=process.env.PREVIEW_HOME_REVIEW==='1',homeReads={config:0,accou
 const homeStages=new Map([['/api/config','config'],['/api/me','account'],['/api/circles/navigation','navigation'],['/api/circles/dashboard','dashboard']]);
 if(mou&&(!circles||process.env.PREVIEW_NAVIGATION!=='1'))throw Error('The paired MOU preview requires the synthetic Circles navigation fixture.');
 const fixture=mou?(await import(pathToFileURL(resolve(process.env.MOU_BACKEND_ROOT,'tests/fixture.mjs')))).fixture:localFixture;
-const f=await fixture({academy:true,authorityMode:circles?'ACADEMY':'WEBSITE',...(mou?{mou:true}:{}),...(process.env.PREVIEW_NAVIGATION==='1'?{dashboard:true,navigation:{mothers:mou?'programB':'programA',alimiyah:mou?'programA':'programB'},verification:{accountSeconds:43200,liveSeconds:43200,adminSeconds:60}}:{})});
+const f=await fixture({academy:true,authorityMode:circles?'ACADEMY':'WEBSITE',...(mou?{mou:true}:{}),...(process.env.PREVIEW_NAVIGATION==='1'?{dashboard:true,...(process.env.PREVIEW_JOIN_TEST==='1'?{nativeJoinTest:true}:{}),navigation:{mothers:mou?'programB':'programA',alimiyah:mou?'programA':'programB'},verification:{accountSeconds:43200,liveSeconds:43200,adminSeconds:60}}:{})});
 let circlesData;
 if(circles){const {circlesFixture}=await import('../tests/circles-fixture.mjs');const x=await circlesFixture(f);circlesData=x;await x.recover(8);}else{
 for(const [account,globalAdmin] of [[f.source.f.actors.global,1],[f.source.f.actors.studentA,0]])await f.run('INSERT INTO accounts VALUES(?,?,1,1,1,?,?)',account,'Synthetic Academy '+(globalAdmin?'Admin':'Learner'),Date.now(),globalAdmin);

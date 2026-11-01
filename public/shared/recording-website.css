@@ -135,3 +135,5 @@
 @media(max-width:650px){.circles-theme .rs-companion-layout.has-quotations{display:block}.rs-player-slot .sp-companion-player h2{display:none}.circles-theme .rs-episode-card{padding:22px 17px}.circles-theme .rs-card-summary{font-size:14px}}
 
 .mou-subject-card{position:relative}.mou-subject-card a[data-circles-website]::after{content:'';position:absolute;inset:0}.mou-subject-card a[href^="/builder/"]{position:relative;z-index:1}.mou-subject-card:has(a[data-circles-website]):hover{border-color:var(--circle-accent,#805764)}
+
+.circles-theme .rs-card-quotation{margin:18px 0 14px auto;max-width:65%;text-align:right;font:italic 400 21px/1.5 var(--circle-serif);color:#826477}.circles-theme .rs-card-quotation:before{content:'“'}.circles-theme .rs-card-quotation:after{content:'”'}@media(max-width:650px){.circles-theme .rs-card-quotation{max-width:100%;font-size:19px}}
