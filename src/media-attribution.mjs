@@ -62,7 +62,8 @@ export async function attributionChange(env,store,actor,offer,input,fetcher){
  if(row.offering_id!==offer||row.audience!=='RECORDING')throw fail('Choose this programme’s recording.',403);
  const saved=await store.first('SELECT * FROM media_attributions WHERE attachment_id=?',[attachment]),parent=parentGuard(scope,row);
  if(input.action==='media-attribution-save'){
-  const checked=await mediaTeachers(env,store,actor,offer,input.teacherIds,fetcher);
+  const selected=teacherIds(input.teacherIds);
+  const checked=await mediaTeachers(env,store,actor,offer,selected,fetcher);
   const context=await contextFor(store,scope,row,checked.teachers.filter(t=>checked.selectedTeacherIds.includes(t.id)),checked.classes),encoded=JSON.stringify(context);
   const replay=await store.replay(actor.account_id,input.operationId,await store.requestHash(offer,input));if(replay)return replay;
   if(integer(input.revision)!==(saved?.revision||0))throw fail('Teacher attribution changed. Reopen the saved recording.',409);
@@ -97,7 +98,8 @@ export async function mediaOptions(env,store,actor,offer,fetcher){
  return {...choices,kind:scope.kind,programmeKey:scope.programme_key||null,subjects,classIds:ids,classes:choices.classes.filter(c=>ids.includes(c.id))};
 }
 export async function attachMedia(env,store,actor,offer,input,fetcher,planner){
- const scope=await mediaAdmin(store,actor,offer),checked=await mediaTeachers(env,store,actor,offer,input.teacherIds,fetcher);
+ const selected=teacherIds(input.teacherIds);
+ const scope=await mediaAdmin(store,actor,offer),checked=await mediaTeachers(env,store,actor,offer,selected,fetcher);
  const replay=await store.replay(actor.account_id,input.operationId,await store.requestHash(offer,input));if(replay)return replay;
  const attachment=id(input.attachmentId),website=scope.kind==='COURSE'?null:id(input.websiteId),row={asset_id:id(input.assetId),lesson_id:attachment,offering_id:offer,website_id:website,lesson_date:scope.kind==='COURSE'?(input.lessonDate?date(input.lessonDate):''):date(input.lessonDate),cohort:scope.kind==='COURSE'?'':text(input.cohort,180)};
  const context=await contextFor(store,scope,row,checked.teachers.filter(t=>checked.selectedTeacherIds.includes(t.id)),checked.classes);
