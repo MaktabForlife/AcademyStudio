@@ -2,15 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
+import * as circleDays from '../public/shared/circle-days.mjs';
+import {localDay} from '../public/shared/learning-circle.mjs';
 import {createDashboardJoin} from '../public/shared/dashboard-join.mjs';
 
 const source=readFileSync(new URL('../public/circles-dashboard.mjs',import.meta.url),'utf8').replace(/^import .*\n/gm,'').replace('export function circlesDashboard','function circlesDashboard')+'\nglobalThis.makeDashboard=circlesDashboard;';
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
-const snapshot=(mode,label=mode)=>({mode,label,availableModes:['learn','teach','admin'],adminBadge:'Global Admin'});
+const snapshot=(mode,label=mode)=>({mode,label,checkedAt:Date.now(),timezone:'Africa/Johannesburg',availableModes:['learn','teach','admin'],adminBadge:'Global Admin'});
 function client(){
  const window=new EventTarget(),document=Object.assign(new EventTarget(),{body:{classList:{toggle(){}},dataset:{}},getElementById:()=>null,querySelector:()=>null,querySelectorAll:()=>[]}),identity={account:{accountId:'one',globalAdmin:true},generation:1},calls=[];
  const api=(path,options)=>{const value=deferred();calls.push({path,options,...value});return value.promise;};
- const context=vm.createContext({window,document,identity,api,createDashboardJoin,URL,setTimeout,clearTimeout,dashboardHTML:()=>''});vm.runInContext(source,context);
+ const context=vm.createContext({window,document,identity,api,createDashboardJoin,...circleDays,localDay,URL,setTimeout,clearTimeout,dashboardHTML:()=>''});vm.runInContext(source,context);
  let updates=0;const dashboard=context.makeDashboard({onUpdate:()=>updates++,openAcademy:()=>{}});
  return {dashboard,identity,window,calls,get updates(){return updates;}};
 }
