@@ -22,10 +22,10 @@ export async function change(env,store,actor,offeringId,input,guardOptions={}){
    const assetIds=[...new Set(attachments.map(item=>id(item.assetId)))],websiteIds=[...new Set(attachments.filter(item=>item.websiteId).map(item=>id(item.websiteId)))],attachmentIds=attachments.map(item=>id(item.attachmentId));
    const [assets,websites,previous]=await store.batch([
     store.statement('SELECT o.asset_id,o.mime_type FROM json_each(?) j JOIN objects o ON o.asset_id=j.value JOIN asset_owners x ON x.asset_id=o.asset_id AND x.offering_id=?',[JSON.stringify(assetIds),offeringId]),
-    store.statement('SELECT w.website_id FROM json_each(?) j JOIN websites w ON w.website_id=j.value AND w.offering_id=?',[JSON.stringify(websiteIds),offeringId]),
+    store.statement('SELECT w.website_id,EXISTS(SELECT 1 FROM mou_playlists p WHERE p.website_id=w.website_id AND p.offering_id=w.offering_id) playlist FROM json_each(?) j JOIN websites w ON w.website_id=j.value AND w.offering_id=?',[JSON.stringify(websiteIds),offeringId]),
     store.statement('SELECT a.attachment_id,a.offering_id FROM json_each(?) j JOIN attachments a ON a.attachment_id=j.value',[JSON.stringify(attachmentIds)])
    ]);
-   batchFacts={assets:new Map(assets.results.map(row=>[row.asset_id,row])),websites:new Set(websites.results.map(row=>row.website_id)),previous:new Map(previous.results.map(row=>[row.attachment_id,row]))};
+   batchFacts={assets:new Map(assets.results.map(row=>[row.asset_id,row])),websites:new Set(websites.results.map(row=>row.website_id)),playlistWebsites:new Set(websites.results.filter(row=>row.playlist).map(row=>row.website_id)),previous:new Map(previous.results.map(row=>[row.attachment_id,row]))};
   }
   for(const item of input.changes)statements.push(...await change(env,store,actor,offeringId,item,{collect:true,scope,batchFacts}));
  }else if(input.action==='access-batch'){
@@ -74,7 +74,7 @@ export async function change(env,store,actor,offeringId,input,guardOptions={}){
   s(`INSERT INTO cards VALUES(?,?,?,?,?,0) ON CONFLICT(offering_id) DO UPDATE SET title=excluded.title,description=excluded.description,display_label=excluded.display_label,visible=excluded.visible,revision=cards.revision+1`,[offeringId,text(input.title),text(input.description||'',2000),text(input.displayLabel||''),flag(input.visible)]);
  }else if(input.action==='attachment'){
   if(scope?.programme_key==='mothers'&&input.audience==='RECORDING'&&!guardOptions.playlistChecked)throw fail('Use the checked media form and choose a MOU playlist.',409,'PLAYLIST_REQUIRED');
-  if(input.websiteId&&!guardOptions.playlistChecked&&await store.first('SELECT 1 FROM mou_playlists WHERE website_id=? AND offering_id=?',[id(input.websiteId),offeringId]))throw fail('Use the checked media form and choose this playlist.',409,'PLAYLIST_REQUIRED');
+  if(input.websiteId&&!guardOptions.playlistChecked&&(guardOptions.batchFacts?guardOptions.batchFacts.playlistWebsites.has(id(input.websiteId)):await store.first('SELECT 1 FROM mou_playlists WHERE website_id=? AND offering_id=?',[id(input.websiteId),offeringId])))throw fail('Use the checked media form and choose this playlist.',409,'PLAYLIST_REQUIRED');
   const assetId=id(input.assetId),asset=guardOptions.batchFacts?guardOptions.batchFacts.assets.get(assetId):await store.first('SELECT o.mime_type FROM objects o JOIN asset_owners x USING(asset_id) WHERE o.asset_id=? AND x.offering_id=?',[assetId,offeringId]);if(!asset)throw fail('Choose a file owned by this offering.',403);
   const websiteId=input.websiteId?id(input.websiteId):null;if(websiteId&&!(guardOptions.batchFacts?guardOptions.batchFacts.websites.has(websiteId):await store.first('SELECT website_id FROM websites WHERE website_id=? AND offering_id=?',[websiteId,offeringId])))throw fail('Choose a website in this offering.');
   if(!['WEBSITE','RECORDING'].includes(input.audience)||input.audience==='WEBSITE'&&(!websiteId||!['application/pdf','image/png','image/jpeg','image/webp'].includes(asset.mime_type)))throw fail('Website-only rights cannot grant recordings.');
