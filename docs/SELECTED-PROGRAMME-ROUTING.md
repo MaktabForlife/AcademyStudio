@@ -21,3 +21,7 @@ No deployment, push, hosted account/read/write, native grant, media, schema or t
 ## Root V109.3 release preparation
 
 The matching release uses Source078bcc8b and this narrow Target correction. Final frozen assets are local-content/release-1093/public:166files,162deployed hashes unchanged and4allowed deltas including both version markers. Use wrangler.release-1093.jsonc with the existing academy-studio profile. There is no schema, grant, content, DNS or coordinator change. Existing12-hour verification and60-second sensitive Admin proof remain. Publication/recording/editor/retention and unfinished UI/Home drafts are excluded. Deployment follows combined local checks under the owner’s conditional separation-release instruction.
+
+## Root release completed
+
+V109.3 is deployed jointly with Academy. Runtime Source078bcc8b / Targetf4e2f3ed; Academy Worker2afb819f-5aa9-4dac-a9be-c39de640f920, Pagesb76ff58a-a7bb-49e4-88ac-3dd16cb5b89e, Studio Workerca7ef40c-ef40-4686-bb47-96003ae9fa0b. Source42/Target17 bindings, verification43200/43200/60 and the166-file reviewed asset composition are preserved. Six bounded unsigned version/hash checks passed; actual signed-in live acceptance remains for the owner. The earlier local-only statements above describe the original patch handoff, not current release status. Evidence: parent outputs/academy-workspace-separation-20261101/release-verification.json. Academy and Studio must always publish together under work/AGENTS.md. All held features/content remain excluded.

@@ -1,3 +1,11 @@
+# V109.3 deployed together — 1 November 2026
+
+Academy API/Pages and Studio runtime/assets are deployed and verified as one release. Runtime commits: Source078bcc8b51d1c666f2106e22144270d488f05370 / Targetf4e2f3ed0dff917ccc86cbdafbce8dc0d10081d9. Academy Worker2afb819f-5aa9-4dac-a9be-c39de640f920, Pagesb76ff58a-a7bb-49e4-88ac-3dd16cb5b89e and Studio Workerca7ef40c-ef40-4686-bb47-96003ae9fa0b are active. Source42/Target17 bindings and43200/43200/60 are preserved. The coordinator is unchanged.
+
+Programme cards preserve selected Academy Learn/Teach/Admin through the checked native connector; Studio itself remains Learn+Admin. No new role grant, SQL, schema, content publication, recording attachment, DNS change or Git push. The old active dashboard snapshot may rebuild once; no polling or population-wide work is added. Local permission/connector/browser checks pass. Six bounded unsigned version/hash checks pass after activation; signed-in live functional acceptance is not claimed. The first rollout restored the previous pair because of a local Python certificate trust failure; the corrected normal-TLS Node checker and coordinated retry completed successfully.
+
+Follow ../AGENTS.md: Academy and Studio must always publish together. All held UI/Home, editor, retention, academic attachments and failing MOU work remain excluded. Evidence and exact rollback references: parent outputs/academy-workspace-separation-20261101/release-verification.json. Do not redeploy this release or treat its fulfilled approval as approval for later features.
+
 # V109.3 targeted separation release — root owned
 
 The owner requested deployment as soon as Admin/Teach/Learn separation is fixed. This isolated release composes only Source078bcc8b with Targetf3245f5 and version markers. Use the frozen166-file local-content/release-1093/public and wrangler.release-1093.jsonc in the existing named academy-studio account. Preserve17bindings,43200/43200/60, current rights/media and all source/Studio origins. No schema/data/DNS/coordinator change or Git push. Unfinished UI/Home, editor, retention and all held recordings/MOU remain excluded. Root handles the matching release after combined local checks; no independent deployment from another chat.
