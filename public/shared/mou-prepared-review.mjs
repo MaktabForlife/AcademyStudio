@@ -1,5 +1,6 @@
 import {reviewNativeMouPlan} from './native-mou-import.mjs';
 import {learnerCompanion} from './learner-companion.mjs';
+import {checkedMediaTeacherIds,checkedMediaPlaylist} from './media-workflow.mjs';
 const check=(ok,message)=>{if(!ok)throw Error(message);};
 const hash=async value=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(value)))),n=>n.toString(16).padStart(2,'0')).join('');
 export async function reviewMouCatalogue(plan){
@@ -48,9 +49,9 @@ export async function runMouLesson({plan,itemId,phase,teacherIds,playlistId,api,
  const fresh=await api('/api/admin/'+encodeURIComponent(plan.preflight.offeringId)+'/prepared-recordings');current();
  check(await hash(fresh.plan)===await hash(plan),'The prepared review changed. Reopen it before continuing.');
  const state=mouLessonState(plan,item,fresh.facts);if(state.published)return {published:true,unchanged:true};
- const selected=teacherIds|| (state.attribution?JSON.parse(state.attribution.draft_json).teacherIds:[]);check(Array.isArray(selected)&&selected.length>0&&selected.length<=10,'Choose a checked registered Teacher before continuing.');
- const choices=await api('/api/admin/'+encodeURIComponent(fresh.facts.offeringId)+'/media-options');current();check(selected.every(id=>choices.teachers.some(t=>t.id===id)),'Choose a current checked registered Teacher.');
- const savedPlaylist=state.attribution?JSON.parse(state.attribution.draft_json).playlist?.id:null;const selectedPlaylist=playlistId||savedPlaylist;check(selectedPlaylist&&(choices.playlists||[]).some(p=>p.id===selectedPlaylist),'Choose a MOU playlist before attaching or publishing.');if(savedPlaylist)check(savedPlaylist===selectedPlaylist,'Preserve the saved playlist selection.');
+ const requestedTeachers=teacherIds|| (state.attribution?JSON.parse(state.attribution.draft_json).teacherIds:[]);
+ const choices=await api('/api/admin/'+encodeURIComponent(fresh.facts.offeringId)+'/media-options');current();const selected=checkedMediaTeacherIds(choices,requestedTeachers);
+ const savedPlaylist=state.attribution?JSON.parse(state.attribution.draft_json).playlist?.id:null;const selectedPlaylist=playlistId||savedPlaylist;checkedMediaPlaylist(choices,selectedPlaylist);if(savedPlaylist)check(savedPlaylist===selectedPlaylist,'Preserve the saved playlist selection.');
  const step=action=>{const row=item.steps.find(r=>r.body.action===action);check(row,'The reviewed step is missing.');return row;};
  let actions;
  if(phase==='attach')actions=[...(!state.website?['website-create']:[]),...(!state.asset?['youtube']:[]),...(!state.asset?.attachment_id?['attachment']:[]),...(!state.subject?['mou-subject']:[]),...(!state.asset?.companion_draft_key?['companion-save']:[])];
