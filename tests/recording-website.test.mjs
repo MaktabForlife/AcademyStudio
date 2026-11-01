@@ -88,3 +88,10 @@ test('every podcast has only Listen and Read tabs; About, PDF and Join are heade
  const {recordingWebsiteTabs}=await import('../public/shared/recording-website.mjs');
  for(const name of ['Foundations of Tafseer','Ulumul Qur’an','Surah Yaseen','A guidance Course'])assert.deepEqual(recordingWebsiteTabs({name,pages:{materials:true,sessions:true}}),[['home','Listen'],['lessons','Read']]);
 });
+
+
+test('explicit native playlist positions override dates and Teacher headings never reshuffle recording order',()=>{
+ const context=teacher=>({offeringId:'actual',classIds:['class'],subject:{key:'subject',name:'Subject'},teacherIds:[teacher],teacherName:teacher});
+ const media=[{...row('last','2025-01-01'),playlistPosition:3,recordedContext:context('A')},{...row('first','2026-12-01'),playlistPosition:1,recordedContext:context('A')},{...row('middle','2026-01-01'),playlistPosition:2,recordedContext:context('B')}],entries=seriesRecordings({media,guides:media.map(r=>guide(r.lesson_id))});
+ assert.deepEqual(entries.map(e=>e.id),['attachment-first','attachment-middle','attachment-last']);const html=recordingList({entries});assert(html.indexOf('Reviewed first')<html.indexOf('Reviewed middle'));assert(html.indexOf('Reviewed middle')<html.indexOf('Reviewed last'));
+});

@@ -5,7 +5,7 @@ const {parseHTML}=createRequire(import.meta.url)('linkedom'),flush=()=>new Promi
 function browser(html='<header><div class="programme-page-actions"></div></header>'){
  const {window,document}=parseHTML('<html><head></head><body>'+html+'</body></html>'),values=new Map(),calls=[];let value=null;
  const history={length:1,get state(){return value;},replaceState(v,_t,url){value=v;if(url)window.location.href=new URL(url,window.location.href).href;},pushState(v,_t,url){value=v;this.length++;if(url)window.location.href=new URL(url,window.location.href).href;},back(){calls.push('back');},forward(){calls.push('forward');}};
- Object.defineProperties(window,{history:{value:history,configurable:true},location:{value:{href:'https://site.test/studio/',origin:'https://site.test'},configurable:true},crypto:{value:{randomUUID},configurable:true},sessionStorage:{value:{getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,v)},configurable:true}});
+ Object.defineProperties(window,{history:{value:history,configurable:true},location:{value:{href:'https://site.test/studio/',origin:'https://site.test'},configurable:true},crypto:{value:{randomUUID},configurable:true},sessionStorage:{value:{getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,v),removeItem:k=>values.delete(k)},configurable:true}});
  return {window,document,history,values,calls};
 }
 test('shared arrows track real router history, honour dirty-work guards and disable unavailable directions',()=>{
@@ -39,4 +39,12 @@ test('re-entering with warm capability metadata neutralises prior private Admin 
  const api=async path=>{if(path==='/api/config')return {};if(path==='/api/admin/offerings'){listCalls++;return {offerings:[{offering_id:'course',kind:'COURSE',title:'Actual course'}]};}if(path==='/api/admin/course'){if(deny)throw Object.assign(Error('Current scope denied'),{status:403});return new Promise(r=>resolve=r);}throw Error(path);};
  const source=readFileSync(new URL('../public/admin.mjs',import.meta.url),'utf8').replace(/^import .*$/gm,'').replace(/export /g,'')+'\nwindow.adminTest={open,close,managementOfferings};';vm.runInNewContext(source,{window:f.window,document:f.document,identity,api,esc,crypto:{randomUUID},JSON,DOMException,FormData});
  const first=f.window.adminTest.open(host);await flush();assert(!host.textContent.includes('Earlier private record'));resolve({participants:[],websites:[],months:[],requests:[],media:[]});assert((await first).hasScope);assert.match(host.textContent,/Actual course/);f.window.adminTest.close();assert.equal(host.textContent,'');host.innerHTML='<p>Must stay hidden</p>';deny=true;await assert.rejects(f.window.adminTest.open(host),/Current scope denied/);assert(!host.textContent.includes('Must stay hidden'));assert(!host.textContent.includes('Actual course'));assert.match(host.textContent,/Current scope denied/);assert.equal(listCalls,1,'Warm capability metadata does not bypass the actual current details gate');
+});
+
+
+test('same-account full-document navigation retains Back without a referrer, stores only a fingerprint, and resets on account or destination changes',()=>{
+ const first=browser(),history=installPageHistory(first);history.update({accountId:'one'});first.history.pushState({},'','?website=native');history.noteNavigation('/builder/?website=private-marker');assert(!JSON.stringify([...first.values]).includes('private-marker'));
+ const second=browser();for(const [k,v]of first.values)second.values.set(k,v);second.window.location.href='https://site.test/builder/?website=private-marker';second.history.length=3;const next=installPageHistory(second);next.update({accountId:'one'});assert.deepEqual(next.position,{index:2,max:2});assert(!next.bar.querySelector('[data-page-back]').disabled);
+ const other=browser();for(const [k,v]of first.values)other.values.set(k,v);other.window.location.href=second.window.location.href;other.history.length=3;const reset=installPageHistory(other);reset.update({accountId:'different'});assert.deepEqual(reset.position,{index:0,max:0});
+ const mismatch=browser();for(const [k,v]of first.values)mismatch.values.set(k,v);mismatch.window.location.href='https://site.test/import/';mismatch.history.length=3;const unknown=installPageHistory(mismatch);unknown.update({accountId:'one'});assert.deepEqual(unknown.position,{index:0,max:0});
 });

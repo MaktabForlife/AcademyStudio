@@ -1,0 +1,13 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {parseHTML} from 'linkedom';
+import {publishedPlaylistRows,presentPublishedPlaylists,playlistMediaQuery,mergePlaylistMediaPage} from '../public/shared/published-playlists.mjs';
+const descriptor={id:'native-playlist',websiteId:'new-native-surah',offeringId:'native-offering',offeringTitle:'Native Tafseer',programmeKey:null,kind:'TAFSEER',published:true,title:'A new published Surah',recordings:7,canListen:true,canRead:true,href:'/studio/?website=new-native-surah'};
+test('new native Surah/course IDs appear from the protected published catalogue, with MOU staying in its classroom',()=>{
+ const {document}=parseHTML('<main><section data-circles-section="TAFSEER"></section><section data-circles-section="COURSE"></section></main>'),root=document.querySelector('main'),rows=publishedPlaylistRows([descriptor,{...descriptor,id:'course',websiteId:'course',offeringId:'course',kind:'COURSE',href:'/studio/?website=course'},{...descriptor,id:'mou',websiteId:'mou',programmeKey:'mothers',href:'/studio/?website=mou'}]);
+ presentPublishedPlaylists(root,{playlists:rows});assert(root.querySelector('[data-circles-section=TAFSEER] [data-circles-website=new-native-surah]'));assert(root.querySelector('[data-circles-section=COURSE] [data-circles-website=course]'));assert.equal(root.querySelector('[data-circles-website=mou]'),null);assert.match(root.textContent,/7/);
+ assert.throws(()=>publishedPlaylistRows([{...descriptor,published:false}]));assert.throws(()=>publishedPlaylistRows([{...descriptor,href:'https://elsewhere.test/'}]));assert.throws(()=>publishedPlaylistRows([{...descriptor,canListen:false,canRead:false}]));
+});
+test('saved-order pagination fences reordered playlists before appending, keeps exact attachment IDs, and has no session association',()=>{
+ const first={attachment_id:'actual-first',playlistPosition:1},bound={media:[first],playlist:{id:'native',revision:5}},response={playlist:{id:'native',revision:5},media:[first,{attachment_id:'actual-last',playlistPosition:3}]};
+ const params=playlistMediaQuery('website',{after:'actual-first',playlist:bound.playlist});assert.equal(params.get('after'),'actual-first');assert.equal(params.get('playlistRevision'),'5');assert.deepEqual(mergePlaylistMediaPage(bound,response,{more:true}).media.map(r=>r.attachment_id),['actual-first','actual-last']);
+ assert.throws(()=>mergePlaylistMediaPage(bound,{...response,playlist:{id:'native',revision:6}},{more:true}),/changed/);assert.throws(()=>mergePlaylistMediaPage(bound,{media:[]},{more:true}),/changed/);assert.deepEqual(bound.media,[first]);assert(!params.has('session'));
+});

@@ -1,3 +1,5 @@
+import {addCircleDay,circleWeekStart,selectedCircleDay,teachingScheduleRows,joinableConstituent} from './shared/circle-days.mjs';
+import {calendarMonth,offsetCalendarMonth,calendarMonthHTML} from './shared/calendar-month.mjs';
 import {api,identity} from './api.mjs';
 import {dashboardHTML,attentionRows,timetableProgrammes} from './shared/circles-dashboard-view.mjs';
 import {sessionKey,mayOfferJoin,sessionSubject,sessionTime,localDay} from './shared/learning-circle.mjs';
@@ -6,11 +8,12 @@ import {esc} from './shared/model.mjs';
 
 export function circlesDashboard({onUpdate,openAcademy,show=()=>true,onWorkspace=()=>{},getNavigation=()=>null}){
  let data=null,available=[],mode=null,pending=false,error='',ticket=0,cacheOwner='',dataOwner='',clock=null,dialog=null,dialogOwner=null,status='';
- const cache=new Map(),requests=new Map(),headers=new WeakMap();let renderedHost,renderedHTML;
+ const cache=new Map(),requests=new Map(),headers=new WeakMap();let renderedHost,renderedHTML,selectedDate='',viewedMonth='';
  const accountKey=()=>JSON.stringify([identity.account?.accountId,identity.generation]);
  const current=()=>Boolean(identity.account&&data&&dataOwner===accountKey()&&!pending&&data.mode===mode&&show());
  const grouped=()=>identity.account?.globalAdmin===true;
  const rows=()=>current()?(data.timetable||[]):[];
+ const displayRows=()=>mode==='teach'?teachingScheduleRows(rows(),{timezone:data.timezone}):rows();
  const context=()=>({account:identity.account,generation:identity.generation,mode,data,pending,visible:current()});
  function selectedNavigation(){const navigation=getNavigation();if(!navigation)return null;const permitted=new Set((data?.programmeNavigation||[]).map(row=>row.navigationKey));return {...navigation,academia:(navigation.academia||[]).filter(row=>permitted.has(row.key))};}
  const join=createDashboardJoin({context,request:api,openWindow:()=>window.open('about:blank','_blank'),now:()=>Date.now(),onMessage:message=>{status=message;writeStatus();},onPending:()=>syncJoinButtons()});
@@ -38,23 +41,23 @@ export function circlesDashboard({onUpdate,openAcademy,show=()=>true,onWorkspace
   if(!host){host=document.createElement('section');host.id='circles-dashboard';host.className='circles-dashboard';host.setAttribute('aria-label','Your Academy dashboard');}
   if(hero.nextElementSibling!==host)hero.after(host);
   let content=host.querySelector('[data-circles-dashboard-content]');if(!content){content=document.createElement('div');content.dataset.circlesDashboardContent='';host.append(content);}
-  const html=current()?dashboardHTML(data,{globalAdmin:identity.account?.globalAdmin===true,navigation:selectedNavigation(),now:Date.now()}):`<div class="circles-dashboard-panel"><h2>Your Academy dashboard</h2><p role="status">${pending?'Loading your Academy dashboard…':'Your dashboard could not be loaded.'}</p>${error?'<p>Open Academy or try again to check your dashboard.</p>':''}<button type="button" data-circles-dashboard-refresh${pending?' disabled':''}>${pending?'Loading…':'Try again'}</button><button type="button" data-circles-dashboard-home>Open Academy</button></div>`;
+  const html=current()?dashboardHTML(data,{globalAdmin:identity.account?.globalAdmin===true,navigation:selectedNavigation(),now:Date.now(),selectedDate}):`<div class="circles-dashboard-panel"><h2>Your Academy dashboard</h2><p role="status">${pending?'Loading your Academy dashboard…':'Your dashboard could not be loaded.'}</p>${error?'<p>Open Academy or try again to check your dashboard.</p>':''}<button type="button" data-circles-dashboard-refresh${pending?' disabled':''}>${pending?'Loading…':'Try again'}</button><button type="button" data-circles-dashboard-home>Open Academy</button></div>`;
   if(renderedHost!==content||renderedHTML!==html){renderedHost=content;renderedHTML=html;content.innerHTML=html;}
   if(dialogOwner&&(dialogOwner.owner!==accountKey()||dialogOwner.data!==data||dialogOwner.mode!==mode||!current()))closeDialog();
   writeStatus();syncJoinButtons();armClock();
  }
- function request(selected,force,generation,accountId){
-  const key=JSON.stringify([accountId,generation,selected||'default',force]);if(requests.has(key))return requests.get(key);
-  const loading=api('/api/circles/dashboard',{body:{...(selected?{mode:selected}:{}),...(force?{refresh:true}:{})}}).finally(()=>{if(requests.get(key)===loading)requests.delete(key);});requests.set(key,loading);return loading;
+ function request(selected,force,generation,accountId,date){
+  const key=JSON.stringify([accountId,generation,selected||'default',force,circleWeekStart(date)]);if(requests.has(key))return requests.get(key);
+  const loading=api('/api/circles/dashboard',{body:{...(selected?{mode:selected}:{}),date,...(force?{refresh:true}:{})}}).finally(()=>{if(requests.get(key)===loading)requests.delete(key);});requests.set(key,loading);return loading;
  }
- async function load(selected=mode,force=false){
+ async function load(selected=mode,force=false,date=localDay(Date.now(),data?.timezone||'Africa/Johannesburg')){
   if(!identity.account)return;const owner=accountKey();if(cacheOwner!==owner){cache.clear();requests.clear();cacheOwner=owner;}
   resetActions();const currentTicket=++ticket,generation=identity.generation;mode=selected;pending=true;error='';status='';refresh();
-  try{const key=selected||'default',value=!force&&cache.has(key)?cache.get(key):await request(selected,force,generation,identity.account.accountId);if(currentTicket!==ticket||generation!==identity.generation||owner!==accountKey())return;data=value;dataOwner=owner;available=value.availableModes;mode=value.mode;cache.set(mode,value);cache.set(key,value);}
+  try{const key=JSON.stringify([selected||'default',circleWeekStart(date)]),value=!force&&cache.has(key)&&Date.now()-Number(cache.get(key).checkedAt)<43200000?cache.get(key):await request(selected,force,generation,identity.account.accountId,date);if(currentTicket!==ticket||generation!==identity.generation||owner!==accountKey())return;data=value;selectedDate=selectedCircleDay(value,date,Date.now()).date;dataOwner=owner;available=value.availableModes;mode=value.mode;cache.set(JSON.stringify([mode,circleWeekStart(date)]),value);cache.set(key,value);}
   catch(e){if(currentTicket!==ticket||generation!==identity.generation||owner!==accountKey())return;data=null;dataOwner='';error=e.message;if([401,403,409].includes(e.status)){cache.clear();requests.clear();}}
   finally{if(currentTicket===ticket&&generation===identity.generation&&owner===accountKey()){pending=false;onUpdate();}}
  }
- function clear(){ticket++;resetActions();cache.clear();requests.clear();cacheOwner='';dataOwner='';data=null;available=[];mode=null;pending=false;error='';status='';refresh();}
+ function clear(){ticket++;resetActions();cache.clear();requests.clear();cacheOwner='';dataOwner='';data=null;available=[];mode=null;selectedDate='';pending=false;error='';status='';refresh();}
  function modal(kind,title,html){
   if(!current())return;closeDialog();const host=document.getElementById('circles-dashboard');if(!host)return;
   dialog=document.createElement('dialog');dialog.dataset.circlesDashboardDialog=kind;if(kind==='arabic')dialog.dataset.circlesArabicDialog='';dialogOwner={owner:accountKey(),data,mode};dialog.setAttribute('aria-labelledby','circles-dashboard-dialog-title');
@@ -65,9 +68,9 @@ export function circlesDashboard({onUpdate,openAcademy,show=()=>true,onWorkspace
   const details=[...(row.classNames||[]),...(row.teacherNames||[]),...(row.information||[])].filter(value=>typeof value==='string'),time=value=>sessionTime(value,data.timezone),title=sessionSubject(row)||'Lesson';
   return `<article class="circle-session-detail circle-detail-row"><h3>${esc(title)}</h3><p>${esc(row.activityName)} · ${esc(localDay(row.startsAt,data.timezone))}<br>${esc(time(row.startsAt))}–${esc(time(row.endsAt))} · ${esc(data.timezone)}</p>${details.length?'<p>'+[...new Set(details)].map(esc).join(' · ')+'</p>':''}<p>${row.status!=='SCHEDULED'?esc(row.status):Date.now()>=row.endsAt?'Session complete.':Date.now()<row.startsAt-300000?'Joining opens five minutes before this session.':'Current class access is checked when you select Join.'}</p>${mayOfferJoin(row,Date.now())?`<button type="button" data-circle-join="${esc(sessionKey(row))}">Join class ↗</button>`:''}</article>`;
  }
- function sessionInfo(row){const all=grouped()?rows().filter(value=>value.kind===row.kind&&value.activityId===row.activityId):[row];modal('session',grouped()?row.activityName+' · All sessions':'Session details',all.map(sessionHTML).join(''));}
+ function sessionInfo(row){const all=grouped()?rows().filter(value=>value.kind===row.kind&&value.activityId===row.activityId):row.constituents||[row];modal('session',grouped()?row.activityName+' · All sessions':'Session details',all.map(sessionHTML).join(''));}
  function allSessions(){const all=rows();modal('timetable','Your timetable',grouped()?timetableProgrammes(all).map(group=>`<section><h3>${esc(group.activityName)}</h3>${group.lessons.map(sessionHTML).join('')}</section>`).join(''):all.length?[...all].sort((a,b)=>a.startsAt-b.startsAt).map(sessionHTML).join(''):'<p>No published sessions in this timetable.</p>');}
- function calendar(){modal('calendar','Academy calendar',(data.calendar||[]).map(row=>`<article><h3>${esc(row.description||row.title||row.name||'Calendar event')}</h3><p>${esc(row.startDate||row.date)}${row.endDate&&row.endDate!==row.startDate?' – '+esc(row.endDate):''}</p></article>`).join('')||'<p>No calendar events in this timetable.</p>');}
+ function calendar(month=calendarMonth(Date.now(),data.timezone)){viewedMonth=month;modal('calendar','Academy calendar',calendarMonthHTML(data.calendar||[],{month,timezone:data.timezone,now:Date.now()}));}
  function mediaChooser(){
   if(!current()||mode!=='admin')return;const choices=(data.activities||[]).filter(row=>row.activityKey&&['PROGRAM','COURSE'].includes(row.kind)&&row.accessOwner!=='FROZEN');
   modal('media','Manage Media',choices.map(row=>`<p><button type="button" data-circle-media-choice="${esc(row.activityKey)}">${esc(row.name)}</button></p>`).join('')||'<p>No programmes or courses are available in your current Admin scope.</p>');
@@ -81,12 +84,14 @@ export function circlesDashboard({onUpdate,openAcademy,show=()=>true,onWorkspace
   const control=event.target.closest('button,a');if(!control)return;
   const handled=()=>{event.preventDefault();event.stopImmediatePropagation();};
   if(control.hasAttribute('data-circle-dialog-close')){handled();closeDialog();return;}
-  if(control.hasAttribute('data-circles-dashboard-refresh')){handled();void load(mode,true);return;}
+  if(control.hasAttribute('data-circles-dashboard-refresh')){handled();void load(mode,true,selectedDate||localDay(Date.now(),data?.timezone||'Africa/Johannesburg'));return;}
   if(control.hasAttribute('data-circles-dashboard-home')){handled();openAcademy(null,{mode:mode||'learn',tool:'home'});return;}
   if(!current())return;
+  if(control.dataset.calendarMonth){handled();calendar(control.dataset.calendarMonth==='today'?calendarMonth(Date.now(),data.timezone):offsetCalendarMonth(viewedMonth,control.dataset.calendarMonth==='previous'?-1:1));return;}
+  if(control.dataset.circleDay){handled();const selection=selectedCircleDay(data,selectedDate,Date.now()),date=control.dataset.circleDay==='today'?selection.today:addCircleDay(selection.date,control.dataset.circleDay==='previous'?-1:1);if(date>=selection.start&&date<=selection.end){selectedDate=date;closeDialog();refresh();}else void load(mode,false,date);return;}
   if(control.hasAttribute('data-circles-arabic-coming-soon')){handled();if(identity.account.globalAdmin===true&&mode==='learn')modal('arabic','Arabic Adventures','<p class="eyebrow">COMING SOON</p><p>Falling in love with the language of the Qur’an.</p><p>Programme details will be available here.</p>');return;}
   const rowKey=control.dataset.circleJoin||control.dataset.circleSession;
-  if(rowKey){handled();const row=rows().find(row=>sessionKey(row)===rowKey);if(row){if(control.hasAttribute('data-circle-join'))void join.join(row);else sessionInfo(row);}return;}
+  if(rowKey){handled();const row=displayRows().find(row=>sessionKey(row)===rowKey)||rows().find(row=>sessionKey(row)===rowKey);if(row){if(control.hasAttribute('data-circle-join')){const live=joinableConstituent(row,Date.now());if(live)void join.join(live);}else sessionInfo(row);}return;}
   if(control.hasAttribute('data-circle-week')){handled();document.getElementById('circles-week')?.scrollIntoView({behavior:'smooth',block:'start'});return;}
   if(control.hasAttribute('data-circle-all')){handled();allSessions();return;}
   if(control.hasAttribute('data-circle-attention-all')){handled();modal('attention','For your attention',attentionRows(data).map(row=>`<article><p class="eyebrow">${esc(row.kind)}</p><h3>${esc(row.title)}</h3><p>${esc(row.detail)}</p>${row.button}</article>`).join(''));return;}

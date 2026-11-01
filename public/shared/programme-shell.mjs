@@ -27,10 +27,10 @@ export function installProgrammeShell({document=globalThis.document,window=globa
  const accountBox=node('div','programme-header-account');accountBox.append(menu,actions);controls.remove();header.replaceChildren(branding,accountBox);
  const banners=node('div','programme-banners');header.before(banners);banners.append(header);
  const navigation=node('nav','programme-dashboard-bar');navigation.setAttribute('aria-label','Your workspace');
- const home=node('a','programme-dashboard-link');home.href=dashboardHomeHref();home.dataset.circlesDashboardHome='';home.textContent='Dashboard';navigation.append(home);banners.append(navigation);
+ banners.append(navigation);
  let account=null,adminAvailable=false,mode='learn';
  const modes=node('nav','programme-studio-modes');modes.setAttribute('aria-label','Studio workspace');
- modes.innerHTML='<button type="button" data-studio-mode="learn" aria-current="page">Learn</button><button type="button" data-studio-mode="admin" aria-current="false" hidden>Admin</button>';navigation.append(modes);
+ modes.innerHTML='<button type="button" data-studio-mode="learn" aria-current="page">Learn</button><button type="button" data-studio-mode="admin" aria-current="false" hidden>Admin</button>';header.insertBefore(modes,accountBox);
  modes.onclick=event=>{const button=event.target.closest('[data-studio-mode]');if(!button||button.hidden||!account||button.dataset.studioMode===mode)return;document.getElementById(button.dataset.studioMode==='admin'?'manage-button':'my-websites').click();};
  menu.addEventListener('toggle',async()=>{if(!menu.open||!account)return;const current=account;try{const allowed=await checkAdministration();if(account===current){adminAvailable=Boolean(account.globalAdmin||allowed);drawModes();}}catch{/* A later Admin action still uses its current native gate. */}});
  const historyControls=installPageHistory({document,window,canLeave});
@@ -48,5 +48,5 @@ export function installProgrammeShell({document=globalThis.document,window=globa
   navigation.hidden=!account;switcherButton.hidden=!account;name.dataset.accountRole=account?.globalAdmin?'Global Admin':'';
   summary.setAttribute('aria-label',account?account.displayName+(account.globalAdmin?' · Global Admin':'')+' · Account menu':'Account menu');
  }
- update(null,{pending:true});return {update,setMode(value){if(!account||!['learn','admin'].includes(value)||value==='admin'&&!adminAvailable)return;mode=value;drawModes();},allowAdmin(value){if(account){adminAvailable=value===true;if(!adminAvailable)mode='learn';drawModes();}}};
+ update(null,{pending:true});return {update,noteNavigation:href=>historyControls.noteNavigation(href),setMode(value){if(!account||!['learn','admin'].includes(value)||value==='admin'&&!adminAvailable)return;mode=value;drawModes();},allowAdmin(value){if(account){adminAvailable=value===true;if(!adminAvailable)mode='learn';drawModes();}}};
 }

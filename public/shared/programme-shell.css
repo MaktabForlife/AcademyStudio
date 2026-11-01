@@ -104,3 +104,11 @@ body.circles-programme-page{
  .circles-programme-page #my-learning>h1,.circles-programme-page .mou-programme>header h1,.circles-programme-page .student-course .rs-series-name{font-size:30px}
  .circles-programme-page .rs-series-header,.circles-programme-page .rs-series-header.rs-compact,.circles-programme-page .rs-tafseer.rs-shell .rs-series-header,.circles-programme-page .rs-tafseer.rs-shell .rs-series-header.rs-compact{grid-template-columns:64px minmax(0,1fr)}
 }
+
+/* Keep workspace choices centred in the main row; Home is the sole hub return. */
+.circles-programme-page .site-header{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:16px}
+.circles-programme-page .programme-studio-modes{grid-column:2;grid-row:1;margin:0;justify-self:center}
+.circles-programme-page .programme-brand-details{grid-column:1;grid-row:1}.circles-programme-page .programme-header-account{grid-column:3;grid-row:1}
+.circles-programme-page .programme-dashboard-bar{display:none}
+@media(max-width:1100px){.circles-programme-page .programme-header-account{gap:8px}.circles-programme-page .programme-profile{max-width:140px}.circles-programme-page .programme-brand-details{gap:12px}.circles-programme-page .circles-header-dates{display:none}}
+@media(max-width:800px){.circles-programme-page .site-header{grid-template-columns:minmax(0,1fr) auto;gap:12px}.circles-programme-page .programme-header-account{grid-column:2;grid-row:1}.circles-programme-page .programme-studio-modes{grid-column:1/-1;grid-row:2}.circles-programme-page .programme-page-actions{justify-content:flex-end}.circles-programme-page .programme-profile{display:none}}
