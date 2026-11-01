@@ -26,3 +26,7 @@ END;
 CREATE TRIGGER recording_playlist_position_edit AFTER UPDATE OF position ON recording_playlist_positions WHEN OLD.position<>NEW.position BEGIN
  UPDATE mou_playlists SET revision=revision+1 WHERE playlist_id=NEW.playlist_id;
 END;
+
+-- Default free Course discovery starts with the policy subset, without creating
+-- per-person enrolment rows or scanning unrelated paid Course models.
+CREATE INDEX course_access_by_model ON course_access_models(access_model,offering_id);
