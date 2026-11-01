@@ -28,6 +28,8 @@ The exact Source dependency is `c1de7561a76b3d7efbc7c194d4f7a1506117d5cc` from `
 
 Studio checks response scope, age and bounds, and rechecks its local actor after the await. Explicit attach, attribution save, companion save and publication revalidate native Teacher choices; a cached picker is never write authority. Final local transactions fence session/revocation/epoch/freshness, scoped Admin role, committed ownership, exact media parent/association and relevant revisions. No learner request calls this endpoint. The Source and Target accounts have no cross-account atomic transaction; native choices are checked during the signed command, and delivered local invalidation is checked again in the Target transaction.
 
+`media-attach` and `media-attribution-save` validate their explicit `teacherIds` array before invoking native selection. Omission, null, empty, duplicate or invalid IDs cannot enter the helper's undefined-selection picker mode. Rejected writes leave attachments, attribution drafts, operation receipts and rights unchanged; an options GET can still omit a selection.
+
 `recordedContext` uses `RECORDED_MEDIA_CONTEXT_V2`: `offeringId`, kind/programme key, exact `mediaIdentity`, `classIds`/snapshotted `classNames`, native subject identity, native `teacherIds`, snapshotted `teacherName`, and `attributionSource:'NATIVE_TEACHER_ACCOUNT'`. It is display/grouping metadata. It never writes staff roles, participation, purchases, paid months, grants, session audiences or enrolment. A Teacher need not have been imported as a local learner account. Historical stored IDs/labels remain in saved editions even if the current picker later omits them; a new write still requires current checked choices.
 
 ## Storage and migration
