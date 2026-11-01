@@ -4,7 +4,7 @@ import {circlesDashboard} from './circles-dashboard.mjs';
 import {headerIcon} from './shared/header-icons.mjs';
 import {installHeaderDates} from './shared/header-dates.mjs';
 import {readRemembered,rememberVerified,forgetRemembered} from './shared/remembered-accounts.mjs';
-import {circleBlockNavigation} from './shared/circles-block-navigation.mjs?v=109.1';
+import {circleBlockNavigation,dashboardProgrammeChoice} from './shared/circles-block-navigation.mjs?v=workspace-separation-1';
 import {circlesCourseRow} from './shared/circles-course-row.mjs';
 import {api,identity,changed} from './api.mjs';
 import {accessArea,signInFromCircles,openAcademyFromCircles} from './shared/circles-sign-in.mjs';
@@ -98,7 +98,7 @@ document.addEventListener('click',event=>{
  if(event.target.closest('[data-circles-refresh]')){event.preventDefault();event.stopImmediatePropagation();void refreshHomepage();return;}
  if(event.target.closest('[data-circles-home]')){event.preventDefault();event.stopImmediatePropagation();setPublicView(false);window.scrollTo({top:0,behavior:'smooth'});return;}
  const signout=event.target.closest('[data-circles-sign-out]');if(signout){event.preventDefault();event.stopImmediatePropagation();void signOut(signout);return;}
- const programme=event.target.closest('[data-programme-key]');if(programme&&identity.account){event.preventDefault();event.stopImmediatePropagation();openAcademy(programme.dataset.programmeKey);return;}
+ const programme=event.target.closest('[data-programme-key]');if(programme&&identity.account){event.preventDefault();event.stopImmediatePropagation();if(programme.dataset.programmeKey==='hifz'){openAcademy('hifz');return;}try{openAcademy(null,dashboardProgrammeChoice(programme.dataset.programmeKey,dashboard.mode,dashboard.data));}catch(error){showHomeMessage(error.message);}return;}
  const target=event.target.closest('[data-access-login],[data-circles-login],[data-action="visitor-access"],[data-action="dashboard"],[data-action="academy"],[data-action="collection"],[data-action="course"]');if(!target)return;
  if(target.dataset.action==='visitor-access'&&!identity.account)return;
  event.preventDefault();event.stopImmediatePropagation();

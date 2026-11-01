@@ -1,3 +1,10 @@
+# Selected programme workspace correction — LOCAL ONLY, 1 November 2026
+
+- This isolated feature/circles-selected-programme-route starts at released Target506c5a9. Prepare only the selected dashboard-mode programme-card correction for the root-owned V109.3 separation release. Root owns release composition/version stamping/deployment; this chat performs no deployment or push.
+- Pair with Source feature/academy-workspace-separation in ../Academy-workspace-separation. Reuse its native Admin Teach/Learn audiences, exact checked activity mapping and existing role/issuance/exchange guards. Never add teacher/student grants or silently fall back to legacy programme navigation.
+- Keep public legacy navigation, special Studio/Hifz routes and current rights/media. Home/unified-style drafts, editor/retention, recording publication and MOU order-fix are excluded. The owner-checked9043 sample is untouched.
+- Compose over the exact frozen109.2 tree; only explicitly allowlisted reviewed assets may change. Preview adapters and sample identities are not publishable. All existing media/attachment/MOU and schema holds remain.
+
 # V109.2 coordinated release — not yet deployed
 
 The owner has approved deployment once all outstanding builds are complete and tested together. This root-owned feature is prepared locally. The recording build63433b5 / ff6c12fe is complete with90 local checks and is integrated here. The owner renewed deployment approval on1November. Complete combined checks and deploy; no extra release approval is needed. Do not deploy a partial candidate or ask again for release approval. Continue after the dependency clears, compose/test all reviewed changes and preserve current permissions,43200/43200/60, original media, separate account resources and small live checks. Source API and external academy_split_coordinator require the same release Source commit for the new companion table. The current status and exact remaining work are in parent outputs/academy-release-1092-20261031/approval.json. No hosted code, data, schema, content or DNS change has occurred in this release.

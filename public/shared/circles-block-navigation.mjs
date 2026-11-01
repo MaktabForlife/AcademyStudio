@@ -1,5 +1,18 @@
 import {esc} from './model.mjs';
 
+// Resolve only the current checked dashboard's exact native programme mapping.
+// The selected view is presentation; native issuance/exchange recheck authority.
+export function dashboardProgrammeChoice(key,mode,summary){
+ if(!['alimiyah','reboot','arabic-intensive'].includes(key)||!['learn','teach','admin'].includes(mode)||summary?.mode!==mode||!summary.availableModes?.includes(mode))throw Error('Refresh your dashboard before opening this programme.');
+ const rows=summary.programmeNavigation,keys=new Set(),ids=new Set();
+ if(!Array.isArray(rows)||rows.length>3)throw Error('Refresh your dashboard before opening this programme.');
+ for(const row of rows){if(!row||!['alimiyah','reboot','arabic-intensive'].includes(row.navigationKey)||typeof row.activityKey!=='string'||!/^PROGRAM:[-A-Za-z0-9_:]{1,160}$/.test(row.activityKey)||keys.has(row.navigationKey)||ids.has(row.activityKey.toUpperCase()))throw Error('This programme could not be checked. Refresh your dashboard and try again.');keys.add(row.navigationKey);ids.add(row.activityKey.toUpperCase());}
+ const matches=rows.filter(row=>row.navigationKey===key);
+ if(matches.length!==1)throw Error('This programme is unavailable in the selected workspace. Refresh your dashboard and try again.');
+ const row=matches[0];
+ return {mode,tool:'activity',activityKey:row.activityKey};
+}
+
 // Public artwork stays intact. Signed-in cards use the existing permitted links.
 export function circleBlockChoices(area,navigation){
  if(!navigation)return '<p class="circles-block-empty" role="status">Checking your access…</p>';
