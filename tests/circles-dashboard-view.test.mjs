@@ -30,6 +30,14 @@ test('Learn, Teach and scoped Admin retain individual session entries in the cir
  }
 });
 
+test('today’s circle uses the display timezone across midnight without changing the native Join date',()=>{
+ const row=lesson({date:'2050-01-02',startTime:'23:30',endTime:'00:30',startsAt:Date.parse('2050-01-02T21:30:00Z'),endsAt:Date.parse('2050-01-02T22:30:00Z'),nativeJoin:{joinKey:'original-reference',date:'2050-01-02'}}),before=JSON.stringify(row),data=summary({mode:'learn',timezone:'Asia/Riyadh',timetable:[row]});
+ const displayed=dashboardHTML(data,{now:Date.parse('2050-01-02T21:28:00Z')});
+ assert.equal((displayed.match(/class="wheel-session /g)||[]).length,1);assert(displayed.includes('00:30–01:30'));assert(displayed.includes('data-circle-join='));
+ const yesterday=dashboardHTML(data,{now:Date.parse('2050-01-02T20:59:00Z')});assert.equal((yesterday.match(/class="wheel-session /g)||[]).length,0);
+ assert.equal(JSON.stringify(row),before);assert.equal(row.nativeJoin.date,'2050-01-02');
+});
+
 test('Admin has only the five checked management actions below the circle; other views use permitted programme links',()=>{
  const activities=[{activityKey:'PROGRAM:one',name:'Private programme',roles:['PROGRAM_ADMIN']},{activityKey:'COURSE:two',name:'Private course',roles:['ADMIN']}];
  for(const adminBadge of ['Global Admin','Admin']){

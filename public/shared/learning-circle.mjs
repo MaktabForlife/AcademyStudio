@@ -25,7 +25,7 @@ const statuses={active:'LIVE NOW',next:'UP NEXT',later:'LATER TODAY',finished:'F
 const delay=(start,now)=>{const minutes=Math.max(0,Math.ceil((start-now)/60000));return minutes<60?`in ${minutes} min`:`in ${Math.floor(minutes/60)}h${minutes%60?' '+minutes%60+'m':''}`;};
 
 export function learningCircleHTML(sessions,{now=Date.now(),timezone='Africa/Johannesburg',grouped=false}={}){
- const today=localDay(now,timezone),daily=sessions.filter(row=>row.date===today),groups=new Map();
+ const today=localDay(now,timezone),daily=sessions.filter(row=>Number.isFinite(row.startsAt)&&localDay(row.startsAt,timezone)===today),groups=new Map();
  if(grouped)for(const row of daily){const key=row.kind+':'+row.activityId,old=groups.get(key),priority=r=>r.endsAt>now?(r.startsAt<=now?0:1):2;if(!old||priority(row)<priority(old)||priority(row)===priority(old)&&(priority(row)===2?row.startsAt>old.startsAt:row.startsAt<old.startsAt))groups.set(key,row);}
  const schedule=circleSchedule(grouped?[...groups.values()]:daily,{now}),count=6,time=value=>sessionTime(value,timezone),zone=timezone==='Africa/Johannesburg'?'SAST':timezone;
  const shapes=Array.from({length:count},(_,i)=>`<path class="wheel-sector ${schedule.segments[i]?.state||'unused'}" d="${sectorPath(i,count)}"/>`).join('');
