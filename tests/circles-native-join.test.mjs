@@ -77,7 +77,7 @@ test('Target Join account/session/proof reads remain bounded beside4000 unrelate
 });
 
 test('an old dashboard shape upgrades once per account/mode, then returns from the existing private cache without polling',async t=>{
- const f=await setup(t),dashboard={nativeJoinVersion:1,studioJoinVersion:1,mode:'learn',availableModes:['learn'],programmeNavigation:[],activities:[],timetable:[{kind:'PROGRAM',activityId:'native-program',nativeJoin:{joinKey:input.joinKey,date:input.date}}]};
+ const f=await setup(t),dashboard={nativeJoinVersion:1,studioJoinVersion:1,freeProgrammeJoinVersion:1,mode:'learn',availableModes:['learn'],programmeNavigation:[],activities:[],timetable:[{kind:'PROGRAM',activityId:'native-program',nativeJoin:{joinKey:input.joinKey,date:input.date}}]};
  f.setReply(async()=>Response.json({dashboard}));
  const key='private/dashboard/'+await sha256('learner')+'/learn.json';
  const saved={accountId:'learner',epoch:1,permissionVerifiedAt:f.proof.verifiedAt,coursePolicyEpoch:0,checkedAt:Date.now(),dashboard:{...dashboard,nativeJoinVersion:undefined}};
@@ -85,7 +85,10 @@ test('an old dashboard shape upgrades once per account/mode, then returns from t
  const load=()=>f.request('/api/circles/dashboard',{cookie:f.cookie,method:'POST',body:{mode:'learn'}});
  assert.equal(ok(await load()).cached,false);assert.equal(f.calls.length,1);
  assert.equal(ok(await load()).cached,true);assert.equal(ok(await load()).cached,true);assert.equal(f.calls.length,1);
- const stored=await (await f.content.get(key)).json();assert.equal(stored.dashboard.nativeJoinVersion,1);assert(!JSON.stringify(stored).includes('zoom.'));
+ const stored=await (await f.content.get(key)).json();assert.equal(stored.dashboard.nativeJoinVersion,1);assert.equal(stored.dashboard.freeProgrammeJoinVersion,1);assert(!JSON.stringify(stored).includes('zoom.'));
+ await f.content.put(key,JSON.stringify({...stored,dashboard:{...stored.dashboard,freeProgrammeJoinVersion:undefined}}));
+ assert.equal(ok(await load()).cached,false,'An older signed-in Free Join shape upgrades once');assert.equal(f.calls.length,2);
+ assert.equal(ok(await load()).cached,true);assert.equal(f.calls.length,2);
  await f.content.put(key,JSON.stringify({...stored,dashboard:{...stored.dashboard,mode:'admin'}}));
- assert.equal(ok(await load()).mode,'learn');assert.equal(f.calls.length,2,'A wrong-mode saved snapshot must be rebuilt once');
+ assert.equal(ok(await load()).mode,'learn');assert.equal(f.calls.length,3,'A wrong-mode saved snapshot must be rebuilt once');
 });
