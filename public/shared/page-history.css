@@ -10,9 +10,9 @@
 
 .import-page-actions{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}.pb-header>.circles-page-navigation,.prospectus-header>.circles-page-navigation{margin-left:auto}
 @media(max-width:800px){
- .circles-programme-page .programme-header-account{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;width:100%}
- .circles-programme-page .account-menu,.circles-programme-page .account-menu>summary{width:100%}
- .circles-programme-page .programme-profile{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:none;width:100%}
- .circles-programme-page .programme-page-actions{display:flex;flex-wrap:nowrap;justify-content:space-between;width:100%;gap:4px}
- .circles-programme-page .programme-welcome{white-space:nowrap}
+ body.circles-programme-page .programme-header-account{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;width:100%}
+ body.circles-programme-page .account-menu,body.circles-programme-page .account-menu>summary{width:100%}
+ body.circles-programme-page .programme-profile{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:none;width:100%}
+ body.circles-programme-page .programme-page-actions{display:flex;flex-wrap:nowrap;justify-content:space-between;width:100%;gap:4px}
+ body.circles-programme-page .programme-welcome{white-space:nowrap}
 }
