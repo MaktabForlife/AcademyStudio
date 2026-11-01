@@ -87,6 +87,7 @@ export function circlesDashboard({onUpdate,openAcademy,show=()=>true,onWorkspace
   if(control.hasAttribute('data-circles-arabic-coming-soon')){handled();if(identity.account.globalAdmin===true&&mode==='learn')modal('arabic','Arabic Adventures','<p class="eyebrow">COMING SOON</p><p>Falling in love with the language of the Qur’an.</p><p>Programme details will be available here.</p>');return;}
   const rowKey=control.dataset.circleJoin||control.dataset.circleSession;
   if(rowKey){handled();const row=rows().find(row=>sessionKey(row)===rowKey);if(row){if(control.hasAttribute('data-circle-join'))void join.join(row);else sessionInfo(row);}return;}
+  if(control.hasAttribute('data-circle-week')){handled();document.getElementById('circles-week')?.scrollIntoView({behavior:'smooth',block:'start'});return;}
   if(control.hasAttribute('data-circle-all')){handled();allSessions();return;}
   if(control.hasAttribute('data-circle-attention-all')){handled();modal('attention','For your attention',attentionRows(data).map(row=>`<article><p class="eyebrow">${esc(row.kind)}</p><h3>${esc(row.title)}</h3><p>${esc(row.detail)}</p>${row.button}</article>`).join(''));return;}
   if(control.hasAttribute('data-circle-media')){handled();mediaChooser();return;}
