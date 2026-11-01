@@ -45,16 +45,18 @@ test('publication allowlist and immutable upload retention reject missing times 
  const policy=recordingRetention('2026-10-31T09:00:00Z',{now:Date.parse('2026-11-15T09:00:00Z')});assert.equal(policy.recordingExpiresAt,'2026-11-14T09:00:00.000Z');assert.equal(policy.companionExpiresAt,'2026-11-30T09:00:00.000Z');assert(policy.recordingExpired);assert(!policy.companionExpired);assert.equal(recordingRetention(null,{permanent:true}).companionExpiresAt,null);
 });
 
-test('the exact guarded four-MOU request package executes natively once and never overwrites an existing association',async t=>{
+test('the legacy four-MOU bulk package cannot bypass explicit playlist and Teacher review',async t=>{
  const f=await recordingAttachmentFixture({attach:false});t.after(()=>f.close());
  const params=new URLSearchParams();for(const l of f.packages.lessons.filter(l=>l.kind==='studio'))params.append('source',new URL(l.sourceURL).searchParams.get('v'));
- const preflight=await f.request('/api/admin/'+f.offer+'/recording-attachments?'+params,{cookie:f.admin});const plan=buildNativeMouPackage({preflight:ok(preflight),...f.packages,cohort:'local-review',localOnly:true});assert.equal(plan.items.length,4);assert.equal(plan.requests.length,32);
- const writes=[];
- for(const step of plan.requests){const response=await f.request(step.path,{cookie:f.admin,method:step.method,body:step.body});ok(response);writes.push({step:step.name,queries:response.queries,rowsRead:response.reads,rowsWritten:Number(response.response.headers.get('X-Local-D1-Rows-Written'))});assert.equal(ok(await f.request(step.path,{cookie:f.admin,method:step.method,body:step.body})).replayed,true);}
- for(const item of plan.items){const view=ok(await f.request('/api/media/'+item.attachmentId+'/companion',{cookie:f.learner}));assert.equal(view.quotations.length,0);}
- const stage=plan.requests.find(r=>r.body.action==='attachment'),conflict=await f.request(stage.path,{cookie:f.admin,method:'POST',body:{...stage.body,operationId:crypto.randomUUID(),title:'Do not overwrite the accepted saved entry'}});assert.equal(conflict.status,409);
+ const preflight=await f.request('/api/admin/'+f.offer+'/recording-attachments?'+params,{cookie:f.admin}),plan=buildNativeMouPackage({preflight:ok(preflight),...f.packages,cohort:'local-review',localOnly:true});assert.equal(plan.items.length,4);assert.equal(plan.requests.length,32);
+ const state=async()=>JSON.stringify(await Promise.all(['objects','attachments','websites','recording_companions'].map(async table=>(await f.db.prepare('SELECT * FROM '+table+' ORDER BY 1').all()).results))),before=await state();
+ const attachments=plan.requests.filter(step=>step.body.action==='attachment');assert.equal(attachments.length,4);
+ for(const step of attachments)for(let retry=0;retry<2;retry++){
+  const response=await f.request(step.path,{cookie:f.admin,method:step.method,body:step.body});assert.equal(response.status,409);assert.equal(response.body.code,'PLAYLIST_REQUIRED');assert.equal(Number(response.response.headers.get('X-Local-D1-Rows-Written')),0);
+ }
+ assert.equal(await state(),before,'An old package must not create, replace or publish any existing media or website');
  assert.throws(()=>buildNativeMouPackage({preflight:{...preflight.body,scope:{...preflight.body.scope,classes_json:'[]'}},...f.packages}),/cohort/);
- t.diagnostic(JSON.stringify({preflight:{queries:preflight.queries,rowsRead:preflight.reads,rowsWritten:Number(preflight.response.headers.get('X-Local-D1-Rows-Written'))},requests:plan.requests.length,writeTotals:writes.reduce((s,r)=>({queries:s.queries+r.queries,rowsRead:s.rowsRead+r.rowsRead,rowsWritten:s.rowsWritten+r.rowsWritten}),{queries:0,rowsRead:0,rowsWritten:0}),writes,hostedCalls:0}));
+ t.diagnostic(JSON.stringify({reviewed:plan.items.length,legacyRequests:plan.requests.length,blockedAttachmentAttempts:8,contentChanges:0,hostedCalls:0,positiveManualLifecycle:'mou-playlists.test.mjs and mou-prepared-review.test.mjs'}));
 });
 
 test('retained website-month rights preserve Baqarah navigation without leaking recording names, counts or companions',async t=>{
