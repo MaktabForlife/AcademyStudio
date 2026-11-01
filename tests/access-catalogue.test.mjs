@@ -49,3 +49,14 @@ test('catalogue keyset pages are bounded and unrelated participant/role growth d
  const grown={tafseer:await measure('tafseer'),mothers:await measure('mothers')};for(const area of ['tafseer','mothers']){assert.deepEqual(grown[area].data,initial[area].data);assert(grown[area].metrics.rowsRead<=initial[area].metrics.rowsRead+5);assert.equal(grown[area].catalogueReads,initial[area].catalogueReads);}
  t.diagnostic(JSON.stringify({mappedOtherAreaGrowth:4000,initial,grown,scope:'Actual local D1 catalogue request, populated mixed-case ownership index; no billing claim'}));
 });
+
+test('current native Global role loss narrows catalogue while Target delivery mirror remains global',async t=>{
+ const {db,f,x,good}=await setup(t);await good();const account=f.source.f.actors.global;
+ await db.prepare("INSERT INTO role_assignments(assignment_id,account_id,activity_key,role,active,review_state) VALUES(?,?,?,'PROGRAM_ADMIN',1,'CONFIRMED')").bind(crypto.randomUUID(),account,x.programA).run();
+ await db.prepare('UPDATE global_role_assignments SET active=0 WHERE account_id=?').bind(account).run();
+ assert.equal(await db.prepare('SELECT global_admin FROM website_platform_account_state WHERE account_id=?').bind(account).first('global_admin'),0,'Source account state is a current native-role view, not a delivery mirror');
+ assert.equal(await f.db.prepare('SELECT global_admin FROM accounts WHERE account_id=?').bind(account).first('global_admin'),1,'Target still has the previous delivery');
+ const login=await f.runtime.dispatchFetch('https://academy.test/api/account/login',{method:'POST',headers:{Origin:'https://academy.test','Content-Type':'application/json'},body:JSON.stringify({uniqueid:'separation-global',pin:'1234'})}),session=await login.json();assert.equal(login.status,200,JSON.stringify(session));
+ const response=await f.runtime.dispatchFetch('https://academy.test/api/admin/platform/studio-access',{method:'POST',headers:{Origin:'https://academy.test','Content-Type':'application/json',Authorization:'Bearer '+session.token,'X-Academy-Workspace':'ADMIN'},body:JSON.stringify({command:{action:'catalogue'}})}),result=await response.json();assert.equal(response.status,200,JSON.stringify(result));assert.deepEqual(result.items.map(row=>row.activityKey),[x.programA]);
+ assert.equal(await f.db.prepare('SELECT global_admin FROM accounts WHERE account_id=?').bind(account).first('global_admin'),1,'Target mirror remains stale during catalogue request');
+});
