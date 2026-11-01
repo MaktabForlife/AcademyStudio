@@ -1,20 +1,22 @@
 import {fail,id,integer,flag,text,month,date,boundedAge,sha256} from './protocol.mjs';
 export const academyAuthority=env=>env.AUTHORITY_MODE==='ACADEMY';
 export const freeCourse=scope=>scope?.kind==='COURSE'&&scope.access_model==='FREE';
-export async function accessGate(store,actor,offeringId,{admin=false,live=false}={}){
+export async function accessGate(store,actor,offeringId,{admin=false,live=false,readOnly=false}={}){
  if(!academyAuthority(store.env))return null;admin=admin||Boolean(actor.global_admin);
  const row=await store.first(`SELECT s.*,o.kind,m.access_model,p.generation person_generation,p.verified_at,p.ready,p.windows_json,p.has_allocation,p.course FROM source_access_scopes s JOIN offerings o USING(offering_id) LEFT JOIN course_access_models m USING(offering_id) LEFT JOIN source_access_people p ON p.offering_id=s.offering_id AND p.account_id=? WHERE s.offering_id=?`,[actor.account_id,offeringId]);
  const free=freeCourse(row)&&!admin;
- if(free&&await store.first('SELECT 1 FROM source_access_master_fences WHERE account_id=? AND offering_id=?',[actor.account_id,offeringId]))throw Object.assign(fail('Confirm the current Academy master account before continuing.',409,'ACCESS_REFRESH_REQUIRED'),{offeringId});
+ // A received master-account change takes precedence over every cached proof,
+ // including a staff read that otherwise remains valid for twelve hours.
+ if(await store.first('SELECT 1 FROM source_access_master_fences WHERE account_id=? AND offering_id=?',[actor.account_id,offeringId]))throw Object.assign(fail('Confirm the current Academy master account before continuing.',409,'ACCESS_REFRESH_REQUIRED'),{offeringId});
  if(row?.authority==='WEBSITE'){
   const handover=await store.first("SELECT phase FROM access_handovers WHERE offering_id=?",[offeringId]);
   if(handover?.phase!=='COMMITTED')throw fail('This offering needs a guarded access handover.',409,'HANDOVER_REQUIRED');
   if(!row.enabled)throw fail('This offering is unavailable in Academy.',403,'SOURCE_SCOPE_UNAVAILABLE');
   // Studio owns acquired rights; Academy still owns class windows/lifecycle.
-  if(!live&&!admin){if(await store.first('SELECT 1 FROM source_access_master_fences WHERE account_id=? AND offering_id=?',[actor.account_id,offeringId]))throw Object.assign(fail('Confirm the current Academy master account before continuing.',409,'ACCESS_REFRESH_REQUIRED'),{offeringId});return {...row,studio:true};}
+  if(!live&&!admin)return {...row,studio:true};
  }
  if(!actor.source_ref)throw fail('Sign in through Academy for parallel access.',401,'SIGN_IN_REQUIRED');
- const liveAge=Math.max(30,Math.min(86400,Number(store.env.LIVE_ACCESS_MAX_AGE_SECONDS)||boundedAge(store.env)/1000))*1000,maxAge=live?Math.min(liveAge,boundedAge(store.env,admin)):boundedAge(store.env,admin);
+ const liveAge=Math.max(30,Math.min(86400,Number(store.env.LIVE_ACCESS_MAX_AGE_SECONDS)||boundedAge(store.env)/1000))*1000,maxAge=live?Math.min(liveAge,boundedAge(store.env,admin&&!readOnly)):boundedAge(store.env,admin&&!readOnly);
  if(row&&!row.enabled)throw fail('This offering is unavailable in Academy.',403,'SOURCE_SCOPE_UNAVAILABLE');
  if(live&&row?.live_enabled===0)throw fail('Live entry is closed for this offering.',403,'JOIN_CLOSED');
  if(free)return row.authority==='WEBSITE'?{...row,studio:true}:row;
@@ -30,8 +32,8 @@ export function liveAccess(row,scope,now=Date.now()){
  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:row.timezone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(now)).map(p=>[p.type,p.value])),today=parts.year+'-'+parts.month+'-'+parts.day,windows=JSON.parse(row.windows_json||'[]'),classes=new Set(JSON.parse(row.classes_json).map(c=>c.toLowerCase()));
  return windows.length?windows.some(w=>w.active&&classes.has(w.classId.toLowerCase())&&(!w.start||w.start<=today)&&(!w.end||w.end>=today)):!row.has_allocation&&classes.size===1;
 }
-export async function sourceWebsiteGate(store,actor,website){
- const scope=await accessGate(store,actor,website.offering_id,{admin:Boolean(website.role)});
+export async function sourceWebsiteGate(store,actor,website,{readOnly=true}={}){
+ const scope=await accessGate(store,actor,website.offering_id,{admin:Boolean(website.role),readOnly});
  if(scope&&website.kind==='TAFSEER'){
   const programme=await store.first("SELECT 1 FROM programme_offerings WHERE programme_key='mothers' AND offering_id=?",[website.offering_id]);
   const mapped=programme?await store.first('SELECT enabled FROM programme_subjects WHERE offering_id=? AND website_id=? UNION ALL SELECT 1 enabled FROM mou_playlists WHERE offering_id=? AND website_id=? LIMIT 1',[website.offering_id,website.website_id,website.offering_id,website.website_id]):await store.first('SELECT enabled FROM source_access_websites WHERE offering_id=? AND website_id=?',[website.offering_id,website.website_id]);

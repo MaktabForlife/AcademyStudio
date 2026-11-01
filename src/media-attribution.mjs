@@ -6,8 +6,8 @@ import {academyAuthority} from './access.mjs';
 import {mediaGate} from './media.mjs';
 import {checkedPlaylist,assignPlaylist} from './mou-playlists.mjs';
 
-export async function mediaAdmin(store,actor,offer){
- const scope=await store.scope(actor,offer,{admin:true});
+export async function mediaAdmin(store,actor,offer,{readOnly=false}={}){
+ const scope=await store.scope(actor,offer,{admin:true,readOnly});
  if(!['COURSE','TAFSEER'].includes(scope.kind)||academyAuthority(store.env)&&!scope.studioAuthority)throw fail('This programme requires current Studio ownership.',403);
  return scope;
 }
@@ -131,7 +131,7 @@ export async function mediaCompanionSave(env,store,actor,offer,input,fetcher){
  return companionChanges(env,store,actor,offer,{...input,action:'companion-save',sourceRevision});
 }
 export async function mediaDetail(env,store,actor,offer,attachment){
- await mediaAdmin(store,actor,offer);const row=await mediaGate(store,actor,id(attachment),{admin:true});if(row.offering_id!==offer)throw fail('Choose this programme’s recording.',403);
+ await mediaAdmin(store,actor,offer,{readOnly:true});const row=await mediaGate(store,actor,id(attachment),{admin:true,readOnly:true});if(row.offering_id!==offer)throw fail('Choose this programme’s recording.',403);
  const attribution=(await attributionFacts(store,[attachment]))[0],saved=await store.first('SELECT * FROM recording_companions WHERE attachment_id=?',[attachment]);let companion=null;
  if(saved){const object=await env.CONTENT.get(saved.draft_key);if(!object||object.size>300000)throw fail('The saved companion is unavailable.',503);companion=await bodyJSON(object.body,300000);}
  const supportingFiles=await store.all('SELECT a.attachment_id attachmentId,a.title,o.mime_type type FROM media_supporting_files l JOIN attachments a ON a.attachment_id=l.support_attachment_id JOIN objects o USING(asset_id) WHERE l.recording_attachment_id=? ORDER BY a.attachment_id LIMIT 11',[attachment]);if(supportingFiles.length>10)throw fail('Review the supporting-file associations.',409);

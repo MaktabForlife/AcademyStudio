@@ -7,8 +7,8 @@ import {saveContent} from './content.mjs';
 const revisionSQL='COALESCE((SELECT revision FROM access_revisions WHERE offering_id=?),0)=?';
 const revision=async(store,offer)=>(await store.first('SELECT revision FROM access_revisions WHERE offering_id=?',[offer]))?.revision||0;
 const expected=(offer,value)=>({studio:true,expectedSQL:revisionSQL,expectedArgs:[offer,integer(value)]});
-async function monthlyScope(store,actor,offer){
- const scope=await store.scope(actor,offer,{admin:true});
+async function monthlyScope(store,actor,offer,{readOnly=false}={}){
+ const scope=await store.scope(actor,offer,{admin:true,readOnly});
  if(scope.kind!=='TAFSEER')throw fail('Short courses use whole-course access, not monthly subscriptions.');
  await rejectAuthorityWrite(store,offer);return scope;
 }
@@ -17,7 +17,7 @@ export function calendarYears(values){
  return values.slice().sort();
 }
 export async function monthlyGrid(store,actor,offer,input){
- await monthlyScope(store,actor,offer);const current=await revision(store,offer),years=calendarYears(input.years),after=input.after?id(input.after):'',search=text(input.search||'',100);
+ await monthlyScope(store,actor,offer,{readOnly:true});const current=await revision(store,offer),years=calendarYears(input.years),after=input.after?id(input.after):'',search=text(input.search||'',100);
  // Bound the member page before joining people or reading any historical rights.
  const page=await store.all(`WITH page AS MATERIALIZED (SELECT account_id FROM access_members WHERE offering_id=? AND account_id>? ORDER BY account_id LIMIT 26)
  SELECT p.account_id,a.display_name,a.active,a.admitted,
@@ -52,7 +52,7 @@ export async function saveMonthlyGrid(env,store,actor,offer,input){
  return store.mutate(actor,offer,canonical,statements,{saved:true},expected(offer,input.policyRevision));
 }
 export async function accessTable(store,actor,offer){
- const scope=await monthlyScope(store,actor,offer);if(scope.programme_key==='mothers')throw fail('MOU subject date editing is not available yet.',409,'MOU_TABLE_HELD');
+ const scope=await monthlyScope(store,actor,offer,{readOnly:true});if(scope.programme_key==='mothers')throw fail('MOU subject date editing is not available yet.',409,'MOU_TABLE_HELD');
  const current=await revision(store,offer);
  const rows=await store.all('SELECT website_id,title,completion_date,completion_month,revision,enabled,published_key FROM websites WHERE offering_id=? ORDER BY website_id LIMIT 201',[offer]);
  if(rows.length>200)throw fail('This table needs a narrower website selector.',409);

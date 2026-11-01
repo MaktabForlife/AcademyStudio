@@ -18,14 +18,14 @@ async function effectiveMonth(store,offer){
 }
 
 const currentRevision=async(store,offer)=>(await store.first('SELECT revision FROM access_revisions WHERE offering_id=?',[offer]))?.revision||0;
-export async function playlistScope(store,actor,offer){
- const scope=await store.scope(actor,offer,{admin:true});
+export async function playlistScope(store,actor,offer,{readOnly=false}={}){
+ const scope=await store.scope(actor,offer,{admin:true,readOnly});
  if(scope.programme_key!=='mothers')throw fail('Playlists belong to the independent MOU programme.',403);
  await rejectAuthorityWrite(store,offer);return scope;
 }
 const playlistRow=(store,offer,key)=>store.first(`SELECT p.*,w.title,w.completion_date,w.completion_month,w.revision website_revision,w.enabled,w.published_key FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.playlist_id=? AND p.offering_id=?`,[id(key),offer]);
 export async function playlistTable(store,actor,offer,input={}){
- await playlistScope(store,actor,offer);const revision=await currentRevision(store,offer);
+ await playlistScope(store,actor,offer,{readOnly:true});const revision=await currentRevision(store,offer);
  const rows=await store.all(`SELECT p.playlist_id id,p.revision,w.title name,w.completion_date closeDate,w.completion_month closeMonth,w.revision websiteRevision,w.enabled,
  p.recording_count recordings
  FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.offering_id=? ORDER BY p.playlist_id LIMIT 101`,[offer]);

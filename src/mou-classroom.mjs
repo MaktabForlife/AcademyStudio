@@ -14,7 +14,7 @@ export async function mouClassroom(store,actor){
  const definition=await mouDefinition(store),now=Date.now(),subjects=subjectPlan();
  const result={schema:'MOU_CLASSROOM_V1',title:'Mothers of the Ummah',context:{accountId:actor.account_id,epoch:actor.epoch},programme:{key:'mothers',kind:'PROGRAMME',accessModel:'MONTHLY',offeringId:null,authority:null,state:'PENDING_CONNECTION'},management:{canManage:false,requiresAuthorityRefresh:false,authority:'ACADEMY_PROXY',offeringId:null},monthly:{state:'NOT_CONNECTED',month:null,hasCurrentMonth:false,hasRetainedMonths:false},materialsConnected:false,subjects,timetable:{state:'NOT_CONNECTED',serverTime:now,sessions:[]}};
  if(!definition)return result;
- const offer=definition.offering_id,scope=await store.scope(actor,offer),source=await accessGate(store,actor,offer),staff=Boolean(actor.global_admin||scope.role),month=localMonth(now,definition.timezone);
+ const offer=definition.offering_id,scope=await store.scope(actor,offer),source=await accessGate(store,actor,offer,{readOnly:true}),staff=Boolean(actor.global_admin||scope.role),month=localMonth(now,definition.timezone);
  const months=await store.first(`SELECT EXISTS(SELECT 1 FROM paid_months WHERE account_id=? AND offering_id=? AND month=? UNION ALL SELECT 1 FROM website_months WHERE account_id=? AND offering_id=? AND month=?) current_month,EXISTS(SELECT 1 FROM paid_months WHERE account_id=? AND offering_id=? UNION ALL SELECT 1 FROM website_months WHERE account_id=? AND offering_id=?) retained`,[actor.account_id,offer,month,actor.account_id,offer,month,actor.account_id,offer,actor.account_id,offer]);
  result.programme={...result.programme,offeringId:offer,authority:definition.authority==='WEBSITE'?'STUDIO':'ACADEMY',state:staff||scope.live?'ACTIVE':'MATERIALS_ONLY'};
  result.monthly={state:'CONNECTED',month,hasCurrentMonth:Boolean(months.current_month),hasRetainedMonths:Boolean(months.retained)};
@@ -37,14 +37,14 @@ export async function mouClassroom(store,actor){
  }
  result.materialsConnected=result.subjects.some(s=>s.website?.canOpen)||result.playlists.length>0;
  if(!definition.live_enabled||!staff&&!scope.live_entitled){result.timetable.state='LIVE_ACCESS_REQUIRED';return result;}
- await accessGate(store,actor,offer,{live:true,admin:staff});
+ await accessGate(store,actor,offer,{live:true,admin:staff,readOnly:true});
  const snapshot=await store.first('SELECT version FROM stream_heads WHERE stream=?',['timetable:'+offer]);
  if(!snapshot){result.timetable.state='PENDING';return result;}
  const sessions=await store.all(`SELECT t.session_id,t.title,t.starts_at,t.ends_at,t.cancelled,t.zoom_url IS NOT NULL has_zoom,a.class_ids_json,a.teacher_ids_json,d.timezone,d.classes_json,
  (SELECT json_group_array(n.display_name) FROM json_each(a.teacher_ids_json) j JOIN accounts n ON n.account_id=j.value) teacher_labels
  FROM timetable t INDEXED BY timetable_public_offering LEFT JOIN source_session_audiences a USING(session_id) LEFT JOIN source_session_details d USING(session_id)
  WHERE t.offering_id=? AND t.cancelled=0 AND t.ends_at>? AND t.starts_at>=? ORDER BY t.starts_at,t.session_id LIMIT 50`,[offer,now,now-86400_000]);
- const maxAge=Math.min(Math.max(30,Math.min(86400,Number(store.env.LIVE_ACCESS_MAX_AGE_SECONDS)||boundedAge(store.env)/1000))*1000,boundedAge(store.env,staff));
+ const maxAge=Math.min(Math.max(30,Math.min(86400,Number(store.env.LIVE_ACCESS_MAX_AGE_SECONDS)||boundedAge(store.env)/1000))*1000,boundedAge(store.env));
  const eligibleUntil=Math.min(actor.expires_at,actor.verified_at+boundedAge(store.env),source.verified_at+maxAge);
  // List only this actor's real audience. Eligibility is time-independent, but
  // expires with the proof; a browser timer cannot turn a denied gate into true.

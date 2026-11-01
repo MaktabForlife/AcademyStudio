@@ -5,7 +5,7 @@ import {reviewMouCatalogue} from '../public/shared/mou-prepared-review.mjs';
 import {academyAuthority} from './access.mjs';
 export const preparedMouKey=offeringId=>'admin/prepared-recordings/'+encodeURIComponent(offeringId)+'/mou-v1.json';
 export async function preparedRecordings(env,store,actor,offeringId){
- const scope=await store.scope(actor,offeringId,{admin:true});
+ const scope=await store.scope(actor,offeringId,{admin:true,readOnly:true});
  if(scope.programme_key!=='mothers'||academyAuthority(env)&&!scope.studioAuthority)throw fail('Prepared MOU review requires this programme’s current Studio Admin authority.',403);
  // Private R2 only: no prepared lesson text or source package is a public asset.
  const object=await env.CONTENT.get(preparedMouKey(offeringId));

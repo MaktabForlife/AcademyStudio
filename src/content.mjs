@@ -7,7 +7,7 @@ import {assertWebsiteAssets} from './website-assets.mjs';
 import {playlistTextAccess,playlistParentTextAccess} from './mou-playlists.mjs';
 export async function objectJSON(bucket,key,limit=1_500_000){const object=await bucket.get(key);if(!object||object.size>limit)throw fail('The saved edition is unavailable.',503);return bodyJSON(object.body,limit);}
 export async function saveContent(env,document,websiteId=document.id){const encoded=JSON.stringify(document);if(new TextEncoder().encode(encoded).length>1_500_000)throw fail('This website edition is too large.',413);const hash=await sha256(encoded),key='websites/'+encodeURIComponent(websiteId)+'/versions/'+hash+'.json';await env.CONTENT.put(key,encoded,{httpMetadata:{contentType:'application/json'}});return key;}
-export async function websiteAccess(store,actor,websiteId,{admin=false}={}){
+export async function websiteAccess(store,actor,websiteId,{admin=false,readOnly=!admin}={}){
  const row=await store.first(`SELECT w.*,o.kind,o.active,p.purchased,s.role,h.offering_id completed_course,(SELECT programme_key FROM programme_offerings mp WHERE mp.offering_id=o.offering_id) programme_key,(SELECT access_model FROM course_access_models m WHERE m.offering_id=o.offering_id) access_model,
   EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=? AND m.offering_id=w.offering_id UNION ALL SELECT 1 FROM website_months m WHERE m.account_id=? AND m.offering_id=w.offering_id) retained_text,
   EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=? AND m.offering_id=w.offering_id AND m.month=w.completion_month UNION ALL SELECT 1 FROM website_months m WHERE m.account_id=? AND m.offering_id=w.offering_id AND m.month=w.completion_month) paid,
@@ -16,8 +16,8 @@ export async function websiteAccess(store,actor,websiteId,{admin=false}={}){
   LEFT JOIN completed_course_registrations h USING(offering_id)
   LEFT JOIN participation p ON p.account_id=? AND p.offering_id=w.offering_id
   LEFT JOIN staff s ON s.account_id=? AND s.offering_id=w.offering_id WHERE w.website_id=?`,[actor.account_id,actor.account_id,actor.account_id,actor.account_id,actor.account_id,actor.account_id,actor.account_id,id(websiteId)]);
- if(!row||!row.active)throw fail('This website is unavailable.',404);await sourceWebsiteGate(store,actor,row);
- if(admin){await store.scope(actor,row.offering_id,{admin:true});return row;}
+ if(!row||!row.active)throw fail('This website is unavailable.',404);await sourceWebsiteGate(store,actor,row,{readOnly});
+ if(admin){await store.scope(actor,row.offering_id,{admin:true,readOnly});return row;}
  const staff=actor.global_admin||row.role==='ADMIN'||row.role==='TEACHER';
  const playlist=row.programme_key==='mothers'?await store.first('SELECT 1 FROM mou_playlists WHERE website_id=?',[websiteId]):null;
  const privatePlaylistParent=row.programme_key==='mothers'&&!playlist?await store.first('SELECT 1 FROM mou_playlist_only_websites WHERE website_id=?',[websiteId]):null;

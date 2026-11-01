@@ -13,7 +13,7 @@ const TWELVE_HOURS=12*3600_000;
 test('learner and live verification use twelve hours while staff retain the shorter bound',async()=>{
  assert.equal(boundedAge(vars),TWELVE_HOURS);assert.equal(boundedAge(vars,true),60_000);
  const actor={account_id:'learner',source_ref:'source-session'},row={enabled:1,ready:1,generation:1,person_generation:1,verified_at:Date.now()-TWELVE_HOURS+60_000};
- const store={env:vars,first:async()=>row};
+ const store={env:vars,first:async sql=>sql.includes('source_access_master_fences')?null:row};
  assert.equal(await accessGate(store,actor,'course',{live:true}),row);
  // An omitted live override follows the account policy rather than silently retaining five minutes.
  assert.equal(await accessGate({...store,env:{...vars,LIVE_ACCESS_MAX_AGE_SECONDS:undefined}},actor,'course',{live:true}),row);
@@ -55,7 +55,7 @@ test('twelve-hour expiry requires renewal, permission proof expires independentl
   ok(await f.request('/auth/access',{cookie,method:'POST',body:{offeringId:'course'}}));ok(await f.request('/api/websites/site-course',{cookie}));
   const admin=await signIn(f,'adminA'),accountId=f.source.f.actors.adminA;
   await f.run('UPDATE accounts SET verified_at=? WHERE account_id=?',Date.now()-61_000,accountId);
-  assert.equal((await f.request('/api/websites/site-course/edit',{cookie:admin})).body.code,'ADMIN_STATUS_EXPIRED');
+  ok(await f.request('/api/websites/site-course/edit',{cookie:admin}));assert.equal((await f.request('/api/admin/course',{cookie:admin,method:'POST',body:{action:'participant',operationId:crypto.randomUUID(),accountId,enrolled:true,live:true,purchased:true}})).body.code,'ADMIN_STATUS_EXPIRED');
   ok(await f.request('/auth/refresh',{cookie:admin,method:'POST',body:{}}));ok(await f.request('/api/websites/site-course/edit',{cookie:admin}));
  }finally{await f.close();}
 });

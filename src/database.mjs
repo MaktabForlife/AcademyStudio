@@ -14,14 +14,14 @@ export class Store {
   if(!row)throw fail('Sign in to Academy to continue.',401,'SIGN_IN_REQUIRED');
   if(!allowExpiredStatus&&row.verified_at<now-boundedAge(this.env))throw fail('Your Academy account status needs to be refreshed.',401,'STATUS_EXPIRED');return row;
  }
- async scope(actor,offeringId,{admin=false,teacher=false}={}){
+ async scope(actor,offeringId,{admin=false,teacher=false,readOnly=!(admin||teacher)}={}){
   id(offeringId);const cacheKey=actor.account_id+':'+offeringId;let row=this.scopes.get(cacheKey);if(!row){row=await this.first(`SELECT o.*,h.offering_id completed_course,(SELECT programme_key FROM programme_offerings mp WHERE mp.offering_id=o.offering_id) programme_key,p.enrolled,p.live,p.purchased,p.cohort,s.role,(SELECT access_model FROM course_access_models m WHERE m.offering_id=o.offering_id) access_model,s.can_create_account
    FROM offerings o LEFT JOIN participation p ON p.offering_id=o.offering_id AND p.account_id=?
    LEFT JOIN completed_course_registrations h USING(offering_id)
    LEFT JOIN staff s ON s.offering_id=o.offering_id AND s.account_id=? WHERE o.offering_id=? AND o.active=1`,[actor.account_id,actor.account_id,offeringId]);if(row)this.scopes.set(cacheKey,row);}
-  if(!row)throw fail('This offering is unavailable.',404);row={...row,live_entitled:Boolean(row.live)};const source=await accessGate(this,actor,offeringId,{admin:admin||teacher||Boolean(row.role)});row={...row,live:liveAccess(source,row),studioAuthority:Boolean(source?.studio)};
+  if(!row)throw fail('This offering is unavailable.',404);row={...row,live_entitled:Boolean(row.live)};const source=await accessGate(this,actor,offeringId,{admin:admin||teacher||Boolean(row.role),readOnly});row={...row,live:liveAccess(source,row),studioAuthority:Boolean(source?.studio)};
   if(row.completed_course)row.live=false;
-  if(admin||teacher){if(!actor.global_admin&&row.role!=='ADMIN'&&!(teacher&&row.role==='TEACHER'))throw fail('Your account cannot manage this offering.',403);if(actor.verified_at<Date.now()-boundedAge(this.env,true))throw fail('Refresh your Academy account before administration.',401,'ADMIN_STATUS_EXPIRED');}
+  if(admin||teacher){if(!actor.global_admin&&row.role!=='ADMIN'&&!(teacher&&row.role==='TEACHER'))throw fail('Your account cannot manage this offering.',403);if(actor.verified_at<Date.now()-boundedAge(this.env,!readOnly))throw fail('Refresh your Academy account before administration.',401,'ADMIN_STATUS_EXPIRED');}
   return row;
  }
  async replay(actorId,operationId,hash){const row=await this.first('SELECT actor_id,payload_hash,result_json FROM operations WHERE operation_id=?',[id(operationId)]);if(!row)return null;if(row.actor_id!==actorId||row.payload_hash!==hash)throw fail('This retry belongs to another change.',409,'RETRY_CONFLICT');return {...JSON.parse(row.result_json),replayed:true};}

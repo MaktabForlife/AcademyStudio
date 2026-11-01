@@ -3,14 +3,14 @@ import {fail,id} from './protocol.mjs';
 import {websiteAccess} from './content.mjs';
 import {recordedAssetAccess} from './recorded-support.mjs';
 import {playlistMediaAccess} from './mou-playlists.mjs';
-export async function mediaGate(store,actor,attachmentId,{admin=false}={}){
+export async function mediaGate(store,actor,attachmentId,{admin=false,readOnly=!admin}={}){
  const row=await store.first(`SELECT x.*,o.object_key,o.mime_type,o.filename,o.byte_size,o.youtube_id,f.kind,f.active,p.purchased,s.role,(SELECT programme_key FROM programme_offerings WHERE offering_id=x.offering_id) programme_key,EXISTS(SELECT 1 FROM mou_playlist_only_media WHERE attachment_id=x.attachment_id) playlist_only,(SELECT access_model FROM course_access_models m WHERE m.offering_id=f.offering_id) access_model,
   EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=? AND m.offering_id=x.offering_id AND m.month=substr(x.lesson_date,1,7) AND m.cohort=x.cohort) paid
   FROM attachments x JOIN objects o USING(asset_id) JOIN offerings f USING(offering_id)
   LEFT JOIN participation p ON p.account_id=? AND p.offering_id=x.offering_id
   LEFT JOIN staff s ON s.account_id=? AND s.offering_id=x.offering_id WHERE x.attachment_id=?`,[actor.account_id,actor.account_id,actor.account_id,id(attachmentId)]);
- if(!row||!row.active)throw fail('This attachment is unavailable.',404);await accessGate(store,actor,row.offering_id,{admin:Boolean(row.role)});
- if(admin){await store.scope(actor,row.offering_id,{admin:true});return row;}
+ if(!row||!row.active)throw fail('This attachment is unavailable.',404);await accessGate(store,actor,row.offering_id,{admin:Boolean(row.role),readOnly});
+ if(admin){await store.scope(actor,row.offering_id,{admin:true,readOnly});return row;}
  if(!row.published)throw fail('This attachment is not published.',404);
  const staff=actor.global_admin||row.role==='ADMIN'||row.role==='TEACHER';
  if(row.audience==='WEBSITE'){const website=await websiteAccess(store,actor,row.website_id);if(!await store.first('SELECT asset_id FROM published_assets WHERE website_id=? AND asset_id=?',[row.website_id,row.asset_id]))throw fail('This file is not in the published website.',404);await recordedAssetAccess(store.env,store,actor,website,row.asset_id);}

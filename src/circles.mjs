@@ -67,7 +67,7 @@ export async function catalogueAccess(store,actor,websiteIds,{navigationOnly=fal
   if(academyAuthority(store.env)&&!row.source_enabled)return base;if(row.fenced)return {...base,needsRefresh:true};
   if(parallel){
    if(!actor.source_ref||!row.source_enabled||row.kind==='TAFSEER'&&!row.mapped)return base;
-   if((!free||staff)&&(!row.ready||row.generation!==row.person_generation||row.verified_at<now-boundedAge(store.env,staff&&!navigationOnly)))return {...base,needsRefresh:true};
+   if((!free||staff)&&(!row.ready||row.generation!==row.person_generation||row.verified_at<now-boundedAge(store.env)))return {...base,needsRefresh:true};
   }
   const accessBasis=row.kind==='COURSE'&&row.purchased?'purchase':free?'free':row.kind==='TAFSEER'&&row.paid?'paid-month':row.kind==='TAFSEER'&&row.granted?'website-grant':null;
   return {...base,canOpen:staff||Boolean(accessBasis),subscriptionStatus:free?'free':accessBasis?'subscribed':'required',accessBasis};

@@ -7,6 +7,8 @@ import {beginProvision,resumeProvision} from './enrolment.mjs';
 import {playlistTable,playlistCorrection,savePlaylist,playlistPublication,playlistAddRecording} from './mou-playlists.mjs';
 import {monthlyGrid,saveMonthlyGrid,accessTable,saveAccessTable} from './access-tables.mjs';
 
+// Read views retain scoped Admin authority but use the ordinary verification age.
+export const readAccessAction=action=>['read','monthly-grid','access-table','mou-playlists'].includes(action);
 const revisionSQL='COALESCE((SELECT revision FROM access_revisions WHERE offering_id=?),0)=?';
 const revision=async(store,offer)=>(await store.first('SELECT revision FROM access_revisions WHERE offering_id=?',[offer]))?.revision||0;
 
@@ -22,7 +24,7 @@ export async function studioAccess(request,env,store,fetcher){
  // Reusing the same source session never resurrects a received revocation.
  await store.run('INSERT INTO sessions VALUES(?,?,?,?,0,?) ON CONFLICT(token_hash) DO UPDATE SET expires_at=excluded.expires_at WHERE sessions.revoked=0 AND sessions.epoch=excluded.epoch',[tokenHash,accountId,integer(proof.epoch),proof.expiresAt,proof.sourceRef]);
  const actor=await store.actor(tokenHash);if(actor.account_id!==accountId||actor.epoch!==proof.epoch||actor.source_ref!==proof.sourceRef)throw fail('Your administrator account changed.',401);
- const offer=id(input.offeringId),command=input.command||{};if(!command.action?.startsWith('handover-'))await store.scope(actor,offer,{admin:true});let result;
+ const offer=id(input.offeringId),command=input.command||{};if(!command.action?.startsWith('handover-'))await store.scope(actor,offer,{admin:true,readOnly:readAccessAction(command.action)});let result;
  if(command.action==='read')result=await readAccess(store,actor,offer,command);
  else if(command.action==='mou-playlists')result=await playlistTable(store,actor,offer,command);
  else if(command.action==='mou-playlist-correction')result=await playlistCorrection(store,actor,offer,command);
@@ -48,7 +50,7 @@ export async function studioAccess(request,env,store,fetcher){
 }
 
 export async function readAccess(store,actor,offer,input){
- const scope=await store.scope(actor,offer,{admin:true});const current=await revision(store,offer),after=input.after?id(input.after):'',accountId=input.accountId?id(input.accountId):null;
+ const scope=await store.scope(actor,offer,{admin:true,readOnly:true});const current=await revision(store,offer),after=input.after?id(input.after):'',accountId=input.accountId?id(input.accountId):null;
  const ownership=await store.first('SELECT s.authority,h.phase FROM source_access_scopes s LEFT JOIN access_handovers h USING(offering_id) WHERE s.offering_id=?',[offer]);
  const policy=scope.kind==='COURSE'?await coursePolicy(store,offer):null;
  if(input.known?.revision===current&&input.known?.after===after&&input.known?.accountId===accountId)return {notModified:true,revision:current,ownership,coursePolicy:policy};
