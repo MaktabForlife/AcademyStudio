@@ -3,6 +3,7 @@ import {permittedCompanionIndexes,readCompanion,recordingAttachmentPreflight} fr
 import {mouClassroom} from './mou-classroom.mjs';
 import {coursePublication} from './course-publication.mjs';
 import {dashboardSnapshot} from './dashboard.mjs';
+import {circlesNativeJoin} from './circles-native-join.mjs';
 import {publicHeaderDate} from './header-date.mjs';
 import {circlesNavigation,programmeSnapshot} from './navigation.mjs';
 import {publicCatalogue,catalogueAccess,permittedGuideBindings,websitePresentation} from './circles.mjs';
@@ -64,6 +65,7 @@ async function route(request,env,store,fetcher){
  if(path==='/auth/logout'&&method==='POST'){await store.run('UPDATE sessions SET revoked=1 WHERE token_hash=?',[actor.token_hash]);return json({signedOut:true},200,{'Set-Cookie':cookie('',0)});}
  if(path==='/api/me'&&method==='GET')return json({accountId:actor.account_id,displayName:actor.display_name,globalAdmin:Boolean(actor.global_admin),verifiedAt:actor.verified_at,coursePolicyEpoch:await coursePolicyEpoch(store)});
  if(path==='/api/circles/dashboard'&&method==='POST')return json(await dashboardSnapshot(env,store,actor,await bodyJSON(request.body,4096),fetcher));
+ if(path==='/api/circles/lesson-join'&&method==='POST')return json(await circlesNativeJoin(env,store,actor,await bodyJSON(request.body,4096),fetcher));
  if(path==='/api/circles/navigation'&&method==='GET')return json(await circlesNavigation(env,store,actor));
  if(path==='/api/circles/classrooms/mothers'&&method==='GET'){return json(await mouClassroom(store,actor));}
  if(path==='/api/circles/access'&&method==='GET')return json(await catalogueAccess(store,actor,url.searchParams.getAll('website')));

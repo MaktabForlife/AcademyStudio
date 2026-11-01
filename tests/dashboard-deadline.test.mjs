@@ -25,7 +25,7 @@ test('a delayed first dashboard result still rechecks actor, permission proof an
   const runtime={...env,ACCOUNT_MAX_AGE_SECONDS:'43200',CONTENT:{get:async()=>null,put:async(...args)=>writes.push(args)}};
   const request=dashboardSnapshot(runtime,store,actor,{},async()=>{started.resolve();return reply.promise;});await started.promise;
   if(change==='epoch')state.epoch=2;else if(change==='proof')state.proof=now+1;else if(change==='policy')state.policy=2;else if(change==='revoked')state.revoked=true;
-  reply.resolve(change==='source-denied'?Response.json({error:'Denied'},{status:403}):Response.json({dashboard:{mode:'admin',availableModes:['admin'],activities:[],programmeNavigation:[]}}));
+  reply.resolve(change==='source-denied'?Response.json({error:'Denied'},{status:403}):Response.json({dashboard:{nativeJoinVersion:1,mode:'admin',availableModes:['admin'],activities:[],programmeNavigation:[]}}));
   await assert.rejects(request,error=>error.status===(change==='revoked'?401:change==='source-denied'?403:409));assert.equal(writes.length,0,change+' cannot cache a delayed summary');
  }
 });
