@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import vm from 'node:vm';
 import {dashboardHTML,attentionRows,timetableProgrammes} from '../public/shared/circles-dashboard-view.mjs';
-import {sessionKey,mayOfferJoin,sessionSubject,sessionTime} from '../public/shared/learning-circle.mjs';
+import {sessionKey,mayOfferJoin,sessionSubject,sessionTime,localDay} from '../public/shared/learning-circle.mjs';
 import {createDashboardJoin} from '../public/shared/dashboard-join.mjs';
 import {esc} from '../public/shared/model.mjs';
 const require=createRequire(import.meta.url),{parseHTML}=require('linkedom'),RealDate=Date;
@@ -21,7 +21,7 @@ async function fixture({mode='learn',initial=start-300000,rows,global=true}={}){
  window.location={assign:value=>navigations.push(value)};window.open=()=>{const popup={opener:window,closed:false,location:{replace:value=>navigations.push(value)},close(){this.closed=true;}};popups.push(popup);return popup;};
  class FixtureDate extends RealDate{static now(){return time;}constructor(...args){super(...(args.length?args:[time]));}}
  const api=async(path,options={})=>{calls.push({path,...options});if(path==='/api/circles/dashboard'){const data=summary();data.mode=options.body.mode||mode;if(rows)data.timetable=rows;return data;}if(path.includes('/join')||path==='/api/circles/lesson-join')return new Promise(resolve=>{joinResolve=resolve;});throw Error('Unexpected API request '+path);};
- vm.runInNewContext(script,{window,document,identity,api,dashboardHTML,attentionRows,timetableProgrammes,sessionKey,mayOfferJoin,sessionSubject,sessionTime,createDashboardJoin,esc,Date:FixtureDate,Intl,JSON,Map,Set,WeakMap,URL,setTimeout:(fn,delay)=>{const id=++next;timers.set(id,{fn:()=>{timers.delete(id);fn();},delay});return id;},clearTimeout:id=>timers.delete(id)});
+ vm.runInNewContext(script,{window,document,identity,api,dashboardHTML,attentionRows,timetableProgrammes,sessionKey,mayOfferJoin,sessionSubject,sessionTime,localDay,createDashboardJoin,esc,Date:FixtureDate,Intl,JSON,Map,Set,WeakMap,URL,setTimeout:(fn,delay)=>{const id=++next;timers.set(id,{fn:()=>{timers.delete(id);fn();},delay});return id;},clearTimeout:id=>timers.delete(id)});
  let dashboard;dashboard=window.create({onUpdate:()=>dashboard.refresh(),openAcademy:(...args)=>handoffs.push(args),show:()=>visible,getNavigation:()=>({academia:[{key:'alimiyah',label:'Aalimiyah'}],tafseer:'/studio/?collection=tafseer',mothers:true,hifz:null})});
  const click=selector=>{const element=document.querySelector(selector);assert(element,selector);const event=new window.Event('click',{bubbles:true});Object.defineProperty(event,'button',{value:0});element.dispatchEvent(event);};
  await dashboard.load(mode);return {window,document,dashboard,identity,calls,handoffs,navigations,popups,timers,click,setTime:value=>{time=value;},public:()=>{visible=false;dashboard.refresh();},resolveJoin:result=>joinResolve(result)};
@@ -52,4 +52,9 @@ test('Admin Media selects named current-scope ownership and never falls back fro
 });
 test('refresh and account/public changes remove private dialogs and prevent stale Join navigation',async()=>{
  const f=await fixture();f.click('[data-circle-session]');assert(f.document.querySelector('dialog'));f.click('dialog [data-circle-join]');f.identity.generation++;f.identity.account={accountId:'other',globalAdmin:false};f.dashboard.clear();f.resolveJoin({joinUrl:'https://zoom.test/stale'});await flush();assert.equal(f.navigations.length,0);assert.equal(f.document.querySelector('dialog'),null);assert.equal(f.dashboard.data,null);assert.equal(f.timers.size,0);
+});
+
+test('cross-midnight circle and popup use the displayed date while Join retains its native source date',async()=>{
+ const row=session(0,{date:'2026-10-31',startsAt:Date.parse('2026-10-31T22:30:00Z'),endsAt:Date.parse('2026-10-31T23:30:00Z'),nativeJoin:{joinKey:'native-midnight',date:'2026-10-31'}}),f=await fixture({initial:row.startsAt-300000,rows:[row]});
+ assert(f.document.querySelector('[data-circle-session]'),'The session belongs to1NovinSAST');f.click('[data-circle-session]');assert.match(f.document.querySelector('dialog').textContent,/2026-11-01/);assert.match(f.document.querySelector('dialog').textContent,/00:30/);f.click('dialog [data-circle-join]');assert.equal(f.calls.at(-1).body.date,'2026-10-31');f.resolveJoin({joinUrl:'https://zoom.test/native-midnight'});await flush();assert.equal(f.navigations.length,1);
 });

@@ -5,7 +5,8 @@ export async function academyRuntime(bindings){
  const root=resolve(process.env.ACADEMY_SOURCE||'../Academy-course-policy-read-budget');
  const {splitFixture}=await import(pathToFileURL(root+'/backend/tests/fixtures/academy-split-fixture.mjs'));
  const {importSQL}=await import(pathToFileURL(root+'/backend/tools/academy-split/artifact.mjs'));
- const f=await splitFixture(bindings.NATIVE_JOIN_TEST==='1'?source=>{
+ const f=await splitFixture(bindings.NATIVE_JOIN_TEST==='1'||bindings.DASHBOARD_STUDIO_JOIN_TEST==='1'?source=>{
+  if(bindings.NATIVE_JOIN_TEST==='1'){
   // Disposable acceptance fixture: put the existing published Programme lesson
   // inside the real clock's Join window before producing the accepted split.
   const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Africa/Johannesburg',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).map(p=>[p.type,p.value]));
@@ -15,6 +16,18 @@ export async function academyRuntime(bindings){
    const encoded=JSON.stringify(snapshot),next={...row,publication_id:'native-join-'+crypto.randomUUID(),version_no:row.version_no+100,published_at:new Date().toISOString(),snapshot_json:encoded,source_snapshot_sha256:createHash('sha256').update(encoded).digest('hex')};
    source.db.prepare('INSERT INTO timetable_publications('+Object.keys(next).join(',')+') VALUES('+Object.keys(next).map(()=>'?').join(',')+')').run(...Object.values(next));
    source.db.prepare('UPDATE program_publication_state SET latest_publication_id=? WHERE activity_key=?').run(next.publication_id,row.activity_key);
+  }
+  }
+  if(bindings.DASHBOARD_STUDIO_JOIN_TEST==='1'){
+   // Seed a new synthetic publication BEFORE the accepted split is made.
+   // Later raw projector-only fixtures must not masquerade as accepted content.
+   const activity=source.scopes.courseA,clock=new Date(),day=clock.toISOString().slice(0,10),start=clock.toISOString().slice(11,16),end=new Date(clock.getTime()+3600000).toISOString().slice(11,16),run='dashboard-studio-join-run',publicationId='dashboard-studio-join-publication';
+   const publication={PublicationID:publicationId,RunID:run,SubjectID:activity.slice(7),VersionNo:1,SessionCount:1,ScheduleMode:'EXPLICIT'},session={PublishedSessionID:'dashboard-studio-published',SourceSessionID:'dashboard-studio-session',PublicationID:publicationId,RunID:run,SubjectID:activity.slice(7),SessionDate:day,StartTime:start,EndTime:end,TeacherAccountID:source.actors.teacherA,TeacherName:'Synthetic teacher',RunName:'Dashboard Studio Join',SubjectName:'Dashboard Studio Join',Timezone:'UTC',ZoomLink:'https://zoom.us/j/00000000000',SessionDescription:'Dashboard Studio Join',SessionKind:'EXPLICIT'};
+   const snapshot=JSON.stringify({publication,sessions:[session]});
+   source.db.prepare("INSERT INTO course_runs(activity_key,run_id,name,timezone,start_date,end_date,schedule_mode,schedule_definition,active) VALUES(?,?,'Dashboard Studio Join','UTC',?,?,'EXPLICIT','[]',1)").run(activity,run,day,day);
+   source.db.prepare("INSERT INTO timetable_publications(activity_key,publication_id,scope_key,version_no,pattern,effective_from,timezone,snapshot_json,source_snapshot_sha256,conversion) VALUES(?,?,?,1,'COURSE',?,'UTC',?,?,'EXACT')").run(activity,publicationId,run,day,snapshot,createHash('sha256').update(snapshot).digest('hex'));
+   source.db.prepare("INSERT INTO course_run_state(activity_key,run_id,stage,current_publication_id) VALUES(?,?,'PUBLISHED',?)").run(activity,run,publicationId);
+   source.db.prepare("INSERT INTO course_run_access(activity_key,run_id,access_model) VALUES(?,?,'PAID')").run(activity,run);
   }
  }:undefined);if(bindings.DASHBOARD_TEST==='1'&&!f.databases.core.prepare("SELECT 1 FROM sqlite_schema WHERE name='messaging_drafts'").get())f.databases.core.exec(readFileSync(root+'/backend/migrations/academy-core/0003_messaging.sql','utf8'));for(const [table,name] of [['program_monthly_subscriptions','0006_program_monthly_subscriptions.sql'],['program_surahs','0007_program_surah_websites.sql'],['program_surah_grants','0008_program_surah_grants.sql']])if(!f.databases.core.prepare("SELECT 1 FROM sqlite_schema WHERE name=?").get(table))f.databases.core.exec(readFileSync(root+'/backend/migrations/academy-core/'+name,'utf8'));for(const migration of ['0011_website_platform.sql','0012_website_schedule_library.sql','0013_website_parallel_access.sql','0016_course_studio_publication.sql','0017_monthly_programme_bridge.sql',...(existsSync(root+'/backend/migrations/academy-core/0018_completed_course_studio.sql')?['0018_completed_course_studio.sql']:[]),...(existsSync(root+'/backend/migrations/academy-core/0014_website_navigation.sql')?['0014_website_navigation.sql']:[]),...(existsSync(root+'/backend/migrations/academy-core/0015_studio_access_admin.sql')?['0015_studio_access_admin.sql']:[]),...(existsSync(root+'/backend/migrations/academy-core/0019_course_policy_mirror.sql')?['0019_course_policy_mirror.sql']:[]),...(existsSync(root+'/backend/migrations/academy-core/0020_recording_companions.sql')?['0020_recording_companions.sql']:[])])f.databases.core.exec(readFileSync(root+'/backend/migrations/academy-core/'+migration,'utf8'));f.databases.core.exec("UPDATE website_platform_control SET enabled=1;UPDATE split_deployment_state SET state='READY'");
  const api=root+'/backend/src/academy-development-runtime.js',bridge=root+'/backend/src/academy/d1/web-platform/bridge.mjs';

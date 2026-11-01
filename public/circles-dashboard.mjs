@@ -1,6 +1,6 @@
 import {api,identity} from './api.mjs';
 import {dashboardHTML,attentionRows,timetableProgrammes} from './shared/circles-dashboard-view.mjs';
-import {sessionKey,mayOfferJoin,sessionSubject,sessionTime} from './shared/learning-circle.mjs';
+import {sessionKey,mayOfferJoin,sessionSubject,sessionTime,localDay} from './shared/learning-circle.mjs';
 import {createDashboardJoin} from './shared/dashboard-join.mjs';
 import {esc} from './shared/model.mjs';
 
@@ -62,7 +62,7 @@ export function circlesDashboard({onUpdate,openAcademy,show=()=>true,onWorkspace
  }
  function sessionHTML(row){
   const details=[...(row.classNames||[]),...(row.teacherNames||[]),...(row.information||[])].filter(value=>typeof value==='string'),time=value=>sessionTime(value,data.timezone),title=sessionSubject(row)||'Lesson';
-  return `<article class="circle-session-detail circle-detail-row"><h3>${esc(title)}</h3><p>${esc(row.activityName)} · ${esc(row.date)}<br>${esc(time(row.startsAt))}–${esc(time(row.endsAt))} · ${esc(data.timezone)}</p>${details.length?'<p>'+[...new Set(details)].map(esc).join(' · ')+'</p>':''}<p>${row.status!=='SCHEDULED'?esc(row.status):Date.now()>=row.endsAt?'Session complete.':Date.now()<row.startsAt-300000?'Joining opens five minutes before this session.':'Current class access is checked when you select Join.'}</p>${mayOfferJoin(row,Date.now())?`<button type="button" data-circle-join="${esc(sessionKey(row))}">Join class ↗</button>`:''}</article>`;
+  return `<article class="circle-session-detail circle-detail-row"><h3>${esc(title)}</h3><p>${esc(row.activityName)} · ${esc(localDay(row.startsAt,data.timezone))}<br>${esc(time(row.startsAt))}–${esc(time(row.endsAt))} · ${esc(data.timezone)}</p>${details.length?'<p>'+[...new Set(details)].map(esc).join(' · ')+'</p>':''}<p>${row.status!=='SCHEDULED'?esc(row.status):Date.now()>=row.endsAt?'Session complete.':Date.now()<row.startsAt-300000?'Joining opens five minutes before this session.':'Current class access is checked when you select Join.'}</p>${mayOfferJoin(row,Date.now())?`<button type="button" data-circle-join="${esc(sessionKey(row))}">Join class ↗</button>`:''}</article>`;
  }
  function sessionInfo(row){const all=grouped()?rows().filter(value=>value.kind===row.kind&&value.activityId===row.activityId):[row];modal('session',grouped()?row.activityName+' · All sessions':'Session details',all.map(sessionHTML).join(''));}
  function allSessions(){const all=rows();modal('timetable','Your timetable',grouped()?timetableProgrammes(all).map(group=>`<section><h3>${esc(group.activityName)}</h3>${group.lessons.map(sessionHTML).join('')}</section>`).join(''):all.length?[...all].sort((a,b)=>a.startsAt-b.startsAt).map(sessionHTML).join(''):'<p>No published sessions in this timetable.</p>');}
