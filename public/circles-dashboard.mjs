@@ -12,6 +12,7 @@ export function circlesDashboard({onUpdate,openAcademy,show=()=>true,onWorkspace
  const grouped=()=>mode==='admin'&&data?.adminBadge==='Global Admin';
  const rows=()=>current()?(data.timetable||[]):[];
  const context=()=>({account:identity.account,generation:identity.generation,mode,data,pending,visible:current()});
+ function selectedNavigation(){const navigation=getNavigation();if(!navigation)return null;const permitted=new Set((data?.programmeNavigation||[]).map(row=>row.navigationKey));return {...navigation,academia:(navigation.academia||[]).filter(row=>permitted.has(row.key))};}
  const join=createDashboardJoin({context,request:api,openWindow:()=>window.open('about:blank','_blank'),now:()=>Date.now(),onMessage:message=>{status=message;writeStatus();},onPending:()=>syncJoinButtons()});
  function writeStatus(){const el=document.querySelector('#circles-dashboard [data-circle-status]'),message=status||data?.checkedAt&&'Last checked '+new Intl.DateTimeFormat('en-GB',{dateStyle:'medium',timeStyle:'short',timeZone:data.timezone}).format(new Date(data.checkedAt))||'';if(el&&el.textContent!==message)el.textContent=message;}
  function syncJoinButtons(){for(const button of document.querySelectorAll('#circles-dashboard [data-circle-join]'))button.disabled=join.pending;}
@@ -37,7 +38,7 @@ export function circlesDashboard({onUpdate,openAcademy,show=()=>true,onWorkspace
   if(!host){host=document.createElement('section');host.id='circles-dashboard';host.className='circles-dashboard';host.setAttribute('aria-label','Your Academy dashboard');}
   if(hero.nextElementSibling!==host)hero.after(host);
   let content=host.querySelector('[data-circles-dashboard-content]');if(!content){content=document.createElement('div');content.dataset.circlesDashboardContent='';host.append(content);}
-  const html=current()?dashboardHTML(data,{globalAdmin:identity.account?.globalAdmin===true,navigation:getNavigation(),now:Date.now()}):`<div class="circles-dashboard-panel"><h2>Your Academy dashboard</h2><p role="status">${pending?'Loading your Academy dashboard…':'Your dashboard could not be loaded.'}</p>${error?'<p>Open Academy or try again to check your dashboard.</p>':''}<button type="button" data-circles-dashboard-refresh${pending?' disabled':''}>${pending?'Loading…':'Try again'}</button><button type="button" data-circles-dashboard-home>Open Academy</button></div>`;
+  const html=current()?dashboardHTML(data,{globalAdmin:identity.account?.globalAdmin===true,navigation:selectedNavigation(),now:Date.now()}):`<div class="circles-dashboard-panel"><h2>Your Academy dashboard</h2><p role="status">${pending?'Loading your Academy dashboard…':'Your dashboard could not be loaded.'}</p>${error?'<p>Open Academy or try again to check your dashboard.</p>':''}<button type="button" data-circles-dashboard-refresh${pending?' disabled':''}>${pending?'Loading…':'Try again'}</button><button type="button" data-circles-dashboard-home>Open Academy</button></div>`;
   if(renderedHost!==content||renderedHTML!==html){renderedHost=content;renderedHTML=html;content.innerHTML=html;}
   if(dialogOwner&&(dialogOwner.owner!==accountKey()||dialogOwner.data!==data||dialogOwner.mode!==mode||!current()))closeDialog();
   writeStatus();syncJoinButtons();armClock();
@@ -97,5 +98,5 @@ export function circlesDashboard({onUpdate,openAcademy,show=()=>true,onWorkspace
   if(control.hasAttribute('data-circle-dashboard')){handled();host.scrollIntoView({behavior:'smooth',block:'start'});return;}
   if(control.hasAttribute('data-circles-academy-action')){handled();let action;try{action=JSON.parse(control.dataset.circlesAcademyAction);}catch{return;}if(action.mode!==mode)return;if(action.tool==='calendar'&&mode!=='admin'){calendar();return;}if(action.tool==='home'&&!action.activityKey){allSessions();return;}openAcademy(null,action);}
  },true);
- return {refresh,load,clear,get data(){return current()?data:null;},get mode(){return mode;},get adminBadge(){return current()?data?.adminBadge:null;}};
+ return {refresh,load,clear,message(text){status=typeof text==='string'?text:'';writeStatus();},get data(){return current()?data:null;},get mode(){return mode;},get adminBadge(){return current()?data?.adminBadge:null;}};
 }
