@@ -96,7 +96,7 @@ export async function attributionChange(env,store,actor,offer,input,fetcher){
 export async function mediaOptions(env,store,actor,offer,fetcher){
  const scope=await mediaAdmin(store,actor,offer),choices=await mediaTeachers(env,store,actor,offer,undefined,fetcher);
  const subjects=scope.kind==='COURSE'||scope.programme_key==='mothers'?[]:await store.all('SELECT website_id id,title name FROM websites WHERE offering_id=? ORDER BY website_id LIMIT 101',[offer]);
- const playlists=scope.programme_key==='mothers'?await store.all('SELECT p.playlist_id id,w.title name,w.completion_date closeDate FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.offering_id=? ORDER BY p.playlist_id LIMIT 101',[offer]):[];if(playlists.length>100)throw fail('Choose a smaller playlist catalogue.',409);
+ const playlists=scope.programme_key==='mothers'?await store.all('SELECT p.playlist_id id,w.title name,w.completion_date closeDate,w.enabled FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.offering_id=? ORDER BY p.playlist_id LIMIT 101',[offer]):[];if(playlists.length>100)throw fail('Choose a smaller playlist catalogue.',409);
  if(subjects.length>100)throw fail('Choose a smaller native subject catalogue.',409);
  const source=scope.kind==='COURSE'?null:await store.first('SELECT classes_json FROM source_access_scopes WHERE offering_id=?',[offer]);
  const ids=source?JSON.parse(source.classes_json):[];

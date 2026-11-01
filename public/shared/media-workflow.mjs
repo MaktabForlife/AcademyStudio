@@ -15,9 +15,9 @@ const uuid=()=>crypto.randomUUID();
 export function pendingMedia(input){return {input,assetId:uuid(),attachmentId:uuid(),sourceOperation:uuid(),attachOperation:uuid(),companionOperation:uuid(),uploadStartOperation:uuid(),uploadCompleteOperation:uuid(),parts:[],supports:input.supportingFiles.map(file=>({file,assetId:uuid(),attachmentId:uuid(),operationId:uuid()}))};}
 export async function saveMediaDraft({pending:p,api,path,current=()=>{},report=()=>{}}){
  const input=p.input,checked=()=>current();checked();
- if(input.sourceKind==='YOUTUBE'){
+ if(input.sourceKind==='YOUTUBE'&&!p.reuseSource){
   report('Saving the recording source privately…');await api(path,{body:{action:'youtube',operationId:p.sourceOperation,assetId:p.assetId,videoId:youtubeSource(input.sourceURL),title:input.title}});checked();
- }else{
+ }else if(input.sourceKind!=='YOUTUBE'){
   const file=input.recordingFile;if(!file||file.type!=='video/mp4')throw Error('Choose an MP4 recording.');
   await api(path+'/recording',{body:{action:'start',operationId:p.uploadStartOperation,assetId:p.assetId,filename:file.name}});checked();
   for(let offset=p.parts.length*5*1024*1024;offset<file.size;offset+=5*1024*1024){checked();report('Saving recording part '+(p.parts.length+1)+'…');p.parts.push(await api(path+'/recording?'+new URLSearchParams({assetId:p.assetId,partNumber:p.parts.length+1}),{method:'PUT',body:file.slice(offset,offset+5*1024*1024)}));checked();}

@@ -24,15 +24,17 @@ export async function playlistScope(store,actor,offer){
  await rejectAuthorityWrite(store,offer);return scope;
 }
 const playlistRow=(store,offer,key)=>store.first(`SELECT p.*,w.title,w.completion_date,w.completion_month,w.revision website_revision,w.enabled,w.published_key FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.playlist_id=? AND p.offering_id=?`,[id(key),offer]);
-export async function playlistTable(store,actor,offer){
+export async function playlistTable(store,actor,offer,input={}){
  await playlistScope(store,actor,offer);const revision=await currentRevision(store,offer);
  const rows=await store.all(`SELECT p.playlist_id id,p.revision,w.title name,w.completion_date closeDate,w.completion_month closeMonth,w.revision websiteRevision,w.enabled,
  p.recording_count recordings
  FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.offering_id=? ORDER BY p.playlist_id LIMIT 101`,[offer]);
  if(rows.length>100)throw fail('This programme needs a narrower playlist selector.',409);
+ let memberOf;
+ if(input.attachmentId){const attachment=id(input.attachmentId);if(!await store.first('SELECT 1 FROM attachments WHERE attachment_id=? AND offering_id=?',[attachment,offer]))throw fail('Choose a recording in this programme.',403);memberOf=(await store.all('SELECT playlist_id FROM mou_playlist_items WHERE attachment_id=? ORDER BY playlist_id LIMIT 101',[attachment])).map(r=>r.playlist_id);if(memberOf.length>100)throw fail('Review this recording’s playlist memberships.',409);}
  if(revision!==await currentRevision(store,offer))throw fail('The playlist register changed. Refresh it.',409,'CHANGE_CONFLICT');
  const definition=await mouDefinition(store);
- return {schema:'MOU_PLAYLISTS_V1',revision,currentMonth:programmeMonth(Date.now(),definition.timezone),playlists:rows.map(row=>({...row,state:row.closeDate?'CLOSED':'OPEN'}))};
+ return {schema:'MOU_PLAYLISTS_V1',revision,currentMonth:programmeMonth(Date.now(),definition.timezone),playlists:rows.map(row=>({...row,state:row.closeDate?'CLOSED':'OPEN'})),...(memberOf?{memberOf}:{})};
 }
 async function priorHolders(store,offer,month){
  if(!month)return [];
@@ -60,7 +62,7 @@ export async function playlistAddRecording(store,actor,offer,input){
  const row=await store.first("SELECT attachment_id,website_id,published FROM attachments a JOIN objects o USING(asset_id) WHERE a.attachment_id=? AND a.offering_id=? AND a.audience='RECORDING' AND o.mime_type IN('video/mp4','video/youtube')",[attachment,offer]);if(!row)throw fail('Choose a saved recording in this MOU programme.',403);
  // Adding an existing recording is a reference. Its legacy access, source and
  // publication state stay unchanged; new private media uses the checked form.
- return store.mutate(actor,offer,input,assignPlaylist(store,playlist,row),{saved:true},{studio:true,expectedSQL:"COALESCE((SELECT revision FROM access_revisions WHERE offering_id=?),0)=? AND EXISTS(SELECT 1 FROM mou_playlists WHERE playlist_id=? AND revision=?) AND EXISTS(SELECT 1 FROM attachments a JOIN objects o USING(asset_id) WHERE a.attachment_id=? AND a.offering_id=? AND a.website_id IS ? AND a.published=? AND a.audience='RECORDING' AND o.mime_type IN('video/mp4','video/youtube'))",expectedArgs:[offer,integer(input.revision),playlist.playlist_id,integer(input.playlistRevision),attachment,offer,row.website_id,row.published]});
+ return store.mutate(actor,offer,input,assignPlaylist(store,playlist,row),{saved:true},{studio:true,expectedSQL:"COALESCE((SELECT revision FROM access_revisions WHERE offering_id=?),0)=? AND EXISTS(SELECT 1 FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.playlist_id=? AND p.revision=? AND (?=0 OR w.enabled=0)) AND EXISTS(SELECT 1 FROM attachments a JOIN objects o USING(asset_id) WHERE a.attachment_id=? AND a.offering_id=? AND a.website_id IS ? AND a.published=? AND a.audience='RECORDING' AND o.mime_type IN('video/mp4','video/youtube'))",expectedArgs:[offer,integer(input.revision),playlist.playlist_id,integer(input.playlistRevision),Number(input.requirePrivate===true),attachment,offer,row.website_id,row.published]});
 }
 export async function savePlaylist(env,store,actor,offer,input){
  await playlistScope(store,actor,offer);
@@ -129,14 +131,15 @@ export async function learnerPlaylists(store,actor,offer,{staff=false}={}){
 }
 export async function playlistReadingLessons(store,actor,website){
  const month=await effectiveMonth(store,website.offering_id);
- // Start with the programme's bounded playlist catalogue, then its permitted
- // members. Never enumerate a legacy website's unrelated recording population.
- const rows=await store.all(`SELECT a.lesson_id FROM mou_playlists p INDEXED BY mou_playlists_offering
+ // Seek this exact native parent first, including when other entitled playlists
+ // in the SAME programme have thousands of members on different websites.
+ const rows=await store.all(`SELECT a.lesson_id FROM mou_playlist_item_parents ip
+ CROSS JOIN mou_playlists p ON p.playlist_id=ip.playlist_id
  CROSS JOIN websites w ON w.website_id=p.website_id
- CROSS JOIN mou_playlist_items i ON i.playlist_id=p.playlist_id
- CROSS JOIN attachments a ON a.attachment_id=i.attachment_id
- WHERE p.offering_id=? AND w.enabled=1 AND w.published_key IS NOT NULL AND ${playlistEntitlementSQL({month})}
- AND a.website_id=? AND a.offering_id=p.offering_id AND a.audience='RECORDING' AND a.published=1 LIMIT 401`,[website.offering_id,actor.account_id,actor.account_id,actor.account_id,website.website_id]);
+ CROSS JOIN mou_playlist_items i ON i.playlist_id=ip.playlist_id AND i.attachment_id=ip.attachment_id
+ CROSS JOIN attachments a ON a.attachment_id=ip.attachment_id
+ WHERE ip.website_id=? AND p.offering_id=? AND w.enabled=1 AND w.published_key IS NOT NULL AND ${playlistEntitlementSQL({month})}
+ AND a.website_id=ip.website_id AND a.offering_id=p.offering_id AND a.audience='RECORDING' AND a.published=1 LIMIT 401`,[website.website_id,website.offering_id,actor.account_id,actor.account_id,actor.account_id]);
  if(rows.length>400)throw fail('This website needs a narrower playlist support view.',409,'RECORDING_SCOPE_LIMIT');
  return [...new Set(rows.map(r=>r.lesson_id))];
 }

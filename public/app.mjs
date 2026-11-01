@@ -163,7 +163,7 @@ function openAcademy(libraryContext){
  setTimeout(()=>{if(!connected)finish();},60_000);
 }
 $('academy-button').onclick=()=>openAcademy();
-$('manage-button').onclick=async()=>{if(!canLeaveWorkspace())return;textEditor.clear();beforeEditing=null;try{show('administration');adminModule||=await import('./admin.mjs');await adminModule.open($('administration'));}catch(error){status(error.message);}};
+$('manage-button').onclick=async()=>{if(!canLeaveWorkspace())return;textEditor.clear();beforeEditing=null;try{show('administration');adminModule||=await import('./admin.mjs');const selection=new URLSearchParams(location.search);await adminModule.open($('administration'),{offeringId:selection.get('offering'),section:selection.get('section')});}catch(error){status(error.message);}};
 $('close-media').onclick=closeMedia;
 $('media-dialog').addEventListener('cancel',closeMedia);
 document.addEventListener('click',event=>{

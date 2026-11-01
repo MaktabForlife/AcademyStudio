@@ -22,6 +22,24 @@ CREATE TABLE mou_playlist_items(
  PRIMARY KEY(playlist_id,attachment_id)
 );
 CREATE INDEX mou_playlist_attachment ON mou_playlist_items(attachment_id,playlist_id);
+-- Native parent lookup prevents one reading from scanning other websites'
+-- entitled playlist memberships in the same programme. Delivery still checks
+-- the current attachment parent and membership, not this index alone.
+CREATE TABLE mou_playlist_item_parents(
+ website_id TEXT NOT NULL REFERENCES websites(website_id),
+ playlist_id TEXT NOT NULL,
+ attachment_id TEXT NOT NULL,
+ PRIMARY KEY(website_id,playlist_id,attachment_id),
+ FOREIGN KEY(playlist_id,attachment_id) REFERENCES mou_playlist_items(playlist_id,attachment_id) ON DELETE CASCADE
+);
+CREATE INDEX mou_playlist_parent_attachment ON mou_playlist_item_parents(attachment_id);
+CREATE TRIGGER mou_playlist_parent_insert AFTER INSERT ON mou_playlist_items BEGIN
+ INSERT INTO mou_playlist_item_parents SELECT website_id,NEW.playlist_id,NEW.attachment_id FROM attachments WHERE attachment_id=NEW.attachment_id AND website_id IS NOT NULL;
+END;
+CREATE TRIGGER mou_playlist_parent_edit AFTER UPDATE OF website_id ON attachments WHEN OLD.website_id IS NOT NEW.website_id BEGIN
+ DELETE FROM mou_playlist_item_parents WHERE attachment_id=NEW.attachment_id;
+ INSERT INTO mou_playlist_item_parents SELECT NEW.website_id,playlist_id,NEW.attachment_id FROM mou_playlist_items WHERE attachment_id=NEW.attachment_id AND NEW.website_id IS NOT NULL;
+END;
 -- New recordings require the explicit playlist gate. Old recordings referenced
 -- by a playlist keep their original endpoint rights and original parent.
 CREATE TABLE mou_playlist_only_media(attachment_id TEXT PRIMARY KEY REFERENCES attachments(attachment_id));
