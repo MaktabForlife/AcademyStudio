@@ -1,4 +1,5 @@
 import {esc} from './model.mjs';
+import {approvedCourseCover} from './approved-course-artwork.mjs';
 
 // Cover labels only. No teaching text or stored source artwork is changed.
 const titles={
@@ -50,6 +51,8 @@ export function tafseerCourseCover(course){
 // Replace the old cover wherever it is displayed, including the source editor.
 // Saved editions and their archived asset references are not rewritten.
 export function replaceTafseerArtwork(root,course){
+ const approved=approvedCourseCover(course.displayIdentity?.key);
+ if(approved){for(const image of root.querySelectorAll('.rs-series-cover img,img[data-course-image]'))if(image.closest('.rs-series-cover')||image.dataset.courseImage===course.home?.imageId){image.src=approved;image.removeAttribute('data-course-image');}return;}
  const artwork=tafseerCourseCover(course);if(!artwork||!course.home?.imageId)return;
  for(const image of root.querySelectorAll('img[data-course-image]'))if(image.dataset.courseImage===course.home.imageId){
   const card=root.ownerDocument.createElement('span');card.className='tafseer-name-artwork';card.setAttribute('role','img');card.setAttribute('aria-label',tafseerDisplayCourse(course).name);card.innerHTML=artwork;image.replaceWith(card);
