@@ -5,6 +5,7 @@ export function changed(account){identity.account=account;identity.generation++;
 channel?.addEventListener('message',()=>{identity.account=null;identity.generation++;resetRenewals();window.dispatchEvent(new CustomEvent('website-session-ended',{detail:{externalAccountChange:true}}));});
 let refreshing=null,renewalTail=Promise.resolve();const accessRefreshes=new Map(),readFlights=new Map();
 function resetRenewals(){refreshing=null;renewalTail=Promise.resolve();accessRefreshes.clear();readFlights.clear();observedCoursePolicyEpoch=null;}
+window.addEventListener('website-course-policy-changed',()=>readFlights.clear());
 function renew(fn){const generation=identity.generation,run=renewalTail.then(()=>{if(generation!==identity.generation)throw new DOMException('Your account changed.','AbortError');return fn();});renewalTail=run.catch(()=>{});return run;}
 function renewAccess(offeringId){const key=identity.generation+':'+(offeringId||'');if(!accessRefreshes.has(key)){const run=renew(()=>api('/auth/access',{body:{offeringId},refreshed:true})).finally(()=>{if(accessRefreshes.get(key)===run)accessRefreshes.delete(key);});accessRefreshes.set(key,run);}return accessRefreshes.get(key);}
 function renewStatus(){if(!refreshing){const run=renew(()=>api('/auth/refresh',{body:{},refreshed:true})).finally(()=>{if(refreshing===run)refreshing=null;});refreshing=run;}return refreshing;}
