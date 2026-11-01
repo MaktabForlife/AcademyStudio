@@ -32,9 +32,11 @@ body.circles-programme-page{
 .circles-programme-page .programme-action-icon{display:grid;place-items:center;width:44px;height:44px;border:1px solid var(--line);border-radius:50%;background:transparent}
 .circles-programme-page .programme-action-icon svg{width:22px;height:22px}
 .circles-programme-page .programme-action-label{display:none}
-.circles-programme-page .programme-signout,.circles-programme-page .programme-switch{display:grid;place-items:center;width:44px;min-width:44px;height:44px;min-height:44px;padding:10px;border:0;border-radius:50%;background:transparent;color:var(--rose-dark)}
+.circles-programme-page .programme-switch{display:grid;place-items:center;width:44px;min-width:44px;height:44px;min-height:44px;padding:10px;border:0;border-radius:50%;background:transparent;color:var(--rose-dark)}
 .circles-programme-page .programme-switch{border:1px solid var(--line)}
-.circles-programme-page :is(.programme-signout,.programme-switch) svg{width:22px;height:22px}
+.circles-programme-page .programme-switch svg{width:22px;height:22px}
+.circles-programme-page .programme-signout{display:inline-flex;align-items:center;justify-content:center;width:auto;min-height:44px;padding:10px 16px;border:1px solid var(--line);border-radius:999px;background:var(--rose-soft);color:var(--rose-dark);font:600 12px/1.4 'DM Sans',Arial,sans-serif;white-space:nowrap}
+.circles-programme-page .programme-signout:hover{border-color:var(--rose);background:var(--rose);color:var(--paper)}
 .circles-programme-page #sign-in-button{min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--rose-dark);font-size:12px}
 .circles-programme-page .account-panel{position:absolute;right:0;top:calc(100% + 12px);width:260px;max-width:calc(100vw - 32px);padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--paper);box-shadow:0 8px 30px #44363f1a;z-index:65}
 .circles-programme-page .account-panel nav{display:grid;gap:4px;max-width:none}

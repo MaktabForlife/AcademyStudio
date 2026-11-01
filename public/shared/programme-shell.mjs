@@ -23,7 +23,7 @@ export function installProgrammeShell({document=globalThis.document,window=globa
   const button=document.getElementById(id);button.innerHTML=`<span class="programme-action-icon">${headerIcon(icon)}</span><span class="programme-action-label">${label}</span>`;actions.append(button);
  }
  const switcherButton=node('button','programme-switch');switcherButton.type='button';switcherButton.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16m-4-4 4 4-4 4M20 16H4m4-4-4 4 4 4"/></svg>';switcherButton.setAttribute('aria-label','Account menu');switcherButton.title='Account menu';switcherButton.onclick=event=>{event.stopPropagation();menu.open=!menu.open;};
- const signout=document.getElementById('sign-out-button');signout.classList.add('programme-signout');signout.innerHTML=headerIcon('signout');signout.setAttribute('aria-label','Sign out');signout.title='Sign out';actions.append(document.getElementById('sign-in-button'),switcherButton,signout);
+ const signout=document.getElementById('sign-out-button');signout.classList.add('programme-signout');signout.textContent='Sign out';signout.setAttribute('aria-label','Sign out');signout.title='Sign out';actions.append(document.getElementById('sign-in-button'),switcherButton,signout);
  const accountBox=node('div','programme-header-account');accountBox.append(menu,actions);controls.remove();header.replaceChildren(branding,accountBox);
  const banners=node('div','programme-banners');header.before(banners);banners.append(header);
  const navigation=node('nav','programme-dashboard-bar');navigation.setAttribute('aria-label','Your workspace');
