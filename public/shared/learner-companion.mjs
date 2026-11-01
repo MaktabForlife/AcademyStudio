@@ -11,7 +11,7 @@ export function learnerCompanion(draft,{academic=false}={}){
  quotations:canonical?(Array.isArray(d.quotations)?d.quotations:[]).slice(0,academic?1:8).map(q=>({text:text(q.text,2000),speaker:text(q.speaker,240),time:time(q.time)})).filter(q=>q.text&&q.time):quote?.verified===true&&quote.text?[{text:text(quote.text,2000),speaker:text(quote.speaker,240),time:time(quote.time)}]:[],
  ...(academic&&typeof d.transcript==='string'?{transcript:text(d.transcript,250000)}:{})};
 }
-export function publicationIndex(companion){return {summary:companion.summary,summaryFormat:companion.summaryFormat,lessonReference:companion.lessonReference};}
+export function publicationIndex(companion){const q=companion.quotations?.[0],quote=q&&text(q.text,2000)&&time(q.time)?{text:text(q.text,2000),speaker:text(q.speaker,240),time:time(q.time)}:null;return {summary:companion.summary,summaryFormat:companion.summaryFormat,lessonReference:companion.lessonReference,...(quote?{quote}:{})};}
 // Calendar month, clamped at month end. The original successful upload is immutable.
 export function recordingRetention(uploadedAt,{permanent=false,now=Date.now()}={}){
  if(permanent)return {recordingExpiresAt:null,companionExpiresAt:null,recordingExpired:false,companionExpired:false};
