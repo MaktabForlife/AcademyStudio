@@ -7,7 +7,7 @@ const pages=['index.html','circles/index.html','circles/free-learning.html','cir
 const legacy=value=>{try{const u=new URL(value,'https://maktab4life.org');return ['http:','https:'].includes(u.protocol)&&['ummabbadacademy.com','ummeabbadacademy.com'].some(h=>u.hostname===h||u.hostname.endsWith('.'+h));}catch{return false;}};
 await mkdir(target,{recursive:true});await cp(baseline,target,{recursive:true});
 const changed=[];let removedHref=0;
-for(const page of pages){const path=resolve(target,page),before=await readFile(path,'utf8');let text=before.replace(/\bhref\s*=\s*(["'])([^"']*)\1/gi,(whole,quote,url)=>{if(!legacy(url))return whole;removedHref++;return 'data-legacy-source-href='+quote+url+quote;});
+for(const page of pages){const path=resolve(target,page),before=await readFile(path,'utf8');let text=before.replace(/(?<![-:\w])href\s*=\s*(["'])([^"']*)\1/gi,(whole,quote,url)=>{if(!legacy(url))return whole;removedHref++;return 'data-legacy-source-href='+quote+url+quote;});
  if(!text.includes('/shared/legacy-site-links.js'))text=text.replace(/<head(?:\s[^>]*)?>/i,tag=>tag+'<script src="/shared/legacy-site-links.js"></script>');if(text!==before){await writeFile(path,text);changed.push(page);}}
 await cp(resolve(repo,'public/shared/legacy-site-links.js'),resolve(target,'shared/legacy-site-links.js'));
 async function manifest(folder){const files={};async function walk(dir){for(const item of await readdir(dir,{withFileTypes:true})){const path=resolve(dir,item.name);if(item.isSymbolicLink())throw Error('Unexpected public symlink');if(item.isDirectory())await walk(path);else files[relative(folder,path)]=createHash('sha256').update(await readFile(path)).digest('hex');}}await walk(folder);return files;}
