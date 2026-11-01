@@ -5,6 +5,10 @@
 - Root has conditional approval to deploy only when all comments since V109.2 and remaining work are integrated and tested, proposedV109.4. Root owns the final matching-version Academy/Studio release and live activation; no deployment, push, hosted SQL, real media attachment/publication, notice/deletion or permission changes are authorised in this UI checkout.
 - Retain current native accounts/roles, sensitive Admin checks,43200/43200/60, exact Join window, account/epoch/ownership/unsaved guards, bounded reads and original acquired rights/media. Never ship sample bootstrap/catalogues/private author packages or infer authority from UI metadata. Keep held MOU/academic content manual and unpublished until individually authorised.
 
+# Four prepared MOU lessons — local manual review, 1 November 2026
+
+Owner explicitly requested Studio Admin review of four prepared MOU links/summaries, then private attachment and publication one at a time; do not deploy. This isolated feature/mou-manual-review starts from the verified V109.3 pair. Keep the prepared catalogue private in R2/local-content, outside public assets. Preserve original Baqarah, partial Kitabul Adhkar identities/receipts, source/cohort/companion revisions and current Admin/session/ownership guards. Latest owner also requires recorded Teacher and media independent of timetable sessions: Programme/Class/Subject-or-Module/Teacher; Tafseer Surah subject; MOU subjects; Courses direct media. Recorded Teacher integration is NOT implemented in this initial checkpoint and must be completed with checked native identity before feature completion. No hosted upload, attachment, publication, schema, deployment, push or DNS action. Future release is paired with Academy under ../AGENTS.md. Other local UI/editor/retention work is separately owned and must be composed, not replaced.
+
 # Disposable Access UI review — local only, 1 November 2026
 
 - `feature/circles-access-ui-preview` is based on deployed Targetf4e2f3ed. The owner's Access UI request is implemented in paired Source feature/circles-access-management-ui.

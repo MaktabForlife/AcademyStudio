@@ -20,6 +20,7 @@ import {publishSchedule} from './public-schedule.mjs';
 import {contentVersion} from './content-package.mjs';
 import {editionAssets,attachedWebsiteAssets,offeringWebsiteAssets} from './website-assets.mjs';
 import {studioAccess} from './studio-access.mjs';
+import {preparedRecordings} from './prepared-recordings.mjs';
 
 async function forwardSignIn(request,env,store,input,fetcher){
  if(!safeToken(input.challenge)||!safeToken(input.state))throw fail('Reopen sign-in from the homepage.');
@@ -111,10 +112,11 @@ async function route(request,env,store,fetcher){
   if(action==='resume')return json(await resumeProvision(env,store,actor,offeringId,input,fetcher));
  }
  if(path==='/api/admin/offerings'&&method==='GET'){
-  const offerings=actor.global_admin?await store.all("SELECT offering_id,title,kind FROM offerings WHERE kind IN('COURSE','TAFSEER') ORDER BY offering_id LIMIT 200"):await store.all("SELECT o.offering_id,o.title,o.kind FROM staff s JOIN offerings o USING(offering_id) WHERE s.account_id=? AND s.role='ADMIN' AND o.kind IN('COURSE','TAFSEER') ORDER BY o.offering_id LIMIT 200",[actor.account_id]);return json({offerings});
+  const offerings=actor.global_admin?await store.all("SELECT o.offering_id,o.title,o.kind,p.programme_key FROM offerings o LEFT JOIN programme_offerings p USING(offering_id) WHERE o.kind IN('COURSE','TAFSEER') ORDER BY o.offering_id LIMIT 200"):await store.all("SELECT o.offering_id,o.title,o.kind,p.programme_key FROM staff s JOIN offerings o USING(offering_id) LEFT JOIN programme_offerings p USING(offering_id) WHERE s.account_id=? AND s.role='ADMIN' AND o.kind IN('COURSE','TAFSEER') ORDER BY o.offering_id LIMIT 200",[actor.account_id]);return json({offerings});
  }
- match=path.match(/^\/api\/admin\/([-A-Za-z0-9_:]+)(?:\/(files|recording|recording-attachments))?$/);
+ match=path.match(/^\/api\/admin\/([-A-Za-z0-9_:]+)(?:\/(files|recording|recording-attachments|prepared-recordings))?$/);
  if(match){const offeringId=id(match[1]),sub=match[2],adminScope=await store.scope(actor,offeringId,{admin:true});
+  if(sub==='prepared-recordings'){if(method!=='GET')throw fail('Use the separate native Attach and Publish actions.',405);return json(await preparedRecordings(env,store,actor,offeringId));}
   if(method==='GET'&&sub==='recording-attachments'){if(!adminScope.studioAuthority&&academyAuthority(env))throw fail('Studio ownership is required.',409);return json(await recordingAttachmentPreflight(store,offeringId,url.searchParams.getAll('source')));}
   if(method==='GET'&&sub==='files')return json({offeringId,...await offeringWebsiteAssets(store,offeringId,{assetId:url.searchParams.get('assetId'),after:url.searchParams.get('after')||''})});
   if(method==='PUT'&&sub==='files')return json(await upload(env,store,actor,offeringId,request));
