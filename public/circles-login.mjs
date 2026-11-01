@@ -70,7 +70,16 @@ async function loadNavigation(){
  const key=accountId+':'+generation;if(navRequest?.key===key)return navRequest.promise;
  const promise=api('/api/circles/navigation').then(value=>{if(identity.generation===generation&&identity.account?.accountId===accountId){navigation=value;refreshHeader();}}).finally(()=>{if(navRequest?.promise===promise)navRequest=null;});navRequest={key,promise};return promise;
 }
-const ready=(async()=>{config=await api('/api/config');try{identity.account=await api('/api/me',{optionalSession:true});}catch(error){if(error.status!==401)throw error;}if(identity.account){const mode=dashboardWorkspace(initialWorkspace)||readDashboardView(dashboardViewStorage(),identity.account.accountId)||undefined;try{await loadNavigation();}catch{showHomeMessage('Your programme links could not be loaded. Please log in again.');}refreshHeader();await dashboard.load(mode);}else{clearDashboardView(dashboardViewStorage());refreshHeader();}window.AcademyCirclesHomeEntry?.complete();})();ready.then(()=>{historyReady=true;pageHistory.update(identity.account);}).catch(()=>window.AcademyCirclesHomeEntry?.fail());
+const ready=(async()=>{
+ const [configuration,account]=await Promise.all([api('/api/config'),api('/api/me',{optionalSession:true}).catch(error=>{if(error.status!==401)throw error;return null;})]);
+ config=configuration;identity.account=account;
+ if(account){
+  const mode=dashboardWorkspace(initialWorkspace)||readDashboardView(dashboardViewStorage(),account.accountId)||undefined;
+  refreshHeader();
+  await Promise.all([loadNavigation().catch(error=>{if(error.name!=='AbortError')showHomeMessage('Your programme links could not be loaded. Please log in again.');}),dashboard.load(mode)]);
+ }else{clearDashboardView(dashboardViewStorage());refreshHeader();}
+ window.AcademyCirclesHomeEntry?.complete();
+})();ready.then(()=>{historyReady=true;pageHistory.update(identity.account);}).catch(()=>window.AcademyCirclesHomeEntry?.fail());
 function returnToCircles(){if(dialog.open)dialog.close();refreshHeader();const card=selected==='general'?element('learning-circles'):document.querySelector(`.hub-panel[data-home-area="${selected}"]`);if(card){if(selected==='general')window.scrollTo({top:0,behavior:'smooth'});else card.scrollIntoView({behavior:'smooth',block:'center'});if(!card.hasAttribute('tabindex'))card.tabIndex=-1;card.focus({preventScroll:true});}}
 async function begin(area,{switchUser=false}={}){const opening=++attempt;selected=accessArea(area);message.textContent='';try{await ready;if(opening!==attempt)return;if(identity.account&&!switchUser){if(publicView)setPublicView(false);returnToCircles();return;}switching=switchUser;form.reset();pins.clear();form.elements.rememberId.checked=true;element('circles-sign-in-title').textContent=switching?'Switch user':'Ahlan wa Sahlan';element('circles-sign-in-intro').textContent=switching?'Choose an account and enter its PIN. This switches all Circles tabs in this browser.':'Log in with your existing Academy account.';form.querySelector('[type=submit]').textContent=switching?'Switch user':'Log in';renderRemembered();element('circles-sign-in-area').textContent=labels[selected];if(!dialog.open)dialog.showModal();}catch{if(!dialog.open)dialog.showModal();message.textContent='Sign-in is temporarily unavailable. Please try again.';}}
 dialog.querySelector('.circles-sign-in-close').onclick=()=>dialog.close();
