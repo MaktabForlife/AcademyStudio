@@ -10,6 +10,14 @@ export function programmeMonth(now,timezone){
  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit'}).formatToParts(new Date(now)).map(p=>[p.type,p.value]));
  return parts.year+'-'+parts.month;
 }
+export function checkedPlaylistCloseDate(value,definition,now=Date.now()){
+ if(!value)return null;const closeDate=date(value);
+ if(definition.accessModel==='MONTHLY'){
+  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:definition.timezone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(now)).map(p=>[p.type,p.value]));
+  if(closeDate>parts.year+'-'+parts.month+'-'+parts.day)throw fail('Close dates cannot be in the future. Leave the playlist open while recordings are being added.');
+ }
+ return closeDate;
+}
 export async function playlistDefinition(store,offer){
  store.playlistDefinitions??=new Map();if(store.playlistDefinitions.has(offer))return store.playlistDefinitions.get(offer);
  const row=await store.first("SELECT o.kind,p.programme_key,s.timezone FROM offerings o LEFT JOIN programme_offerings p USING(offering_id) LEFT JOIN source_access_scopes s USING(offering_id) WHERE o.offering_id=?",[offer]);
@@ -80,6 +88,7 @@ export async function savePlaylist(env,store,actor,offer,input){
  const canonical={action:'mou-playlist-save',operationId:id(input.operationId),playlistId:id(input.playlistId),name:text(input.name,160).trim(),closeDate:input.closeDate?date(input.closeDate):null,revision:integer(input.revision),playlistRevision:integer(input.playlistRevision),websiteRevision:integer(input.websiteRevision),reviewCorrection:input.reviewCorrection===true};
  if(Object.hasOwn(input,'accessDate'))throw fail('Use the explicitly chosen close date. Open playlists follow the current paid month.');
  const replay=await store.replay(actor.account_id,canonical.operationId,await store.requestHash(offer,canonical));if(replay)return replay;
+ checkedPlaylistCloseDate(canonical.closeDate,definition);
  if(!canonical.name)throw fail('Enter a playlist name.');
  if(input.accessModel&&input.accessModel!==definition.accessModel)throw fail('Preserve this programme’s native access model.',409);
  const row=await playlistRow(store,offer,canonical.playlistId),statements=[];
