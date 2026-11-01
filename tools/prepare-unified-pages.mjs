@@ -17,7 +17,7 @@ async function manifest(dir){
 const before=await manifest(baseline),expected=JSON.parse(await readFile(resolve(baseline,'../asset-manifest.json'),'utf8'));
 if(expected.version!=='109.3'||Object.keys(before).length!==166||Object.keys(expected.manifest).length!==166||Object.keys(before).some(file=>before[file]!==expected.manifest[file]))throw Error('Review the changed V109.3 baseline.');
 await mkdir(target,{recursive:true});await cp(baseline,target,{recursive:true});
-const overlays=['app.mjs','circles-login.mjs','circles-entry.js','shared/dashboard-home.mjs','shared/header-dates.mjs','shared/mou-classroom.mjs','shared/programme-shell.mjs','shared/programme-shell.css','shared/circles-dashboard-view.mjs'];
+const overlays=['circles-dashboard.mjs','app.mjs','circles-login.mjs','circles-entry.js','shared/dashboard-home.mjs','shared/header-dates.mjs','shared/mou-classroom.mjs','shared/programme-shell.mjs','shared/programme-shell.css','shared/circles-dashboard-view.mjs'];
 for(const file of overlays)await cp(resolve(root,'public',file),resolve(target,file));
 for(const file of ['index.html','circles/index.html']){const homeTemplate=resolve(target,file);let homeHtml=await readFile(homeTemplate,'utf8');if(!homeHtml.includes('src="/circles-entry.js"'))homeHtml=homeHtml.replace('<meta charset="UTF-8">','<script src="/circles-entry.js"></script><meta charset="UTF-8">');await writeFile(homeTemplate,homeHtml);}
 const template=resolve(target,'studio/index.html');let html=await readFile(template,'utf8');
