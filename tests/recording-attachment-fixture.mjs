@@ -5,8 +5,8 @@ import {newCourse} from '../public/shared/model.mjs';
 import {prepareAttachments} from '../tools/prepare-recording-attachments.mjs';
 import {mouSubjects} from '../public/shared/mou-subjects.mjs';
 import {learnerCompanion} from '../public/shared/learner-companion.mjs';
-export async function recordingAttachmentFixture({attach=true,offeringId='mou-local-recording-review',cohort='local-review'}={}){
- const root=resolve('../..'),f=await fixture({verification:{accountSeconds:43200,adminSeconds:60,liveSeconds:43200}}),offer=offeringId,packages=await prepareAttachments(root,resolve('local-content/recording-attachments'));
+export async function recordingAttachmentFixture({attach=true,offeringId='mou-local-recording-review',cohort='local-review',authorityMode='WEBSITE'}={}){
+ const root=resolve('../..'),f=await fixture({authorityMode,verification:{accountSeconds:43200,adminSeconds:60,liveSeconds:43200}}),offer=offeringId,packages=await prepareAttachments(root,resolve('local-content/recording-attachments'));
  try{
  await f.run("INSERT INTO offerings(offering_id,kind,title,active) VALUES(?,'TAFSEER','Mothers of the Ummah',1)",offer);
  await f.run("INSERT INTO source_access_scopes VALUES(?,'WEBSITE',1,1,1,0,'Africa/Johannesburg',?)",offer,JSON.stringify([cohort]));
@@ -16,6 +16,7 @@ export async function recordingAttachmentFixture({attach=true,offeringId='mou-lo
  await f.run("INSERT INTO participation VALUES('learner',?,1,0,0,?)",offer,cohort);
  await f.run("INSERT INTO paid_months VALUES('learner',?,'2026-10',?,'Synthetic local review rights')",offer,cohort);
  const admin=(await f.login('admin')).cookie,learner=(await f.login('learner')).cookie,receipts=[];
+ if(authorityMode==='ACADEMY'){for(const who of ['admin','learner','former','grant-only','outsider']){await f.run("INSERT INTO source_access_people VALUES(?,?,1,1,?,1,'[]',0,0)",who,offer,Date.now());await f.run('UPDATE sessions SET source_ref=? WHERE account_id=?','synthetic-source-'+who,who);}}
  const native=async(path,input)=>{const response=await f.request(path,{cookie:admin,method:'POST',body:{operationId:crypto.randomUUID(),...input}});if(response.status!==200)throw Error(JSON.stringify({path,response:response.body}));return response;};
  const baqarah=JSON.parse(await readFile(resolve(root,'outputs/academy-release-1088-20261031/imports/mou-baqarah.json'),'utf8')),baqSite=baqarah.websiteId,key='websites/'+baqSite+'/versions/local-unchanged-baqarah.json';
  await f.content.put(key,JSON.stringify(baqarah.document));await f.run('INSERT INTO websites VALUES(?,?,?,NULL,?,?,0,1,NULL)',baqSite,offer,'Surah Al-Baqarah',key,key);
