@@ -17,12 +17,13 @@ async function manifest(dir){
 const before=await manifest(baseline),expected=JSON.parse(await readFile(resolve(baseline,'../asset-manifest.json'),'utf8'));
 if(expected.version!=='109.2'||Object.keys(before).length!==166||JSON.stringify(before)!==JSON.stringify(expected.manifest))throw Error('Review the changed V109.2 baseline.');
 await mkdir(target,{recursive:true});await cp(baseline,target,{recursive:true});
-const overlays=['app.mjs','circles-login.mjs','shared/header-dates.mjs','shared/mou-classroom.mjs','shared/programme-shell.mjs','shared/programme-shell.css'];
+const overlays=['app.mjs','circles-login.mjs','circles-entry.js','shared/dashboard-home.mjs','shared/header-dates.mjs','shared/mou-classroom.mjs','shared/programme-shell.mjs','shared/programme-shell.css'];
 for(const file of overlays)await cp(resolve(root,'public',file),resolve(target,file));
+const homeTemplate=resolve(target,'index.html');let homeHtml=await readFile(homeTemplate,'utf8');homeHtml=homeHtml.replace('<meta charset="UTF-8">','<script src="/circles-entry.js"></script><meta charset="UTF-8">');await writeFile(homeTemplate,homeHtml);
 const template=resolve(target,'studio/index.html');let html=await readFile(template,'utf8');
 html=html.replace('</head>','<link rel="stylesheet" href="/shared/programme-shell.css"></head>').replace('<body class="','<body class="circles-programme-page ');
 await writeFile(template,html);
-const after=await manifest(target),allowed=[...overlays,'studio/index.html'],changed=Object.keys(after).filter(file=>after[file]!==before[file]);
-if(Object.keys(after).length!==168||Object.keys(before).some(file=>!after[file])||changed.some(file=>!allowed.includes(file)))throw Error('Unreviewed public asset change.');
-const report={status:'LOCAL_REVIEW_ONLY',basedOn:'109.2',files:168,changed,unchanged:Object.keys(before).filter(file=>before[file]===after[file]).length,privatePayloadsAdded:0,previewAdaptersAdded:0,manifest:after};
+const after=await manifest(target),allowed=[...overlays,'index.html','studio/index.html'],changed=Object.keys(after).filter(file=>after[file]!==before[file]);
+if(Object.keys(after).length!==170||Object.keys(before).some(file=>!after[file])||changed.some(file=>!allowed.includes(file)))throw Error('Unreviewed public asset change.');
+const report={status:'LOCAL_REVIEW_ONLY',basedOn:'109.2',files:170,changed,unchanged:Object.keys(before).filter(file=>before[file]===after[file]).length,privatePayloadsAdded:0,previewAdaptersAdded:0,manifest:after};
 await writeFile(resolve(target,'../asset-manifest.json'),JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify({...report,manifest:undefined}));

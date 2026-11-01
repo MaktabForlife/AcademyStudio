@@ -6,6 +6,8 @@ if(!Number.isInteger(sitePort)||sitePort<1024||sitePort>65534)throw Error('Choos
 const previewHost=process.env.PREVIEW_HOST||'localhost';if(!['localhost','127.0.0.1'].includes(previewHost))throw Error('Use a loopback preview host.');
 const websiteOrigin='http://'+previewHost+':'+sitePort,academyOrigin='http://'+previewHost+':'+academyPort;
 const publicRoot=resolve(process.env.PREVIEW_PUBLIC_ROOT||'public'),circles=process.env.PREVIEW_CIRCLES==='1',mou=Boolean(process.env.MOU_BACKEND_ROOT);
+const homeReview=process.env.PREVIEW_HOME_REVIEW==='1',homeReads={config:0,account:0,navigation:0,dashboard:0};let slowHome=false;
+const homeStages=new Map([['/api/config','config'],['/api/me','account'],['/api/circles/navigation','navigation'],['/api/circles/dashboard','dashboard']]);
 if(mou&&(!circles||process.env.PREVIEW_NAVIGATION!=='1'))throw Error('The paired MOU preview requires the synthetic Circles navigation fixture.');
 const fixture=mou?(await import(pathToFileURL(resolve(process.env.MOU_BACKEND_ROOT,'tests/fixture.mjs')))).fixture:localFixture;
 const f=await fixture({academy:true,authorityMode:circles?'ACADEMY':'WEBSITE',...(mou?{mou:true}:{}),...(process.env.PREVIEW_NAVIGATION==='1'?{dashboard:true,navigation:{mothers:mou?'programB':'programA',alimiyah:mou?'programA':'programB'},verification:{accountSeconds:43200,liveSeconds:43200,adminSeconds:60}}:{})});
@@ -35,6 +37,17 @@ async function staticFile(path,request,response,root=publicRoot){
 async function handler(request,response,isAcademy){
  try{
   const pathname=new URL(request.url,'http://localhost').pathname;
+  if(homeReview&&!isAcademy&&pathname==='/__local/home-review'){
+   response.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});return response.end('<!doctype html><title>Local Home return checks</title><h1>Local Home return checks</h1><p>Disposable synthetic data only. No hosted account or records.</p><p>Slow responses: '+slowHome+'</p><pre>'+JSON.stringify(homeReads,null,2)+'</pre><form method="post" action="/__local/home-delay"><button name="slow" value="1">Enable slow responses and reset counts</button><button name="slow" value="0">Normal responses and reset counts</button></form><form method="post" action="/__local/expire-session"><button>Expire sample website sessions</button></form><a href="/?dashboard=1">Return Home</a>');
+  }
+  if(homeReview&&!isAcademy&&['/__local/home-delay','/__local/expire-session'].includes(pathname)){
+   if(request.method!=='POST'||request.headers.origin!==websiteOrigin){response.writeHead(403);return response.end('Local review form only.');}
+   let body='';for await(const chunk of request){body+=chunk;if(body.length>100)throw Error('Local review form too large.');}
+   if(pathname.endsWith('home-delay')){slowHome=new URLSearchParams(body).get('slow')==='1';for(const key of Object.keys(homeReads))homeReads[key]=0;}
+   else await f.run('UPDATE sessions SET expires_at=?',Date.now()-1);
+   response.writeHead(303,{Location:pathname.endsWith('home-delay')?'/__local/home-review':'/?dashboard=1','Cache-Control':'no-store'});return response.end();
+  }
+  if(homeReview&&!isAcademy&&homeStages.has(pathname)){const stage=homeStages.get(pathname);homeReads[stage]++;if(slowHome)await new Promise(done=>setTimeout(done,['account','navigation'].includes(stage)?5000:1000));}
   if(pathname==='/api/public/header-date'||pathname==='/api/academy/header-date'){const timezone='Africa/Johannesburg',gregorian=new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());response.writeHead(200,{'Content-Type':'application/json','Cache-Control':'public, max-age=60'});return response.end(JSON.stringify({gregorian,hijri:null,timezone,source:'https://jamiat.org.za/'}));}
   if(!isAcademy&&circles&&pathname==='/__local/responsive'){response.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});return response.end('<!doctype html><meta charset="utf-8"><title>Local Circles responsive check</title><style>body{margin:12px;font:14px system-ui;background:#e9e3df}.frames{display:flex;align-items:start;gap:20px;flex-wrap:wrap}iframe{height:880px;border:1px solid #b7a8ad;background:#fff}</style><h1>Local synthetic responsive check</h1><div class="frames">'+[320,390,768].map(w=>'<section><h2>'+w+'px</h2><iframe title="Circles '+w+'px" width="'+w+'" src="/"></iframe></section>').join('')+'</div>');}
   if(isAcademy&&pathname==='/__local/read-metrics'){if(request.method==='POST')f.source.resetMetrics();response.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});return response.end(JSON.stringify(f.source.metrics));}

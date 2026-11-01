@@ -1,4 +1,5 @@
 import {headerIcon} from './header-icons.mjs';
+import {dashboardHomeHref,updateDashboardHomeLinks} from './dashboard-home.mjs';
 
 // One presentation shell for the existing learning pages. Move the native
 // controls rather than replacing their sign-in, refresh, Home or sign-out code.
@@ -9,6 +10,7 @@ export function installProgrammeShell({document=globalThis.document}={}){
  if(!document.querySelector('link[href="/shared/programme-shell.css"]')){const style=document.createElement('link');style.rel='stylesheet';style.href='/shared/programme-shell.css';document.head.append(style);}
  const node=(tag,className)=>{const value=document.createElement(tag);value.className=className;return value;};
  const brand=header.querySelector('.brand'),dates=header.querySelector('.circles-header-dates'),controls=header.querySelector('.account-controls');
+ brand.dataset.circlesDashboardHome='';brand.href=dashboardHomeHref();
  const branding=node('div','programme-brand-details');branding.append(brand);if(dates)branding.append(dates);
  const copy=brand.querySelector('span');copy.innerHTML='<strong>Umm Abbad<br>Academy</strong>';
  const welcome=node('span','programme-welcome');welcome.textContent='Ahlan wa Sahlan';
@@ -24,7 +26,7 @@ export function installProgrammeShell({document=globalThis.document}={}){
  const account=node('div','programme-header-account');account.append(menu,actions);controls.remove();header.replaceChildren(branding,account);
  const banners=node('div','programme-banners');header.before(banners);banners.append(header);
  const navigation=node('nav','programme-dashboard-bar');navigation.setAttribute('aria-label','Your workspace');
- const home=node('a','programme-dashboard-link');home.href='/';home.textContent='Dashboard';navigation.append(home);banners.append(navigation);
+ const home=node('a','programme-dashboard-link');home.href=dashboardHomeHref();home.dataset.circlesDashboardHome='';home.textContent='Dashboard';navigation.append(home);banners.append(navigation);
  const panel=document.getElementById('account-panel'),nav=panel.querySelector('nav');
  document.getElementById('home-button').textContent='Dashboard';
  document.getElementById('my-websites').textContent='All learning';
@@ -33,6 +35,7 @@ export function installProgrammeShell({document=globalThis.document}={}){
  const switcher=document.createElement('a');switcher.href='/?login=1&switch=1';switcher.textContent='Switch user';switcher.setAttribute('aria-label','Switch user');
  const website=document.createElement('a');website.href='/?public=1';website.textContent='Visit website';website.setAttribute('aria-label','Visit website');nav.prepend(switcher,website);
  function update(account){
+  updateDashboardHomeLinks(document,account);
   navigation.hidden=!account;switcherButton.hidden=!account;name.dataset.accountRole=account?.globalAdmin?'Global Admin':'';
   summary.setAttribute('aria-label',account?account.displayName+(account.globalAdmin?' · Global Admin':'')+' · Account menu':'Account menu');
  }
