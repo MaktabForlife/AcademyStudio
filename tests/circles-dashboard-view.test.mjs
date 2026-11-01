@@ -38,13 +38,13 @@ test('today’s circle uses the display timezone across midnight without changin
  assert.equal(JSON.stringify(row),before);assert.equal(row.nativeJoin.date,'2050-01-02');
 });
 
-test('Admin has only the five checked management actions below the circle; other views use permitted programme links',()=>{
+test('Admin has only the five checked management actions above the circle; other views use permitted programme links',()=>{
  const activities=[{activityKey:'PROGRAM:one',name:'Private programme',roles:['PROGRAM_ADMIN']},{activityKey:'COURSE:two',name:'Private course',roles:['ADMIN']}];
  for(const adminBadge of ['Global Admin','Admin']){
   const html=dashboardHTML(summary({adminBadge,activities})),section=html.split('<section class="circles-manage"')[1].split('</section>')[0];
   for(const label of ['Users','Access','Curriculum','Intehaan','Media'])assert(section.includes('>'+label+'</button>'));
   assert.equal((section.match(/&quot;tool&quot;:&quot;curriculum&quot;/g)||[]).length,1);
-  assert(!section.includes('<ul>'));assert(!section.includes('Private programme'));assert(!section.includes('Private course'));assert(!html.includes('circles-programme-links'));
+  assert(html.indexOf('class="circles-manage"')<html.indexOf('class="circles-dash-layout"'));assert(!section.includes('<ul>'));assert(!section.includes('Private programme'));assert(!section.includes('Private course'));assert(!html.includes('circles-programme-links'));
  }
  for(const mode of ['learn','teach']){
   const html=dashboardHTML(summary({mode,activities}),{navigation:{academia:[{key:'alimiyah',label:'Permitted programme'}]}});
