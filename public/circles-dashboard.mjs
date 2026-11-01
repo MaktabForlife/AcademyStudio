@@ -9,7 +9,7 @@ export function circlesDashboard({onUpdate,openAcademy,show=()=>true,onWorkspace
  const cache=new Map(),requests=new Map(),headers=new WeakMap();let renderedHost,renderedHTML;
  const accountKey=()=>JSON.stringify([identity.account?.accountId,identity.generation]);
  const current=()=>Boolean(identity.account&&data&&dataOwner===accountKey()&&!pending&&data.mode===mode&&show());
- const grouped=()=>mode==='admin'&&data?.adminBadge==='Global Admin';
+ const grouped=()=>identity.account?.globalAdmin===true;
  const rows=()=>current()?(data.timetable||[]):[];
  const context=()=>({account:identity.account,generation:identity.generation,mode,data,pending,visible:current()});
  function selectedNavigation(){const navigation=getNavigation();if(!navigation)return null;const permitted=new Set((data?.programmeNavigation||[]).map(row=>row.navigationKey));return {...navigation,academia:(navigation.academia||[]).filter(row=>permitted.has(row.key))};}

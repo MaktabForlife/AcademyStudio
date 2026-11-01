@@ -15,7 +15,7 @@ test('programme grouping combines dates, preserves every session, separates iden
 
 test('Global Admin circle shows one entry per exact programme identity for today',()=>{
  const now=Date.parse('2050-01-03T09:00:00Z'),rows=[lesson(),lesson({subjectName:'Second lesson'}),lesson({activityId:'b',activityName:'Programme B'}),lesson({subjectName:'<Cancelled lesson>',status:'CANCELLED'})];
- const html=dashboardHTML(summary({timetable:rows}),{now});
+ const html=dashboardHTML(summary({timetable:rows}),{now,globalAdmin:true});
  assert.equal((html.match(/class="wheel-session /g)||[]).length,2);
  assert(html.includes('Programme A'));assert(html.includes('Programme B'));
  assert(!html.includes('<Cancelled lesson>'));assert(!html.includes('zoom.'));
@@ -23,9 +23,9 @@ test('Global Admin circle shows one entry per exact programme identity for today
  // including earlier/cancelled sessions, beyond the six-slice summary.
 });
 
-test('Learn, Teach and scoped Admin retain individual session entries in the circle',()=>{
+test('ordinary Learn, Teach and scoped Admin retain individual sessions even beside a stale display badge',()=>{
  for(const [mode,adminBadge] of [['learn','Global Admin'],['teach','Global Admin'],['admin','Admin']]){
-  const html=dashboardHTML(summary({mode,adminBadge,timetable:[lesson(),lesson({subjectName:'Second lesson'})]}),{now:Date.parse('2050-01-03T09:00:00Z')});
+  const html=dashboardHTML(summary({mode,adminBadge,timetable:[lesson(),lesson({subjectName:'Second lesson'})]}),{now:Date.parse('2050-01-03T09:00:00Z'),globalAdmin:false});
   assert.equal((html.match(/class="wheel-session /g)||[]).length,2);assert(html.includes('First lesson'));assert(html.includes('Second lesson'));
  }
 });
@@ -59,3 +59,9 @@ test('Arabic Adventures is visible only for a verified Global Admin in checked L
   assert(!html.includes('ARABIC_ADVENTURES'));assert(!html.includes('tool&quot;:&quot;arabic'));
  }
 });
+
+ test('verified Global Admin groups every selected perspective and a cancelled row cannot hide its valid programme',()=>{
+ const now=Date.parse('2050-01-03T09:00:00Z'),rows=[lesson({status:'CANCELLED',startsAt:now-1000,endsAt:now+3600000}),lesson(),lesson({subjectName:'Second lesson'}),lesson({kind:'COURSE'})],before=JSON.stringify(rows);
+ for(const mode of ['learn','teach','admin']){const html=dashboardHTML(summary({mode,timetable:rows}),{now,globalAdmin:true});assert.equal((html.match(/class="wheel-session /g)||[]).length,2);assert.equal((html.match(/class="session-info"/g)||[]).length,2);}
+ assert.equal(JSON.stringify(rows),before);
+ });

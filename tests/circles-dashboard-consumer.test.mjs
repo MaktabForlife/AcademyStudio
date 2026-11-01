@@ -45,7 +45,7 @@ test('a checked public Free programme outside personal activities appears at the
  f.resolveJoin({joinUrl:'https://zoom.test/current-free'});await flush();assert.equal(f.navigations.length,1);
 });
 test('session, all sessions and attention dialogs expose every permitted entry without six-item truncation',async()=>{
- const f=await fixture();f.click('[data-circle-session]');assert(f.document.querySelector('dialog').textContent.includes('Subject 0'));f.click('[data-circle-dialog-close]');f.click('[data-circle-all]');assert.equal(f.document.querySelectorAll('dialog .circle-session-detail').length,9);f.click('[data-circle-dialog-close]');f.click('[data-circle-attention-all]');assert.equal(f.document.querySelectorAll('dialog article').length,6);
+ const f=await fixture({global:false});f.click('[data-circle-session]');assert(f.document.querySelector('dialog').textContent.includes('Subject 0'));f.click('[data-circle-dialog-close]');f.click('[data-circle-all]');assert.equal(f.document.querySelectorAll('dialog .circle-session-detail').length,9);f.click('[data-circle-dialog-close]');f.click('[data-circle-attention-all]');assert.equal(f.document.querySelectorAll('dialog article').length,6);
  const admin=await fixture({mode:'admin',rows:[...summary().timetable,session(10,{status:'CANCELLED',subjectName:'Cancelled lesson'}),session(11,{date:'2026-10-31',subjectName:'Earlier lesson'})]});assert.equal(admin.document.querySelectorAll('.wheel-session').length,1,'Global Admin shows one programme entry');admin.click('[data-circle-session]');assert.equal(admin.document.querySelectorAll('dialog .circle-session-detail').length,11,'Its info reveals all real programme sessions including cancelled and earlier dates');
 });
 test('Learn and Teach Calendar are viewing popups while Admin retains the checked edit-calendar route',async()=>{
@@ -68,4 +68,11 @@ test('cross-midnight circle and popup use the displayed date while Join retains 
 
 test('programme cards follow the currently checked mode and handoff errors remain visible on the active dashboard',async()=>{
  const f=await fixture({mode:'teach'});assert(f.document.querySelector('[data-programme-key=alimiyah]'));f.dashboard.data.programmeNavigation=[];f.dashboard.refresh();assert.equal(f.document.querySelector('[data-programme-key=alimiyah]'),null);f.dashboard.message('Your current programme access changed. Refresh your dashboard.');assert.match(f.document.querySelector('[data-circle-status]').textContent,/programme access changed/);f.public();assert.equal(f.document.querySelector('[data-circle-status]'),null);
+});
+
+test('verified Global Admin grouping spans Learn Teach and Admin while every original session and Join reference remains in info',async()=>{
+ const rows=[...summary().timetable,session(10,{status:'CANCELLED',subjectName:'Cancelled lesson'}),session(11,{date:'2026-10-31',startsAt:start-86400000,endsAt:start-83400000,subjectName:'Earlier lesson'})],before=JSON.stringify(rows);
+ for(const mode of ['learn','teach','admin']){const f=await fixture({mode,global:true,rows});assert.equal(f.document.querySelectorAll('.wheel-session').length,1);f.click('[data-circle-session]');assert.equal(f.document.querySelectorAll('dialog .circle-session-detail').length,11);assert.match(f.document.querySelector('dialog').textContent,/Earlier lesson/);assert.match(f.document.querySelector('dialog').textContent,/Cancelled lesson/);f.click('dialog [data-circle-join]');assert.equal(f.calls.at(-1).body.mode,mode);assert.equal(f.calls.at(-1).body.joinKey,rows[0].nativeJoin.joinKey);f.resolveJoin({joinUrl:'https://zoom.test/checked'});await flush();assert.equal(f.navigations.length,1);}
+ assert.equal(JSON.stringify(rows),before);
+ for(const mode of ['learn','teach','admin']){const f=await fixture({mode,global:false,rows:summary().timetable.slice(0,2)});assert.equal(f.document.querySelectorAll('.wheel-session').length,2);f.click('[data-circle-session]');assert.equal(f.document.querySelectorAll('dialog .circle-session-detail').length,1);}
 });
