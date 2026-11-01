@@ -20,7 +20,7 @@ installHeaderDates();
 const initialEntry=window.AcademyCirclesEntry||{},initialWorkspace=initialEntry.workspace||new URLSearchParams(location.search).get('workspace');
 let config,selected='general',attempt=0,handoff,navigation=null,navRequest=null,homeMessage='',switching=false,refreshing=false,publicView=initialEntry.public||new URLSearchParams(location.search).get('public')==='1';
 {const url=new URL(location.href);if(publicView)url.searchParams.set('public','1');if(['learn','teach','admin'].includes(initialWorkspace))url.searchParams.set('workspace',initialWorkspace);history.replaceState(null,'',url);}
-const dashboard=circlesDashboard({onUpdate:refreshHeader,openAcademy,show:()=>!publicView,onWorkspace:()=>setPublicView(false)});
+const dashboard=circlesDashboard({getNavigation:()=>navigation,onUpdate:refreshHeader,openAcademy,show:()=>!publicView,onWorkspace:()=>setPublicView(false)});
 const storage=()=>{try{return window.localStorage;}catch{return null;}};
 function renderRemembered(){
  const host=element('circles-remembered-accounts');host.replaceChildren();const rows=readRemembered(storage(),config?.academyOrigin);if(!rows.length){host.hidden=true;return;}host.hidden=false;

@@ -8,7 +8,7 @@ export function coursePreview(courses,limit=6){
 }
 
 export function purchasedCourseCards(courses){
- return courses.map(course=>{const access=course.accessLabel||'Your paid course';return `<a class="circles-purchased-course" href="${esc(course.href)}" aria-label="${esc(course.label)} · ${esc(access)}">${course.cover?`<img src="${esc(course.cover)}" alt="" loading="lazy">`:''}<span><small>${esc(access)}</small><h3>${esc(course.label)}</h3></span><span aria-hidden="true">↗</span></a>`;}).join('');
+ return courses.map(course=>{const access=course.accessLabel||'Your paid course';return `<a class="circles-purchased-course" href="${esc(course.href)}" aria-label="${esc(course.label)} · ${esc(access)}">${course.cover?`<img src="${esc(course.cover)}" alt="" loading="lazy">`:'<span class="course-cover-fallback" aria-hidden="true"></span>'}<span class="course-artwork-caption"><small>${esc(access)}</small><h3>${esc(course.label)}</h3>${Number.isSafeInteger(course.recordings)?`<span class="course-recording-count">${course.recordings>1000?'1000+':course.recordings} ${course.recordings===1?'recording':'recordings'}</span>`:''}</span></a>`;}).join('');
 }
 
 // Keep the artwork and the five explicitly reactivated free-course bookmarks.
@@ -17,7 +17,7 @@ export function circlesCourseRow(document){
  const templates=new WeakMap(),rendered=new WeakMap(),positions=new WeakMap();
  function arrange(section,signedIn){
   section.classList.toggle('circles-dashboard-courses',signedIn);
-  if(signedIn){const hero=document.querySelector('#learning-circles');if(!hero)return;if(!positions.has(section)){const marker=document.createComment('public courses');section.before(marker);positions.set(section,marker);}if(hero.nextElementSibling!==section)hero.after(section);}
+  if(signedIn){const hero=document.querySelector('#circles-dashboard')||document.querySelector('#learning-circles');if(!hero)return;if(!positions.has(section)){const marker=document.createComment('public courses');section.before(marker);positions.set(section,marker);}if(hero.nextElementSibling!==section)hero.after(section);}
   else if(positions.has(section)){positions.get(section).replaceWith(section);positions.delete(section);}
  }
  function inactiveCards(root){

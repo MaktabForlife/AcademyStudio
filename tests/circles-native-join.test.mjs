@@ -77,7 +77,7 @@ test('Target Join account/session/proof reads remain bounded beside4000 unrelate
 });
 
 test('an old dashboard shape upgrades once per account/mode, then returns from the existing private cache without polling',async t=>{
- const f=await setup(t),dashboard={nativeJoinVersion:1,mode:'learn',availableModes:['learn'],programmeNavigation:[],activities:[],timetable:[{kind:'PROGRAM',activityId:'native-program',nativeJoin:{joinKey:input.joinKey,date:input.date}}]};
+ const f=await setup(t),dashboard={nativeJoinVersion:1,studioJoinVersion:1,mode:'learn',availableModes:['learn'],programmeNavigation:[],activities:[],timetable:[{kind:'PROGRAM',activityId:'native-program',nativeJoin:{joinKey:input.joinKey,date:input.date}}]};
  f.setReply(async()=>Response.json({dashboard}));
  const key='private/dashboard/'+await sha256('learner')+'/learn.json';
  const saved={accountId:'learner',epoch:1,permissionVerifiedAt:f.proof.verifiedAt,coursePolicyEpoch:0,checkedAt:Date.now(),dashboard:{...dashboard,nativeJoinVersion:undefined}};
