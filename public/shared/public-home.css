@@ -1,4 +1,4 @@
-.hub-website .hub-next.public-combined-worship{background:#887378;color:#fff9f3;padding:clamp(18px,2.2vw,34px);z-index:5}
+.circle .single-circle-home #animated-hub.hub-website .hub-next.public-combined-worship{background:#887378;color:#fff9f3;padding:clamp(18px,2.2vw,34px);z-index:5}
 .public-combined-worship>h3{font:600 12px/1.5 'DM Sans',sans-serif!important;letter-spacing:.07em;margin:0 0 18px!important}
 .public-combined-worship .public-worship-links{display:grid;gap:14px}
 .public-worship-links a{display:flex;align-items:center;justify-content:space-between;gap:16px;color:inherit;font:400 clamp(13px,1.25vw,18px)/1.5 'DM Sans',sans-serif;text-decoration:none;min-height:38px}
@@ -33,13 +33,24 @@
 .announcement-summaries{min-width:0}.announcement-layout{width:100%;min-width:0}.announcement-summary-list{min-width:0;max-width:100%;box-sizing:border-box}
 /* Four public panels frame the circle; keep its central message unobstructed. */
 @media(min-width:761px){
- .hub-website.mobile-first-hub{position:relative;display:block;height:clamp(690px,57vw,950px);min-height:0}
- .hub-website .hub-orb.hub-academy-centre{left:29%;top:3%;width:47%;height:auto;min-height:0;aspect-ratio:1;transform:none;border-radius:50%;padding:34px 25px;display:flex;flex-direction:column;align-items:center;justify-content:center}
- .hub-website .hub-academy-centre h1{max-width:58%;font-size:clamp(35px,3.7vw,64px);line-height:1.12;margin:0 0 24px;text-align:center}
- .hub-website .hub-academy-tagline{max-width:65%;font-size:clamp(19px,2vw,32px);line-height:1.3;margin:0 0 24px}
- .hub-website .hub-academy-signoff{max-width:60%;font-size:clamp(11px,1vw,16px);margin:0}
- .hub-website .hub-image{left:3%;top:10%;width:38%;height:40%;z-index:4}
- .hub-website .hub-next.public-combined-worship{left:66%;right:auto;top:4%;width:31%;min-height:0;padding:22px;z-index:5}
- .hub-website .hub-progress{left:66%;right:auto;top:50%;bottom:auto!important;width:29%;min-height:0;z-index:5}
- .hub-website .hub-arabic{left:18%;right:auto;top:auto;bottom:13%!important;width:32%;z-index:5}
+ .circle .single-circle-home #animated-hub.hub-website{position:relative;display:block;height:clamp(690px,57vw,950px);min-height:0}
+ .circle .single-circle-home #animated-hub.hub-website .hub-orb.hub-academy-centre{left:29%;top:3%;width:47%;height:auto;min-height:0;aspect-ratio:1;transform:none!important;animation:none!important;border-radius:50%;padding:34px 25px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+ .circle .single-circle-home #animated-hub.hub-website .hub-academy-centre h1{max-width:58%;font-size:clamp(35px,3.7vw,64px);line-height:1.12;margin:0 0 24px;text-align:center}
+ .circle .single-circle-home #animated-hub.hub-website .hub-academy-tagline{max-width:65%;font-size:clamp(19px,2vw,32px);line-height:1.3;margin:0 0 24px}
+ .circle .single-circle-home #animated-hub.hub-website .hub-academy-signoff{max-width:60%;font-size:clamp(11px,1vw,16px);margin:0}
+ .circle .single-circle-home #animated-hub.hub-website .hub-image{left:3%;top:10%;width:33%;height:40%;z-index:4}
+ .circle .single-circle-home #animated-hub.hub-website .hub-next.public-combined-worship{left:66%;right:auto;top:4%;width:31%;min-height:0;padding:22px;z-index:5}
+ .circle .single-circle-home #animated-hub.hub-website .hub-progress{left:66%;right:auto;top:50%;bottom:auto!important;width:29%;min-height:0;z-index:5}
+ .circle .single-circle-home #animated-hub.hub-website .hub-arabic{left:18%;right:auto;top:auto;bottom:13%!important;width:32%;z-index:5}
+}
+
+@media(min-width:821px){.circle .single-circle-home #animated-hub.hub-website>:not(.layout-positioned){translate:0 0!important}.circle .single-circle-home #animated-hub.hub-website .hub-orb:not(.layout-positioned){transform:none!important}}
+@media(min-width:821px){
+ .circle .single-circle-home #animated-hub.hub-website>.hub-panel{position:absolute!important;margin:0!important;grid-area:auto!important}
+ .circle .single-circle-home #animated-hub.hub-website>.hub-orb{position:absolute!important;margin:0!important;grid-area:auto!important}
+ .circle .single-circle-home #animated-hub.hub-website .hub-image{width:33%!important;height:40%!important}
+ .circle .single-circle-home #animated-hub.hub-website .hub-next{width:31%!important}
+ .circle .single-circle-home #animated-hub.hub-website .hub-progress{width:29%!important}
+ .circle .single-circle-home #animated-hub.hub-website .hub-arabic{width:32%!important}
+ .circle .single-circle-home #animated-hub.hub-website .hub-academy-centre h1{max-width:65%}
 }
