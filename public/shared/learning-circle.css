@@ -1,4 +1,6 @@
 /* Approved circle presentation, scoped to the checked dashboard. */
+#circles-dashboard .session-join:not(:disabled),#circles-dashboard .week-join:not(:disabled){background:#526747;color:#fffdf5;border:1px solid #657d58;box-shadow:0 2px 7px #43553a20;font-weight:600}
+#circles-dashboard [data-circle-join]:disabled{opacity:.6;box-shadow:none}
 #circles-dashboard .circles-week{margin-top:34px;scroll-margin-top:24px;min-width:0}
 #circles-dashboard .circles-week>header{display:flex;justify-content:space-between;align-items:end;gap:18px;margin-bottom:18px}
 #circles-dashboard .circles-week h2{font:400 32px/1.2 var(--serif);margin:6px 0 0}

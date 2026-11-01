@@ -1,4 +1,6 @@
 /* Shared podcast-like series and episode pages, within the Circles family. */
+.circles-theme .student-course .rs-series-tools button[data-join]:not(:disabled),.circles-theme .student-course .rs-session-list button[data-join]:not(:disabled){background:#526747;border-color:#526747;color:#fffdf5;box-shadow:0 2px 7px #43553a20;font-weight:600}
+.circles-theme .student-course button[data-join]:disabled{opacity:.6;box-shadow:none}
 .circles-theme .student-course .rs-shell{max-width:1080px;margin:auto;border:0;padding:0 0 30px}
 .circles-theme .rs-series-header{display:grid;grid-template-columns:100px minmax(0,1fr);gap:22px;align-items:center;padding:26px 0 30px}
 .circles-theme .rs-series-cover{position:relative;min-width:0;isolation:isolate}
