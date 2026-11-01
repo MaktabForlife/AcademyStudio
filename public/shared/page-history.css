@@ -16,3 +16,17 @@
  body.circles-programme-page .programme-page-actions{display:flex;flex-wrap:nowrap;justify-content:space-between;width:100%;gap:4px}
  body.circles-programme-page .programme-welcome{white-space:nowrap}
 }
+
+/* Keep the small-screen brand separate from account and navigation controls. */
+@media(max-width:800px){
+ body.circles-programme-page .site-header{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px 12px}
+ body.circles-programme-page .programme-brand-details{grid-column:1;grid-row:1;width:100%;min-width:0}
+ body.circles-programme-page .programme-header-account{display:contents}
+ body.circles-programme-page .account-menu{grid-column:2;grid-row:1;justify-self:end;width:auto;min-width:0;max-width:100%}
+ body.circles-programme-page .account-menu>summary{width:auto;min-width:0}
+ body.circles-programme-page .programme-profile{display:block;width:auto;max-width:145px;text-align:right}
+ body.circles-programme-page .programme-welcome{display:none}
+ body.circles-programme-page .programme-page-actions{grid-column:1/-1;grid-row:2;justify-content:center;gap:8px;width:100%;flex-wrap:wrap}
+ body.circles-programme-page .programme-studio-modes{grid-column:1/-1;grid-row:3;justify-self:center;margin:0}
+ body.circles-programme-page .account-panel{left:auto;right:0}
+}
