@@ -100,7 +100,12 @@ form.addEventListener('submit',async event=>{
   else{form.elements.pin.value='';form.elements.pinConfirmation.value='';message.textContent=error.message;}
  }finally{button.disabled=false;}
 });
-function openAcademy(navigationKey,destination){try{handoff?.close();handoff=openAcademyFromCircles({academyOrigin:config.academyOrigin,request:api,navigation:navigationKey,dashboard:destination,onError:showHomeMessage});}catch(error){showHomeMessage(error.message);}}
+function openAcademy(navigationKey,destination){try{handoff?.close();const accountId=identity.account?.accountId,generation=identity.generation;handoff=openAcademyFromCircles({academyOrigin:config.academyOrigin,request:api,navigation:navigationKey,dashboard:destination,onError:showHomeMessage,onReturn:mode=>{
+ // Reuse only this still-open, same-account dashboard. This restores a view,
+ // never authority: the existing Join, media and Admin gates remain current.
+ if(!accountId||identity.account?.accountId!==accountId||identity.generation!==generation||dashboard.mode!==mode||!dashboard.data||!Number.isFinite(dashboard.data.checkedAt)||Date.now()<dashboard.data.checkedAt||Date.now()-dashboard.data.checkedAt>=43200_000)return false;
+ setPublicView(false);window.focus();return true;
+}});}catch(error){showHomeMessage(error.message);}}
 async function signOut(button){button.disabled=true;try{await api('/auth/logout',{body:{}});changed(null);showHomeMessage('You are signed out.');}catch(error){showHomeMessage(error.message);}finally{button.disabled=false;}}
 // Capture before prototype handlers; the signed-in blocks contain real links.
 document.addEventListener('click',event=>{
