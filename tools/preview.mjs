@@ -11,19 +11,31 @@ const homeStages=new Map([['/api/config','config'],['/api/me','account'],['/api/
 if(mou&&(!circles||process.env.PREVIEW_NAVIGATION!=='1'))throw Error('The paired MOU preview requires the synthetic Circles navigation fixture.');
 const fixture=mou?(await import(pathToFileURL(resolve(process.env.MOU_BACKEND_ROOT,'tests/fixture.mjs')))).fixture:localFixture;
 const f=await fixture({academy:true,authorityMode:circles?'ACADEMY':'WEBSITE',...(mou?{mou:true}:{}),...(process.env.PREVIEW_NAVIGATION==='1'?{dashboard:true,navigation:{mothers:mou?'programB':'programA',alimiyah:mou?'programA':'programB'},verification:{accountSeconds:43200,liveSeconds:43200,adminSeconds:60}}:{})});
-if(circles){const {circlesFixture}=await import('../tests/circles-fixture.mjs');const x=await circlesFixture(f);await x.recover(8);}else{
+let circlesData;
+if(circles){const {circlesFixture}=await import('../tests/circles-fixture.mjs');const x=await circlesFixture(f);circlesData=x;await x.recover(8);}else{
 for(const [account,globalAdmin] of [[f.source.f.actors.global,1],[f.source.f.actors.studentA,0]])await f.run('INSERT INTO accounts VALUES(?,?,1,1,1,?,?)',account,'Synthetic Academy '+(globalAdmin?'Admin':'Learner'),Date.now(),globalAdmin);
 await f.run("INSERT INTO participation VALUES(?,'course',1,1,1,'')",f.source.f.actors.studentA);
 const {seedTimetables}=await import('../tests/timetable-fixture.mjs');await seedTimetables(f);await f.runtime.dispatchFetch('https://academy.test/__local/recover');
 if(process.env.PREVIEW_CONTENT_ROOT){const{seedReviewedWebsites}=await import('./seed-reviewed-websites.mjs');console.log(JSON.stringify({contentReview:await seedReviewedWebsites(f,process.env.PREVIEW_CONTENT_ROOT)}));}
 }
+
 if(mou){
  const native=async(path,body,token)=>{const response=await f.runtime.dispatchFetch('https://academy.test'+path,{method:'POST',headers:{Origin:'https://academy.test','Content-Type':'application/json','X-Academy-Workspace':'ADMIN',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(body)});const value=await response.json();if(response.status!==200)throw Error(JSON.stringify(value));return value;};
  const token=(await native('/api/account/login',{uniqueid:'separation-global',pin:'1234'})).token;
  await native('/api/admin/platform/programme-studio/register',{programmeKey:'mothers',accessModel:'MONTHLY',noMediaMigration:true,operationId:crypto.randomUUID()},token);
  for(let i=0;i<12;i++){const response=await f.runtime.dispatchFetch('https://academy.test/__local/recover');if(response.status!==200)throw Error(await response.text());}
 }
-const mime={'.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.woff2':'font/woff2','.woff':'font/woff','.wasm':'application/wasm','.bcmap':'application/octet-stream','.ftl':'text/plain'};
+if(process.env.PREVIEW_NATIVE_ACCESS==='1'){
+ if(!circlesData)throw Error('Native access review needs the disposable Circles fixture.');
+ for(const table of ['participation','staff','paid_months','surah_grants','access_members'])await f.run(`DELETE FROM ${table} WHERE account_id IN('learner','former','teacher','grant-only')`);
+ const login=await f.runtime.dispatchFetch('https://academy.test/api/account/login',{method:'POST',headers:{Origin:'https://academy.test','Content-Type':'application/json'},body:JSON.stringify({uniqueid:'separation-global',pin:'1234'})}),signed=await login.json();if(login.status!==200)throw Error('Synthetic Admin sign-in failed.');
+ const access=async(activityKey,command)=>{const response=await f.runtime.dispatchFetch('https://academy.test/api/admin/platform/studio-access',{method:'POST',headers:{Origin:'https://academy.test','Content-Type':'application/json',Authorization:'Bearer '+signed.token,'X-Academy-Workspace':'ADMIN'},body:JSON.stringify({activityKey,command})}),data=await response.json();if(response.status!==200)throw Error(JSON.stringify(data));return data;};
+ for(const activity of [circlesData.programA,circlesData.courseA,...(mou?[f.source.f.scopes.programB]:[])]){
+  const transferId=crypto.randomUUID();await access(activity,{action:'handover-start',transferId});for(let i=0;i<9;i++){await access(activity,{action:'handover-reconcile',transferId});await circlesData.recover(6);}let page;for(let i=0;i<20;i++){page=await access(activity,{action:'handover-page',transferId});if(!page.more)break;}if(page.more)throw Error('Synthetic handover did not finish.');await access(activity,{action:'handover-commit',transferId});
+ }
+ console.log('Disposable native access review prepared for Tafseer, MOU and Course.');
+}
+const mime={'.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.woff2':'font/woff2','.woff':'font/woff','.ttf':'font/ttf','.wasm':'application/wasm','.bcmap':'application/octet-stream','.ftl':'text/plain'};
 const samplePdfUrl='https://archive.org/download/maktab-local-sample/sample.pdf';
 function syntheticPdf(){
  const stream='BT /F1 20 Tf 60 720 Td (Synthetic Library PDF - local test only) Tj ET';
@@ -60,7 +72,7 @@ async function handler(request,response,isAcademy){
    if(['/academy/','/academy/admin/'].includes(pathname))return await staticFile(pathname,request,response,f.source.root);
    if(pathname.startsWith('/academy/website-platform/connect/')){const name=pathname.endsWith('destinations.mjs')?'destinations.mjs':pathname.endsWith('connect.mjs')?'connect.mjs':pathname.endsWith('/')||pathname.endsWith('index.html')?'index.html':null;if(!name)throw Error('Unknown connector file.');response.writeHead(200,{'Content-Type':mime[extname(name)]});return response.end(await readFile(f.source.root+'/academy/website-platform/connect/'+name));}
    if(['/academy/','/academy/admin/'].includes(pathname))return await staticFile(pathname,request,response,f.source.root);
-   if(!/^\/(?:js|css|icons|images|fonts|pdf-viewer)\//.test(pathname)&&!/^\/academy\/(?:library|open-library|pdf-reader|pdf-compare)\/(?:index.html)?$/.test(pathname)&&!['/academy/website-platform/library-return.mjs','/academy/website-platform/library-return.css','/academy/website-platform/circles-return.mjs'].includes(pathname)&&!['/ummabbadacademy.png','/admin-favicon-32x32.png'].includes(pathname)){response.writeHead(404);return response.end('Not part of this local Library rehearsal.');}
+   if(!/^\/(?:js|css|icons|images|fonts|pdf-viewer)\//.test(pathname)&&!/^\/academy\/(?:library|open-library|pdf-reader|pdf-compare)\/(?:index.html)?$/.test(pathname)&&!/^\/academy\/course-websites\/assets\/(?:fonts\.css|course-font-[1-5]\.ttf)$/.test(pathname)&&!['/academy/website-platform/library-return.mjs','/academy/website-platform/library-return.css','/academy/website-platform/circles-return.mjs'].includes(pathname)&&!['/ummabbadacademy.png','/admin-favicon-32x32.png'].includes(pathname)){response.writeHead(404);return response.end('Not part of this local Library rehearsal.');}
    return await staticFile(pathname,request,response,f.source.root);
   }
   let length=0,chunks=[];for await(const chunk of request){length+=chunk.length;if(length>17*1024*1024){response.writeHead(413);return response.end('Preview request too large.');}chunks.push(chunk);}

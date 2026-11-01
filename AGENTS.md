@@ -1,3 +1,16 @@
+# Complete Circles next UI composition — 1 November 2026
+
+- Active local composition is `feature/circles-next-ui-1093`, starting at the verified Source078bcc8b/Targetf4e2f3ed pair. Complete all canonical next-UI register items and the owner's later corrections, preserving the V109.3 mode-scoped routing fix and approved9043design.
+- Circles owns shared UI and the native Source Access catalogue/consumer; migration owns independent review and the bounded three-month ClassNotes summary API. Dedicated Academy editor and Studio media-linking chats own their newer native media/Teacher contracts. Build features supplied the tested editor+retention compositiond8f8b582. Integrate tested handoffs rather than duplicate native work.
+- Root has conditional approval to deploy only when all comments since V109.2 and remaining work are integrated and tested, proposedV109.4. Root owns the final matching-version Academy/Studio release and live activation; no deployment, push, hosted SQL, real media attachment/publication, notice/deletion or permission changes are authorised in this UI checkout.
+- Retain current native accounts/roles, sensitive Admin checks,43200/43200/60, exact Join window, account/epoch/ownership/unsaved guards, bounded reads and original acquired rights/media. Never ship sample bootstrap/catalogues/private author packages or infer authority from UI metadata. Keep held MOU/academic content manual and unpublished until individually authorised.
+
+# Disposable Access UI review — local only, 1 November 2026
+
+- `feature/circles-access-ui-preview` is based on deployed Targetf4e2f3ed. The owner's Access UI request is implemented in paired Source feature/circles-access-management-ui.
+- `tools/access-management-ui-preview.mjs` runs real native Source/Target access handlers against disposable local fixtures only. It includes explicit synthetic Tafseer/MOU/Course metadata and account bootstrap for the loopback review. Never deploy that fixture catalogue, token bootstrap or local helper as a production entry.
+- No live permission, account, database, media or deployment changes. Preserve current roles/ownership,43200/43200/60 and all editor/retention/academic/MOU holds. Actual checked catalogue/Manage Access wiring remains integration work.
+
 # V109.3 targeted separation release — root owned
 
 The owner requested deployment as soon as Admin/Teach/Learn separation is fixed. This isolated release composes only Source078bcc8b with Targetf3245f5 and version markers. Use the frozen166-file local-content/release-1093/public and wrangler.release-1093.jsonc in the existing named academy-studio account. Preserve17bindings,43200/43200/60, current rights/media and all source/Studio origins. No schema/data/DNS/coordinator change or Git push. Unfinished UI/Home, editor, retention and all held recordings/MOU remain excluded. Root handles the matching release after combined local checks; no independent deployment from another chat.
