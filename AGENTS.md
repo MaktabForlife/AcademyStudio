@@ -1,3 +1,7 @@
+# V109.3 targeted separation release — root owned
+
+The owner requested deployment as soon as Admin/Teach/Learn separation is fixed. This isolated release composes only Source078bcc8b with Targetf3245f5 and version markers. Use the frozen166-file local-content/release-1093/public and wrangler.release-1093.jsonc in the existing named academy-studio account. Preserve17bindings,43200/43200/60, current rights/media and all source/Studio origins. No schema/data/DNS/coordinator change or Git push. Unfinished UI/Home, editor, retention and all held recordings/MOU remain excluded. Root handles the matching release after combined local checks; no independent deployment from another chat.
+
 # Selected programme workspace correction — LOCAL ONLY, 1 November 2026
 
 - This isolated feature/circles-selected-programme-route starts at released Target506c5a9. Prepare only the selected dashboard-mode programme-card correction for the root-owned V109.3 separation release. Root owns release composition/version stamping/deployment; this chat performs no deployment or push.

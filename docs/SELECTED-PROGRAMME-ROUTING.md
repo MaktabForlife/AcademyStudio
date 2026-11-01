@@ -17,3 +17,7 @@ Proof/receipt:parent outputs/circles-selected-programme-route-20261101/. Migrati
 Keep9058/9059alive for the owner's sample review. Open http://localhost:9058/?workspace=teach, log in with disposable separation-global /1234 if necessary, select Teach, then Aalimiyah. Menu → Attendance or Planning. Open through the actual card, not by bypassing the connector with a native URL. Existing Reboot-coming-soon text is an unrelated fixture notice. Ordinary teacher preview is http://127.0.0.1:9060/?workspace=teach with separation-teacherA /1234, isolated so it cannot switch the reviewed Admin account.
 
 No deployment, push, hosted account/read/write, native grant, media, schema or timetable change occurred. Root alone owns the authorised targeted deployment. All editor/retention/academic attachment/MOU holds remain.
+
+## Root V109.3 release preparation
+
+The matching release uses Source078bcc8b and this narrow Target correction. Final frozen assets are local-content/release-1093/public:166files,162deployed hashes unchanged and4allowed deltas including both version markers. Use wrangler.release-1093.jsonc with the existing academy-studio profile. There is no schema, grant, content, DNS or coordinator change. Existing12-hour verification and60-second sensitive Admin proof remain. Publication/recording/editor/retention and unfinished UI/Home drafts are excluded. Deployment follows combined local checks under the owner’s conditional separation-release instruction.
