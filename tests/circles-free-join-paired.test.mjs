@@ -1,3 +1,4 @@
+import {dashboardFixtureKey} from './dashboard-cache-fixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fixture} from './fixture.mjs';
@@ -16,7 +17,7 @@ test('actual paired Workers let a signed-in nonmember join public Free classes w
  const row=data.timetable.find(r=>r.kind==='PROGRAM'&&'PROGRAM:'+r.activityId===scope&&r.nativeJoin&&r.joinAvailableAt<=Date.now()&&r.endsAt>Date.now());assert(row,'The current nonmember must receive the public class reference');assert(!row.subjectName&&!row.moduleName);assert(!JSON.stringify(data).includes('zoom.'));
  const classReads=f.source.statements.filter(item=>item.sql?.includes('SELECT c.* FROM')&&item.sql.includes('json_each(?) UNION'));assert(classReads.length>0,'Public class references share the existing accepted class query');
  const input={mode:'learn',...row.nativeJoin},join=()=>f.request('/api/circles/lesson-join',{cookie,method:'POST',body:input});assert.match(ok(await join()).joinUrl,/^https:\/\//);
- const key='private/dashboard/'+await sha256(accountId)+'/learn.json',saved=await (await f.content.get(key)).json();delete saved.dashboard.freeProgrammeJoinVersion;await f.content.put(key,JSON.stringify(saved));assert.equal(ok(await load()).cached,false);f.source.resetMetrics();assert.equal(ok(await load()).cached,true);assert.equal(ok(await load()).cached,true);assert.equal(f.source.metrics.queries,0,'A current dashboard never polls Source on warm reuse');
+ const key=await dashboardFixtureKey(f,accountId,'learn'),saved=await (await f.content.get(key)).json();delete saved.dashboard.freeProgrammeJoinVersion;await f.content.put(key,JSON.stringify(saved));assert.equal(ok(await load()).cached,false);f.source.resetMetrics();assert.equal(ok(await load()).cached,true);assert.equal(ok(await load()).cached,true);assert.equal(f.source.metrics.queries,0,'A current dashboard never polls Source on warm reuse');
  for(const state of ['STUDIO','FROZEN']){await core.prepare('INSERT INTO website_platform_access_ownership(activity_key,state,updated_at) VALUES(?,?,0) ON CONFLICT(activity_key) DO UPDATE SET state=excluded.state').bind(scope,state).run();const denied=await join();assert.equal(denied.body.code,'STUDIO_JOIN_REQUIRED');assert(!denied.body.joinUrl);}
  await core.prepare("UPDATE website_platform_access_ownership SET state='ACADEMY' WHERE activity_key=?").bind(scope).run();
  await core.prepare("UPDATE academy_settings SET setting_value='PAID' WHERE setting_key=?").bind('ProgramAccess:'+scope.toUpperCase()).run();assert.equal((await join()).body.code,'LESSON_UNAVAILABLE');

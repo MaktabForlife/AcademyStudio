@@ -1,3 +1,4 @@
+import {dashboardFixtureKey} from './dashboard-cache-fixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fixture} from './fixture.mjs';
@@ -18,7 +19,7 @@ test('actual paired Workers connect native dashboard reference to Join and retai
  const joined=await f.request('/api/circles/lesson-join',{cookie,method:'POST',body:input});
  assert.match(ok(joined).joinUrl,/^https:\/\//);assert.equal(joined.response.headers.get('Cache-Control'),'private, no-store');assert.equal(Number(joined.response.headers.get('X-Local-D1-Rows-Written')),0);
  f.source.resetMetrics();assert.equal(ok(await load()).cached,true);assert.equal(f.source.metrics.queries,0,'Returning to a checked dashboard must not poll Academy');
- const key='private/dashboard/'+await sha256(accountId)+'/learn.json',saved=await (await f.content.get(key)).json();assert(!JSON.stringify(saved).includes('zoom.'));
+ const key=await dashboardFixtureKey(f,accountId,'learn'),saved=await (await f.content.get(key)).json();assert(!JSON.stringify(saved).includes('zoom.'));
  delete saved.dashboard.nativeJoinVersion;await f.content.put(key,JSON.stringify(saved));
  assert.equal(ok(await load()).cached,false,'An old native-reference shape upgrades once');f.source.resetMetrics();assert.equal(ok(await load()).cached,true);assert.equal(f.source.metrics.queries,0);
  const other=await signIn(f,'separation-studentB');assert.equal((await f.request('/api/circles/lesson-join',{cookie:other,method:'POST',body:input})).status,403);

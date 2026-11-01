@@ -1,3 +1,4 @@
+import {dashboardFixtureKey} from './dashboard-cache-fixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fixture} from './fixture.mjs';
@@ -77,15 +78,15 @@ test('Target Join account/session/proof reads remain bounded beside4000 unrelate
 });
 
 test('an old dashboard shape upgrades once per account/mode, then returns from the existing private cache without polling',async t=>{
- const f=await setup(t),dashboard={nativeJoinVersion:1,studioJoinVersion:1,freeProgrammeJoinVersion:1,mode:'learn',availableModes:['learn'],programmeNavigation:[],activities:[],timetable:[{kind:'PROGRAM',activityId:'native-program',nativeJoin:{joinKey:input.joinKey,date:input.date}}]};
+ const f=await setup(t),dashboard={timetableWeekVersion:1,weekStart:'2026-11-01',weekEnd:'2026-11-07',startDate:'2026-11-01',endDate:'2026-11-07',timezone:'Africa/Johannesburg',nativeJoinVersion:1,studioJoinVersion:1,freeProgrammeJoinVersion:1,mode:'learn',availableModes:['learn'],programmeNavigation:[],activities:[],timetable:[{kind:'PROGRAM',activityId:'native-program',date:'2026-11-01',nativeJoin:{joinKey:input.joinKey,date:input.date}}]};
  f.setReply(async()=>Response.json({dashboard}));
- const key='private/dashboard/'+await sha256('learner')+'/learn.json';
+ let key='private/dashboard/'+await sha256('learner')+'/learn.json';
  const saved={accountId:'learner',epoch:1,permissionVerifiedAt:f.proof.verifiedAt,coursePolicyEpoch:0,checkedAt:Date.now(),dashboard:{...dashboard,nativeJoinVersion:undefined}};
  await f.content.put(key,JSON.stringify(saved));
  const load=()=>f.request('/api/circles/dashboard',{cookie:f.cookie,method:'POST',body:{mode:'learn'}});
  assert.equal(ok(await load()).cached,false);assert.equal(f.calls.length,1);
  assert.equal(ok(await load()).cached,true);assert.equal(ok(await load()).cached,true);assert.equal(f.calls.length,1);
- const stored=await (await f.content.get(key)).json();assert.equal(stored.dashboard.nativeJoinVersion,1);assert.equal(stored.dashboard.freeProgrammeJoinVersion,1);assert(!JSON.stringify(stored).includes('zoom.'));
+ key=await dashboardFixtureKey(f,'learner','learn');const stored=await (await f.content.get(key)).json();assert.equal(stored.dashboard.nativeJoinVersion,1);assert.equal(stored.dashboard.freeProgrammeJoinVersion,1);assert(!JSON.stringify(stored).includes('zoom.'));
  await f.content.put(key,JSON.stringify({...stored,dashboard:{...stored.dashboard,freeProgrammeJoinVersion:undefined}}));
  assert.equal(ok(await load()).cached,false,'An older signed-in Free Join shape upgrades once');assert.equal(f.calls.length,2);
  assert.equal(ok(await load()).cached,true);assert.equal(f.calls.length,2);

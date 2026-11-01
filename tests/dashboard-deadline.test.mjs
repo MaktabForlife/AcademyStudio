@@ -19,13 +19,14 @@ test('a delayed first dashboard result still rechecks actor, permission proof an
  for(const change of ['epoch','proof','policy','revoked','source-denied']){
   const now=Date.now(),actor={account_id:'one',token_hash:'one-token',source_ref:'synthetic-reference',epoch:1},state={epoch:1,proof:now,policy:1},started=deferred(),reply=deferred(),writes=[];
   const store={
+   async all(){return [];},
    async first(sql){if(sql.includes('circles_navigation'))return {epoch:1,verified_at:state.proof,programmes_json:'[]'};if(sql.includes('course_policy_state'))return {revision:state.policy};assert.fail('Unexpected query');},
    async actor(){if(state.revoked)throw Object.assign(Error('Signed out'),{status:401});return {...actor,epoch:state.epoch};}
   };
   const runtime={...env,ACCOUNT_MAX_AGE_SECONDS:'43200',CONTENT:{get:async()=>null,put:async(...args)=>writes.push(args)}};
   const request=dashboardSnapshot(runtime,store,actor,{},async()=>{started.resolve();return reply.promise;});await started.promise;
   if(change==='epoch')state.epoch=2;else if(change==='proof')state.proof=now+1;else if(change==='policy')state.policy=2;else if(change==='revoked')state.revoked=true;
-  reply.resolve(change==='source-denied'?Response.json({error:'Denied'},{status:403}):Response.json({dashboard:{nativeJoinVersion:1,studioJoinVersion:1,freeProgrammeJoinVersion:1,mode:'admin',availableModes:['admin'],activities:[],programmeNavigation:[]}}));
+  reply.resolve(change==='source-denied'?Response.json({error:'Denied'},{status:403}):Response.json({dashboard:{nativeJoinVersion:1,studioJoinVersion:1,freeProgrammeJoinVersion:1,mode:'admin',availableModes:['admin'],activities:[],programmeNavigation:[],timetableWeekVersion:1,weekStart:'2026-11-01',weekEnd:'2026-11-07',startDate:'2026-11-01',endDate:'2026-11-07',timezone:'Africa/Johannesburg',timetable:[]}}));
   await assert.rejects(request,error=>error.status===(change==='revoked'?401:change==='source-denied'?403:409));assert.equal(writes.length,0,change+' cannot cache a delayed summary');
  }
 });
