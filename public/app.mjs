@@ -96,7 +96,7 @@ function renderDelivery(){
  if(!current||!delivery||!ui||textEditor.editing)return;
  const reviewNotice=localReviewStatus(current);if(reviewNotice)$('course-reader').querySelector('.sp-page')?.insertAdjacentHTML('afterbegin',reviewNotice);
 
- const now=Date.now()+delivery.serverOffset,live=delivery.sessions.find(session=>joinIsOpen(session,now)),sessionRows=$('course-reader').querySelector('[data-rs-live-sessions]'),upcoming=delivery.sessions.filter(session=>session.ends_at>now);
+ const now=Date.now()+delivery.serverOffset,live=delivery.sessions.find(session=>joinIsOpen(session,now)),sessionRows=$('course-reader').querySelector('[data-rs-live-sessions]'),upcoming=delivery.sessions.filter(session=>session.ends_at>now&&!currentSeriesRecordings().some(entry=>entry.row?.lesson_id===session.session_id)).sort((a,b)=>a.starts_at-b.starts_at);
  if(sessionRows){sessionRows.innerHTML=upcoming.length?combinedSessionCards({sessions:upcoming,now}):'';const count=$('course-reader').querySelector('.rs-list-heading>span');if(count&&upcoming.length)count.textContent=currentSeriesRecordings().length+' recordings · '+upcoming.length+' upcoming/live '+(upcoming.length===1?'session':'sessions');}
  if(live)for(const row of $('course-reader').querySelectorAll('.sp-row-actions,.sp-sidebar')){if(!row.querySelector('[data-join]')){const button=document.createElement('button');button.className='sp-primary';button.dataset.join=live.session_id;button.textContent='Join now';row.append(button);}}
  if(ui.route==='lesson'){
