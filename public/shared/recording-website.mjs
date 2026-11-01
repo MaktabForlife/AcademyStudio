@@ -13,7 +13,7 @@ export function parseSeriesRoute(value){const p=new URLSearchParams(value.replac
 // Pending companions are included solely when the private review adapter names them.
 export function seriesRecordings({media=[],guides=[],pendingIds=[],companions=[],details=new Map()}={}){
  const unique=new Map(),entries=[];
- for(const row of media.filter(video)){const key=(row.asset_id||row.attachment_id)+JSON.stringify(row.recordedContext||null),previous=unique.get(key),reviewed=r=>guides.some(g=>g.lessonId===r.lesson_id&&g.status==='reviewed');if(!previous||reviewed(row)&&!reviewed(previous))unique.set(key,row);}
+ for(const row of media.filter(video)){const key=Number.isSafeInteger(row.playlistPosition)&&row.playlistPosition>0?'playlist-entry:'+row.attachment_id:'legacy:'+(row.asset_id||row.attachment_id)+JSON.stringify(row.recordedContext||null),previous=unique.get(key),reviewed=r=>guides.some(g=>g.lessonId===r.lesson_id&&g.status==='reviewed');if(!previous||reviewed(row)&&!reviewed(previous))unique.set(key,row);}
  for(const row of [...unique.values()].sort((a,b)=>(Number.isSafeInteger(a.playlistPosition)&&a.playlistPosition>0&&Number.isSafeInteger(b.playlistPosition)&&b.playlistPosition>0?a.playlistPosition-b.playlistPosition:0)||String(a.lesson_date||'').localeCompare(String(b.lesson_date||''))||String(a.attachment_id).localeCompare(String(b.attachment_id)))){
   const lessonGuides=guides.filter(g=>g.lessonId===row.lesson_id&&g.status==='reviewed'),guide=lessonGuides[0];
   const readingIds=[...new Set(lessonGuides.map(g=>g.readingId).filter(Boolean))];

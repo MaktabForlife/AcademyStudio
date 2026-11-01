@@ -95,3 +95,9 @@ test('explicit native playlist positions override dates and Teacher headings nev
  const media=[{...row('last','2025-01-01'),playlistPosition:3,recordedContext:context('A')},{...row('first','2026-12-01'),playlistPosition:1,recordedContext:context('A')},{...row('middle','2026-01-01'),playlistPosition:2,recordedContext:context('B')}],entries=seriesRecordings({media,guides:media.map(r=>guide(r.lesson_id))});
  assert.deepEqual(entries.map(e=>e.id),['attachment-first','attachment-middle','attachment-last']);const html=recordingList({entries});assert(html.indexOf('Reviewed first')<html.indexOf('Reviewed middle'));assert(html.indexOf('Reviewed middle')<html.indexOf('Reviewed last'));
 });
+
+ test('explicit native playlist entries keep distinct attachment identities even when their media asset is reused',()=>{
+ const rows=[{attachment_id:'native-second',asset_id:'same-asset',lesson_id:'lesson-two',type:'video/youtube',playlistPosition:2,title:'Second'},{attachment_id:'native-first',asset_id:'same-asset',lesson_id:'lesson-one',type:'video/youtube',playlistPosition:1,title:'First'}];
+ assert.deepEqual(seriesRecordings({media:rows}).map(x=>x.id),['native-first','native-second']);
+ assert.equal(seriesRecordings({media:rows.map(({playlistPosition,...row})=>row)}).length,1,'Unregistered legacy deduplication retains its existing behaviour');
+ });
