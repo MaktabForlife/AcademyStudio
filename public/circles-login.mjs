@@ -111,4 +111,4 @@ function clearAccountNavigation(){handoff?.close();navigation=null;navRequest=nu
 window.addEventListener('website-session-ended',event=>{clearAccountNavigation();if(event.detail?.externalAccountChange)location.reload();});
 window.addEventListener('storage',event=>{if(event.key?.startsWith('m4l_circles_remembered_ids_v1:')&&dialog.open)renderRemembered();});window.addEventListener('website-account-changed',clearAccountNavigation);
 protectAccountHistory({window,identity,clear(){observer.disconnect();handoff?.close();attempt++;form.reset();pins.clear();if(dialog.open)dialog.close();navigation=null;navRequest=null;homeMessage='';dashboard.clear();refreshHeader();}});
-const entry=window.AcademyCirclesEntry;if(entry?.login)void begin(entry.area);
+const entry=window.AcademyCirclesEntry;if(entry?.login)void begin(entry.area,{switchUser:new URLSearchParams(location.search).get('switch')==='1'});
