@@ -71,6 +71,17 @@ body.circles-programme-page{
 .circles-programme-page [data-mou-refresh]{display:none}
 .circles-programme-page .mou-programme{gap:20px}
 .circles-programme-page .mou-programme h2{font-size:26px}
+.mou-playlist-table-wrap{min-width:0;max-width:100%;overflow-x:auto;border:1px solid #ddced7;border-radius:12px;background:#fffaf5}
+.mou-playlist-table{width:100%;border-collapse:collapse;text-align:left;font-size:14px}
+.mou-playlist-table caption{text-align:left;padding:16px 20px;font-size:13px;line-height:1.5;color:#796d75}
+.mou-playlist-table th,.mou-playlist-table td{padding:14px 20px;border-top:1px solid #ddced7;vertical-align:middle}
+.mou-playlist-table thead th{font:600 11px/1.5 system-ui;letter-spacing:.08em;text-transform:uppercase;background:#f5eef0;color:#796d75}
+.mou-playlist-table tbody th{font:400 23px/1.3 Georgia,serif;min-width:180px}
+.mou-playlist-table tbody th small{display:block;font:600 10px/1.6 system-ui;margin-bottom:5px}
+.mou-playlist-table td:last-child{white-space:nowrap}.mou-playlist-table td:last-child a{display:inline-flex;align-items:center;min-height:44px}
+.mou-playlist-table .mou-playlist-edit{margin-left:20px}.mou-playlist-table tbody tr:hover{background:#f8f3ee}
+.mou-playlist-table-wrap:focus-visible{outline:2px solid #846271;outline-offset:3px}
+@media(max-width:700px){.mou-playlist-table{min-width:620px}.mou-playlist-table th,.mou-playlist-table td{padding:12px}.mou-playlist-table tbody th{font-size:20px}}
 .circles-programme-page .site-footer{border-color:var(--line);color:var(--muted)}
 .circles-programme-page #learning-branches:empty,.circles-programme-page #status:empty{display:none}
 @media(max-width:800px){

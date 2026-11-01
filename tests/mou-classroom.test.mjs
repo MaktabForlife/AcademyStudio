@@ -98,5 +98,12 @@ test('a synchronous load failure is handled without retaining private state or a
 
 test('independent playlist names, counts and links use the current account DTO without fixed subject identities',()=>{
  const value=mouFixture({connected:true});value.materialsConnected=true;value.playlists=[{id:'playlist-one',websiteId:'playlist-one',title:'Surah Baqarah — Part 1',closeDate:'2026-10-15',recordings:4,canListen:true,canRead:true,href:'/studio/?website=playlist-one'},{id:'playlist-two',websiteId:'playlist-two',title:'Riyadus Saliheen — Part 1',closeDate:null,recordings:2,canListen:false,canRead:true,href:'/studio/?website=playlist-two'}];
- const data=normalize(value),html=renderMouClassroom({phase:'ready',classroom:data});assert.equal(data.playlists.length,2);assert.match(html,/Surah Baqarah — Part 1/);assert.match(html,/Riyadus Saliheen — Part 1/);assert.match(html,/4 recordings/);assert.match(html,/Read playlist materials/);value.playlists[0].href='https://elsewhere.test/';assert.throws(()=>normalize(value));
+ const data=normalize(value),html=renderMouClassroom({phase:'ready',classroom:data});assert.equal(data.playlists.length,2);assert.match(html,/Surah Baqarah — Part 1/);assert.match(html,/Riyadus Saliheen — Part 1/);assert.match(html,/4 recordings/);assert.match(html,/Reading materials/);assert.match(html,/<table class="mou-playlist-table">/);assert.equal((html.match(/data-circles-website=/g)||[]).length,2);assert.doesNotMatch(html,/mou-subject-card/);value.playlists[0].href='https://elsewhere.test/';assert.throws(()=>normalize(value));
+});
+
+test('playlist table retains exact reading-only and editor actions, with no duplicate legacy website or invented count',()=>{
+ const value=fixtureWebsite(mouFixture({connected:true}),{canEdit:true});value.materialsConnected=true;
+ value.playlists=[{id:'independent',websiteId:'synthetic-baqarah',title:'Native playlist',closeDate:null,recordings:3,canListen:false,canRead:true,href:'/studio/?website=synthetic-baqarah'}];
+ let data=normalize(value),html=renderMouClassroom({phase:'ready',classroom:data});assert.equal((html.match(/data-circles-website="synthetic-baqarah"/g)||[]).length,1);assert.match(html,/Reading materials/);assert.match(html,/href="\/builder\/\?website=synthetic-baqarah"/);assert.doesNotMatch(html,/Listen and read|data-mou-join/);
+ value.playlists=[];data=normalize(value);html=renderMouClassroom({phase:'ready',classroom:data});assert.match(html,/href="\/builder\/\?website=synthetic-baqarah"/);assert.match(html,/<td>—<\/td>/);assert.doesNotMatch(html,/0 recordings/);
 });
