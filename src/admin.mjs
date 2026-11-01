@@ -1,3 +1,4 @@
+import {companionChanges,publishRecordingAttachment} from './recording-companions.mjs';
 import {bindMouSubject} from './mou-classroom.mjs';
 import {changeCoursePolicy} from './course-policy.mjs';
 import {academyAuthority,rejectAuthorityWrite} from './access.mjs';
@@ -6,9 +7,12 @@ import {fileKind,newCourse} from '../public/shared/model.mjs';
 import {saveContent} from './content.mjs';
 import {validatePackage} from './content-package.mjs';
 export async function change(env,store,actor,offeringId,input,guardOptions={}){
+ if(input.action==='recording-publication')return publishRecordingAttachment(store,actor,offeringId,input);
+ if(['companion-save','companion-publish'].includes(input.action))return companionChanges(env,store,actor,offeringId,input);
  if(input.action==='mou-subject')return bindMouSubject(store,actor,offeringId,input,guardOptions);
  if(input.action==='course-policy')return changeCoursePolicy(store,actor,offeringId,input,guardOptions);
  if(!guardOptions.collect&&['content-batch','access-batch','participant','paid-months','website-months','staff','surah-grant','completion-month','completion-date','enrolment-decision','website-create','attachment'].includes(input.action))await rejectAuthorityWrite(store,offeringId);
+ if(!guardOptions.collect&&(input.createOnly||input.action==='content-batch'&&input.changes?.some(c=>c.createOnly))){const replay=await store.replay(actor.account_id,input.operationId,await store.requestHash(offeringId,input));if(replay){await store.scope(actor,offeringId,{admin:true});return replay;}}
  const scope=guardOptions.collect?guardOptions.scope||null:await store.scope(actor,offeringId,{admin:true});const statements=[];const s=(sql,args=[])=>statements.push(store.statement(sql,args));
  if(input.action==='content-batch'){
   if(!Array.isArray(input.changes)||!input.changes.length||input.changes.length>25)throw fail('Save up to 25 reviewed media references together.');
@@ -73,6 +77,7 @@ export async function change(env,store,actor,offeringId,input,guardOptions={}){
   const websiteId=input.websiteId?id(input.websiteId):null;if(websiteId&&!(guardOptions.batchFacts?guardOptions.batchFacts.websites.has(websiteId):await store.first('SELECT website_id FROM websites WHERE website_id=? AND offering_id=?',[websiteId,offeringId])))throw fail('Choose a website in this offering.');
   if(!['WEBSITE','RECORDING'].includes(input.audience)||input.audience==='WEBSITE'&&(!websiteId||!['application/pdf','image/png','image/jpeg','image/webp'].includes(asset.mime_type)))throw fail('Website-only rights cannot grant recordings.');
   const previous=guardOptions.batchFacts?guardOptions.batchFacts.previous.get(id(input.attachmentId)):await store.first('SELECT offering_id FROM attachments WHERE attachment_id=?',[id(input.attachmentId)]);if(previous&&previous.offering_id!==offeringId)throw fail('This attachment belongs elsewhere.',403);
+  if(input.createOnly&&previous)throw fail('Preserve the existing native recording association.',409);
   // Historical Course recordings need no invented date or live session. Monthly
   // programmes still require their exact recording date for retained rights.
   const lessonDate=(scope?.kind==='COURSE'||input.audience==='WEBSITE')&&(input.lessonDate==null||input.lessonDate==='')?'':date(input.lessonDate);
@@ -87,6 +92,7 @@ export async function change(env,store,actor,offeringId,input,guardOptions={}){
   if(input.state==='APPROVED')s('INSERT INTO participation VALUES(?,?,1,0,0,\'\') ON CONFLICT(account_id,offering_id) DO UPDATE SET enrolled=1',[target,offeringId]);
  }else throw fail('Unknown administration action.');
  if(guardOptions.collect)return statements;
+ const createOnly=input.action==='attachment'&&input.createOnly?[id(input.attachmentId)]:input.action==='content-batch'?input.changes.filter(c=>c.action==='attachment'&&c.createOnly).map(c=>id(c.attachmentId)):[];if(createOnly.length)guardOptions={...guardOptions,expectedSQL:`(${guardOptions.expectedSQL||'1'}) AND NOT EXISTS(SELECT 1 FROM attachments WHERE attachment_id IN(SELECT value FROM json_each(?)))`,expectedArgs:[...(guardOptions.expectedArgs||[]),JSON.stringify(createOnly)]};
  return store.mutate(actor,offeringId,input,statements,{saved:true},{...guardOptions,global:input.action==='staff'||input.action==='access-batch'&&input.changes.some(c=>c.action==='staff'),studio:['content-batch','access-batch','participant','paid-months','website-months','staff','surah-grant','completion-month','completion-date','enrolment-decision','website-create','attachment'].includes(input.action)});
 }
 export async function upload(env,store,actor,offeringId,request){

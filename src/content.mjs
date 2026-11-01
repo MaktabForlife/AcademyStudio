@@ -25,13 +25,13 @@ export async function editWebsite(env,store,actor,websiteId,input){
  input={...input,websiteId};const website=await websiteAccess(store,actor,websiteId,{admin:true}),hash=await store.requestHash(website.offering_id,input),old=await store.replay(actor.account_id,input.operationId,hash);if(old)return old;
  if(input.revision!==website.revision)throw fail('This website changed elsewhere. Reopen the saved draft.',409);
  if(input.action==='recording-support')return saveRecordedSupport(env,store,actor,website,input);
- const revision=website.revision+1,statements=[];let historyKey=website.draft_key;
+ const revision=website.revision+1,statements=[];let recordingOnly=false;let historyKey=website.draft_key;
  if(input.action==='save'){
   const document=structuredClone(input.document);const errors=validatePackage(document);if(errors.length)throw fail(errors.join(' '));
   await assertWebsiteAssets(store,websiteId,document);
   const key=await saveContent(env,document,websiteId);await carryGuideBindings(env,website,document,key);statements.push(...await carryRecordedSupport(env,store,website,document,key));historyKey=key;statements.push(store.statement('UPDATE websites SET draft_key=?,revision=? WHERE website_id=?',[key,revision,websiteId]));
  }else if(input.action==='publish'){
-  if(!website.draft_key)throw fail('Save a draft first.');const document=await objectJSON(env.CONTENT,website.draft_key);const errors=validatePackage(document,{review:true});if(errors.length)throw fail(errors.join(' '));
+  if(!website.draft_key)throw fail('Save a draft first.');const document=await objectJSON(env.CONTENT,website.draft_key);let errors=validatePackage(document,{review:true});if(document.lessons.length===0&&await store.first("SELECT 1 FROM attachments a JOIN objects o USING(asset_id) WHERE a.website_id=? AND a.offering_id=? AND a.audience='RECORDING' AND o.mime_type IN('video/youtube','video/mp4') LIMIT 1",[websiteId,website.offering_id])){recordingOnly=true;errors=errors.filter(e=>e!=='Add at least one web lesson.');}if(errors.length)throw fail(errors.join(' '));
   const refs=await assertWebsiteAssets(store,websiteId,document);
   statements.push(store.statement('DELETE FROM published_assets WHERE website_id=?',[websiteId]));
   for(const assetId of refs)statements.push(store.statement('INSERT INTO published_assets VALUES(?,?)',[websiteId,assetId]));
@@ -47,7 +47,7 @@ export async function editWebsite(env,store,actor,websiteId,input){
  }
  else throw fail('Choose a website action.');
  statements.push(store.statement('INSERT INTO website_history VALUES(?,?,?,?,?,?)',[websiteId,revision,input.action,historyKey,Date.now(),actor.account_id]));
- return store.mutate(actor,website.offering_id,input,statements,{websiteId,revision,action:input.action},{expectedSQL:'EXISTS(SELECT 1 FROM websites WHERE website_id=? AND revision=?)',expectedArgs:[websiteId,website.revision]});
+ return store.mutate(actor,website.offering_id,input,statements,{websiteId,revision,action:input.action},{expectedSQL:'EXISTS(SELECT 1 FROM websites WHERE website_id=? AND revision=?)'+(recordingOnly?" AND EXISTS(SELECT 1 FROM attachments a JOIN objects o USING(asset_id) WHERE a.website_id=? AND a.offering_id=? AND a.audience='RECORDING' AND o.mime_type IN('video/youtube','video/mp4'))":''),expectedArgs:[websiteId,website.revision,...(recordingOnly?[websiteId,website.offering_id]:[])]});
 }
 export async function flushPublic(env,store){
  const head=await store.first("SELECT * FROM publication_heads WHERE scope='homepage'");if(!head)return {published:false};const edition=await objectJSON(env.CONTENT,head.object_key);

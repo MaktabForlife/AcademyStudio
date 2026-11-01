@@ -32,7 +32,7 @@ export function normalizeMouClassroom(input,{accountId,epoch=null}={}){
  const subjects=list(value.subjects,10);if(subjects.length!==mouSubjects.length)invalid();
  const normalizedSubjects=subjects.map((subject,index)=>{
   object(subject);const plan=mouSubjects[index];if(subject.key!==plan.key)invalid();
-  if(!index){
+  if(subject.state!=='COMING_SOON'){
    const state=oneOf(subject.state,['PREPARING','LOCKED','PUBLISHED']);if(subject.availabilityLabel!==null)invalid();
    let website=null;
    if(subject.website!==null){
@@ -42,12 +42,13 @@ export function normalizeMouClassroom(input,{accountId,epoch=null}={}){
     if(!canOpen&&source.href!=null||!canEdit&&source.editorHref!=null)invalid();
     website={id,title:text(source.title),completionMonth:source.completionMonth===null?null:month(source.completionMonth),canOpen,canEdit,...(canOpen?{href}:{}),...(canEdit?{editorHref}:{})};
    }
-   if(state==='PUBLISHED'&&!website?.canOpen||materialsConnected!==Boolean(website?.canOpen))invalid();
+   if(state==='PUBLISHED'&&!website?.canOpen)invalid();
    return {...plan,state,website};
   }
   if(subject.state!=='COMING_SOON'||subject.availabilityLabel!==comingSoonLabel||subject.website!==null)invalid();
   return {...plan,state:'COMING_SOON',website:null};
  });
+ if(materialsConnected!==normalizedSubjects.some(s=>s.website?.canOpen))invalid();
  const timetableState=oneOf(timetable.state,['NOT_CONNECTED','PENDING','NO_UPCOMING_SESSIONS','PUBLISHED','LIVE_ACCESS_REQUIRED']),serverTime=timestamp(timetable.serverTime);
  const seen=new Set(),sessions=list(timetable.sessions,50).map(session=>{
   object(session);const id=stableId(session.id);if(seen.has(id))invalid();seen.add(id);
@@ -70,7 +71,7 @@ const monthLabel=value=>new Intl.DateTimeFormat('en-GB',{year:'numeric',month:'l
 const dateLabel=(value,zone)=>new Intl.DateTimeFormat('en-GB',{dateStyle:'medium',timeStyle:'short',timeZone:zone}).format(new Date(value));
 const timetableMessages={NOT_CONNECTED:'Published classes are being connected.',PENDING:'The published timetable is not available yet.',NO_UPCOMING_SESSIONS:'No upcoming published classes.',LIVE_ACCESS_REQUIRED:'Live class access is not available for this account.'};
 function subjectsHTML(subjects){
- return `<section class="mou-subjects" aria-labelledby="mou-subjects-title"><h2 id="mou-subjects-title">Programme content</h2><div class="card-grid">${subjects.map(subject=>`<article class="card mou-subject-card">${subject.first?'<p class="eyebrow">FIRST SUBJECT</p>':''}<h3>${esc(subject.title)}</h3>${subject.state==='COMING_SOON'?'<p>Coming soon <span lang="ar" dir="rtl">إن شاء الله</span></p>':subject.website?.canOpen?`<p><a data-circles-website="${esc(subject.website.id)}" href="${esc(subject.website.href)}">Open lessons →</a></p>`:`<p>${subject.state==='LOCKED'?'Content is not available with your current access.':'The first subject is being prepared.'}</p>`}${subject.website?.canEdit?`<a href="${esc(subject.website.editorHref)}">Edit website →</a>`:''}</article>`).join('')}</div></section>`;
+ return `<section class="mou-subjects" aria-labelledby="mou-subjects-title"><h2 id="mou-subjects-title">Programme content</h2><div class="card-grid">${subjects.map(subject=>`<article class="card mou-subject-card">${subject.first?'<p class="eyebrow">FIRST SUBJECT</p>':''}<h3>${esc(subject.title)}</h3>${subject.state==='COMING_SOON'?'<p>Coming soon <span lang="ar" dir="rtl">إن شاء الله</span></p>':subject.website?.canOpen?`<p><a data-circles-website="${esc(subject.website.id)}" href="${esc(subject.website.href)}">Open recordings →</a></p>`:`<p>${subject.state==='LOCKED'?'Content is not available with your current access.':'This subject is being prepared.'}</p>`}${subject.website?.canEdit?`<a href="${esc(subject.website.editorHref)}">Edit website →</a>`:''}</article>`).join('')}</div></section>`;
 }
 export function renderMouClassroom({phase='loading',classroom=null,now=Date.now(),joiningId=null,error=''}={}){
  const heading=`<header class="card"><p class="eyebrow">YOUR CLASSROOM</p><h1>Mothers of the Ummah</h1><button type="button" data-mou-refresh aria-label="Refresh Mothers of the Ummah"${phase==='loading'?' disabled':''}>${headerIcon('refresh')}</button></header>`;

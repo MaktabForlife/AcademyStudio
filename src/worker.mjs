@@ -1,3 +1,4 @@
+import {permittedCompanionIndexes,readCompanion,recordingAttachmentPreflight} from './recording-companions.mjs';
 import {mouClassroom} from './mou-classroom.mjs';
 import {coursePublication} from './course-publication.mjs';
 import {dashboardSnapshot} from './dashboard.mjs';
@@ -87,6 +88,7 @@ async function route(request,env,store,fetcher){
   const assets=await editionAssets(store,websiteId,document,{draft:Boolean(action)});
   return json({websiteId,offeringId:website.offering_id,kind:website.kind,programmeKey:website.programme_key||null,coursePolicy:website.kind==='COURSE'?await coursePolicy(store,website.offering_id):null,presentation:await websitePresentation(env,website),revision:website.revision,document,contentAccess,assets,enabled:Boolean(website.enabled),canEdit:Boolean(actor.global_admin||website.role==='ADMIN'),draftVersion:contentVersion(website.draft_key),publishedVersion:contentVersion(website.published_key),capabilities:{assessments:false,journal:false,liveSessions:!website.completed_course}});
  }
+ match=path.match(/^\/api\/media\/([-A-Za-z0-9_:]+)\/companion$/);if(match&&method==='GET')return json(await readCompanion(env,store,actor,match[1]));
  match=path.match(/^\/api\/media\/([-A-Za-z0-9_:]+)$/);if(match&&['GET','HEAD'].includes(method)){const row=await mediaGate(store,actor,match[1],{admin:url.searchParams.get('draft')==='1'});return streamMedia(env,row,request);}
  match=path.match(/^\/api\/offerings\/([-A-Za-z0-9_:]+)\/(sessions|media|join|enrol|provision|resume)$/);
  if(match){const offeringId=id(match[1]),action=match[2],scope=await store.scope(actor,offeringId);
@@ -100,7 +102,7 @@ async function route(request,env,store,fetcher){
    // Unary + preserves the month value while removing column affinity: SQLite can
    // then use the substr expression index for each paid month, not scan the offer.
    else if(scope.kind==='TAFSEER')rows=await store.all(`${select} FROM paid_months m CROSS JOIN attachments x INDEXED BY attachments_month JOIN objects o USING(asset_id) WHERE m.account_id=? AND m.offering_id=? AND x.offering_id=m.offering_id AND substr(x.lesson_date,1,7)=+m.month AND x.cohort=m.cohort AND x.audience='RECORDING' AND x.published=1 AND x.attachment_id>?${filter} ORDER BY x.attachment_id LIMIT 51`,[actor.account_id,offeringId,after,...tail]);
-   const media=rows.slice(0,50);return json({media,more:rows.length>50,mediaBindings:mediaWebsite?await permittedGuideBindings(env,mediaWebsite,media,store):[]});
+   const media=rows.slice(0,50);return json({media,more:rows.length>50,companions:await permittedCompanionIndexes(store,media),mediaBindings:mediaWebsite?await permittedGuideBindings(env,mediaWebsite,media,store):[]});
   }
   if(method!=='POST')throw fail('This action needs a POST request.',405);const input=await bodyJSON(request.body,16384);
   if(action==='join'){if(scope.completed_course)throw fail('This completed Course has no live sessions.',403,'JOIN_CLOSED');await accessGate(store,actor,offeringId,{live:true});if(!actor.global_admin&&!scope.live&&!scope.role)throw fail('Current live-session access is required.',403);const session=await store.first('SELECT session_id,starts_at,ends_at,zoom_url,cancelled FROM timetable WHERE session_id=? AND offering_id=?',[id(input.sessionId),offeringId]),now=Date.now();if(!session||session.cancelled||now<session.starts_at-300_000||now>=session.ends_at||!session.zoom_url)throw fail('Joining is available from five minutes before the lesson until it ends.',403,'JOIN_CLOSED');await joinAudience(store,actor,offeringId,session,scope);return json({destination:session.zoom_url});}
@@ -111,8 +113,9 @@ async function route(request,env,store,fetcher){
  if(path==='/api/admin/offerings'&&method==='GET'){
   const offerings=actor.global_admin?await store.all("SELECT offering_id,title,kind FROM offerings WHERE kind IN('COURSE','TAFSEER') ORDER BY offering_id LIMIT 200"):await store.all("SELECT o.offering_id,o.title,o.kind FROM staff s JOIN offerings o USING(offering_id) WHERE s.account_id=? AND s.role='ADMIN' AND o.kind IN('COURSE','TAFSEER') ORDER BY o.offering_id LIMIT 200",[actor.account_id]);return json({offerings});
  }
- match=path.match(/^\/api\/admin\/([-A-Za-z0-9_:]+)(?:\/(files|recording))?$/);
+ match=path.match(/^\/api\/admin\/([-A-Za-z0-9_:]+)(?:\/(files|recording|recording-attachments))?$/);
  if(match){const offeringId=id(match[1]),sub=match[2],adminScope=await store.scope(actor,offeringId,{admin:true});
+  if(method==='GET'&&sub==='recording-attachments'){if(!adminScope.studioAuthority&&academyAuthority(env))throw fail('Studio ownership is required.',409);return json(await recordingAttachmentPreflight(store,offeringId,url.searchParams.getAll('source')));}
   if(method==='GET'&&sub==='files')return json({offeringId,...await offeringWebsiteAssets(store,offeringId,{assetId:url.searchParams.get('assetId'),after:url.searchParams.get('after')||''})});
   if(method==='PUT'&&sub==='files')return json(await upload(env,store,actor,offeringId,request));
   if(sub==='recording'&&method==='PUT')return json(await recording(env,store,actor,offeringId,{action:'part',assetId:url.searchParams.get('assetId'),partNumber:Number(url.searchParams.get('partNumber'))},request));

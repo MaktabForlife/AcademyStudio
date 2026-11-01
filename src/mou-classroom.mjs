@@ -19,17 +19,21 @@ export async function mouClassroom(store,actor){
  result.monthly={state:'CONNECTED',month,hasCurrentMonth:Boolean(months.current_month),hasRetainedMonths:Boolean(months.retained)};
  const canManage=Boolean(actor.global_admin||scope.role==='ADMIN');
  result.management={canManage,requiresAuthorityRefresh:canManage&&actor.verified_at<now-boundedAge(store.env,true),authority:'ACADEMY_PROXY',offeringId:offer};
- // Only the first real bound subject is looked up. Nine forthcoming display
- // entries have no operational identities, entitlement queries or actions.
- const binding=await store.first("SELECT b.website_id FROM programme_subjects b JOIN websites w ON w.website_id=b.website_id AND w.offering_id=b.offering_id WHERE b.offering_id=? AND b.display_key='surah-al-baqarah' AND b.enabled=1",[offer]);
- if(binding){
-  const admin=Boolean(actor.global_admin||scope.role==='ADMIN');let website=null;
-  try{website=await websiteAccess(store,actor,binding.website_id,{admin});}catch(error){if(![403,404].includes(error.status))throw error;}
-  if(website){
-   const published=Boolean(website.enabled&&website.published_key),canEdit=admin&&actor.verified_at>=now-boundedAge(store.env,true);
-   result.subjects[0]={...subjects[0],state:published?'PUBLISHED':'PREPARING',website:{id:website.website_id,title:website.title,completionMonth:website.completion_month,canOpen:published,canEdit,...(published?{href:'/studio/?website='+encodeURIComponent(website.website_id)}:{}),...(canEdit?{editorHref:'/builder/?website='+encodeURIComponent(website.website_id)}:{})}};result.materialsConnected=published;
-  }else result.subjects[0]={...subjects[0],state:'LOCKED'};
+ // One bounded binding/permission query for the approved catalogue. No per-card
+ // websiteAccess or per-topic queries. A card never confers material rights.
+ const bindings=await store.all(`SELECT b.display_key,w.website_id,w.enabled,w.published_key,w.completion_month,
+ EXISTS(SELECT 1 FROM attachments x WHERE x.website_id=w.website_id AND x.offering_id=w.offering_id AND x.audience='RECORDING' AND x.published=1
+ AND (?=1 OR EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=? AND m.offering_id=x.offering_id AND m.month=substr(x.lesson_date,1,7) AND m.cohort=x.cohort))) has_recordings,
+ EXISTS(SELECT 1 FROM surah_grants g WHERE g.account_id=? AND g.website_id=w.website_id) text_grant
+ FROM programme_subjects b JOIN websites w ON w.website_id=b.website_id AND w.offering_id=b.offering_id WHERE b.offering_id=? AND b.enabled=1 LIMIT 11`,[Number(staff),actor.account_id,actor.account_id,offer]);
+ if(bindings.length>10)throw fail('Review the MOU subject catalogue.',409);
+ for(const binding of bindings){
+  const index=subjects.findIndex(s=>s.key===binding.display_key);if(index<0)continue;
+  const permitted=staff||binding.has_recordings||binding.text_grant||Boolean(months.retained);if(!permitted)continue;
+  const published=Boolean(binding.enabled&&binding.published_key),canEdit=canManage&&actor.verified_at>=now-boundedAge(store.env,true);
+  result.subjects[index]={...subjects[index],state:published?'PUBLISHED':'PREPARING',availabilityLabel:null,website:{id:binding.website_id,title:subjects[index].title,completionMonth:binding.completion_month,canOpen:published,canEdit,...(published?{href:'/studio/?website='+encodeURIComponent(binding.website_id)}:{}),...(canEdit?{editorHref:'/builder/?website='+encodeURIComponent(binding.website_id)}:{})}};
  }
+ result.materialsConnected=result.subjects.some(s=>s.website?.canOpen);
  if(!definition.live_enabled||!staff&&!scope.live_entitled){result.timetable.state='LIVE_ACCESS_REQUIRED';return result;}
  await accessGate(store,actor,offer,{live:true,admin:staff});
  const snapshot=await store.first('SELECT version FROM stream_heads WHERE stream=?',['timetable:'+offer]);
@@ -51,12 +55,14 @@ export async function mouClassroom(store,actor){
 }
 
 export async function bindMouSubject(store,actor,offer,input,options={}){
+ const replay=await store.replay(actor.account_id,input.operationId,await store.requestHash(offer,input));if(replay){await store.scope(actor,offer,{admin:true});return replay;}
  const scope=await store.scope(actor,offer,{admin:true}),definition=await mouDefinition(store);
  if(scope.programme_key!=='mothers'||definition?.offering_id!==offer||definition.authority!=='WEBSITE'||definition.phase!=='COMMITTED')throw fail('Complete the independent MOU handover before binding a subject.',409,'MOU_HANDOVER_REQUIRED');
- if(input.displayKey!=='surah-al-baqarah')throw fail('Only the confirmed first MOU subject can be connected. Forthcoming subjects stay inert.');
+ if(!mouSubjects.some(s=>s.key===input.displayKey))throw fail('Choose an approved MOU subject identity.');
  const websiteId=id(input.websiteId),enabled=flag(input.enabled),website=await store.first('SELECT offering_id,completion_date,completion_month FROM websites WHERE website_id=?',[websiteId]);
  if(website?.offering_id!==offer)throw fail('Choose an existing native website in this MOU programme.',403,'MOU_SUBJECT_SCOPE');
  if(website.completion_date&&date(website.completion_date).slice(0,7)!==website.completion_month)throw fail('Review the saved subject completion date.',409,'MOU_SUBJECT_REVIEW_REQUIRED');
+ if(input.createOnly)options={...options,expectedSQL:`(${options.expectedSQL||'1'}) AND NOT EXISTS(SELECT 1 FROM programme_subjects WHERE offering_id=? AND display_key=?)`,expectedArgs:[...(options.expectedArgs||[]),offer,input.displayKey]};
  const expectedSQL=`(${options.expectedSQL||'1'}) AND EXISTS(SELECT 1 FROM programme_offerings WHERE programme_key='mothers' AND offering_id=?) AND EXISTS(SELECT 1 FROM websites WHERE website_id=? AND offering_id=?)`;
- return store.mutate(actor,offer,input,[store.statement("INSERT INTO programme_subjects VALUES(?,'surah-al-baqarah',?,?) ON CONFLICT(offering_id,display_key) DO UPDATE SET website_id=excluded.website_id,enabled=excluded.enabled",[offer,websiteId,enabled])],{saved:true,websiteId},{...options,studio:true,expectedSQL,expectedArgs:[...(options.expectedArgs||[]),offer,websiteId,offer]});
+ return store.mutate(actor,offer,input,[store.statement("INSERT INTO programme_subjects VALUES(?,?,?,?) ON CONFLICT(offering_id,display_key) DO UPDATE SET website_id=excluded.website_id,enabled=excluded.enabled",[offer,input.displayKey,websiteId,enabled])],{saved:true,websiteId},{...options,studio:true,expectedSQL,expectedArgs:[...(options.expectedArgs||[]),offer,websiteId,offer]});
 }
