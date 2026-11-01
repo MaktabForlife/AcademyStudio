@@ -36,7 +36,7 @@ export async function sourceWebsiteGate(store,actor,website,{readOnly=true}={}){
  const scope=await accessGate(store,actor,website.offering_id,{admin:Boolean(website.role),readOnly});
  if(scope&&website.kind==='TAFSEER'){
   const programme=await store.first("SELECT 1 FROM programme_offerings WHERE programme_key='mothers' AND offering_id=?",[website.offering_id]);
-  const mapped=programme?await store.first('SELECT enabled FROM programme_subjects WHERE offering_id=? AND website_id=? UNION ALL SELECT 1 enabled FROM mou_playlists WHERE offering_id=? AND website_id=? LIMIT 1',[website.offering_id,website.website_id,website.offering_id,website.website_id]):await store.first('SELECT enabled FROM source_access_websites WHERE offering_id=? AND website_id=?',[website.offering_id,website.website_id]);
+  const mapped=programme?await store.first('SELECT enabled FROM programme_subjects WHERE offering_id=? AND website_id=? UNION ALL SELECT 1 enabled FROM mou_playlists WHERE offering_id=? AND website_id=? LIMIT 1',[website.offering_id,website.website_id,website.offering_id,website.website_id]):await store.first('SELECT enabled FROM source_access_websites WHERE offering_id=? AND website_id=? UNION ALL SELECT 1 enabled FROM mou_playlists WHERE offering_id=? AND website_id=? LIMIT 1',[website.offering_id,website.website_id,website.offering_id,website.website_id]);
   if(!mapped?.enabled)throw fail('This programme subject is unavailable.',403);
  }return scope;
 }

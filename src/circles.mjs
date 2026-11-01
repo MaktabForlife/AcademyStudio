@@ -1,3 +1,4 @@
+import {cataloguePlaylistRights} from './mou-playlists.mjs';
 import {academyAuthority} from './access.mjs';
 import {bodyJSON,boundedAge,fail,id} from './protocol.mjs';
 import {contentVersion} from './content-package.mjs';
@@ -46,7 +47,7 @@ export async function catalogueAccess(store,actor,websiteIds,{navigationOnly=fal
  const ids=[...new Set(websiteIds.map(id))],policyEpoch=await coursePolicyEpoch(store);if(!ids.length)return {websites:[],coursePolicyEpoch:policyEpoch};
  const rows=await store.all(`SELECT w.website_id,w.offering_id,w.enabled,w.published_key,o.kind,o.active,cm.access_model,cr.revision policy_revision,
   EXISTS(SELECT 1 FROM source_access_master_fences f WHERE f.account_id=? AND f.offering_id=w.offering_id) fenced,
-  p.purchased,sf.role,sc.authority,sc.enabled source_enabled,sc.generation,
+  p.purchased,sf.role,sc.timezone,mp.playlist_id,sc.authority,sc.enabled source_enabled,sc.generation,
   ap.ready,ap.generation person_generation,ap.verified_at,sw.enabled mapped,
   EXISTS(SELECT 1 FROM paid_months pm WHERE pm.account_id=? AND pm.offering_id=w.offering_id AND pm.month=w.completion_month
    UNION ALL SELECT 1 FROM website_months wm WHERE wm.account_id=? AND wm.offering_id=w.offering_id AND wm.month=w.completion_month) paid,
@@ -55,10 +56,13 @@ export async function catalogueAccess(store,actor,websiteIds,{navigationOnly=fal
   LEFT JOIN course_access_models cm ON cm.offering_id=w.offering_id LEFT JOIN course_policy_revisions cr ON cr.offering_id=w.offering_id
   LEFT JOIN participation p ON p.offering_id=w.offering_id AND p.account_id=?
   LEFT JOIN staff sf ON sf.offering_id=w.offering_id AND sf.account_id=?
+  LEFT JOIN mou_playlists mp ON mp.website_id=w.website_id
   LEFT JOIN source_access_scopes sc ON sc.offering_id=w.offering_id
   LEFT JOIN source_access_people ap ON ap.offering_id=w.offering_id AND ap.account_id=?
   LEFT JOIN source_access_websites sw ON sw.website_id=w.website_id AND sw.offering_id=w.offering_id`,
  [actor.account_id,actor.account_id,actor.account_id,actor.account_id,JSON.stringify(ids),actor.account_id,actor.account_id,actor.account_id]);
+ const playlistRights=await cataloguePlaylistRights(store,actor,rows);
+ for(const row of rows)if(playlistRights.has(row.website_id))row.paid=Number(playlistRights.get(row.website_id));
  const found=new Map(rows.map(r=>[r.website_id,r])),now=Date.now();
  return {websites:ids.map(websiteId=>{
   const row=found.get(websiteId),base={websiteId,canOpen:false,subscriptionStatus:'required',accessBasis:null,needsRefresh:false,coursePolicy:row?.kind==='COURSE'&&row.access_model?{offeringId:row.offering_id,model:row.access_model,revision:row.policy_revision||0}:null};

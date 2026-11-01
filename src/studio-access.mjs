@@ -4,7 +4,7 @@ import {fail,id,integer,sha256,boundedAge} from './protocol.mjs';
 import {change} from './admin.mjs';
 import {coursePolicy} from './course-policy.mjs';
 import {beginProvision,resumeProvision} from './enrolment.mjs';
-import {playlistTable,playlistCorrection,savePlaylist,playlistPublication,playlistAddRecording} from './mou-playlists.mjs';
+import {playlistTable,playlistCorrection,savePlaylist,playlistPublication,playlistAddRecording,savePlaylistOrder} from './mou-playlists.mjs';
 import {monthlyGrid,saveMonthlyGrid,accessTable,saveAccessTable} from './access-tables.mjs';
 
 // Read views retain scoped Admin authority but use the ordinary verification age.
@@ -30,6 +30,7 @@ export async function studioAccess(request,env,store,fetcher){
  else if(command.action==='mou-playlist-correction')result=await playlistCorrection(store,actor,offer,command);
  else if(command.action==='mou-playlist-save')result=await savePlaylist(env,store,actor,offer,command);
  else if(command.action==='mou-playlist-publication')result=await playlistPublication(store,actor,offer,command);
+ else if(command.action==='mou-playlist-order')result=await savePlaylistOrder(store,actor,offer,command);
  else if(command.action==='mou-playlist-add')result=await playlistAddRecording(store,actor,offer,command);
  else if(command.action==='monthly-grid')result=await monthlyGrid(store,actor,offer,command);
  else if(command.action==='monthly-grid-save')result=await saveMonthlyGrid(env,store,actor,offer,command);

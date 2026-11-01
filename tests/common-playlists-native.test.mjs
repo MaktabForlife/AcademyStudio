@@ -1,0 +1,13 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {studioFixture} from './studio-access-fixture.mjs';
+test('actual signed Source proxy supports native Course and open Tafseer playlists while monthly-only, scoped authority and stale guards remain exact',async t=>{
+ const x=await studioFixture();t.after(()=>x.f.close());
+ for(const [activity,model]of [[x.x.courseA,'COURSE'],[x.x.programA,'MONTHLY']]){
+  await x.handover(activity);const good=c=>x.good(c,{activity}),proxy=(c,opts={})=>x.proxy(c,{activity,...opts});
+  let table=await good({action:'mou-playlists'});assert.equal(table.accessModel,model);assert(table.playlists.some(r=>r.legacy&&r.readOnly),'Historical native website stays separately labelled');
+  const playlistId=crypto.randomUUID(),create={action:'mou-playlist-save',operationId:crypto.randomUUID(),playlistId,name:'New native '+model+' playlist',closeDate:'',revision:table.revision,playlistRevision:0,websiteRevision:0};await good(create);assert((await good(create)).replayed);table=await good({action:'mou-playlists',playlistId});const p=table.playlists.find(r=>r.id===playlistId);assert.equal(p.state,'OPEN');assert.equal(p.closeDate,null);assert.equal(p.closeMonth,null);assert.deepEqual(table.items,[]);const order=await proxy({action:'mou-playlist-order',operationId:crypto.randomUUID(),playlistId,revision:table.revision,playlistRevision:p.revision,entries:[]});assert.equal(order.status,400);assert.match(order.body.error,/Order one/,'Source forwards the checked order command to the guarded target');
+  assert.equal((await proxy({...create,operationId:crypto.randomUUID(),name:'Stale replacement'})).status,409);assert.equal((await proxy({action:'mou-playlists'},{who:'studentA'})).status,403);assert.equal((await proxy({...create,operationId:crypto.randomUUID()},{who:'studentA',extra:{actor:{globalAdmin:true}}})).status,403);
+  const fake=await proxy({...create,operationId:crypto.randomUUID(),playlistId:'new-spoofed',revision:table.revision,playlistRevision:0,websiteRevision:0,accessModel:model==='COURSE'?'MONTHLY':'COURSE'});assert.equal(fake.status,409);assert.equal(await x.f.db.prepare('SELECT count(*) n FROM websites WHERE website_id=\'new-spoofed\'').first('n'),0);
+  if(model==='COURSE'){assert.equal((await proxy({action:'monthly-grid',years:[2026]})).status,400);assert.equal((await proxy({action:'access-table'})).status,400);}
+  else {assert.equal(table.timezone,'Africa/Johannesburg');const legacy=await good({action:'access-table'});assert(!legacy.surahs.some(r=>r.id===playlistId),'Historical table cannot bypass the new playlist date-review guard');}
+ }
+});

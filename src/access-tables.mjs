@@ -54,7 +54,7 @@ export async function saveMonthlyGrid(env,store,actor,offer,input){
 export async function accessTable(store,actor,offer){
  const scope=await monthlyScope(store,actor,offer,{readOnly:true});if(scope.programme_key==='mothers')throw fail('MOU subject date editing is not available yet.',409,'MOU_TABLE_HELD');
  const current=await revision(store,offer);
- const rows=await store.all('SELECT website_id,title,completion_date,completion_month,revision,enabled,published_key FROM websites WHERE offering_id=? ORDER BY website_id LIMIT 201',[offer]);
+ const rows=await store.all('SELECT website_id,title,completion_date,completion_month,revision,enabled,published_key FROM websites WHERE offering_id=? AND NOT EXISTS(SELECT 1 FROM mou_playlists p WHERE p.website_id=websites.website_id) ORDER BY website_id LIMIT 201',[offer]);
  if(rows.length>200)throw fail('This table needs a narrower website selector.',409);
  if(current!==await revision(store,offer))throw fail('The Surah table changed. Refresh before editing.',409,'CHANGE_CONFLICT');
  return {available:true,prepared:true,policyRevision:current,surahs:rows.map(r=>({id:r.website_id,name:r.title,completionDate:r.completion_date||'',completionMonth:r.completion_month,revision:r.revision,active:Boolean(r.enabled),eligibleStudents:null,hasDraft:true}))};
