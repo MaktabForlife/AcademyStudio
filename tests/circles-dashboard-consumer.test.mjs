@@ -37,6 +37,13 @@ test('Join becomes active exactly at -5min, uses one current resolver, and mode 
  f.click('[data-circle-join]');assert.equal(f.popups.length,1);assert.equal(f.calls.at(-1).path,'/api/circles/lesson-join');assert.equal(f.calls.at(-1).body.mode,'learn');
  await f.dashboard.load('teach');assert(f.popups[0].closed);f.resolveJoin({joinUrl:'https://zoom.test/stale'});await flush();assert.equal(f.navigations.length,0);
 });
+test('a checked public Free programme outside personal activities appears at the Join boundary without adding a programme card',async()=>{
+ const row=session(0,{activityId:'public-free',activityName:'Steps to My Rabb',subjectName:undefined,title:'Steps to My Rabb'}),f=await fixture({global:false,initial:start-300001,rows:[row]});
+ assert.equal(f.document.querySelector('[data-circle-join]'),null);assert.equal(f.dashboard.data.activities.some(a=>a.id==='public-free'),false);
+ f.setTime(start-300000);[...f.timers.values()][0].fn();assert.match(f.document.querySelector('[data-circle-session]').textContent,/Steps to My Rabb/);f.click('[data-circle-join]');assert.equal(f.calls.at(-1).path,'/api/circles/lesson-join');
+ assert.equal(f.document.querySelector('[data-programme-key="public-free"]'),null);assert.equal(f.dashboard.data.activities.some(a=>a.id==='public-free'),false);
+ f.resolveJoin({joinUrl:'https://zoom.test/current-free'});await flush();assert.equal(f.navigations.length,1);
+});
 test('session, all sessions and attention dialogs expose every permitted entry without six-item truncation',async()=>{
  const f=await fixture();f.click('[data-circle-session]');assert(f.document.querySelector('dialog').textContent.includes('Subject 0'));f.click('[data-circle-dialog-close]');f.click('[data-circle-all]');assert.equal(f.document.querySelectorAll('dialog .circle-session-detail').length,9);f.click('[data-circle-dialog-close]');f.click('[data-circle-attention-all]');assert.equal(f.document.querySelectorAll('dialog article').length,6);
  const admin=await fixture({mode:'admin',rows:[...summary().timetable,session(10,{status:'CANCELLED',subjectName:'Cancelled lesson'}),session(11,{date:'2026-10-31',subjectName:'Earlier lesson'})]});assert.equal(admin.document.querySelectorAll('.wheel-session').length,1,'Global Admin shows one programme entry');admin.click('[data-circle-session]');assert.equal(admin.document.querySelectorAll('dialog .circle-session-detail').length,11,'Its info reveals all real programme sessions including cancelled and earlier dates');
