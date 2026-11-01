@@ -5,8 +5,8 @@ import {newCourse} from '../public/shared/model.mjs';
 import {prepareAttachments} from '../tools/prepare-recording-attachments.mjs';
 import {mouSubjects} from '../public/shared/mou-subjects.mjs';
 import {learnerCompanion} from '../public/shared/learner-companion.mjs';
-export async function recordingAttachmentFixture({attach=true,offeringId='mou-local-recording-review',cohort='local-review',authorityMode='WEBSITE'}={}){
- const root=resolve('../..'),f=await fixture({authorityMode,verification:{accountSeconds:43200,adminSeconds:60,liveSeconds:43200}}),offer=offeringId,packages=await prepareAttachments(root,resolve('local-content/recording-attachments'));
+export async function recordingAttachmentFixture({attach=true,offeringId='mou-local-recording-review',cohort='local-review',authorityMode='WEBSITE',nativeTeacherChoices,nativeMediaClasses}={}){
+ const root=resolve('../..'),f=await fixture({nativeTeacherChoices,nativeMediaClasses,authorityMode,verification:{accountSeconds:43200,adminSeconds:60,liveSeconds:43200}}),offer=offeringId,packages=await prepareAttachments(root,resolve('local-content/recording-attachments'));
  try{
  await f.run("INSERT INTO offerings(offering_id,kind,title,active) VALUES(?,'TAFSEER','Mothers of the Ummah',1)",offer);
  await f.run("INSERT INTO source_access_scopes VALUES(?,'WEBSITE',1,1,1,0,'Africa/Johannesburg',?)",offer,JSON.stringify([cohort]));

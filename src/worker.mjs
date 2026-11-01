@@ -1,3 +1,4 @@
+import {mediaOptions,attributionChange,attachMedia,addPublishedAttribution,mediaCompanionSave,mediaDetail,addSupportingFiles} from './media-attribution.mjs';
 import {permittedCompanionIndexes,readCompanion,recordingAttachmentPreflight} from './recording-companions.mjs';
 import {mouClassroom} from './mou-classroom.mjs';
 import {coursePublication} from './course-publication.mjs';
@@ -103,7 +104,7 @@ async function route(request,env,store,fetcher){
    // Unary + preserves the month value while removing column affinity: SQLite can
    // then use the substr expression index for each paid month, not scan the offer.
    else if(scope.kind==='TAFSEER')rows=await store.all(`${select} FROM paid_months m CROSS JOIN attachments x INDEXED BY attachments_month JOIN objects o USING(asset_id) WHERE m.account_id=? AND m.offering_id=? AND x.offering_id=m.offering_id AND substr(x.lesson_date,1,7)=+m.month AND x.cohort=m.cohort AND x.audience='RECORDING' AND x.published=1 AND x.attachment_id>?${filter} ORDER BY x.attachment_id LIMIT 51`,[actor.account_id,offeringId,after,...tail]);
-   const media=rows.slice(0,50);return json({media,more:rows.length>50,companions:await permittedCompanionIndexes(store,media),mediaBindings:mediaWebsite?await permittedGuideBindings(env,mediaWebsite,media,store):[]});
+   const media=await addSupportingFiles(store,await addPublishedAttribution(store,rows.slice(0,50)));return json({media,more:rows.length>50,companions:await permittedCompanionIndexes(store,media),mediaBindings:mediaWebsite?await permittedGuideBindings(env,mediaWebsite,media,store):[]});
   }
   if(method!=='POST')throw fail('This action needs a POST request.',405);const input=await bodyJSON(request.body,16384);
   if(action==='join'){if(scope.completed_course)throw fail('This completed Course has no live sessions.',403,'JOIN_CLOSED');await accessGate(store,actor,offeringId,{live:true});if(!actor.global_admin&&!scope.live&&!scope.role)throw fail('Current live-session access is required.',403);const session=await store.first('SELECT session_id,starts_at,ends_at,zoom_url,cancelled FROM timetable WHERE session_id=? AND offering_id=?',[id(input.sessionId),offeringId]),now=Date.now();if(!session||session.cancelled||now<session.starts_at-300_000||now>=session.ends_at||!session.zoom_url)throw fail('Joining is available from five minutes before the lesson until it ends.',403,'JOIN_CLOSED');await joinAudience(store,actor,offeringId,session,scope);return json({destination:session.zoom_url});}
@@ -114,21 +115,24 @@ async function route(request,env,store,fetcher){
  if(path==='/api/admin/offerings'&&method==='GET'){
   const offerings=actor.global_admin?await store.all("SELECT o.offering_id,o.title,o.kind,p.programme_key FROM offerings o LEFT JOIN programme_offerings p USING(offering_id) WHERE o.kind IN('COURSE','TAFSEER') ORDER BY o.offering_id LIMIT 200"):await store.all("SELECT o.offering_id,o.title,o.kind,p.programme_key FROM staff s JOIN offerings o USING(offering_id) LEFT JOIN programme_offerings p USING(offering_id) WHERE s.account_id=? AND s.role='ADMIN' AND o.kind IN('COURSE','TAFSEER') ORDER BY o.offering_id LIMIT 200",[actor.account_id]);return json({offerings});
  }
- match=path.match(/^\/api\/admin\/([-A-Za-z0-9_:]+)(?:\/(files|recording|recording-attachments|prepared-recordings))?$/);
+ match=path.match(/^\/api\/admin\/([-A-Za-z0-9_:]+)(?:\/(files|recording|recording-attachments|prepared-recordings|media-options|media-review|media-detail))?$/);
  if(match){const offeringId=id(match[1]),sub=match[2],adminScope=await store.scope(actor,offeringId,{admin:true});
+  if(sub==='media-detail'){if(method!=='GET')throw fail('Use GET to review saved recording content.',405);return json(await mediaDetail(env,store,actor,offeringId,url.searchParams.get('attachment')));}
+  if(sub==='media-review'){if(method!=='GET')throw fail('Use GET for the saved media review.',405);return json({canManageContent:!academyAuthority(env)||Boolean(adminScope.studioAuthority),websites:await store.all('SELECT website_id,title,completion_month,revision,enabled FROM websites WHERE offering_id=? ORDER BY website_id LIMIT 100',[offeringId]),media:await store.all('SELECT x.*,o.filename,o.mime_type,t.revision attribution_revision,t.draft_json attribution_draft,t.published_json attribution_published FROM attachments x JOIN objects o USING(asset_id) LEFT JOIN media_attributions t USING(attachment_id) WHERE x.offering_id=? AND x.attachment_id>? ORDER BY x.attachment_id LIMIT 51',[offeringId,url.searchParams.get('after')||''])});}
+  if(sub==='media-options'){if(method!=='GET')throw fail('Use GET for checked media choices.',405);return json(await mediaOptions(env,store,actor,offeringId,fetcher));}
   if(sub==='prepared-recordings'){if(method!=='GET')throw fail('Use the separate native Attach and Publish actions.',405);return json(await preparedRecordings(env,store,actor,offeringId));}
   if(method==='GET'&&sub==='recording-attachments'){if(!adminScope.studioAuthority&&academyAuthority(env))throw fail('Studio ownership is required.',409);return json(await recordingAttachmentPreflight(store,offeringId,url.searchParams.getAll('source')));}
   if(method==='GET'&&sub==='files')return json({offeringId,...await offeringWebsiteAssets(store,offeringId,{assetId:url.searchParams.get('assetId'),after:url.searchParams.get('after')||''})});
   if(method==='PUT'&&sub==='files')return json(await upload(env,store,actor,offeringId,request));
   if(sub==='recording'&&method==='PUT')return json(await recording(env,store,actor,offeringId,{action:'part',assetId:url.searchParams.get('assetId'),partNumber:Number(url.searchParams.get('partNumber'))},request));
   if(sub==='recording'&&method==='POST')return json(await recording(env,store,actor,offeringId,await bodyJSON(request.body,1_000_000),request));
-  if(method==='POST')return json(await change(env,store,actor,offeringId,await bodyJSON(request.body)));
+  if(method==='POST'){const input=await bodyJSON(request.body);if(input.action==='media-companion-save')return json(await mediaCompanionSave(env,store,actor,offeringId,input,fetcher));if(input.action==='media-attach')return json(await attachMedia(env,store,actor,offeringId,input,fetcher,change));if(['media-attribution-save','media-publication'].includes(input.action))return json(await attributionChange(env,store,actor,offeringId,input,fetcher));return json(await change(env,store,actor,offeringId,input));}
   if(method==='GET'){const after=url.searchParams.get('after')||'';return json({coursePolicy:await coursePolicy(store,offeringId),
    canManageContent:!academyAuthority(env)||Boolean(adminScope.studioAuthority),
    participants:await store.all('SELECT p.*,a.display_name FROM participation p JOIN accounts a USING(account_id) WHERE p.offering_id=? AND p.account_id>? ORDER BY p.account_id LIMIT 51',[offeringId,after]),
    websites:await store.all('SELECT website_id,title,completion_month,revision,enabled FROM websites WHERE offering_id=? ORDER BY website_id LIMIT 100',[offeringId]),
    card:await store.first('SELECT * FROM cards WHERE offering_id=?',[offeringId]),
-   media:await store.all('SELECT x.*,o.filename,o.mime_type FROM attachments x JOIN objects o USING(asset_id) WHERE x.offering_id=? AND x.attachment_id>? ORDER BY x.attachment_id LIMIT 51',[offeringId,after]),
+   media:await store.all('SELECT x.*,o.filename,o.mime_type,t.revision attribution_revision,t.draft_json attribution_draft,t.published_json attribution_published FROM attachments x JOIN objects o USING(asset_id) LEFT JOIN media_attributions t USING(attachment_id) WHERE x.offering_id=? AND x.attachment_id>? ORDER BY x.attachment_id LIMIT 51',[offeringId,after]),
    requests:await store.all('SELECT * FROM enrolment_requests WHERE offering_id=? AND request_id>? ORDER BY request_id LIMIT 51',[offeringId,after]),
    months:await store.all('SELECT m.* FROM participation p JOIN paid_months m USING(account_id,offering_id) WHERE p.offering_id=? AND p.account_id>? ORDER BY p.account_id,m.month,m.cohort LIMIT 600',[offeringId,after])
   });}
