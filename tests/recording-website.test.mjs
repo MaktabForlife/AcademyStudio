@@ -84,9 +84,7 @@ test('Ulumul Quran is the display identity while the source document remains unc
 });
 
 
-test('Tafseer removes Sessions while Course navigation retains its configured timetable',async()=>{
+test('every podcast has only Listen and Read tabs; About, PDF and Join are header actions',async()=>{
  const {recordingWebsiteTabs}=await import('../public/shared/recording-website.mjs');
- const pages={materials:true,sessions:true};
- for(const name of ['Foundations of Tafseer','Ulumul Qur’an','Surah Yaseen'])assert.deepEqual(recordingWebsiteTabs({name,pages}).map(t=>t[1]),['Recordings','Read','About','Materials']);
- assert(recordingWebsiteTabs({name:'A guidance Course',pages}).some(t=>t[0]==='sessions'));
+ for(const name of ['Foundations of Tafseer','Ulumul Qur’an','Surah Yaseen','A guidance Course'])assert.deepEqual(recordingWebsiteTabs({name,pages:{materials:true,sessions:true}}),[['home','Listen'],['lessons','Read']]);
 });

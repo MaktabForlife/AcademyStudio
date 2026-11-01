@@ -137,3 +137,28 @@
 .mou-subject-card{position:relative}.mou-subject-card a[data-circles-website]::after{content:'';position:absolute;inset:0}.mou-subject-card a[href^="/builder/"]{position:relative;z-index:1}.mou-subject-card:has(a[data-circles-website]):hover{border-color:var(--circle-accent,#805764)}
 
 .circles-theme .rs-card-quotation{margin:18px 0 14px auto;max-width:65%;text-align:right;font:italic 400 21px/1.5 var(--circle-serif);color:#826477}.circles-theme .rs-card-quotation:before{content:'“'}.circles-theme .rs-card-quotation:after{content:'”'}@media(max-width:650px){.circles-theme .rs-card-quotation{max-width:100%;font-size:19px}}
+.circles-theme .rs-card-main,.circles-theme .rs-watch-pane,.circles-theme .rs-read-pane{min-width:0}
+.circles-theme .rs-series-tools{max-width:none!important;flex-wrap:wrap!important}
+.circles-theme .rs-live-sessions:empty{display:none}
+.circles-theme .rs-live-sessions:not(:empty){margin:0}
+.circles-theme .sp-session-grid.rs-session-list{display:grid;grid-template-columns:minmax(0,1fr);gap:13px}
+.circles-theme .rs-session-list .rs-episode-card{margin:0;max-width:none}
+.circles-theme .rs-session-list .rs-episode-card h3{font:400 29px/1.2 var(--circle-serif);color:var(--sp-accent);margin:9px 0 12px}
+.circles-theme .rs-session-list .sp-status{font:12px/1.7 'DM Sans',sans-serif;color:var(--circle-muted)}
+.circles-theme .rs-session-list .sp-lesson-media{margin-top:14px}
+.circles-theme .rs-shell[data-series-view=recording]{max-width:1360px}
+.circles-theme .rs-watch-pane{padding-top:24px}
+.circles-theme .rs-read-pane .rs-description:first-child{padding-top:24px}
+.circles-theme .rs-read-pane .rs-companion-layout.has-quotations{display:block}
+@media(min-width:1000px){
+ .circles-theme .rs-episode-card.has-quotation{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,30%);gap:32px;align-items:center}
+ .circles-theme .rs-episode-card.has-quotation .rs-card-quotation{max-width:none;margin:0;padding-left:28px;border-left:1px solid var(--circle-rule)}
+}
+@media(min-width:1200px){
+ .circles-theme .rs-watch-read-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:start}
+ .circles-theme .rs-watch-pane{position:sticky;top:24px}
+ .circles-theme .rs-read-pane{border-left:1px solid var(--circle-rule);padding-left:32px}
+ .circles-theme .rs-read-pane .rs-inline-readings:first-child{margin-top:0;border-top:0}
+ .circles-theme .rs-read-pane .rs-embedded-reading{margin-top:16px}
+ .circles-theme .rs-watch-pane .sp-companion-player{max-width:none}
+}
