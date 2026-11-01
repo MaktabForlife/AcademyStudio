@@ -16,3 +16,10 @@ test('Tafseer ownership fence leaves the existing MOU metadata delivery unchange
  await deliverScope(f,{type:'access-scope',offering:{id:scope.offering_id,kind:'TAFSEER',title:'Mothers of the Ummah'},generation:scope.generation,enabled:true,liveEnabled:true,timezone:'UTC',classes:[],websites:[{website_id:'mou-date-exclusion',completion_date:'2024-02-21',active:true}],programmeKey:'mothers',accessModel:'MONTHLY'});
  assert.equal(await f.db.prepare("SELECT completion_date FROM websites WHERE website_id='mou-date-exclusion'").first('completion_date'),'2024-02-21');assert.equal(await f.db.prepare("SELECT enabled FROM source_access_websites WHERE website_id='mou-date-exclusion'").first('enabled'),1);
 });
+
+test('Tafseer ownership fence preserves Course metadata delivery after handover',async t=>{
+ const {f,x,handover}=await studioFixture();t.after(()=>f.close());await handover();
+ const event=JSON.parse(await x.db.prepare("SELECT event_json FROM website_platform_outbox WHERE access_scope=? AND access_account='' ORDER BY version DESC LIMIT 1").bind(x.courseA).first('event_json'));
+ event.websites=[{website_id:'site-course',completion_date:'2024-04-12',active:true}];await deliverScope(f,event);
+ assert.equal(await f.db.prepare("SELECT completion_date FROM websites WHERE website_id='site-course'").first('completion_date'),'2024-04-12');assert.equal(await f.db.prepare("SELECT enabled FROM source_access_websites WHERE website_id='site-course'").first('enabled'),1);
+});
