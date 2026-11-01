@@ -7,7 +7,7 @@ export async function reviewMouCatalogue(plan){
  check(plan.items.length===4,'Review the four prepared MOU lessons.');
  return Promise.all(plan.items.map(async item=>{
   const steps=plan.requests.filter(r=>r.name.startsWith(item.editorialLessonId+':'));
-  const step=action=>steps.find(r=>r.body.action===action);
+ const step=action=>steps.find(r=>r.body.action===action);
   const save=step('companion-save'),create=step('website-create');
   check(save&&create,'Each prepared subject needs its original reviewed private shell and companion.');
   const companion=learnerCompanion(save.body.companion);
@@ -38,19 +38,31 @@ export function mouLessonState(plan,item,facts){
  check(!asset?.companion_published_key||asset.companion_published_key===item.companionKey,'The published companion changed. Preserve it.');
  const attached=Boolean(website&&subject&&asset?.attachment_id&&saved),published=Boolean(asset?.published);
  check(!published||attached&&website.enabled&&asset.companion_published_key===item.companionKey,'The existing publication needs separate reconciliation.');
- return {website,subject,asset,attached,published,label:published?'Published':attached?'Attached privately':asset?.attachment_id?'Partly attached':'Ready to attach'};
+ const attribution=facts.attributions?.find(a=>a.attachment_id===item.attachmentId);
+ return {website,subject,asset,attribution,attached,published,label:published?'Published':attached?'Attached privately':asset?.attachment_id?'Partly attached':'Ready to attach'};
 }
 
-export async function runMouLesson({plan,itemId,phase,api,current=()=>{},report=()=>{}}){
+export async function runMouLesson({plan,itemId,phase,teacherIds,api,current=()=>{},report=()=>{}}){
  check(['attach','publish'].includes(phase),'Choose Attach privately or Publish this lesson.');
  const reviewed=await reviewMouCatalogue(plan),item=reviewed.find(r=>r.editorialLessonId===itemId);check(item,'Choose a prepared lesson.');current();
  const fresh=await api('/api/admin/'+encodeURIComponent(plan.preflight.offeringId)+'/prepared-recordings');current();
  check(await hash(fresh.plan)===await hash(plan),'The prepared review changed. Reopen it before continuing.');
  const state=mouLessonState(plan,item,fresh.facts);if(state.published)return {published:true,unchanged:true};
+ const selected=teacherIds|| (state.attribution?JSON.parse(state.attribution.draft_json).teacherIds:[]);check(Array.isArray(selected)&&selected.length>0&&selected.length<=10,'Choose a checked registered Teacher before continuing.');
+ const choices=await api('/api/admin/'+encodeURIComponent(fresh.facts.offeringId)+'/media-options');current();check(selected.every(id=>choices.teachers.some(t=>t.id===id)),'Choose a current checked registered Teacher.');
  const step=action=>{const row=item.steps.find(r=>r.body.action===action);check(row,'The reviewed step is missing.');return row;};
  let actions;
  if(phase==='attach')actions=[...(!state.website?['website-create']:[]),...(!state.asset?['youtube']:[]),...(!state.asset?.attachment_id?['attachment']:[]),...(!state.subject?['mou-subject']:[]),...(!state.asset?.companion_draft_key?['companion-save']:[])];
- else {check(state.attached,'Attach this lesson privately and review it before publishing.');actions=[...(!state.website.enabled?['publish']:[]),...(!state.asset.companion_published_key?['companion-publish']:[]),'recording-publication'];}
+ else {check(state.attached,'Attach this lesson privately and review it before publishing.');check(state.attribution,'Save a checked registered Teacher before publishing.');actions=[...(!state.website.enabled?['publish']:[]),...(!state.asset.companion_published_key?['companion-publish']:[])];}
  for(const action of actions){current();report(action==='recording-publication'?'Publishing this lesson…':phase==='attach'?'Attaching privately…':'Publishing the reviewed lesson…');const request=step(action);await api(request.path,{body:request.body});current();}
- return {published:phase==='publish',attached:true,steps:actions.length};
+ current();
+ if(phase==='attach'&&!state.attribution){
+  const operationId='mou-teacher-'+(await hash([item.attachmentId,selected])).slice(0,48);
+  await api('/api/admin/'+encodeURIComponent(fresh.facts.offeringId),{body:{action:'media-attribution-save',operationId,attachmentId:item.attachmentId,revision:0,teacherIds:selected}});current();
+ }else if(phase==='attach'&&JSON.stringify([...selected].sort())!==JSON.stringify(JSON.parse(state.attribution.draft_json).teacherIds.slice().sort()))throw Error('Preserve the saved Teacher attribution; edit it separately.');
+ if(phase==='publish'){
+  const saved=state.attribution;
+  await api('/api/admin/'+encodeURIComponent(fresh.facts.offeringId),{body:{action:'media-publication',operationId:'mou-publish-'+(await hash([item.attachmentId,saved.revision,saved.draft_json])).slice(0,48),attachmentId:item.attachmentId,revision:saved.revision,draftContext:saved.draft_json,sourceRevision:item.sourceRevision,companionKey:item.companionKey}});current();
+ }
+ return {published:phase==='publish',attached:true,steps:actions.length+1};
 }

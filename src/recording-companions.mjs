@@ -4,7 +4,7 @@ import {learnerCompanion,publicationIndex} from '../public/shared/learner-compan
 
 export async function companionChanges(env,store,actor,offer,input){
  const attachment=id(input.attachmentId),row=await mediaGate(store,actor,attachment,{admin:true});
- if(row.offering_id!==offer||!row.website_id||row.audience!=='RECORDING'||!['video/youtube','video/mp4'].includes(row.mime_type))throw fail('Choose the exact native recording in this website.',409);
+ if(row.offering_id!==offer||!row.website_id&&row.kind!=='COURSE'||row.audience!=='RECORDING'||!['video/youtube','video/mp4'].includes(row.mime_type))throw fail('Choose the exact recording in this programme.',409);
  const saved=await store.first('SELECT * FROM recording_companions WHERE attachment_id=?',[attachment]);
  const previous=await store.replay(actor.account_id,input.operationId,await store.requestHash(offer,input));if(previous){if(input.action==='companion-save')await env.CONTENT.put(previous.draftKey,JSON.stringify(learnerCompanion(input.companion)),{httpMetadata:{contentType:'application/json'}});return previous;}
  if(input.revision!==(saved?.revision??0))throw fail('This companion changed. Reopen its saved draft.',409);
@@ -13,7 +13,7 @@ export async function companionChanges(env,store,actor,offer,input){
   if(!/^[a-f0-9]{64}$/.test(input.sourceRevision||''))throw fail('Choose the reviewed source revision.');
   if(!Number.isInteger(input.durationSeconds)||input.durationSeconds<1||input.durationSeconds>86400)throw fail('Confirm the recording duration.');
   const value=learnerCompanion(input.companion);if(value.topics.some(t=>t.start>=input.durationSeconds))throw fail('Keep topic timestamps within the actual recording.');const encoded=JSON.stringify(value);if(new TextEncoder().encode(encoded).byteLength>300000)throw fail('Keep this companion bounded.',413);
-  key='websites/'+row.website_id+'/recordings/'+row.asset_id+'/companions/'+await sha256(encoded)+'.json';staged=encoded;
+  key=(row.website_id?'websites/'+row.website_id:'offerings/'+offer)+'/recordings/'+row.asset_id+'/companions/'+await sha256(encoded)+'.json';staged=encoded;
  }else if(input.action==='companion-publish'){
   if(!saved||input.sourceRevision!==saved.source_revision||input.draftKey!==saved.draft_key)throw fail('Review the exact saved source and draft before publishing.',409);
   const object=await env.CONTENT.get(key);if(!object||object.size>300000)throw fail('Saved companion unavailable.',503);
@@ -21,7 +21,7 @@ export async function companionChanges(env,store,actor,offer,input){
  }else throw fail('Choose a companion action.');
  const next=(saved?.revision??0)+1;
  const statements=input.action==='companion-save'?[store.statement('INSERT INTO recording_companions VALUES(?,?,1,?,NULL,NULL,?) ON CONFLICT(attachment_id) DO UPDATE SET source_revision=excluded.source_revision,revision=recording_companions.revision+1,draft_key=excluded.draft_key,duration_seconds=excluded.duration_seconds',[attachment,input.sourceRevision,key,input.durationSeconds])]:[store.statement('UPDATE recording_companions SET published_key=draft_key,index_json=?,revision=revision+1 WHERE attachment_id=?',[index,attachment])];
- const result=await store.mutate(actor,offer,input,statements,{attachmentId:attachment,revision:next,draftKey:key,published:input.action==='companion-publish'},{studio:true,expectedSQL:"COALESCE((SELECT revision FROM recording_companions WHERE attachment_id=?),0)=? AND EXISTS(SELECT 1 FROM attachments WHERE attachment_id=? AND offering_id=? AND asset_id=? AND website_id=?)",expectedArgs:[attachment,input.revision,attachment,offer,row.asset_id,row.website_id]});
+ const result=await store.mutate(actor,offer,input,statements,{attachmentId:attachment,revision:next,draftKey:key,published:input.action==='companion-publish'},{studio:true,expectedSQL:"COALESCE((SELECT revision FROM recording_companions WHERE attachment_id=?),0)=? AND EXISTS(SELECT 1 FROM attachments WHERE attachment_id=? AND offering_id=? AND asset_id=? AND website_id IS ?)",expectedArgs:[attachment,input.revision,attachment,offer,row.asset_id,row.website_id]});
  if(staged)await env.CONTENT.put(key,staged,{httpMetadata:{contentType:'application/json'}});return result;
 }
 export async function permittedCompanionIndexes(store,media){
