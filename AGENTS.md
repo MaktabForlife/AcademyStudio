@@ -5,6 +5,12 @@
 - For paired regression tests set `ACADEMY_SOURCE=../Academy-complete-1094` explicitly. The fixture's historical default Source is older and lacks current checked-navigation/registration contracts. A successful synthetic dashboard response must include `programmeNavigation`, even when empty; retain all delayed-response security assertions.
 - Follow parent `../AGENTS.md` and `../../outputs/academy-circles-complete-release-20261101/approval.json`. Conditional paired deployment is authorised only after every applicable comment and complete tests pass. Root alone stages/deploys matching Academy API/coordinator/Pages and Studio runtime/frozen assets; no partial release or raw public-tree deployment.
 - No automatic real media attachment/publication, guessed dates, hosted scans, DNS changes, push or dependency upgrades. Use local fixtures; keep eventual live checks small. Earlier isolated release holds below are historical.
+# Complete Circles next UI composition — 1 November 2026
+
+- Active local composition is `feature/circles-next-ui-1093`, starting at the verified Source078bcc8b/Targetf4e2f3ed pair. Complete all canonical next-UI register items and the owner's later corrections, preserving the V109.3 mode-scoped routing fix and approved9043design.
+- Circles owns shared UI and the native Source Access catalogue/consumer; migration owns independent review and the bounded three-month ClassNotes summary API. Dedicated Academy editor and Studio media-linking chats own their newer native media/Teacher contracts. Build features supplied the tested editor+retention compositiond8f8b582. Integrate tested handoffs rather than duplicate native work.
+- Root has conditional approval to deploy only when all comments since V109.2 and remaining work are integrated and tested, proposedV109.4. Root owns the final matching-version Academy/Studio release and live activation; no deployment, push, hosted SQL, real media attachment/publication, notice/deletion or permission changes are authorised in this UI checkout.
+- Retain current native accounts/roles, sensitive Admin checks,43200/43200/60, exact Join window, account/epoch/ownership/unsaved guards, bounded reads and original acquired rights/media. Never ship sample bootstrap/catalogues/private author packages or infer authority from UI metadata. Keep held MOU/academic content manual and unpublished until individually authorised.
 
 # Studio media-linking continuation — completed local implementation
 
@@ -21,6 +27,11 @@ Academy API/Pages and Studio runtime/assets are deployed and verified as one rel
 Programme cards preserve selected Academy Learn/Teach/Admin through the checked native connector; Studio itself remains Learn+Admin. No new role grant, SQL, schema, content publication, recording attachment, DNS change or Git push. The old active dashboard snapshot may rebuild once; no polling or population-wide work is added. Local permission/connector/browser checks pass. Six bounded unsigned version/hash checks pass after activation; signed-in live functional acceptance is not claimed. The first rollout restored the previous pair because of a local Python certificate trust failure; the corrected normal-TLS Node checker and coordinated retry completed successfully.
 
 Follow ../AGENTS.md: Academy and Studio must always publish together. All held UI/Home, editor, retention, academic attachments and failing MOU work remain excluded. Evidence and exact rollback references: parent outputs/academy-workspace-separation-20261101/release-verification.json. Do not redeploy this release or treat its fulfilled approval as approval for later features.
+# Disposable Access UI review — local only, 1 November 2026
+
+- `feature/circles-access-ui-preview` is based on deployed Targetf4e2f3ed. The owner's Access UI request is implemented in paired Source feature/circles-access-management-ui.
+- `tools/access-management-ui-preview.mjs` runs real native Source/Target access handlers against disposable local fixtures only. It includes explicit synthetic Tafseer/MOU/Course metadata and account bootstrap for the loopback review. Never deploy that fixture catalogue, token bootstrap or local helper as a production entry.
+- No live permission, account, database, media or deployment changes. Preserve current roles/ownership,43200/43200/60 and all editor/retention/academic/MOU holds. Actual checked catalogue/Manage Access wiring remains integration work.
 
 # V109.3 targeted separation release — root owned
 

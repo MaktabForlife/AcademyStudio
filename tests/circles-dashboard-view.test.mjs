@@ -42,7 +42,7 @@ test('Admin curriculum is one checked navigation action without an activity list
  for(const adminBadge of ['Global Admin','Admin']){
   const html=dashboardHTML(summary({adminBadge,activities}));
   const section=html.split('<section class="circles-dashboard-panel circles-areas circles-curriculum">')[1].split('</section>')[0];
-  assert.equal((section.match(/data-circles-academy-action=/g)||[]).length,1);
+  assert.equal((section.match(/&quot;tool&quot;:&quot;curriculum&quot;/g)||[]).length,1);assert(section.includes('Manage Access'));assert(section.includes('&quot;tool&quot;:&quot;access&quot;'));
   assert(section.includes('Manage Curriculum'));assert(section.includes('&quot;tool&quot;:&quot;curriculum&quot;'));
   assert(!section.includes('<ul>'));assert(!section.includes('Private programme'));assert(!section.includes('Private course'));
   assert(!html.includes('Manage programmes and courses'));
@@ -50,5 +50,13 @@ test('Admin curriculum is one checked navigation action without an activity list
  for(const mode of ['learn','teach']){
   const html=dashboardHTML(summary({mode,activities})),section=panel(html,mode==='learn'?'Continue learning':'Continue teaching');
   assert(section.includes('Private programme'));assert(section.includes('Private course'));assert(!html.includes('circles-curriculum'));
+ }
+});
+
+test('Arabic Adventures is visible only for a verified Global Admin in checked Learn mode',()=>{
+ for(const mode of ['learn','teach','admin'])for(const globalAdmin of [true,false,undefined]){
+  const html=dashboardHTML(summary({mode,adminBadge:'Global Admin',availableModes:['learn','teach','admin']}),{globalAdmin});
+  assert.equal(html.includes('data-circles-arabic-coming-soon'),mode==='learn'&&globalAdmin===true);
+  assert(!html.includes('ARABIC_ADVENTURES'));assert(!html.includes('tool&quot;:&quot;arabic'));
  }
 });

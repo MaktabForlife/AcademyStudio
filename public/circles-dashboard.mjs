@@ -12,7 +12,7 @@ export function circlesDashboard({onUpdate,openAcademy,show=()=>true,onWorkspace
   let host=document.getElementById('circles-dashboard');if(!signed||!show()){host?.remove();return;}if(!hero)return;
   if(!host){host=document.createElement('section');host.id='circles-dashboard';host.className='circles-dashboard';host.setAttribute('aria-label','Your Academy dashboard');}
   const anchor=document.querySelector('#programmes.circles-dashboard-courses')||hero;if(anchor.nextElementSibling!==host)anchor.after(host);
-  const html=data&&!pending?dashboardHTML(data):`<div class="circles-dashboard-panel"><h2>Your Academy dashboard</h2><p role="status">${pending?'Loading your Academy dashboard…':'Your dashboard could not be loaded.'}</p>${error?'<p>Open Academy or try again to check your dashboard.</p>':''}<button type="button" data-circles-dashboard-refresh${pending?' disabled':''}>${pending?'Loading…':'Try again'}</button><button type="button" data-circles-dashboard-home>Open Academy</button></div>`;
+  const html=data&&!pending?dashboardHTML(data,{globalAdmin:identity.account?.globalAdmin===true}):`<div class="circles-dashboard-panel"><h2>Your Academy dashboard</h2><p role="status">${pending?'Loading your Academy dashboard…':'Your dashboard could not be loaded.'}</p>${error?'<p>Open Academy or try again to check your dashboard.</p>':''}<button type="button" data-circles-dashboard-refresh${pending?' disabled':''}>${pending?'Loading…':'Try again'}</button><button type="button" data-circles-dashboard-home>Open Academy</button></div>`;
   if(renderedHost!==host||renderedHTML!==html){renderedHost=host;renderedHTML=html;host.innerHTML=html;}
  }
  function request(selected,force,generation,accountId){
@@ -32,6 +32,14 @@ export function circlesDashboard({onUpdate,openAcademy,show=()=>true,onWorkspace
  document.addEventListener('click',event=>{
   if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
   const choice=event.target.closest('[data-circles-workspace]');if(choice){event.preventDefault();event.stopImmediatePropagation();onWorkspace();if(choice.dataset.circlesWorkspace!==mode)void load(choice.dataset.circlesWorkspace);return;}
+  if(event.target.closest('[data-circles-arabic-coming-soon]')){
+   event.preventDefault();event.stopImmediatePropagation();
+   if(pending||identity.account?.globalAdmin!==true||mode!=='learn'||data?.mode!=='learn')return;
+   const host=document.getElementById('circles-dashboard');if(!host)return;
+   let dialog=host.querySelector('[data-circles-arabic-dialog]');
+   if(!dialog){dialog=document.createElement('dialog');dialog.dataset.circlesArabicDialog='';dialog.className='circles-dashboard-panel';dialog.setAttribute('aria-labelledby','circles-arabic-title');dialog.innerHTML='<p class="eyebrow">COMING SOON</p><h2 id="circles-arabic-title">Arabic Adventures</h2><p>Falling in love with the language of the Qur’an.</p><p>Programme details will be available here.</p><form method="dialog"><button type="submit" class="circles-dashboard-link">Close</button></form>';host.append(dialog);}
+   dialog.showModal();return;
+  }
   if(event.target.closest('[data-circles-dashboard-refresh]')){event.preventDefault();event.stopImmediatePropagation();void load(mode,true);return;}
   if(event.target.closest('[data-circles-dashboard-home]')){event.preventDefault();event.stopImmediatePropagation();openAcademy(null,{mode:mode||'learn',tool:'home'});return;}
   const action=event.target.closest('[data-circles-academy-action]');if(action){event.preventDefault();event.stopImmediatePropagation();openAcademy(null,JSON.parse(action.dataset.circlesAcademyAction));}
