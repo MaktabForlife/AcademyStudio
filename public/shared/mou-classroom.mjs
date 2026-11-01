@@ -1,6 +1,6 @@
 import {esc} from './model.mjs';
 import {headerIcon} from './header-icons.mjs';
-import {mouSubjects,mouSubjectsHTML} from './mou-subjects.mjs';
+import {mouSubjects} from './mou-subjects.mjs';
 import {comingSoonLabel} from './course-notices.mjs';
 
 const invalid=()=>{throw Error('The classroom response needs to be refreshed.');};
@@ -48,7 +48,8 @@ export function normalizeMouClassroom(input,{accountId,epoch=null}={}){
   if(subject.state!=='COMING_SOON'||subject.availabilityLabel!==comingSoonLabel||subject.website!==null)invalid();
   return {...plan,state:'COMING_SOON',website:null};
  });
- if(materialsConnected!==normalizedSubjects.some(s=>s.website?.canOpen))invalid();
+ const playlistIds=new Set(),playlists=list(value.playlists||[],100).map(row=>{object(row);const id=stableId(row.id),websiteId=stableId(row.websiteId),href='/studio/?website='+encodeURIComponent(websiteId);if(pending||playlistIds.has(id)||row.href!==href||!Number.isSafeInteger(row.recordings)||row.recordings<0)invalid();playlistIds.add(id);const canListen=boolean(row.canListen),canRead=boolean(row.canRead);if(!canListen&&!canRead)invalid();return {id,websiteId,title:text(row.title),closeDate:row.closeDate===null?null:/^\d{4}-\d{2}-\d{2}$/.test(text(row.closeDate,10))?row.closeDate:invalid(),recordings:row.recordings,canListen,canRead,href};});
+ if(materialsConnected!==(normalizedSubjects.some(s=>s.website?.canOpen)||playlists.length>0))invalid();
  const timetableState=oneOf(timetable.state,['NOT_CONNECTED','PENDING','NO_UPCOMING_SESSIONS','PUBLISHED','LIVE_ACCESS_REQUIRED']),serverTime=timestamp(timetable.serverTime);
  const seen=new Set(),sessions=list(timetable.sessions,50).map(session=>{
   object(session);const id=stableId(session.id);if(seen.has(id))invalid();seen.add(id);
@@ -63,7 +64,7 @@ export function normalizeMouClassroom(input,{accountId,epoch=null}={}){
  const management=value.management===undefined?{canManage:false,requiresAuthorityRefresh:false}:object(value.management);
  const canManage=boolean(management.canManage),requiresAuthorityRefresh=boolean(management.requiresAuthorityRefresh);
  if(value.management!==undefined&&(management.authority!=='ACADEMY_PROXY'||management.offeringId!==offeringId)||requiresAuthorityRefresh&&!canManage||pending&&canManage)invalid();
- return {schema:value.schema,context:{accountId:context.accountId,epoch:context.epoch},programme:{state,offeringId,authority},monthly:{state:monthlyState,month:currentMonth,hasCurrentMonth,hasRetainedMonths},materialsConnected,subjects:normalizedSubjects,management:{canManage,requiresAuthorityRefresh},timetable:{state:timetableState,serverTime,sessions}};
+ return {schema:value.schema,context:{accountId:context.accountId,epoch:context.epoch},programme:{state,offeringId,authority},monthly:{state:monthlyState,month:currentMonth,hasCurrentMonth,hasRetainedMonths},materialsConnected,subjects:normalizedSubjects,playlists,management:{canManage,requiresAuthorityRefresh},timetable:{state:timetableState,serverTime,sessions}};
 }
 
 export const mouJoinIsOpen=(session,now)=>session.eligibleToJoin&&now>=session.joinOpensAt&&now<session.endsAt&&now<session.eligibilityExpiresAt;
@@ -73,9 +74,10 @@ const timetableMessages={NOT_CONNECTED:'Published classes are being connected.',
 function subjectsHTML(subjects){
  return `<section class="mou-subjects" aria-labelledby="mou-subjects-title"><h2 id="mou-subjects-title">Programme content</h2><div class="card-grid">${subjects.map(subject=>`<article class="card mou-subject-card">${subject.first?'<p class="eyebrow">FIRST SUBJECT</p>':''}<h3>${esc(subject.title)}</h3>${subject.state==='COMING_SOON'?'<p>Coming soon <span lang="ar" dir="rtl">إن شاء الله</span></p>':subject.website?.canOpen?`<p><a data-circles-website="${esc(subject.website.id)}" href="${esc(subject.website.href)}">Open recordings →</a></p>`:`<p>${subject.state==='LOCKED'?'Content is not available with your current access.':'This subject is being prepared.'}</p>`}${subject.website?.canEdit?`<a href="${esc(subject.website.editorHref)}">Edit website →</a>`:''}</article>`).join('')}</div></section>`;
 }
+function playlistsHTML(playlists=[]){return '<section class="mou-playlists" aria-labelledby="mou-playlists-title"><h2 id="mou-playlists-title">Your playlists</h2>'+(playlists.length?'<div class="card-grid">'+playlists.map(p=>'<article class="card mou-subject-card"><h3>'+esc(p.title)+'</h3><p>'+p.recordings+' '+(p.recordings===1?'recording':'recordings')+'</p><p><a data-circles-website="'+esc(p.websiteId)+'" href="'+esc(p.href)+'">'+(p.canListen?'Listen and reflect':'Read playlist materials')+' →</a></p></article>').join('')+'</div>':'<p>Your published playlists will appear here when they are included in your access.</p>')+'</section>';}
 export function renderMouClassroom({phase='loading',classroom=null,now=Date.now(),joiningId=null,error=''}={}){
  const heading=`<header class="card"><p class="eyebrow">YOUR CLASSROOM</p><h1>Mothers of the Ummah</h1><button type="button" data-mou-refresh aria-label="Refresh Mothers of the Ummah"${phase==='loading'?' disabled':''}>${headerIcon('refresh')}</button></header>`;
- if(!classroom)return `<section class="mou-programme">${heading}<p role="status">${esc(error||(phase==='loading'?'Loading your classroom…':'Your classroom is unavailable. Refresh to check your access.'))}</p>${mouSubjectsHTML()}<p><a data-circles-dashboard-home href="/?dashboard=1">Return to Circles</a></p></section>`;
+ if(!classroom)return `<section class="mou-programme">${heading}<p role="status">${esc(error||(phase==='loading'?'Loading your classroom…':'Your classroom is unavailable. Refresh to check your access.'))}</p><section class="mou-playlists"><h2>Your playlists</h2><p>Your available playlists will appear after your access is checked.</p></section><p><a data-circles-dashboard-home href="/?dashboard=1">Return to Circles</a></p></section>`;
  const {monthly,timetable,management}=classroom;
  const monthlyText=monthly.state==='NOT_CONNECTED'?'Your monthly programme access is being connected.':(monthly.hasCurrentMonth?'Monthly access is recorded for ':'No monthly access is recorded for ')+monthLabel(monthly.month)+'.';
  const sessions=timetable.sessions.map(session=>{
@@ -83,7 +85,7 @@ export function renderMouClassroom({phase='loading',classroom=null,now=Date.now(
   const message=now>=session.endsAt?'This class has ended.':!session.eligibleToJoin?'Live class access is unavailable.':now>=session.eligibilityExpiresAt?'Refresh to check your class access.':now<session.joinOpensAt?'Join opens five minutes before class.':'Join is unavailable.';
   return `<article class="card"><h3>${esc(session.title)}</h3><p><time datetime="${new Date(session.startsAt).toISOString()}">${esc(dateLabel(session.startsAt,session.timezone))}</time> – <time datetime="${new Date(session.endsAt).toISOString()}">${esc(dateLabel(session.endsAt,session.timezone))}</time><br><small>${esc(session.timezone)}</small></p>${details.length?`<p>${details.map(esc).join(' · ')}</p>`:''}${open?`<button type="button" class="primary" data-mou-join="${esc(session.id)}"${joiningId?' disabled':''}>${joiningId===session.id?'Opening class…':'Join class'}</button>`:`<p>${message}</p>`}</article>`;
  }).join('');
- return `<section class="mou-programme">${heading}${error?`<p role="status">${esc(error)}</p>`:''}<section class="card" aria-labelledby="mou-monthly-title"><h2 id="mou-monthly-title">Monthly access</h2><p>${esc(monthlyText)}</p>${monthly.hasRetainedMonths?'<p>Access for your recorded months is retained.</p>':''}${management.canManage?'<button type="button" data-academy-management>Manage programme →</button>':''}</section>${subjectsHTML(classroom.subjects)}<section aria-labelledby="mou-timetable-title"><h2 id="mou-timetable-title">Published classes</h2>${sessions?`<div class="card-grid">${sessions}</div>`:`<p>${timetableMessages[timetable.state]}</p>`}</section><p><a data-circles-dashboard-home href="/?dashboard=1">Return to Circles</a></p></section>`;
+ return `<section class="mou-programme">${heading}${error?`<p role="status">${esc(error)}</p>`:''}<section class="card" aria-labelledby="mou-monthly-title"><h2 id="mou-monthly-title">Monthly access</h2><p>${esc(monthlyText)}</p>${monthly.hasRetainedMonths?'<p>Access for your recorded months is retained.</p>':''}${management.canManage?'<button type="button" data-academy-management>Manage programme →</button>':''}</section>${playlistsHTML(classroom.playlists)}${subjectsHTML(classroom.subjects.filter(s=>s.website))}<section aria-labelledby="mou-timetable-title"><h2 id="mou-timetable-title">Published classes</h2>${sessions?`<div class="card-grid">${sessions}</div>`:`<p>${timetableMessages[timetable.state]}</p>`}</section><p><a data-circles-dashboard-home href="/?dashboard=1">Return to Circles</a></p></section>`;
 }
 
 // A single account-bound request supplies the entire classroom. Timers only

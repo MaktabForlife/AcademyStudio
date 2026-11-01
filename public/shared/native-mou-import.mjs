@@ -62,8 +62,9 @@ export async function assertMouPreflight(plan,fresh){
  for(const current of fresh.subjects){if(plan.preflight.subjects.some(s=>s.display_key===current.display_key))continue;const item=plan.items.find(i=>i.subject===current.display_key),created=plan.requests.find(r=>r.body.action==='website-create'&&r.body.websiteId===item?.websiteId);check(item&&created&&current.website_id===item.websiteId&&current.revision===1&&current.enabled,'A new subject changed outside this exact import.');const expected='websites/'+item.websiteId+'/versions/'+await hash(created.body.document)+'.json';check(current.draft_key===expected&&current.published_key===expected,'Preserve the current subject draft and publication.');}
  for(const a of fresh.assets){const item=plan.items.find(i=>i.videoId===a.youtube_id);check(item&&a.asset_id===item.assetId,'A source asset changed or has duplicate native identities.');if(a.attachment_id)check(a.attachment_id===item.attachmentId&&a.website_id===item.websiteId&&a.lesson_id===item.lessonId&&a.lesson_date===item.recordedDate&&a.cohort===item.cohort,'Preserve the existing native recording association.');const key=`websites/${item.websiteId}/recordings/${item.assetId}/companions/${item.learnerSha256}.json`;if(a.companion_draft_key)check(a.companion_draft_key===key&&a.source_revision===item.sourceRevision,'Preserve the saved companion edit.');if(a.companion_published_key)check(a.companion_published_key===key,'Preserve the current companion publication.');}
 }
-export async function executeNativeMouPlan(plan,{api,current=()=>{},report=()=>{}}){
- const review=await reviewNativeMouPlan(plan);check(review.canExecute,'Export the current native preflight and rebuild this template before importing.');current();const fresh=await api(mouPreflightPath(plan));current();await assertMouPreflight(plan,fresh);current();
- for(const [index,step]of plan.requests.entries()){current();report('Attaching reviewed MOU lessons · step '+(index+1)+' of '+plan.requests.length);current();await api(step.path,{body:step.body});current();}
- report('The four reviewed MOU lessons are attached and published. Academic sessions remain held.');return {completed:4,steps:plan.requests.length};
+// Historical packages remain readable for identity/receipt reconciliation. New
+// MOU publication is always the explicit per-lesson Teacher/playlist workflow.
+export async function executeNativeMouPlan(plan,{current=()=>{}}){
+ await reviewNativeMouPlan(plan);current();
+ throw Error('Use the per-lesson MOU review: choose a playlist and Teacher, attach privately, then publish one lesson at a time.');
 }

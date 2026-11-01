@@ -42,7 +42,7 @@ export function mouLessonState(plan,item,facts){
  return {website,subject,asset,attribution,attached,published,label:published?'Published':attached?'Attached privately':asset?.attachment_id?'Partly attached':'Ready to attach'};
 }
 
-export async function runMouLesson({plan,itemId,phase,teacherIds,api,current=()=>{},report=()=>{}}){
+export async function runMouLesson({plan,itemId,phase,teacherIds,playlistId,api,current=()=>{},report=()=>{}}){
  check(['attach','publish'].includes(phase),'Choose Attach privately or Publish this lesson.');
  const reviewed=await reviewMouCatalogue(plan),item=reviewed.find(r=>r.editorialLessonId===itemId);check(item,'Choose a prepared lesson.');current();
  const fresh=await api('/api/admin/'+encodeURIComponent(plan.preflight.offeringId)+'/prepared-recordings');current();
@@ -50,16 +50,20 @@ export async function runMouLesson({plan,itemId,phase,teacherIds,api,current=()=
  const state=mouLessonState(plan,item,fresh.facts);if(state.published)return {published:true,unchanged:true};
  const selected=teacherIds|| (state.attribution?JSON.parse(state.attribution.draft_json).teacherIds:[]);check(Array.isArray(selected)&&selected.length>0&&selected.length<=10,'Choose a checked registered Teacher before continuing.');
  const choices=await api('/api/admin/'+encodeURIComponent(fresh.facts.offeringId)+'/media-options');current();check(selected.every(id=>choices.teachers.some(t=>t.id===id)),'Choose a current checked registered Teacher.');
+ const savedPlaylist=state.attribution?JSON.parse(state.attribution.draft_json).playlist?.id:null;const selectedPlaylist=playlistId||savedPlaylist;check(selectedPlaylist&&(choices.playlists||[]).some(p=>p.id===selectedPlaylist),'Choose a MOU playlist before attaching or publishing.');if(savedPlaylist)check(savedPlaylist===selectedPlaylist,'Preserve the saved playlist selection.');
  const step=action=>{const row=item.steps.find(r=>r.body.action===action);check(row,'The reviewed step is missing.');return row;};
  let actions;
  if(phase==='attach')actions=[...(!state.website?['website-create']:[]),...(!state.asset?['youtube']:[]),...(!state.asset?.attachment_id?['attachment']:[]),...(!state.subject?['mou-subject']:[]),...(!state.asset?.companion_draft_key?['companion-save']:[])];
  else {check(state.attached,'Attach this lesson privately and review it before publishing.');check(state.attribution,'Save a checked registered Teacher before publishing.');actions=[...(!state.website.enabled?['publish']:[]),...(!state.asset.companion_published_key?['companion-publish']:[])];}
- for(const action of actions){current();report(action==='recording-publication'?'Publishing this lesson…':phase==='attach'?'Attaching privately…':'Publishing the reviewed lesson…');const request=step(action);await api(request.path,{body:request.body});current();}
+ for(const action of actions){current();report(action==='recording-publication'?'Publishing this lesson…':phase==='attach'?'Attaching privately…':'Publishing the reviewed lesson…');const request=step(action);const body=action==='attachment'?{...request.body,action:'media-attach',teacherIds:selected,playlistId:selectedPlaylist}:request.body;await api(request.path,{body});current();}
  current();
- if(phase==='attach'&&!state.attribution){
-  const operationId='mou-teacher-'+(await hash([item.attachmentId,selected])).slice(0,48);
-  await api('/api/admin/'+encodeURIComponent(fresh.facts.offeringId),{body:{action:'media-attribution-save',operationId,attachmentId:item.attachmentId,revision:0,teacherIds:selected}});current();
- }else if(phase==='attach'&&JSON.stringify([...selected].sort())!==JSON.stringify(JSON.parse(state.attribution.draft_json).teacherIds.slice().sort()))throw Error('Preserve the saved Teacher attribution; edit it separately.');
+ if(phase==='attach'){
+  const updated=await api('/api/admin/'+encodeURIComponent(fresh.facts.offeringId)+'/prepared-recordings');current();const latest=mouLessonState(plan,item,updated.facts),attribution=latest.attribution;
+  if(!attribution||!JSON.parse(attribution.draft_json).playlist?.id){
+   const operationId='mou-teacher-'+(await hash([item.attachmentId,selected,selectedPlaylist,attribution?.revision||0])).slice(0,48);
+   await api('/api/admin/'+encodeURIComponent(fresh.facts.offeringId),{body:{action:'media-attribution-save',operationId,attachmentId:item.attachmentId,revision:attribution?.revision||0,teacherIds:selected,playlistId:selectedPlaylist}});current();
+  }else if(JSON.stringify([...selected].sort())!==JSON.stringify(JSON.parse(attribution.draft_json).teacherIds.slice().sort()))throw Error('Preserve the saved Teacher attribution; edit it separately.');
+ }
  if(phase==='publish'){
   const saved=state.attribution;
   await api('/api/admin/'+encodeURIComponent(fresh.facts.offeringId),{body:{action:'media-publication',operationId:'mou-publish-'+(await hash([item.attachmentId,saved.revision,saved.draft_json])).slice(0,48),attachmentId:item.attachmentId,revision:saved.revision,draftContext:saved.draft_json,sourceRevision:item.sourceRevision,companionKey:item.companionKey}});current();

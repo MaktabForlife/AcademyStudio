@@ -11,10 +11,10 @@ function harness(request){
  return {controller,identity,calls,views,destinations,timers,setActive:value=>{active=value;},advance:time=>{clock=time;const due=[...timers].filter(([,t])=>t.at<=time);for(const [id,timer]of due){timers.delete(id);timer.fn();}}};
 }
 
-test('pending MOU response displays ten inert subjects without granting months, materials or Join',()=>{
+test('pending MOU response keeps legacy identities inert while the new independent playlist UI waits for access',()=>{
  const data=normalize(mouFixture()),html=renderMouClassroom({phase:'ready',classroom:data,now:fixtureTime});
  assert.equal(data.subjects.length,10);assert.equal(data.subjects.filter(s=>s.first).length,1);
- assert.equal((html.match(/Coming soon <span/g)||[]).length,9);
+ assert.equal((html.match(/Coming soon <span/g)||[]).length,0);assert.match(html,/Your playlists/);
  assert.match(html,/monthly programme access is being connected/);assert.match(html,/Published classes are being connected/);
  assert.doesNotMatch(html,/data-mou-join|data-circles-website|\/builder\/|data-academy-management|recorded for October/);
 });
@@ -94,4 +94,9 @@ test('cancelled/denied Join and unsafe destinations clear old actions and never 
 
 test('a synchronous load failure is handled without retaining private state or an unhandled promise',async()=>{
  const h=harness(()=>{throw Error('Network unavailable');});assert.equal(await h.controller.load(),null);assert.equal(h.controller.state().phase,'unavailable');assert.equal(h.controller.state().classroom,null);
+});
+
+test('independent playlist names, counts and links use the current account DTO without fixed subject identities',()=>{
+ const value=mouFixture({connected:true});value.materialsConnected=true;value.playlists=[{id:'playlist-one',websiteId:'playlist-one',title:'Surah Baqarah — Part 1',closeDate:'2026-10-15',recordings:4,canListen:true,canRead:true,href:'/studio/?website=playlist-one'},{id:'playlist-two',websiteId:'playlist-two',title:'Riyadus Saliheen — Part 1',closeDate:null,recordings:2,canListen:false,canRead:true,href:'/studio/?website=playlist-two'}];
+ const data=normalize(value),html=renderMouClassroom({phase:'ready',classroom:data});assert.equal(data.playlists.length,2);assert.match(html,/Surah Baqarah — Part 1/);assert.match(html,/Riyadus Saliheen — Part 1/);assert.match(html,/4 recordings/);assert.match(html,/Read playlist materials/);value.playlists[0].href='https://elsewhere.test/';assert.throws(()=>normalize(value));
 });

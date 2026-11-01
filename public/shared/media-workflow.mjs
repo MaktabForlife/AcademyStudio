@@ -24,7 +24,7 @@ export async function saveMediaDraft({pending:p,api,path,current=()=>{},report=(
   await api(path+'/recording',{body:{action:'complete',operationId:p.uploadCompleteOperation,assetId:p.assetId,parts:p.parts}});checked();
  }
  for(const support of p.supports){checked();report('Saving supporting file: '+support.file.name);await api(path+'/files?'+new URLSearchParams({assetId:support.assetId,operationId:support.operationId,filename:support.file.name}),{method:'PUT',body:support.file});checked();}
- await api(path,{body:{action:'media-attach',operationId:p.attachOperation,attachmentId:p.attachmentId,assetId:p.assetId,title:input.title,teacherIds:input.teacherIds,websiteId:input.websiteId||null,cohort:input.cohort||'',lessonDate:input.lessonDate||'',supportingFiles:p.supports.map(s=>({assetId:s.assetId,attachmentId:s.attachmentId}))}});checked();
+ await api(path,{body:{action:'media-attach',operationId:p.attachOperation,attachmentId:p.attachmentId,assetId:p.assetId,title:input.title,teacherIds:input.teacherIds,playlistId:input.playlistId||null,websiteId:input.websiteId||null,cohort:input.cohort||'',lessonDate:input.lessonDate||'',supportingFiles:p.supports.map(s=>({assetId:s.assetId,attachmentId:s.attachmentId}))}});checked();
  report('Saving the reviewed summary and topic guide…');await api(path,{body:{action:'media-companion-save',operationId:p.companionOperation,attachmentId:p.attachmentId,revision:0,durationSeconds:input.durationSeconds,companion:input.companion}});checked();return {attachmentId:p.attachmentId};
 }
 export async function publishMediaDraft({detail,operations,api,path,current=()=>{}}){

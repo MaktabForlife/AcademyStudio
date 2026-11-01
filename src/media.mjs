@@ -2,8 +2,9 @@ import {accessGate} from './access.mjs';
 import {fail,id} from './protocol.mjs';
 import {websiteAccess} from './content.mjs';
 import {recordedAssetAccess} from './recorded-support.mjs';
+import {playlistMediaAccess} from './mou-playlists.mjs';
 export async function mediaGate(store,actor,attachmentId,{admin=false}={}){
- const row=await store.first(`SELECT x.*,o.object_key,o.mime_type,o.filename,o.byte_size,o.youtube_id,f.kind,f.active,p.purchased,s.role,(SELECT access_model FROM course_access_models m WHERE m.offering_id=f.offering_id) access_model,
+ const row=await store.first(`SELECT x.*,o.object_key,o.mime_type,o.filename,o.byte_size,o.youtube_id,f.kind,f.active,p.purchased,s.role,(SELECT programme_key FROM programme_offerings WHERE offering_id=x.offering_id) programme_key,EXISTS(SELECT 1 FROM mou_playlist_only_media WHERE attachment_id=x.attachment_id) playlist_only,(SELECT access_model FROM course_access_models m WHERE m.offering_id=f.offering_id) access_model,
   EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=? AND m.offering_id=x.offering_id AND m.month=substr(x.lesson_date,1,7) AND m.cohort=x.cohort) paid
   FROM attachments x JOIN objects o USING(asset_id) JOIN offerings f USING(offering_id)
   LEFT JOIN participation p ON p.account_id=? AND p.offering_id=x.offering_id
@@ -13,7 +14,7 @@ export async function mediaGate(store,actor,attachmentId,{admin=false}={}){
  if(!row.published)throw fail('This attachment is not published.',404);
  const staff=actor.global_admin||row.role==='ADMIN'||row.role==='TEACHER';
  if(row.audience==='WEBSITE'){const website=await websiteAccess(store,actor,row.website_id);if(!await store.first('SELECT asset_id FROM published_assets WHERE website_id=? AND asset_id=?',[row.website_id,row.asset_id]))throw fail('This file is not in the published website.',404);await recordedAssetAccess(store.env,store,actor,website,row.asset_id);}
- else if(!staff&&!(row.kind==='COURSE'&&(row.purchased||row.access_model==='FREE')||row.kind==='TAFSEER'&&row.paid))throw fail('This lesson requires its own material rights.',403);
+ else if(!staff&&!(row.kind==='COURSE'&&(row.purchased||row.access_model==='FREE')||row.kind==='TAFSEER'&&(!row.playlist_only&&row.paid||row.programme_key==='mothers'&&await playlistMediaAccess(store,actor,row))))throw fail('This lesson requires its own material rights.',403);
  return row;
 }
 export async function streamMedia(env,row,request){

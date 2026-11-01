@@ -4,16 +4,20 @@ import {recordingAttachmentFixture} from './recording-attachment-fixture.mjs';
 import {buildNativeMouPackage} from '../tools/native-mou-attachment-package.mjs';
 import {mouOffering} from '../public/shared/native-mou-import.mjs';
 import {preparedMouKey} from '../src/prepared-recordings.mjs';
-import {reviewMouCatalogue,runMouLesson,mouLessonState} from '../public/shared/mou-prepared-review.mjs';
+import {sha256} from '../src/protocol.mjs';
+import {reviewMouCatalogue,runMouLesson as executeMouLesson,mouLessonState} from '../public/shared/mou-prepared-review.mjs';
+const selectedPlaylists=new WeakMap();const runMouLesson=options=>executeMouLesson({...options,playlistId:options.playlistId||selectedPlaylists.get(options.plan)});
 const ok=r=>{assert.equal(r.status,200,JSON.stringify(r.body));return r.body;};
 async function setup(){
- const f=await recordingAttachmentFixture({nativeTeacherChoices:[{id:'teacher',name:'Checked synthetic Teacher'}],attach:false,authorityMode:'ACADEMY',offeringId:mouOffering,cohort:'CLS-39751608-d213-4c66-a4d5-dccfbbeb1c57'});
+ const f=await recordingAttachmentFixture({nativeTeacherChoices:[{id:'teacher',name:'Checked synthetic Teacher'}],nativeMediaClasses:[{id:'CLS-39751608-d213-4c66-a4d5-dccfbbeb1c57',name:'Original MOU recorded class'}],attach:false,authorityMode:'ACADEMY',offeringId:mouOffering,cohort:'CLS-39751608-d213-4c66-a4d5-dccfbbeb1c57'});
  try{
   const q=new URLSearchParams();for(const l of f.packages.lessons.filter(l=>l.kind==='studio'))q.append('source',new URL(l.sourceURL).searchParams.get('v'));
   const preflight=ok(await f.request('/api/admin/'+f.offer+'/recording-attachments?'+q,{cookie:f.admin}));
   const plan=buildNativeMouPackage({preflight,...f.packages});await f.content.put(preparedMouKey(f.offer),JSON.stringify(plan));
   const calls=[],api=async(path,{body}={})=>{const call={path,action:body?.action};calls.push(call);const r=await f.request(path,{cookie:f.admin,...(body?{method:'POST',body}:{})});Object.assign(call,{rowsRead:r.reads,queries:r.queries,rowsWritten:Number(r.response.headers.get('X-Local-D1-Rows-Written'))});if(r.status!==200)throw Object.assign(Error(r.body.error),{status:r.status,code:r.body.code});return r.body;};
-  return {f,plan,api,calls,queue:()=>api('/api/admin/'+f.offer+'/prepared-recordings')};
+  const table=await api('/api/admin/'+f.offer+'/playlists'),playlistId=crypto.randomUUID();await api('/api/admin/'+f.offer,{body:{action:'mou-playlist-save',operationId:crypto.randomUUID(),playlistId,name:'Prepared review — Part 1',closeDate:'2026-08-15',revision:table.revision,playlistRevision:0,websiteRevision:0}});selectedPlaylists.set(plan,playlistId);await f.native('/api/admin/'+f.offer,{action:'paid-months',changes:[{accountId:'learner',month:'2026-08',cohort:'playlist-payment',paid:true}]});
+  const publishPlaylist=async()=>{const table=await api('/api/admin/'+f.offer+'/playlists'),row=table.playlists.find(p=>p.id===playlistId);return api('/api/admin/'+f.offer,{body:{action:'mou-playlist-publication',operationId:crypto.randomUUID(),playlistId,published:true,revision:table.revision,playlistRevision:row.revision,websiteRevision:row.websiteRevision}});};
+  return {f,plan,api,calls,playlistId,publishPlaylist,queue:()=>api('/api/admin/'+f.offer+'/prepared-recordings')};
  }catch(e){await f.close();throw e;}
 }
 test('four private reviews require current scoped Admin authority and contain no learner/public data endpoint',async t=>{
@@ -23,19 +27,24 @@ test('four private reviews require current scoped Admin authority and contain no
  await f.run('UPDATE accounts SET verified_at=0 WHERE account_id=?','admin');assert.equal((await f.request('/api/admin/'+f.offer+'/prepared-recordings',{cookie:f.admin})).status,401);
 });
 test('resume the prior three private steps, attach without publication, then publish only one lesson with safe exact retries',async t=>{
- const {f,plan,api,queue,calls}=await setup();t.after(()=>f.close());const first=plan.items[0];
- for(const row of plan.requests.slice(0,3))await api(row.path,{body:row.body});
+ const {f,plan,api,queue,calls,publishPlaylist}=await setup();t.after(()=>f.close());const first=plan.items[0];
+ for(const row of plan.requests.slice(0,2))await api(row.path,{body:row.body});
+ // Preserve the exact prior private attachment from the pre-playlist release.
+ const legacy=plan.requests[2].body;await f.run('INSERT INTO attachments VALUES(?,?,?,?,?,?,?,?,?,0)',legacy.attachmentId,f.offer,legacy.websiteId,legacy.assetId,legacy.lessonId,legacy.lessonDate,legacy.cohort,legacy.title,legacy.audience);
+ await f.run('INSERT INTO operations VALUES(?,?,?,?,?)',legacy.operationId,'admin',await sha256(JSON.stringify({scope:f.offer,input:legacy})),JSON.stringify({saved:true}),Date.now());const priorReceipt=await f.db.prepare('SELECT * FROM operations WHERE operation_id=?').bind(legacy.operationId).first();
  const before=JSON.stringify(await f.db.prepare('SELECT * FROM websites WHERE website_id=?').bind(f.baqarah.websiteId).first());
  await assert.rejects(runMouLesson({plan,teacherIds:['teacher'],itemId:first.editorialLessonId,phase:'publish',api}),/Attach this lesson privately/);
  await runMouLesson({plan,teacherIds:['teacher'],itemId:first.editorialLessonId,phase:'attach',api});
  let fresh=await queue(),item=(await reviewMouCatalogue(plan))[0],state=mouLessonState(plan,item,fresh.facts);assert(state.attached&&!state.published);assert.equal(state.website.enabled,0);assert.equal(state.asset.companion_published_key,null);
- for(const path of ['/api/websites/'+first.websiteId,'/api/media/'+first.attachmentId,'/api/media/'+first.attachmentId+'/companion'])assert.equal((await f.request(path,{cookie:f.learner})).status,404);
+ for(const path of ['/api/websites/'+first.websiteId,'/api/media/'+first.attachmentId,'/api/media/'+first.attachmentId+'/companion'])assert([403,404].includes((await f.request(path,{cookie:f.learner})).status));
  const writes=calls.filter(c=>c.action).length;await runMouLesson({plan,teacherIds:['teacher'],itemId:first.editorialLessonId,phase:'attach',api});assert.equal(calls.filter(c=>c.action).length,writes);
  await runMouLesson({plan,teacherIds:['teacher'],itemId:first.editorialLessonId,phase:'publish',api});await runMouLesson({plan,teacherIds:['teacher'],itemId:first.editorialLessonId,phase:'publish',api});
  fresh=await queue();assert(mouLessonState(plan,item,fresh.facts).published);
  assert.equal((await f.db.prepare('SELECT count(*) n FROM attachments WHERE website_id<>?').bind(f.baqarah.websiteId).first()).n,1);
  assert.equal((await f.db.prepare('SELECT count(*) n FROM recording_companions WHERE published_key IS NOT NULL').first()).n,1);
  assert.equal(JSON.stringify(await f.db.prepare('SELECT * FROM websites WHERE website_id=?').bind(f.baqarah.websiteId).first()),before);
+ assert.deepEqual(await f.db.prepare('SELECT * FROM operations WHERE operation_id=?').bind(legacy.operationId).first(),priorReceipt,'The original partial attachment operation receipt is unchanged');
+ await publishPlaylist();
  const companion=ok(await f.request('/api/media/'+first.attachmentId+'/companion',{cookie:f.learner}));assert.equal(companion.summary,item.companion.summary);assert.equal(companion.quotations.length,0);
  const other=(await f.login('grant-only')).cookie;await f.run("INSERT INTO website_months VALUES('grant-only',?,'2026-10')",f.offer);assert.equal((await f.request('/api/media/'+first.attachmentId+'/companion',{cookie:other})).status,403);
 });

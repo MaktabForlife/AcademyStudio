@@ -48,6 +48,7 @@ export async function recordingAttachmentPreflight(store,offer,videoIds){
 export async function publishRecordingAttachment(store,actor,offer,input){
  const row=await mediaGate(store,actor,id(input.attachmentId),{admin:true});if(row.offering_id!==offer)throw fail('Choose this programme’s recording.',403);
  const replay=await store.replay(actor.account_id,input.operationId,await store.requestHash(offer,input));if(replay)return replay;
+ if(row.programme_key==='mothers')throw fail('Review the recorded Teacher and explicit playlist in the checked media form before publishing.',409,'PLAYLIST_REQUIRED');
  for(const [field,key] of [['asset_id','assetId'],['website_id','websiteId'],['lesson_id','lessonId'],['lesson_date','lessonDate'],['cohort','cohort']])if(row[field]!==input[key])throw fail('The recording association changed; preserve the current saved entry.',409);
  if(row.audience!=='RECORDING'||row.published)throw fail('Review the current recording publication.',409);
  const companion=await store.first('SELECT published_key,source_revision FROM recording_companions WHERE attachment_id=?',[row.attachment_id]);

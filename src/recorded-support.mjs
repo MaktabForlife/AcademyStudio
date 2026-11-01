@@ -1,6 +1,7 @@
 import {bodyJSON,fail,id,sha256} from './protocol.mjs';
 import {contentVersion} from './content-package.mjs';
 import {referencedAssets} from '../public/shared/model.mjs';
+import {playlistReadingLessons} from './mou-playlists.mjs';
 
 const pair=(reading,section)=>JSON.stringify([reading,section]);
 const sourceLesson=key=>typeof key==='string'?key.match(/^recording(?:-quote|-topics|-application|-reflection)?:(.+)$/)?.[1]:null;
@@ -81,14 +82,14 @@ export async function saveRecordedSupport(env,store,actor,website,input){
 }
 
 export async function recordingScopedDocument(env,store,actor,website,document){
- if(website.programme_key!=='mothers'||actor.global_admin||website.role||website.granted)return {document,contentAccess:{mode:'FULL_TEXT'}};
+ if(website.programme_key!=='mothers'||actor.global_admin||website.role||website.is_playlist||website.granted&&!website.playlist_parent)return {document,contentAccess:{mode:'FULL_TEXT'}};
  const support=await recordedSupport(env,store,website);
  // One bounded indexed month/lesson query per website response. No Source calls
  // or per-reading permission queries; recording-only lessons remain in media.
  const rows=await store.all(`SELECT x.lesson_id FROM paid_months m CROSS JOIN attachments x INDEXED BY attachments_month
-  WHERE m.account_id=? AND m.offering_id=? AND x.offering_id=m.offering_id AND substr(x.lesson_date,1,7)=+m.month AND x.cohort=m.cohort AND x.website_id=? AND x.audience='RECORDING' AND x.published=1 LIMIT 401`,[actor.account_id,website.offering_id,website.website_id]);
+  WHERE m.account_id=? AND m.offering_id=? AND x.offering_id=m.offering_id AND substr(x.lesson_date,1,7)=+m.month AND x.cohort=m.cohort AND x.website_id=? AND x.audience='RECORDING' AND x.published=1 AND NOT EXISTS(SELECT 1 FROM mou_playlist_only_media pm WHERE pm.attachment_id=x.attachment_id) LIMIT 401`,[actor.account_id,website.offering_id,website.website_id]);
  if(rows.length>400)throw fail('This website needs a narrower recorded-lesson view.',409,'RECORDING_SCOPE_LIMIT');
- const allowed=new Set(rows.map(r=>r.lesson_id)),sections=new Map((support?.sections||[]).map(s=>[pair(s.readingId,s.sectionId),s]));
+ const allowed=new Set([...rows.map(r=>r.lesson_id),...await playlistReadingLessons(store,actor,website)]),sections=new Map((support?.sections||[]).map(s=>[pair(s.readingId,s.sectionId),s]));
  const filtered=structuredClone(document);filtered.lessons=filtered.lessons.flatMap(reading=>{
   const visible=reading.sections.filter(s=>{const support=sections.get(pair(reading.id,s.id)),parents=support?.lessonIds;return parents?.length&&(support.access==='ANY'?parents.some(l=>allowed.has(l)):parents.every(l=>allowed.has(l)));});
   return visible.length?[{...reading,summary:'',sections:visible}]:[];
@@ -100,7 +101,7 @@ export async function recordingScopedDocument(env,store,actor,website,document){
 }
 
 export async function recordedAssetAccess(env,store,actor,website,assetId){
- if(website.programme_key!=='mothers'||actor.global_admin||website.role||website.granted)return;
+ if(website.programme_key!=='mothers'||actor.global_admin||website.role||website.is_playlist||website.granted&&!website.playlist_parent)return;
  const document=await parseObject(env,website.published_key),filtered=await recordingScopedDocument(env,store,actor,website,document);
  if(!referencedAssets(filtered.document).includes(assetId))throw fail('This file needs its own recorded-lesson text rights.',403,'MATERIAL_ACCESS_REQUIRED');
 }

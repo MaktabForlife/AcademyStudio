@@ -72,7 +72,7 @@ test('MOU published sessions keep exact class/teacher/time/cancellation gates an
  ok(await save({action:'participant',accountId:student,enrolled:false,live:false,purchased:false,reason:'Synthetic withdrawal'}));assert.equal((await f.request('/api/circles/classrooms/mothers',{cookie})).status,403,'A stale native Student role cannot restore Studio membership');
 });
 
-test('MOU native content operations preserve independent recording lessons and enforce account and scoped staff changes',async t=>{
+test('MOU legacy recording rights survive the new checked attachment boundary and current account or staff changes',async t=>{
  const {f,db,scope,offer,register,recover,handover,save}=await mouFixture(t);ok(await register());await recover();await handover();
  const admin=await signIn(f,'adminB'),student=await signIn(f,'studentB'),wrongAdmin=await signIn(f,'adminA');
  const document=await f.content.get('websites/site-course/versions/seed.json').then(x=>x.json()),websiteId='mou-native-created-site',date=new Date().toISOString().slice(0,10);
@@ -82,7 +82,9 @@ test('MOU native content operations preserve independent recording lessons and e
  assert.equal((await f.request('/api/admin/'+offer,{cookie:wrongAdmin,method:'POST',body:{operationId:crypto.randomUUID(),...input}})).status,403);
  ok(await change(input));ok(await change({action:'youtube',assetId:'mou-native-recording',videoId:'abcdefghijk',title:'Synthetic recording only'}));
  // This recording has no timetable row and no supporting reading. Neither is required.
- ok(await change({action:'attachment',attachmentId:'mou-native-attachment',websiteId,assetId:'mou-native-recording',lessonId:'mou-native-lesson',lessonDate:date,cohort:'verified-synthetic-cohort',title:'Recording-only lesson',audience:'RECORDING',published:true}));
+ assert.equal((await change({action:'attachment',attachmentId:'mou-native-attachment',websiteId,assetId:'mou-native-recording',lessonId:'mou-native-lesson',lessonDate:date,cohort:'verified-synthetic-cohort',title:'Recording-only lesson',audience:'RECORDING',published:true})).status,409,'New raw MOU recordings need a checked playlist/Teacher form');
+ // Disposable already-existing legacy recording, not a new attachment API bypass.
+ await f.run("INSERT INTO attachments VALUES('mou-native-attachment',?,?,'mou-native-recording','mou-native-lesson',?,'verified-synthetic-cohort','Recording-only lesson','RECORDING',1)",offer,websiteId,date);
  ok(await save({action:'mou-subject',displayKey:'surah-al-baqarah',websiteId,enabled:true}));
  assert.equal(await f.db.prepare('SELECT count(*) n FROM timetable WHERE session_id=?').bind('mou-native-lesson').first('n'),0);
  assert.equal((await f.request('/api/media/mou-native-attachment',{cookie:student})).status,403);
@@ -120,7 +122,8 @@ test('ongoing MOU support is isolated by recorded lesson/month/cohort, without i
  ok(await f.request('/api/websites/'+websiteId+'/edit',{cookie:admin,method:'POST',body:{operationId:crypto.randomUUID(),action:'save',revision:view.revision,document}}));
  for(const [suffix,date] of [['feb','2026-02-17'],['mar','2026-03-03'],['may','2026-05-05'],['other','2026-02-17']]){
   ok(await native({action:'youtube',assetId:'mou-support-video-'+suffix,videoId:'abcdefghijk',title:'Synthetic '+suffix}));
-  ok(await native({action:'attachment',attachmentId:'mou-support-link-'+suffix,assetId:'mou-support-video-'+suffix,websiteId,lessonId:'mou-recorded-'+suffix,lessonDate:date,cohort:suffix==='other'?'different-mou-cohort':'original-mou-cohort',title:'Recorded '+suffix,audience:'RECORDING',published:true}));
+  // This fixture represents pre-playlist legacy content whose rights must remain intact.
+  await f.run("INSERT INTO attachments VALUES(?,?,?,?,?,?,?,?,'RECORDING',1)",'mou-support-link-'+suffix,offer,websiteId,'mou-support-video-'+suffix,'mou-recorded-'+suffix,date,suffix==='other'?'different-mou-cohort':'original-mou-cohort','Recorded '+suffix);
  }
  ok(await save({action:'mou-subject',displayKey:'surah-al-baqarah',websiteId,enabled:true}));
  const bindings=['feb','mar','other'].map(s=>({editorialLessonId:'editorial-'+s,nativeLessonId:'mou-recorded-'+s,assetId:'mou-support-video-'+s}));

@@ -5,6 +5,7 @@ import {mouDefinition} from './programme-policy.mjs';
 import {accessGate,permittedSessionAudience} from './access.mjs';
 import {websiteAccess} from './content.mjs';
 import {fail,id,date,flag,boundedAge} from './protocol.mjs';
+import {learnerPlaylists} from './mou-playlists.mjs';
 
 const subjectPlan=()=>mouSubjects.map(s=>({key:s.key,title:s.title,state:s.first?'PREPARING':'COMING_SOON',availabilityLabel:s.first?null:comingSoonLabel,website:null}));
 const localMonth=(time,zone)=>{const p=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit'}).formatToParts(new Date(time)).map(p=>[p.type,p.value]));return p.year+'-'+p.month;};
@@ -17,6 +18,7 @@ export async function mouClassroom(store,actor){
  const months=await store.first(`SELECT EXISTS(SELECT 1 FROM paid_months WHERE account_id=? AND offering_id=? AND month=? UNION ALL SELECT 1 FROM website_months WHERE account_id=? AND offering_id=? AND month=?) current_month,EXISTS(SELECT 1 FROM paid_months WHERE account_id=? AND offering_id=? UNION ALL SELECT 1 FROM website_months WHERE account_id=? AND offering_id=?) retained`,[actor.account_id,offer,month,actor.account_id,offer,month,actor.account_id,offer,actor.account_id,offer]);
  result.programme={...result.programme,offeringId:offer,authority:definition.authority==='WEBSITE'?'STUDIO':'ACADEMY',state:staff||scope.live?'ACTIVE':'MATERIALS_ONLY'};
  result.monthly={state:'CONNECTED',month,hasCurrentMonth:Boolean(months.current_month),hasRetainedMonths:Boolean(months.retained)};
+ result.playlists=await learnerPlaylists(store,actor,offer,{staff});
  const canManage=Boolean(actor.global_admin||scope.role==='ADMIN');
  result.management={canManage,requiresAuthorityRefresh:canManage&&actor.verified_at<now-boundedAge(store.env,true),authority:'ACADEMY_PROXY',offeringId:offer};
  // One bounded binding/permission query for the approved catalogue. No per-card
@@ -25,7 +27,7 @@ export async function mouClassroom(store,actor){
  EXISTS(SELECT 1 FROM attachments x WHERE x.website_id=w.website_id AND x.offering_id=w.offering_id AND x.audience='RECORDING' AND x.published=1
  AND (?=1 OR EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=? AND m.offering_id=x.offering_id AND m.month=substr(x.lesson_date,1,7) AND m.cohort=x.cohort))) has_recordings,
  EXISTS(SELECT 1 FROM surah_grants g WHERE g.account_id=? AND g.website_id=w.website_id) text_grant
- FROM programme_subjects b JOIN websites w ON w.website_id=b.website_id AND w.offering_id=b.offering_id WHERE b.offering_id=? AND b.enabled=1 LIMIT 11`,[Number(staff),actor.account_id,actor.account_id,offer]);
+ FROM programme_subjects b JOIN websites w ON w.website_id=b.website_id AND w.offering_id=b.offering_id WHERE b.offering_id=? AND b.enabled=1 AND NOT EXISTS(SELECT 1 FROM mou_playlist_only_websites pw WHERE pw.website_id=w.website_id) LIMIT 11`,[Number(staff),actor.account_id,actor.account_id,offer]);
  if(bindings.length>10)throw fail('Review the MOU subject catalogue.',409);
  for(const binding of bindings){
   const index=subjects.findIndex(s=>s.key===binding.display_key);if(index<0)continue;
@@ -33,7 +35,7 @@ export async function mouClassroom(store,actor){
   const published=Boolean(binding.enabled&&binding.published_key),canEdit=canManage&&actor.verified_at>=now-boundedAge(store.env,true);
   result.subjects[index]={...subjects[index],state:published?'PUBLISHED':'PREPARING',availabilityLabel:null,website:{id:binding.website_id,title:subjects[index].title,completionMonth:binding.completion_month,canOpen:published,canEdit,...(published?{href:'/studio/?website='+encodeURIComponent(binding.website_id)}:{}),...(canEdit?{editorHref:'/builder/?website='+encodeURIComponent(binding.website_id)}:{})}};
  }
- result.materialsConnected=result.subjects.some(s=>s.website?.canOpen);
+ result.materialsConnected=result.subjects.some(s=>s.website?.canOpen)||result.playlists.length>0;
  if(!definition.live_enabled||!staff&&!scope.live_entitled){result.timetable.state='LIVE_ACCESS_REQUIRED';return result;}
  await accessGate(store,actor,offer,{live:true,admin:staff});
  const snapshot=await store.first('SELECT version FROM stream_heads WHERE stream=?',['timetable:'+offer]);

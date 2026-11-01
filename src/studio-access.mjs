@@ -4,6 +4,7 @@ import {fail,id,integer,sha256,boundedAge} from './protocol.mjs';
 import {change} from './admin.mjs';
 import {coursePolicy} from './course-policy.mjs';
 import {beginProvision,resumeProvision} from './enrolment.mjs';
+import {playlistTable,playlistCorrection,savePlaylist,playlistPublication,playlistAddRecording} from './mou-playlists.mjs';
 import {monthlyGrid,saveMonthlyGrid,accessTable,saveAccessTable} from './access-tables.mjs';
 
 const revisionSQL='COALESCE((SELECT revision FROM access_revisions WHERE offering_id=?),0)=?';
@@ -23,6 +24,11 @@ export async function studioAccess(request,env,store,fetcher){
  const actor=await store.actor(tokenHash);if(actor.account_id!==accountId||actor.epoch!==proof.epoch||actor.source_ref!==proof.sourceRef)throw fail('Your administrator account changed.',401);
  const offer=id(input.offeringId),command=input.command||{};if(!command.action?.startsWith('handover-'))await store.scope(actor,offer,{admin:true});let result;
  if(command.action==='read')result=await readAccess(store,actor,offer,command);
+ else if(command.action==='mou-playlists')result=await playlistTable(store,actor,offer);
+ else if(command.action==='mou-playlist-correction')result=await playlistCorrection(store,actor,offer,command);
+ else if(command.action==='mou-playlist-save')result=await savePlaylist(env,store,actor,offer,command);
+ else if(command.action==='mou-playlist-publication')result=await playlistPublication(store,actor,offer,command);
+ else if(command.action==='mou-playlist-add')result=await playlistAddRecording(store,actor,offer,command);
  else if(command.action==='monthly-grid')result=await monthlyGrid(store,actor,offer,command);
  else if(command.action==='monthly-grid-save')result=await saveMonthlyGrid(env,store,actor,offer,command);
  else if(command.action==='access-table')result=await accessTable(store,actor,offer);

@@ -4,6 +4,7 @@ import {fail,id,text,integer,date,sha256,bodyJSON} from './protocol.mjs';
 import {academyCommand} from './academy-client.mjs';
 import {academyAuthority} from './access.mjs';
 import {mediaGate} from './media.mjs';
+import {checkedPlaylist,assignPlaylist} from './mou-playlists.mjs';
 
 export async function mediaAdmin(store,actor,offer){
  const scope=await store.scope(actor,offer,{admin:true});
@@ -29,16 +30,16 @@ export async function mediaTeachers(env,store,actor,offer,selected,fetcher){
 }
 async function contextFor(store,scope,row,teachers,classes=[]){
  const website=row.website_id?await store.first('SELECT website_id,title FROM websites WHERE website_id=? AND offering_id=?',[row.website_id,row.offering_id]):null;
- let subject=null;
+ let subject=null,playlist=null;
  if(scope.kind!=='COURSE'){
   if(!website)throw fail('Choose the native Surah or MOU subject for this recording.');
   if(scope.programme_key==='mothers'){
-   const binding=await store.first('SELECT display_key FROM programme_subjects WHERE offering_id=? AND website_id=? AND enabled=1',[row.offering_id,row.website_id]);if(!binding)throw fail('Choose a registered MOU subject.');
-   subject={key:binding.display_key,websiteId:website.website_id,name:website.title};
+   if(row.playlist_id){const selected=await checkedPlaylist(store,row.offering_id,row.playlist_id);playlist={id:selected.playlist_id,websiteId:selected.website_id,name:selected.title};row.playlist_revision=selected.revision;}
+   else {if(!row.published)throw fail('Choose a MOU playlist for this recording.',409,'PLAYLIST_REQUIRED');const binding=await store.first('SELECT display_key FROM programme_subjects WHERE offering_id=? AND website_id=? AND enabled=1',[row.offering_id,row.website_id]);if(!binding)throw fail('Preserve the registered legacy MOU subject.');subject={key:binding.display_key,websiteId:website.website_id,name:website.title};}
   }else subject={key:website.website_id,websiteId:website.website_id,name:website.title};
   date(row.lesson_date);const source=await store.first('SELECT classes_json FROM source_access_scopes WHERE offering_id=?',[row.offering_id]);if(!source||!JSON.parse(source.classes_json).includes(row.cohort))throw fail('Preserve the exact native recording class/cohort.',409);
  }
- return {schema:'RECORDED_MEDIA_CONTEXT_V2',mediaIdentity:{assetId:row.asset_id,websiteId:row.website_id,lessonId:row.lesson_id,recordedDate:row.lesson_date,cohort:row.cohort},offeringId:row.offering_id,kind:scope.kind,programmeKey:scope.programme_key||null,classIds:scope.kind==='COURSE'?[]:[row.cohort],classNames:scope.kind==='COURSE'?[]:classes.filter(c=>c.id===row.cohort).map(c=>c.name),subject,teacherIds:teachers.map(t=>t.id),teacherName:teachers.map(t=>t.name).join(', '),attributionSource:'NATIVE_TEACHER_ACCOUNT'};
+ return {schema:'RECORDED_MEDIA_CONTEXT_V2',mediaIdentity:{assetId:row.asset_id,websiteId:row.website_id,lessonId:row.lesson_id,recordedDate:row.lesson_date,cohort:row.cohort},offeringId:row.offering_id,kind:scope.kind,programmeKey:scope.programme_key||null,classIds:scope.kind==='COURSE'?[]:[row.cohort],classNames:scope.kind==='COURSE'?[]:classes.filter(c=>c.id===row.cohort).map(c=>c.name),subject,...(playlist?{playlist}:{}),teacherIds:teachers.map(t=>t.id),teacherName:teachers.map(t=>t.name).join(', '),attributionSource:'NATIVE_TEACHER_ACCOUNT'};
 }
 export async function attributionFacts(store,ids){
  if(!ids.length)return [];
@@ -48,32 +49,35 @@ export async function addPublishedAttribution(store,media){
  const rows=await attributionFacts(store,media.map(r=>r.attachment_id));
  return media.map(row=>{const saved=rows.find(r=>r.attachment_id===row.attachment_id),context=saved?.published_json?JSON.parse(saved.published_json):null,identity=context?.mediaIdentity;return identity&&identity.assetId===row.asset_id&&identity.websiteId===row.website_id&&identity.lessonId===row.lesson_id&&identity.recordedDate===row.lesson_date&&identity.cohort===row.cohort?{...row,recordedContext:context}:row;});
 }
-function parentGuard(scope,row){
+function parentGuard(scope,row,{requireMembership=false}={}){
  const sql="EXISTS(SELECT 1 FROM offerings WHERE offering_id=? AND kind=?) AND EXISTS(SELECT 1 FROM asset_owners WHERE asset_id=? AND offering_id=?)";
  const args=[row.offering_id,scope.kind,row.asset_id,row.offering_id];
  if(scope.kind==='COURSE')return {sql,args};
  let extra=" AND EXISTS(SELECT 1 FROM source_access_scopes s,json_each(s.classes_json) c WHERE s.offering_id=? AND s.enabled=1 AND c.value=?) AND EXISTS(SELECT 1 FROM websites WHERE website_id=? AND offering_id=?)";
  args.push(row.offering_id,row.cohort,row.website_id,row.offering_id);
- if(scope.programme_key==='mothers'){extra+=" AND EXISTS(SELECT 1 FROM programme_subjects WHERE offering_id=? AND website_id=? AND enabled=1)";args.push(row.offering_id,row.website_id);}
+ if(scope.programme_key==='mothers'){if(row.playlist_id){extra+=" AND EXISTS(SELECT 1 FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.offering_id=? AND p.playlist_id=? AND p.revision=?)";args.push(row.offering_id,row.playlist_id,row.playlist_revision);if(requireMembership){extra+=' AND EXISTS(SELECT 1 FROM mou_playlist_items WHERE playlist_id=? AND attachment_id=?)';args.push(row.playlist_id,row.attachment_id);}}else {extra+=" AND EXISTS(SELECT 1 FROM programme_subjects WHERE offering_id=? AND website_id=? AND enabled=1)";args.push(row.offering_id,row.website_id);}}
  return {sql:sql+extra,args};
 }
 export async function attributionChange(env,store,actor,offer,input,fetcher){
  const scope=await mediaAdmin(store,actor,offer),attachment=id(input.attachmentId),row=await mediaGate(store,actor,attachment,{admin:true});
  if(row.offering_id!==offer||row.audience!=='RECORDING')throw fail('Choose this programme’s recording.',403);
- const saved=await store.first('SELECT * FROM media_attributions WHERE attachment_id=?',[attachment]),parent=parentGuard(scope,row);
+ const saved=await store.first('SELECT * FROM media_attributions WHERE attachment_id=?',[attachment]);
+ if(scope.programme_key==='mothers'){const previous=saved?JSON.parse(saved.draft_json).playlist?.id:null;if(previous&&input.playlistId&&previous!==input.playlistId)throw fail('Preserve the saved playlist selection. Add other memberships through playlist management.',409);row.playlist_id=previous||input.playlistId||null;if(row.playlist_id)row.playlist_revision=(await checkedPlaylist(store,offer,row.playlist_id)).revision;}
+ const parent=parentGuard(scope,row,{requireMembership:input.action==='media-publication'});
  if(input.action==='media-attribution-save'){
   const selected=teacherIds(input.teacherIds);
   const checked=await mediaTeachers(env,store,actor,offer,selected,fetcher);
   const context=await contextFor(store,scope,row,checked.teachers.filter(t=>checked.selectedTeacherIds.includes(t.id)),checked.classes),encoded=JSON.stringify(context);
   const replay=await store.replay(actor.account_id,input.operationId,await store.requestHash(offer,input));if(replay)return replay;
   if(integer(input.revision)!==(saved?.revision||0))throw fail('Teacher attribution changed. Reopen the saved recording.',409);
-  return store.mutate(actor,offer,input,[store.statement('INSERT INTO media_attributions VALUES(?,1,?,NULL) ON CONFLICT(attachment_id) DO UPDATE SET revision=media_attributions.revision+1,draft_json=excluded.draft_json',[attachment,encoded])],{attachmentId:attachment,revision:(saved?.revision||0)+1,recordedContext:context},{studio:true,expectedSQL:parent.sql+' AND COALESCE((SELECT revision FROM media_attributions WHERE attachment_id=?),0)=? AND EXISTS(SELECT 1 FROM attachments WHERE attachment_id=? AND offering_id=? AND asset_id=? AND website_id IS ? AND lesson_id=? AND lesson_date=? AND cohort=?)',expectedArgs:[...parent.args,attachment,input.revision,attachment,offer,row.asset_id,row.website_id,row.lesson_id,row.lesson_date,row.cohort]});
+  const assignment=context.playlist?assignPlaylist(store,{playlist_id:context.playlist.id},row,{exclusive:!row.published,protectPrivateParent:!row.published,supportIds:(await store.all('SELECT support_attachment_id FROM media_supporting_files WHERE recording_attachment_id=?',[attachment])).map(r=>r.support_attachment_id)}):[];
+  return store.mutate(actor,offer,input,[...assignment,store.statement('INSERT INTO media_attributions VALUES(?,1,?,NULL) ON CONFLICT(attachment_id) DO UPDATE SET revision=media_attributions.revision+1,draft_json=excluded.draft_json',[attachment,encoded])],{attachmentId:attachment,revision:(saved?.revision||0)+1,recordedContext:context},{studio:true,expectedSQL:parent.sql+' AND COALESCE((SELECT revision FROM media_attributions WHERE attachment_id=?),0)=? AND EXISTS(SELECT 1 FROM attachments WHERE attachment_id=? AND offering_id=? AND asset_id=? AND website_id IS ? AND lesson_id=? AND lesson_date=? AND cohort=?)',expectedArgs:[...parent.args,attachment,input.revision,attachment,offer,row.asset_id,row.website_id,row.lesson_id,row.lesson_date,row.cohort]});
  }
  if(input.action!=='media-publication')throw fail('Choose a media attribution action.');
  if(!saved)throw fail('Choose and save a registered Teacher before publication.',409);
  const context=JSON.parse(saved.draft_json),checked=await mediaTeachers(env,store,actor,offer,context.teacherIds,fetcher);
  const fresh=await contextFor(store,scope,row,checked.teachers.filter(t=>checked.selectedTeacherIds.includes(t.id)),checked.classes);
- if(JSON.stringify(context.mediaIdentity)!==JSON.stringify(fresh.mediaIdentity)||JSON.stringify(context.classIds)!==JSON.stringify(fresh.classIds)||context.subject?.key!==fresh.subject?.key)throw fail('The saved media parent changed. Review its attribution again.',409);
+ if(JSON.stringify(context.mediaIdentity)!==JSON.stringify(fresh.mediaIdentity)||JSON.stringify(context.classIds)!==JSON.stringify(fresh.classIds)||context.subject?.key!==fresh.subject?.key||context.playlist?.id!==fresh.playlist?.id)throw fail('The saved media parent changed. Review its attribution again.',409);
  const replay=await store.replay(actor.account_id,input.operationId,await store.requestHash(offer,input));if(replay)return replay;
  if(input.revision!==saved.revision||input.draftContext!==saved.draft_json)throw fail('Review the exact saved Teacher attribution before publishing.',409);
  let expected='1',args=[],companionStatements=[];
@@ -86,34 +90,36 @@ export async function attributionChange(env,store,actor,offer,input,fetcher){
   }else if(!companion.published_key||companion.draft_key!==companion.published_key)throw fail('Publish the exact reviewed companion before this recording.',409);
   expected='EXISTS(SELECT 1 FROM recording_companions WHERE attachment_id=? AND revision=? AND source_revision=? AND draft_key=? AND published_key IS ?)';args=[attachment,companion.revision,companion.source_revision,companion.draft_key,companion.published_key];
  }
- return store.mutate(actor,offer,input,[...companionStatements,store.statement('UPDATE media_attributions SET published_json=draft_json,revision=revision+1 WHERE attachment_id=?',[attachment]),store.statement('UPDATE attachments SET published=1 WHERE attachment_id=?',[attachment]),store.statement('UPDATE attachments SET published=1 WHERE attachment_id IN(SELECT support_attachment_id FROM media_supporting_files WHERE recording_attachment_id=?)',[attachment])],{attachmentId:attachment,published:true,revision:saved.revision+1},{studio:true,expectedSQL:`EXISTS(SELECT 1 FROM media_attributions WHERE attachment_id=? AND revision=? AND draft_json=?) AND EXISTS(SELECT 1 FROM attachments a LEFT JOIN websites w USING(website_id) WHERE a.attachment_id=? AND a.offering_id=? AND a.asset_id=? AND a.website_id IS ? AND a.lesson_id=? AND a.lesson_date=? AND a.cohort=? AND (a.website_id IS NULL OR w.enabled=1 AND w.published_key IS NOT NULL)) AND ${expected} AND ${parent.sql} AND NOT EXISTS(SELECT 1 FROM media_supporting_files l JOIN attachments x ON x.attachment_id=l.support_attachment_id WHERE l.recording_attachment_id=? AND (x.offering_id<>? OR x.website_id IS NOT ? OR x.lesson_id<>? OR x.lesson_date<>? OR x.cohort<>? OR x.audience<>'RECORDING'))`,expectedArgs:[attachment,input.revision,saved.draft_json,attachment,offer,row.asset_id,row.website_id,row.lesson_id,row.lesson_date,row.cohort,...args,...parent.args,attachment,offer,row.website_id,row.lesson_id,row.lesson_date,row.cohort]});
+ return store.mutate(actor,offer,input,[...companionStatements,store.statement('UPDATE media_attributions SET published_json=draft_json,revision=revision+1 WHERE attachment_id=?',[attachment]),store.statement('UPDATE attachments SET published=1 WHERE attachment_id=?',[attachment]),store.statement('UPDATE attachments SET published=1 WHERE attachment_id IN(SELECT support_attachment_id FROM media_supporting_files WHERE recording_attachment_id=?)',[attachment])],{attachmentId:attachment,published:true,revision:saved.revision+1},{studio:true,expectedSQL:`EXISTS(SELECT 1 FROM media_attributions WHERE attachment_id=? AND revision=? AND draft_json=?) AND EXISTS(SELECT 1 FROM attachments a LEFT JOIN websites w USING(website_id) WHERE a.attachment_id=? AND a.offering_id=? AND a.asset_id=? AND a.website_id IS ? AND a.lesson_id=? AND a.lesson_date=? AND a.cohort=? AND (${context.playlist?'1':'a.website_id IS NULL OR w.enabled=1 AND w.published_key IS NOT NULL'})) AND ${expected} AND ${parent.sql} AND NOT EXISTS(SELECT 1 FROM media_supporting_files l JOIN attachments x ON x.attachment_id=l.support_attachment_id WHERE l.recording_attachment_id=? AND (x.offering_id<>? OR x.website_id IS NOT ? OR x.lesson_id<>? OR x.lesson_date<>? OR x.cohort<>? OR x.audience<>'RECORDING'))`,expectedArgs:[attachment,input.revision,saved.draft_json,attachment,offer,row.asset_id,row.website_id,row.lesson_id,row.lesson_date,row.cohort,...args,...parent.args,attachment,offer,row.website_id,row.lesson_id,row.lesson_date,row.cohort]});
 }
 
 export async function mediaOptions(env,store,actor,offer,fetcher){
  const scope=await mediaAdmin(store,actor,offer),choices=await mediaTeachers(env,store,actor,offer,undefined,fetcher);
- const subjects=scope.kind==='COURSE'?[]:await store.all(scope.programme_key==='mothers'?'SELECT w.website_id id,w.title name FROM programme_subjects p JOIN websites w USING(website_id) WHERE p.offering_id=? AND p.enabled=1 ORDER BY p.display_key LIMIT 101':'SELECT website_id id,title name FROM websites WHERE offering_id=? ORDER BY website_id LIMIT 101',[offer]);
+ const subjects=scope.kind==='COURSE'||scope.programme_key==='mothers'?[]:await store.all('SELECT website_id id,title name FROM websites WHERE offering_id=? ORDER BY website_id LIMIT 101',[offer]);
+ const playlists=scope.programme_key==='mothers'?await store.all('SELECT p.playlist_id id,w.title name,w.completion_date closeDate FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.offering_id=? ORDER BY p.playlist_id LIMIT 101',[offer]):[];if(playlists.length>100)throw fail('Choose a smaller playlist catalogue.',409);
  if(subjects.length>100)throw fail('Choose a smaller native subject catalogue.',409);
  const source=scope.kind==='COURSE'?null:await store.first('SELECT classes_json FROM source_access_scopes WHERE offering_id=?',[offer]);
  const ids=source?JSON.parse(source.classes_json):[];
- return {...choices,kind:scope.kind,programmeKey:scope.programme_key||null,subjects,classIds:ids,classes:choices.classes.filter(c=>ids.includes(c.id))};
+ return {...choices,kind:scope.kind,programmeKey:scope.programme_key||null,subjects,playlists,classIds:ids,classes:choices.classes.filter(c=>ids.includes(c.id))};
 }
 export async function attachMedia(env,store,actor,offer,input,fetcher,planner){
  const selected=teacherIds(input.teacherIds);
  const scope=await mediaAdmin(store,actor,offer),checked=await mediaTeachers(env,store,actor,offer,selected,fetcher);
  const replay=await store.replay(actor.account_id,input.operationId,await store.requestHash(offer,input));if(replay)return replay;
- const attachment=id(input.attachmentId),website=scope.kind==='COURSE'?null:id(input.websiteId),row={asset_id:id(input.assetId),lesson_id:attachment,offering_id:offer,website_id:website,lesson_date:scope.kind==='COURSE'?(input.lessonDate?date(input.lessonDate):''):date(input.lessonDate),cohort:scope.kind==='COURSE'?'':text(input.cohort,180)};
+ const attachment=id(input.attachmentId),website=scope.kind==='COURSE'?null:scope.programme_key==='mothers'&&!input.websiteId?(await checkedPlaylist(store,offer,input.playlistId)).website_id:id(input.websiteId),row={asset_id:id(input.assetId),lesson_id:input.lessonId?id(input.lessonId):attachment,offering_id:offer,website_id:website,lesson_date:scope.kind==='COURSE'?(input.lessonDate?date(input.lessonDate):''):date(input.lessonDate),cohort:scope.kind==='COURSE'?'':text(input.cohort,180),...(scope.programme_key==='mothers'?{playlist_id:id(input.playlistId)}:{})};
  const context=await contextFor(store,scope,row,checked.teachers.filter(t=>checked.selectedTeacherIds.includes(t.id)),checked.classes);
- const native={...input,action:'attachment',websiteId:website,lessonId:attachment,lessonDate:row.lesson_date,cohort:row.cohort,audience:'RECORDING',published:false,createOnly:true};
+ const native={...input,action:'attachment',websiteId:website,lessonId:row.lesson_id,lessonDate:row.lesson_date,cohort:row.cohort,audience:'RECORDING',published:false,createOnly:true};
  const source=await store.first('SELECT mime_type FROM objects WHERE asset_id=?',[row.asset_id]);if(!source||!['video/mp4','video/youtube'].includes(source.mime_type))throw fail('Choose one recording source, and keep PDFs/images as supporting files.');
  const parent=parentGuard(scope,row);
- const statements=await planner(env,store,actor,offer,native,{collect:true,scope});
+ const statements=await planner(env,store,actor,offer,native,{collect:true,scope,playlistChecked:scope.programme_key==='mothers'});
  const attachmentIds=[attachment,...(Array.isArray(input.supportingFiles)?input.supportingFiles.map(f=>id(f.attachmentId)):[])];if(new Set(attachmentIds).size!==attachmentIds.length)throw fail('Choose distinct recording and supporting-file identities.');
  if(input.supportingFiles!==undefined){
   if(!Array.isArray(input.supportingFiles)||input.supportingFiles.length>10||new Set(input.supportingFiles.map(v=>v.assetId)).size!==input.supportingFiles.length)throw fail('Choose up to ten distinct supporting files.');
   for(const file of input.supportingFiles){const asset=await store.first('SELECT o.mime_type,o.filename FROM objects o JOIN asset_owners a USING(asset_id) WHERE o.asset_id=? AND a.offering_id=?',[id(file.assetId),offer]);if(!asset||!['application/pdf','image/png','image/jpeg','image/webp'].includes(asset.mime_type))throw fail('Choose a private PDF or image owned by this programme.');
-   const support=id(file.attachmentId);statements.push(...await planner(env,store,actor,offer,{action:'attachment',createOnly:true,assetId:file.assetId,attachmentId:support,websiteId:website,lessonId:attachment,lessonDate:row.lesson_date,cohort:row.cohort,title:asset.filename,audience:'RECORDING',published:false},{collect:true,scope}));statements.push(store.statement('INSERT INTO media_supporting_files VALUES(?,?)',[attachment,support]));
+   const support=id(file.attachmentId);statements.push(...await planner(env,store,actor,offer,{action:'attachment',createOnly:true,assetId:file.assetId,attachmentId:support,websiteId:website,lessonId:row.lesson_id,lessonDate:row.lesson_date,cohort:row.cohort,title:asset.filename,audience:'RECORDING',published:false},{collect:true,scope,playlistChecked:scope.programme_key==='mothers'}));statements.push(store.statement('INSERT INTO media_supporting_files VALUES(?,?)',[attachment,support]));
   }
  }
+ if(context.playlist)statements.push(...assignPlaylist(store,{playlist_id:context.playlist.id},{...row,attachment_id:attachment},{exclusive:true,supportIds:attachmentIds.slice(1),protectPrivateParent:true}));
  statements.push(store.statement('INSERT INTO media_attributions VALUES(?,1,?,NULL)',[attachment,JSON.stringify(context)]));
  return store.mutate(actor,offer,input,statements,{attachmentId:attachment,revision:1,recordedContext:context,attached:true,published:false},{studio:true,expectedSQL:parent.sql+' AND NOT EXISTS(SELECT 1 FROM attachments WHERE attachment_id IN(SELECT value FROM json_each(?))) AND NOT EXISTS(SELECT 1 FROM json_each(?) j WHERE NOT EXISTS(SELECT 1 FROM asset_owners WHERE asset_id=j.value AND offering_id=?))',expectedArgs:[...parent.args,JSON.stringify(attachmentIds),JSON.stringify((input.supportingFiles||[]).map(f=>f.assetId)),offer]});
 }

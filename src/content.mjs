@@ -4,6 +4,7 @@ import {sourceWebsiteGate} from './access.mjs';
 import {fail,id,text,month,sha256,bodyJSON} from './protocol.mjs';
 import {validatePackage} from './content-package.mjs';
 import {assertWebsiteAssets} from './website-assets.mjs';
+import {playlistTextAccess,playlistParentTextAccess} from './mou-playlists.mjs';
 export async function objectJSON(bucket,key,limit=1_500_000){const object=await bucket.get(key);if(!object||object.size>limit)throw fail('The saved edition is unavailable.',503);return bodyJSON(object.body,limit);}
 export async function saveContent(env,document,websiteId=document.id){const encoded=JSON.stringify(document);if(new TextEncoder().encode(encoded).length>1_500_000)throw fail('This website edition is too large.',413);const hash=await sha256(encoded),key='websites/'+encodeURIComponent(websiteId)+'/versions/'+hash+'.json';await env.CONTENT.put(key,encoded,{httpMetadata:{contentType:'application/json'}});return key;}
 export async function websiteAccess(store,actor,websiteId,{admin=false}={}){
@@ -18,8 +19,11 @@ export async function websiteAccess(store,actor,websiteId,{admin=false}={}){
  if(!row||!row.active)throw fail('This website is unavailable.',404);await sourceWebsiteGate(store,actor,row);
  if(admin){await store.scope(actor,row.offering_id,{admin:true});return row;}
  const staff=actor.global_admin||row.role==='ADMIN'||row.role==='TEACHER';
- if(!staff&&!(row.kind==='COURSE'&&(row.purchased||row.access_model==='FREE')||row.kind==='TAFSEER'&&(row.paid||row.granted||row.programme_key==='mothers'&&row.retained_text)))throw fail('Your account does not have this material.',403,'MATERIAL_ACCESS_REQUIRED');
- if(!row.enabled||!row.published_key)throw fail('This website is not published.',404);return row;
+ const playlist=row.programme_key==='mothers'?await store.first('SELECT 1 FROM mou_playlists WHERE website_id=?',[websiteId]):null;
+ const privatePlaylistParent=row.programme_key==='mothers'&&!playlist?await store.first('SELECT 1 FROM mou_playlist_only_websites WHERE website_id=?',[websiteId]):null;
+ const monthlyText=playlist?row.granted||await playlistTextAccess(store,actor,websiteId,row.offering_id):privatePlaylistParent?await playlistParentTextAccess(store,actor,websiteId,row.offering_id):row.paid||row.granted||row.programme_key==='mothers'&&row.retained_text;
+ if(!staff&&!(row.kind==='COURSE'&&(row.purchased||row.access_model==='FREE')||row.kind==='TAFSEER'&&monthlyText))throw fail('Your account does not have this material.',403,'MATERIAL_ACCESS_REQUIRED');
+ if(!row.enabled||!row.published_key)throw fail('This website is not published.',404);return {...row,is_playlist:Boolean(playlist),playlist_parent:Boolean(privatePlaylistParent)};
 }
 export async function editWebsite(env,store,actor,websiteId,input){
  input={...input,websiteId};const website=await websiteAccess(store,actor,websiteId,{admin:true}),hash=await store.requestHash(website.offering_id,input),old=await store.replay(actor.account_id,input.operationId,hash);if(old)return old;

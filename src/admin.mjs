@@ -73,6 +73,7 @@ export async function change(env,store,actor,offeringId,input,guardOptions={}){
  }else if(input.action==='card'){
   s(`INSERT INTO cards VALUES(?,?,?,?,?,0) ON CONFLICT(offering_id) DO UPDATE SET title=excluded.title,description=excluded.description,display_label=excluded.display_label,visible=excluded.visible,revision=cards.revision+1`,[offeringId,text(input.title),text(input.description||'',2000),text(input.displayLabel||''),flag(input.visible)]);
  }else if(input.action==='attachment'){
+  if(scope?.programme_key==='mothers'&&input.audience==='RECORDING'&&!guardOptions.playlistChecked)throw fail('Use the checked media form and choose a MOU playlist.',409,'PLAYLIST_REQUIRED');
   const assetId=id(input.assetId),asset=guardOptions.batchFacts?guardOptions.batchFacts.assets.get(assetId):await store.first('SELECT o.mime_type FROM objects o JOIN asset_owners x USING(asset_id) WHERE o.asset_id=? AND x.offering_id=?',[assetId,offeringId]);if(!asset)throw fail('Choose a file owned by this offering.',403);
   const websiteId=input.websiteId?id(input.websiteId):null;if(websiteId&&!(guardOptions.batchFacts?guardOptions.batchFacts.websites.has(websiteId):await store.first('SELECT website_id FROM websites WHERE website_id=? AND offering_id=?',[websiteId,offeringId])))throw fail('Choose a website in this offering.');
   if(!['WEBSITE','RECORDING'].includes(input.audience)||input.audience==='WEBSITE'&&(!websiteId||!['application/pdf','image/png','image/jpeg','image/webp'].includes(asset.mime_type)))throw fail('Website-only rights cannot grant recordings.');

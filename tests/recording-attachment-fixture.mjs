@@ -29,7 +29,8 @@ export async function recordingAttachmentFixture({attach=true,offeringId='mou-lo
   const document=newCourse();document.id=websiteId;document.name=title;document.tag='MOTHERS OF THE UMMAH';document.home={...document.home,headline:title,subtitle:'',description:'',imageId:'',imageAlt:title,caption:'',journeyTitle:'',themes:[],recordingLayout:'podcast'};document.lessons=[];document.pages={sessions:false,materials:false,assessments:false};document.materials={intro:'',files:[]};
   await native('/api/admin/'+offer,{action:'website-create',websiteId,title,document});
   await native('/api/admin/'+offer,{action:'youtube',assetId,videoId:new URL(lesson.sourceURL).searchParams.get('v'),title:lesson.title});
-  await native('/api/admin/'+offer,{action:'content-batch',changes:[{action:'attachment',assetId,attachmentId,websiteId,lessonId:'local-lesson-'+item.editorialLessonId,lessonDate:item.recordedDate,cohort,title:lesson.title,audience:'RECORDING',published:true}]});
+  // Disposable legacy baseline: these predate the independent playlist gate.
+  await f.run('INSERT INTO attachments VALUES(?,?,?,?,?,?,?,?,?,1)',attachmentId,offer,websiteId,assetId,'local-lesson-'+item.editorialLessonId,item.recordedDate,cohort,lesson.title,'RECORDING');
   const published=await native('/api/websites/'+websiteId+'/edit',{action:'publish',revision:0});
   await native('/api/admin/'+offer,{action:'mou-subject',websiteId,displayKey:item.subjectDisplayKey,enabled:true});
   const input={action:'companion-save',attachmentId,revision:0,sourceRevision:item.sourceRevision,durationSeconds:item.durationSeconds,companion:lesson.draft},saved=await native('/api/admin/'+offer,input);
