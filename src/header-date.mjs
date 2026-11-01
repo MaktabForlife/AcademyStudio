@@ -5,7 +5,9 @@ export async function publicHeaderDate(request,env,fetcher,{now=new Date(),cache
  if(cache)try{const hit=await cache.match(key);if(hit)return hit;}catch{}
  let hijri=null,reason='source-request-failed';
  try{
-  const result=await fetcher(new URL('/api/academy/header-date',env.ACADEMY_API_ORIGIN||env.ACADEMY_ORIGIN).href,{headers:{Accept:'application/json'},redirect:'error',signal:AbortSignal.timeout(20000)});
+  const result=await fetcher(new URL('/api/academy/header-date',env.ACADEMY_API_ORIGIN||env.ACADEMY_ORIGIN).href,{headers:{Accept:'application/json'},redirect:'manual',signal:AbortSignal.timeout(20000)});
+  // Workers rejects redirect:'error' before sending a request. Manual mode
+  // keeps redirects blocked; the non-2xx branch below rejects their responses.
   if(!result.ok){reason='HTTP_'+result.status;await result.body?.cancel();}
   else{
    reason='source-response-invalid';

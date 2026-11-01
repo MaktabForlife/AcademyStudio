@@ -35,9 +35,9 @@ test('native FREE/PAID policy changes preserve purchases, default free lessons/m
 test('trusted policy display stays separate from staff access and the public reading mechanism',async()=>{
  const {circlesCatalogue}=await import('../public/shared/circles-catalogue.mjs');
  const item={key:'paid-course',kind:'COURSE',title:'Course',websiteId:'site',pending:false,publicTextUrl:'https://academy.test/academy/public-reading'};
- const staff=circlesCatalogue([item],[{websiteId:'site',canOpen:true,accessBasis:null,subscriptionStatus:'required',coursePolicy:{model:'PAID',revision:2}}],{kind:'COURSE'});assert(staff.includes('Subscription required'));assert(!staff.includes('Subscribed</'));
- const free=circlesCatalogue([item],[{websiteId:'site',canOpen:true,accessBasis:'free',subscriptionStatus:'free',coursePolicy:{model:'FREE',revision:3}}],{kind:'COURSE'});assert(!free.includes('collection-lock'));
- const publicReading=circlesCatalogue([{...item,kind:'TAFSEER',key:'foundations'}],[],{kind:'TAFSEER'});assert(!publicReading.includes('collection-lock'),'Existing deliberately public text remains separate');
+ const staff=circlesCatalogue([item],[{websiteId:'site',canOpen:true,accessBasis:null,subscriptionStatus:'required',coursePolicy:{model:'PAID',revision:2}}],{kind:'COURSE'});assert(staff.includes('aria-label="Locked"'));assert(!staff.includes('aria-label="Open"'));assert(!staff.includes('aria-label="Free"'));
+ const free=circlesCatalogue([item],[{websiteId:'site',canOpen:true,accessBasis:'free',subscriptionStatus:'free',coursePolicy:{model:'FREE',revision:3}}],{kind:'COURSE'});assert(free.includes('aria-label="Free"'));assert(!free.includes('aria-label="Locked"'));assert(!free.includes('aria-label="Open"'));
+ const publicReading=circlesCatalogue([{...item,kind:'TAFSEER',key:'foundations'}],[],{kind:'TAFSEER'});assert(publicReading.includes('aria-label="Free"'));assert(publicReading.includes('href="https://academy.test/academy/public-reading"'));assert(!publicReading.includes('data-circles-website='),'Existing deliberately public text remains separate from the protected website reader');
 });
 
 test('policy revisions invalidate cached dashboard allow and deny links without another Academy request',async t=>{
