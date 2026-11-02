@@ -21,10 +21,10 @@ export function mountCourseMedia(root,{request,cardTools,courseName='Course',web
  async function open(key,section='content'){const next=await call('course-playlist-detail',{playlistId:key});listing.revision=next.revision;p=next.playlist;dirty=false;tab=section;draw();}
  async function mutation(action,input,message,after){
   const body={...copy(input),operationId:crypto.randomUUID()};
-  const perform=async()=>{pending={action,body,message,after};lockControls();try{await call(action,body);pending=null;dirty=false;const next=await call('course-playlists');listing=next;if(after==='list'){p=null;draw();}else await open(body.playlistId,after||tab);tell(message);}catch(e){if(e.status&&e.status<500){pending=null;if(e.status===409)tell(e.message+' Refresh before reviewing this change again.',true);}throw e;}};
+  const perform=async()=>{pending={action,body,message,after};lockControls();try{await call(action,body);const next=await call('course-playlists');listing=next;if(after==='list')p=null;else await open(body.playlistId,after||tab);pending=null;dirty=false;draw();tell(message);}catch(e){if(e.status&&e.status<500){pending=null;if(e.status===409)tell(e.message+' Refresh before reviewing this change again.',true);}throw e;}};
   await perform();
  }
- async function retry(){const job=pending;if(!job)return;await call(job.action,job.body);pending=null;dirty=false;listing=await call('course-playlists');if(job.after==='list'){p=null;draw();}else await open(job.body.playlistId,job.after||tab);tell(job.message);}
+ async function retry(){const job=pending;if(!job)return;try{await call(job.action,job.body);listing=await call('course-playlists');if(job.after==='list')p=null;else await open(job.body.playlistId,job.after||tab);pending=null;dirty=false;draw();tell(job.message);}catch(error){if(error.status&&error.status<500)pending=null;throw error;}}
  function leave(){if(!canLeave()){tell(pending?'Retry the pending save first.':busy?'Wait for this action to finish.':'Save your changes before leaving this playlist.',true);return false;}return true;}
  function heading(){return `<p data-cmw-status role="status" aria-live="polite">${esc(notice)}</p>${pending?'<button type="button" data-cmw="retry">Retry this save</button>':''}`;}
  function draw(){if(!active())return;cardBinding?.destroy();cardBinding=null;
