@@ -1,6 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {createRequire} from 'node:module';import {randomUUID} from 'node:crypto';import {readFileSync} from 'node:fs';import vm from 'node:vm';
 import {installPageHistory} from '../public/shared/page-history.mjs';import {installProgrammeShell} from '../public/shared/programme-shell.mjs';
 import {esc} from '../public/shared/model.mjs';
+import {clearMonthlyMediaCache} from '../public/shared/monthly-media-page.mjs';
 const {parseHTML}=createRequire(import.meta.url)('linkedom'),flush=()=>new Promise(r=>setImmediate(r));
 function browser(html='<header><div class="programme-page-actions"></div></header>'){
  const {window,document}=parseHTML('<html><head></head><body>'+html+'</body></html>'),values=new Map(),calls=[];let value=null;
@@ -37,7 +38,7 @@ test('Studio Admin entry keeps unsaved-work, current-account and selected-view f
 test('re-entering with warm capability metadata neutralises prior private Admin DOM and a current denial never restores it',async()=>{
  const f=browser('<main id="admin"><p>Earlier private record</p></main>'),host=f.document.getElementById('admin'),identity={account:{accountId:'one',globalAdmin:false},generation:1};let listCalls=0,deny=false,resolve;
  const api=async path=>{if(path==='/api/config')return {};if(path==='/api/admin/offerings'){listCalls++;return {offerings:[{offering_id:'course',kind:'COURSE',title:'Actual course'}]};}if(path==='/api/admin/course'){if(deny)throw Object.assign(Error('Current scope denied'),{status:403});return new Promise(r=>resolve=r);}throw Error(path);};
- const source=readFileSync(new URL('../public/admin.mjs',import.meta.url),'utf8').replace(/^import .*$/gm,'').replace(/export /g,'')+'\nwindow.adminTest={open,close,managementOfferings};';vm.runInNewContext(source,{window:f.window,document:f.document,identity,api,esc,crypto:{randomUUID},JSON,DOMException,FormData});
+ const source=readFileSync(new URL('../public/admin.mjs',import.meta.url),'utf8').replace(/^import .*$/gm,'').replace(/export /g,'')+'\nwindow.adminTest={open,close,managementOfferings};';vm.runInNewContext(source,{window:f.window,document:f.document,identity,api,esc,clearMonthlyMediaCache,crypto:{randomUUID},JSON,DOMException,FormData});
  const first=f.window.adminTest.open(host);await flush();assert(!host.textContent.includes('Earlier private record'));resolve({participants:[],websites:[],months:[],requests:[],media:[]});assert((await first).hasScope);assert.match(host.textContent,/Actual course/);f.window.adminTest.close();assert.equal(host.textContent,'');host.innerHTML='<p>Must stay hidden</p>';deny=true;await assert.rejects(f.window.adminTest.open(host),/Current scope denied/);assert(!host.textContent.includes('Must stay hidden'));assert(!host.textContent.includes('Actual course'));assert.match(host.textContent,/Current scope denied/);assert.equal(listCalls,1,'Warm capability metadata does not bypass the actual current details gate');
 });
 
