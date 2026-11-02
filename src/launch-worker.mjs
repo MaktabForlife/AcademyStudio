@@ -10,8 +10,8 @@ export async function launch(request,env,ctx){
  if(url.origin==='https://academy-studio-parallel.naidu-hajira.workers.dev'&&!branded&&['GET','HEAD'].includes(request.method)&&!url.pathname.startsWith('/internal/'))return new Response(null,{status:307,headers:{Location:env.WEBSITE_ORIGIN+url.pathname+url.search,'Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow, noarchive'}});
  let response;
  if(/^\/_assets\/[a-f0-9]{64}\//.test(url.pathname)&&['GET','HEAD'].includes(request.method)){
-  if(!/^\/_assets\/[a-f0-9]{64}\/[-A-Za-z0-9_./]+\.(?:js|mjs|css|png|jpe?g|svg|webp|gif|ico|woff2?|ttf|otf|bcmap|pfb|wasm)$/.test(url.pathname)||url.pathname.split('/').some(p=>p.startsWith('.')))return new Response('Not found',{status:404});
-  response=await connected(request,env,ctx);const headers=new Headers(response.headers);
+  if(!/^\/_assets\/[a-f0-9]{64}\/[-A-Za-z0-9_./]+\.(?:js|mjs|css|png|jpe?g|svg|webp|gif|ico|woff2?|ttf|otf|bcmap|pfb|wasm|json|webmanifest|map|ftl|txt|md|pdf|properties|bin)$/.test(url.pathname)||url.pathname.split('/').some(p=>p.startsWith('.')))return new Response('Not found',{status:404});
+  response=await connected(request,env,ctx);const headers=new Headers(response.headers);if(response.ok&&headers.get('Content-Type')?.includes('text/html'))return new Response('Not found',{status:404});
   if(response.ok&&!headers.get('Content-Type')?.includes('text/html'))headers.set('Cache-Control','public, max-age=31536000, immutable');
   headers.set('X-Content-Type-Options','nosniff');response=new Response(request.method==='HEAD'?null:response.body,{status:response.status,headers});
  }else response=publicCirclesRoute(request)||await connected(request,env,ctx);

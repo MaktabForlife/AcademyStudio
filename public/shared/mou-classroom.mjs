@@ -109,13 +109,13 @@ export function createMouClassroom({request,identity,isCurrent,onChange,navigate
  }
  function clear(){revision++;stopTimer();classroom=null;phase='idle';error='';flight=null;joinFlight=null;joiningId=null;}
  function unavailable(message){stopTimer();classroom=null;phase='unavailable';error=message;joiningId=null;emit();}
- function load({refresh=false}={}){
+ function load({refresh=false,checked=null,checkedError=null}={}){
   const key=accountKey();if(!key||!isCurrent()){clear();return Promise.resolve(null);}
   if(key!==contextKey){clear();contextKey=key;pinnedEpoch=null;}
   if(flight)return flight;if(classroom&&!refresh){emit();return Promise.resolve(classroom);}
   const ticket=++revision;stopTimer();classroom=null;phase='loading';error='';joiningId=null;joinFlight=null;emit();
   const operation=(async()=>{
-   try{const response=await request('/api/circles/classrooms/mothers');if(!valid(ticket,key))return null;
+   try{if(checkedError)throw checkedError;const response=checked||await request('/api/circles/classrooms/mothers');if(!valid(ticket,key))return null;
     const next=normalizeMouClassroom(response,{accountId:identity.account.accountId,epoch:pinnedEpoch});
     pinnedEpoch=next.context.epoch;classroom=next;offset=next.timetable.serverTime-now();phase='ready';emit();schedule(ticket,key);return next;
    }catch(cause){if(valid(ticket,key))unavailable(cause.status===403?'Mothers of the Ummah access is unavailable for this account.':cause.status===401?'Sign in to Academy to open your classroom.':'Your classroom could not be loaded. Refresh to check your access.');return null;}

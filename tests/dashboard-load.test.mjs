@@ -12,8 +12,8 @@ const snapshot=(mode,label=mode)=>({mode,label,checkedAt:Date.now(),timezone:'Af
 function client(){
  const headerRenders=[],header={html:'',setAttribute(){},get innerHTML(){return this.html;},set innerHTML(value){this.html=value;headerRenders.push(value);}};
  const window=new EventTarget(),document=Object.assign(new EventTarget(),{body:{classList:{toggle(){}},dataset:{}},getElementById:()=>null,querySelector:()=>null,querySelectorAll:selector=>selector==='.public-home-header .site-nav'?[header]:[]}),identity={account:{accountId:'one',globalAdmin:true},generation:1},calls=[];
- const api=(path,options)=>{const value=deferred();calls.push({path,options,...value});return value.promise;};
- const context=vm.createContext({window,document,identity,api,createDashboardJoin,...circleDays,localDay,URL,setTimeout,clearTimeout,dashboardHTML:()=>''});vm.runInContext(source,context);
+ const api=(path,options={})=>{if(path.startsWith('/api/circles/dashboard?')){const params=Object.fromEntries(new URL(path,'https://local.test').searchParams);options={body:{...params,...(params.refresh?{refresh:params.refresh==='1'}:{})}};}const value=deferred();calls.push({path,options,...value});return value.promise;};
+ const context=vm.createContext({window,document,identity,api,createDashboardJoin,...circleDays,localDay,URL,URLSearchParams,setTimeout,clearTimeout,dashboardHTML:()=>''});vm.runInContext(source,context);
  let updates=0;const dashboard=context.makeDashboard({onUpdate:()=>{updates++;dashboard.refresh();},openAcademy:()=>{}});
  return {dashboard,identity,window,calls,headerRenders,get updates(){return updates;}};
 }

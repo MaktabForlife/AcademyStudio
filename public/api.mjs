@@ -18,7 +18,7 @@ function clearPrivateReads(){readOwner='';readEntries.clear();readRevision++;try
 function loadPrivateReads(account=identity.account){
  const owner=ownerOf(account);if(!owner)return null;if(owner===readOwner)return owner;
  readEntries.clear();readOwner=owner;
- try{const raw=readStorage()?.getItem(readStorageKey);if(raw&&raw.length<=readLimit){const saved=JSON.parse(raw);if(saved.owner===owner&&Array.isArray(saved.entries)&&saved.entries.length<=32)for(const entry of saved.entries)if(typeof entry.key==='string'&&entry.key.length<2000&&/^"pv1-[a-f0-9]{64}"$/.test(entry.etag)&&entry.expiresAt>Date.now()&&entry.expiresAt<=Date.now()+43200000&&entry.value&&typeof entry.value==='object')readEntries.set(entry.key,entry);}}catch{}
+ try{const raw=readStorage()?.getItem(readStorageKey);if(raw&&raw.length<=readLimit){const saved=JSON.parse(raw);if(saved.owner===owner&&Array.isArray(saved.entries)&&saved.entries.length<=32)for(const entry of saved.entries)if(typeof entry.key==='string'&&entry.key.length<2000&&/^"pv1-[a-f0-9]{64}"$/.test(entry.etag)&&Number.isFinite(entry.expiresAt)&&entry.expiresAt>Date.now()&&entry.expiresAt<=Date.now()+43200000&&entry.value&&typeof entry.value==='object')readEntries.set(entry.key,entry);}}catch{}
  return owner;
 }
 function savedPrivateRead(key,bootstrap=false){
@@ -35,13 +35,13 @@ function rememberPrivateRead(key,etag,value,bootstrap=false){
  while(encoded.length>readLimit&&readEntries.size){readEntries.delete(readEntries.keys().next().value);encoded=JSON.stringify({owner:readOwner,entries:[...readEntries.values()]});}
  try{readStorage()?.setItem(readStorageKey,encoded);}catch{/* Storage disabled/full: retain bounded current-page memory. */}
 }
-const privateRead=path=>/^\/api\/websites\/[-A-Za-z0-9_:]+(?:\?(?:edition=published))?$/.test(path)||/^\/api\/offerings\/[-A-Za-z0-9_:]+\/media(?:\?|$)/.test(path)||/^\/api\/circles\/(?:dashboard|bootstrap|classrooms\/mothers)(?:\?|$)/.test(path);
+const privateRead=path=>/^\/api\/websites\/[-A-Za-z0-9_:]+(?:\?(?:edition=published))?$/.test(path)||/^\/api\/offerings\/[-A-Za-z0-9_:]+\/media(?:\?|$)/.test(path)||/^\/api\/circles\/(?:dashboard|(?:reader-)?bootstrap|classrooms\/mothers)(?:\?|$)/.test(path);
 function renew(fn){const generation=identity.generation,run=renewalTail.then(()=>{if(generation!==identity.generation)throw new DOMException('Your account changed.','AbortError');return fn();});renewalTail=run.catch(()=>{});return run;}
 function renewAccess(offeringId){const key=identity.generation+':'+(offeringId||'');if(!accessRefreshes.has(key)){const run=renew(()=>api('/auth/access',{body:{offeringId},refreshed:true})).finally(()=>{if(accessRefreshes.get(key)===run)accessRefreshes.delete(key);});accessRefreshes.set(key,run);}return accessRefreshes.get(key);}
 function renewStatus(){if(!refreshing){const run=renew(()=>api('/auth/refresh',{body:{},refreshed:true})).finally(()=>{if(refreshing===run)refreshing=null;});refreshing=run;}return refreshing;}
 // Share only identical reads that are still running. Completed private replies
 // are never stored here: returning later still reaches the current server gate.
-const sharedRead=path=>/^\/api\/(?:config|me|public\/circles|websites(?:\/[^/?]+)?|circles\/(?:classrooms\/mothers|dashboard|bootstrap|navigation))(?:\?|$)/.test(path)||privateRead(path);
+const sharedRead=path=>/^\/api\/(?:config|me|public\/circles|websites(?:\/[^/?]+)?|circles\/(?:classrooms\/mothers|dashboard|(?:reader-)?bootstrap|navigation))(?:\?|$)/.test(path)||privateRead(path);
 export function api(path,options={}){
  const {body,method=body===undefined?'GET':'POST',headers={},blob=false,refreshed=false,accessRefreshed=false,statusRefreshed=false,optionalSession=false}=options;
  if(method!=='GET'||body!==undefined){
@@ -57,17 +57,17 @@ export function api(path,options={}){
  return pending.then(value=>blob?value:JSON.parse(JSON.stringify(value)));
 }
 async function request(path,{body,method=body===undefined?'GET':'POST',headers={},blob=false,refreshed=false,accessRefreshed=false,statusRefreshed=false,optionalSession=false}={}){
- const generation=identity.generation,revision=readRevision,bootstrap=path.split('?')[0]==='/api/circles/bootstrap',key=JSON.stringify([path,Object.entries(headers).sort()]),eligible=method==='GET'&&!blob&&privateRead(path)&&!/[?&]refresh=1(?:&|$)/.test(path),saved=eligible?savedPrivateRead(key,bootstrap):null;
+ const generation=identity.generation,revision=readRevision,bootstrap=['/api/circles/bootstrap','/api/circles/reader-bootstrap'].includes(path.split('?')[0]),key=JSON.stringify([path,Object.entries(headers).sort()]),eligible=method==='GET'&&!blob&&privateRead(path)&&!/[?&]refresh=1(?:&|$)/.test(path),saved=eligible?savedPrivateRead(key,bootstrap):null;
  const response=await fetch(path,{method,credentials:'same-origin',cache:'no-store',headers:{...(body!==undefined&&!(body instanceof Blob)?{'Content-Type':'application/json'}:{}),...headers,...(saved?{'If-None-Match':saved.etag}:{})},...(body===undefined?{}:{body:body instanceof Blob?body:JSON.stringify(body)})});
  if(generation!==identity.generation)throw new DOMException('Your account changed.','AbortError');
- if(response.status===304){if(!saved||readRevision!==revision||readOwner!==(bootstrap?ownerOf(saved.value.account):readOwnerKey()))throw new DOMException('This saved view changed. Reopen it.','AbortError');const value=JSON.parse(JSON.stringify(saved.value)),serverTime=Number(response.headers.get('X-Maktab-Server-Time'));if(Number.isFinite(serverTime)){if(Object.hasOwn(value,'serverTime'))value.serverTime=serverTime;if(bootstrap&&value.dashboard)value.dashboard.serverTime=serverTime;if(path==='/api/circles/classrooms/mothers'&&value.timetable){value.timetable.serverTime=serverTime;for(const session of value.timetable.sessions||[])session.canJoin=Boolean(session.eligibleToJoin&&serverTime>=session.joinOpensAt&&serverTime<session.endsAt&&serverTime<session.eligibilityExpiresAt);}}return value;}
+ if(response.status===304){if(!saved||readRevision!==revision||readOwner!==(bootstrap?ownerOf(saved.value.account):readOwnerKey()))throw new DOMException('This saved view changed. Reopen it.','AbortError');const value=JSON.parse(JSON.stringify(saved.value)),serverTime=Number(response.headers.get('X-Maktab-Server-Time'));if(Number.isFinite(serverTime)&&serverTime>0){if(Object.hasOwn(value,'serverTime'))value.serverTime=serverTime;if(bootstrap&&value.dashboard)value.dashboard.serverTime=serverTime;const classroom=path==='/api/circles/classrooms/mothers'?value:bootstrap?value.classroom:null;if(classroom?.timetable){classroom.timetable.serverTime=serverTime;for(const session of classroom.timetable.sessions||[])session.canJoin=Boolean(session.eligibleToJoin&&serverTime>=session.joinOpensAt&&serverTime<session.endsAt&&serverTime<session.eligibilityExpiresAt);}}return value;}
  const result=blob&&response.ok?await response.blob():await response.json();if(generation!==identity.generation)throw new DOMException('Your account changed.','AbortError');
  if(response.ok&&Number.isSafeInteger(result.coursePolicyEpoch)){const previous=observedCoursePolicyEpoch;observedCoursePolicyEpoch=result.coursePolicyEpoch;if(previous!==null&&previous!==observedCoursePolicyEpoch)window.dispatchEvent(new CustomEvent('website-course-policy-changed',{detail:{revision:observedCoursePolicyEpoch}}));}
  if(!response.ok){
   if([401,403,404,409].includes(response.status))clearPrivateReads();
   if(result.code==='ACCESS_REFRESH_REQUIRED'&&!refreshed&&!accessRefreshed&&path!=='/auth/access'){await renewAccess(result.offeringId);return api(path,{body,method,headers,blob,refreshed,accessRefreshed:true,statusRefreshed,optionalSession});}
   if(response.status===401&&['ADMIN_STATUS_EXPIRED','STATUS_EXPIRED'].includes(result.code)&&!refreshed&&!statusRefreshed&&path!=='/auth/refresh'){await renewStatus();return api(path,{body,method,headers,blob,refreshed,accessRefreshed,statusRefreshed:true,optionalSession});}
-  if(response.status===401&&!['/auth/login','/auth/exchange'].includes(path)&&!(optionalSession&&['/api/me','/api/circles/bootstrap'].includes(path.split('?')[0])&&!identity.account)){changed(null);window.dispatchEvent(new Event('website-session-ended'));}
+  if(response.status===401&&!['/auth/login','/auth/exchange'].includes(path)&&!(optionalSession&&['/api/me','/api/circles/bootstrap','/api/circles/reader-bootstrap'].includes(path.split('?')[0])&&!identity.account)){changed(null);window.dispatchEvent(new Event('website-session-ended'));}
   throw Object.assign(new Error(result.error||'This action is unavailable.'),{status:response.status,code:result.code,offeringId:result.offeringId});
  }if(eligible&&revision===readRevision)rememberPrivateRead(key,response.headers.get('ETag'),result,bootstrap);return result;
 }

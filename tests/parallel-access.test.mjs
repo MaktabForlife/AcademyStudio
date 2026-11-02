@@ -66,8 +66,11 @@ test('checkpoint import and active sign-in stay bounded beside 4000 unrelated pe
  }finally{await f.close();}
 });
 test('expired access fails closed and one status refresh renews the current account projection; oversized authority cannot retain old grants',async()=>{
- const f=await fixture({academy:true,authorityMode:'ACADEMY'});try{
-  const x=await accessFixture(f),cookie=await signIn(f,'adminA');await f.run('UPDATE source_access_people SET verified_at=? WHERE account_id=?',Date.now()-301_000,f.source.f.actors.adminA);
+ const f=await fixture({academy:true,authorityMode:'ACADEMY',verification:{accountSeconds:43200,adminSeconds:60,liveSeconds:43200}});try{
+  const x=await accessFixture(f),cookie=await signIn(f,'adminA');await f.run('UPDATE source_access_people SET verified_at=? WHERE account_id=?',Date.now()-61_000,f.source.f.actors.adminA);
+  ok(await f.request('/api/websites/site-course/edit',{cookie}));
+  assert.equal((await f.request('/api/websites/site-course/edit',{cookie,method:'POST',body:{operationId:crypto.randomUUID(),action:'save',revision:0,document:f.doc}})).body.code,'ACCESS_REFRESH_REQUIRED','Sensitive changes retain the sixty-second scope requirement');
+  await f.run('UPDATE source_access_people SET verified_at=? WHERE account_id=?',Date.now()-43200_001,f.source.f.actors.adminA);
   assert.equal((await f.request('/api/websites/site-course/edit',{cookie})).body.code,'ACCESS_REFRESH_REQUIRED');ok(await f.request('/auth/access',{cookie,method:'POST',body:{}}));ok(await f.request('/api/websites/site-course/edit',{cookie}));
   const learner=await signIn(f);await x.run('UPDATE program_monthly_subscriptions SET class_ids_json=? WHERE activity_key=? AND account_id=?',JSON.stringify(Array.from({length:101},(_,i)=>'oversized-cohort-'+i)),x.programA,x.student);await x.recover(8);assert.equal((await f.request('/api/websites/site-surah',{cookie:learner})).body.code,'ACCESS_REFRESH_REQUIRED');assert.equal(await f.db.prepare('SELECT ready FROM source_access_people WHERE account_id=? AND offering_id=?').bind(x.student,'tafseer').first('ready'),0);
  }finally{await f.close();}

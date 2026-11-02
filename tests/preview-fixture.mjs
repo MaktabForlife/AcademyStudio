@@ -9,7 +9,7 @@ export async function previewFixture(){
  const env={ENVIRONMENT:'isolated-preview',PLATFORM_ENABLED:'1',ACADEMY_ORIGIN:'https://academy.invalid',WEBSITE_ORIGIN:'https://website.test',PREVIEW_LOGIN_ENABLED:'1',PREVIEW_ACCESS_EXPIRES_AT:String(Date.now()+7*86400_000),PREVIEW_INVITE_SECRET:'Synthetic local fixture key '+crypto.randomUUID(),ACCOUNT_MAX_AGE_SECONDS:'3600',ADMIN_MAX_AGE_SECONDS:'300'};
  const publicRoot=resolve('public'),mime={'.html':'text/html; charset=utf-8','.mjs':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.ttf':'font/ttf','.woff2':'font/woff2'};
  const runtime=new Miniflare(convertV4MiniflareOptions({modules:true,script,compatibilityDate:'2026-09-28',compatibilityFlags:['nodejs_compat'],bindings:env,d1Databases:{DB:'private-preview'},r2Buckets:{CONTENT:'private-preview-content',MEDIA:'private-preview-media'},serviceBindings:{ASSETS:async request=>{
-  const path=new URL(request.url).pathname,file=resolve(publicRoot,'.'+(path.endsWith('/')?path+'index.html':path));
+  const requested=new URL(request.url).pathname,path=requested==='/'?'/studio/':requested,file=resolve(publicRoot,'.'+(path.endsWith('/')?path+'index.html':path));
   if(!file.startsWith(publicRoot+'/'))return new Response('Not found',{status:404});
   try{return new Response(await readFile(file),{headers:{'Content-Type':mime[extname(file)]||'application/octet-stream'}});}catch{return new Response('Not found',{status:404});}
  }}}));

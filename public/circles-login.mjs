@@ -89,10 +89,10 @@ form.addEventListener('submit',async event=>{
  const opening=++attempt,loginId=form.elements.uniqueid.value.trim(),remember=form.elements.rememberId.checked,credential=pins.take();button.disabled=true;message.textContent='Signing in…';
  try{
   config||=await api('/api/config');
-  const me=await signInFromCircles(api,{uniqueid:loginId,pin:credential.pin,setup:form.dataset.setup==='1',pinConfirmation:credential.pinConfirmation},{current:()=>opening===attempt&&dialog.open,onExchange:()=>changed(null)});
+  const boot=await signInFromCircles(api,{uniqueid:loginId,pin:credential.pin,setup:form.dataset.setup==='1',pinConfirmation:credential.pinConfirmation},{current:()=>opening===attempt&&dialog.open,onExchange:()=>changed(null),bootstrap:true});
+  const me=boot.account;
   if(remember)rememberVerified(storage(),config.academyOrigin,{uniqueid:loginId,displayName:me.displayName});else forgetRemembered(storage(),config.academyOrigin,loginId);
-  form.reset();pins.clear();delete form.dataset.setup;element('circles-confirm-pin').hidden=true;form.elements.pinConfirmation.required=false;changed(me);showHomeMessage('');
-  try{await loadNavigation();}catch(error){if(error.name!=='AbortError')showHomeMessage('You are logged in. Your programme links could not be loaded. Please sign out and try again.');}
+  form.reset();pins.clear();delete form.dataset.setup;element('circles-confirm-pin').hidden=true;form.elements.pinConfirmation.required=false;nextAccountBootstrap=boot;changed(me);showHomeMessage(boot.errors?.navigation?'Your programme links could not be loaded. Please try Refresh.':'');
   if(opening!==attempt||!dialog.open)return;returnToCircles();
  }catch(error){
   if(opening!==attempt||error.name==='AbortError')return;
@@ -126,7 +126,8 @@ document.addEventListener('click',event=>{
 },true);
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.querySelector('.circles-account-menu:not([hidden])')){event.preventDefault();closeAccountMenu({focus:true});}});
 const observer=new MutationObserver(refreshHeader);for(const id of ['experience','detail'])if(element(id))observer.observe(element(id),{childList:true,subtree:true});
-function clearAccountNavigation(){handoff?.close();navigation=null;navRequest=null;homeMessage='';clearDashboardView(dashboardViewStorage());const url=new URL(location.href);url.searchParams.delete('workspace');history.replaceState(null,'',url);dashboard.clear();refreshHeader();if(identity.account)void dashboard.load();}
+let nextAccountBootstrap=null;
+function clearAccountNavigation(){const boot=nextAccountBootstrap;nextAccountBootstrap=null;handoff?.close();navigation=null;navRequest=null;homeMessage='';clearDashboardView(dashboardViewStorage());const url=new URL(location.href);url.searchParams.delete('workspace');history.replaceState(null,'',url);dashboard.clear();if(boot&&identity.account?.accountId===boot.account?.accountId){navigation=boot.navigation;config=boot.configuration;refreshHeader();void dashboard.load(boot.dashboard?.mode,false,boot.dashboard?.selectedDate,boot.dashboard,boot.errors?.dashboard);}else{refreshHeader();if(identity.account)void dashboard.load();}}
 window.addEventListener('website-session-ended',event=>{clearAccountNavigation();if(event.detail?.externalAccountChange)location.reload();});
 window.addEventListener('storage',event=>{if(event.key?.startsWith('m4l_circles_remembered_ids_v1:')&&dialog.open)renderRemembered();});window.addEventListener('website-account-changed',clearAccountNavigation);
 protectAccountHistory({window,identity,clear(){observer.disconnect();handoff?.close();attempt++;form.reset();pins.clear();if(dialog.open)dialog.close();navigation=null;navRequest=null;homeMessage='';dashboard.clear();refreshHeader();}});

@@ -36,7 +36,7 @@ async function forwardSignIn(request,env,store,input,fetcher){
  const result=await academyCommand(env,store,'/internal/website/sign-in',{uniqueid:text(input.uniqueid,160),pin:text(input.pin,4),challenge:input.challenge,state:input.state,...(input.setup===true?{setup:true,pinConfirmation:text(input.pinConfirmation,4)}:{})},fetcher);
  if(!safeToken(result.code))throw fail('Academy returned an invalid sign-in handoff.',503);return json({code:result.code});
 }
-async function route(request,env,store,fetcher){
+async function route(request,env,store,fetcher,checkedActor=null){
  const url=new URL(request.url),path=url.pathname,method=request.method;
  if((path==='/api/public/academy-announcements'||path.startsWith('/api/public/academy-announcements/'))&&['GET','HEAD'].includes(method))return publishedAnnouncements(request,env,fetcher);
  if(path==='/api/public/header-date'&&method==='GET')return publicHeaderDate(request,env,fetcher);
@@ -58,7 +58,7 @@ async function route(request,env,store,fetcher){
  if(method==='POST'||method==='PUT'||method==='DELETE')originCheck(request,env);
  if(path==='/auth/login'&&method==='POST')return forwardSignIn(request,env,store,await bodyJSON(request.body,4096),fetcher);
  if(path==='/auth/exchange'&&method==='POST'){const previous=parseCookie(request),result=await exchange(await bodyJSON(request.body,4096),env,store);if(previous)await store.run('UPDATE sessions SET revoked=1 WHERE token_hash=?',[await sha256(previous)]);return json({signedIn:true,accountId:result.accountId},200,{'Set-Cookie':result.cookie});}
- const token=parseCookie(request);if(!token)throw fail('Sign in to Academy to continue.',401,'SIGN_IN_REQUIRED');const actor=await store.actor(await sha256(token),Date.now(),{allowExpiredStatus:path==='/auth/refresh'||path==='/auth/access'||path==='/auth/logout'});
+ const token=parseCookie(request);if(!token)throw fail('Sign in to Academy to continue.',401,'SIGN_IN_REQUIRED');const actor=checkedActor||await store.actor(await sha256(token),Date.now(),{allowExpiredStatus:path==='/auth/refresh'||path==='/auth/access'||path==='/auth/logout'});
  if((path==='/auth/refresh'||path==='/auth/access')&&method==='POST'){
   const input=await bodyJSON(request.body,4096),offeringId=input.offeringId?id(input.offeringId):undefined;
   if(!actor.source_ref)throw fail('Sign in to Academy to refresh this session.',401);if(path==='/auth/refresh'&&actor.verified_at>=Date.now()-boundedAge(env,true))return json({verifiedAt:actor.verified_at});
@@ -72,17 +72,32 @@ async function route(request,env,store,fetcher){
   const result=await academyCommand(env,store,'/internal/website/open-academy',{sourceRef:actor.source_ref,challenge:input.challenge,state:input.state,...(library?{library}:{}),...(input.navigation?{navigation:input.navigation}:{}),...(input.dashboard?{dashboard:input.dashboard}:{})},fetcher);if(!safeToken(result.code))throw fail('Academy could not prepare the handoff.',503);return json({code:result.code});}
  if(path==='/auth/logout'&&method==='POST'){await store.run('UPDATE sessions SET revoked=1 WHERE token_hash=?',[actor.token_hash]);return json({signedOut:true},200,{'Set-Cookie':cookie('',0)});}
  if(path==='/api/me'&&method==='GET')return json(await accountView(actor,store));
+ if(path==='/api/circles/reader-bootstrap'&&method==='GET'){
+  const q=url.searchParams,website=q.get('website'),mothers=q.get('classroom')==='mothers';
+  if([...q.keys()].some(k=>!['website','edition','classroom','media'].includes(k))||Boolean(website)===mothers||q.has('classroom')&&!mothers||q.has('edition')&&(!website||q.get('edition')!=='published')||q.has('media')&&(!website||q.get('media')!=='1'))throw fail('Choose one existing reader or classroom.');
+  const account=await accountView(actor,store),configuration={academyOrigin:env.ACADEMY_ORIGIN,localPreview:env.ENVIRONMENT==='local',authorityMode:env.AUTHORITY_MODE||'WEBSITE'},kind=website?'website':'classroom';
+  const read=async(path,{conditional=true}={})=>{const headers=new Headers(request.headers);if(!conditional)headers.delete('If-None-Match');return route(new Request(new URL(path,url.origin),{headers}),env,store,fetcher,actor);};
+  try{
+   const reply=await read(website?'/api/websites/'+encodeURIComponent(id(website))+'?'+new URLSearchParams({reader:q.has('media')?'recordings-v1':'reader-v1',...(q.has('edition')?{edition:'published'}:{})}):'/api/circles/classrooms/mothers?reader=1');
+   if(reply.status===304){const current=await store.actor(actor.token_hash);if(current.epoch!==actor.epoch||current.global_admin!==actor.global_admin)throw fail('Your account changed. Reopen this page.',409,'ACCESS_REFRESH_REQUIRED');return reply;}
+   const value=await reply.json();if(!reply.ok)throw Object.assign(fail(value.error||'This page could not be opened.',reply.status,value.code),{offeringId:value.offeringId});
+   if(website&&q.has('media')){const feed=await read('/api/offerings/'+encodeURIComponent(value.offeringId)+'/media?'+new URLSearchParams({website:value.websiteId}),{conditional:false}),data=await feed.json();if(!feed.ok)throw Object.assign(fail(data.error||'The recording list could not be checked.',feed.status,data.code),{offeringId:data.offeringId});value.initialMedia=data;}
+   const current=await store.actor(actor.token_hash);if(current.epoch!==actor.epoch||current.global_admin!==actor.global_admin)throw fail('Your account changed. Reopen this page.',409,'ACCESS_REFRESH_REQUIRED');
+   const result={configuration,account,[kind]:value,errors:{}};return reply.headers.get('ETag')?privateReply(result,reply.headers.get('ETag')):json(result);
+  }catch(error){if(error.status===401||error.code==='ACCESS_REFRESH_REQUIRED')throw error;const current=await store.actor(actor.token_hash);if(current.epoch!==actor.epoch||current.global_admin!==actor.global_admin)throw fail('Your account changed. Reopen this page.',409,'ACCESS_REFRESH_REQUIRED');return json({configuration,account,[kind]:null,errors:{[kind]:{status:error.status||503,code:error.code||'UNAVAILABLE',message:error.status?error.message:'This page could not be loaded.'}}});}
+ }
+
  if(path==='/api/circles/bootstrap'&&method==='GET'){
   const q=url.searchParams;if([...q.keys()].some(k=>!['mode','date','preferredAccount','preferredMode'].includes(k)))throw fail('Choose a valid dashboard.');
   const preferred=q.get('preferredAccount')===actor.account_id?q.get('preferredMode'):null,mode=q.get('mode')||preferred,input={...(mode?{mode}:{}),...(q.get('date')?{date:q.get('date')}:{})};
   const account=await accountView(actor,store),parts=await Promise.allSettled([circlesNavigation(env,store,actor),dashboardSnapshot(env,store,actor,input,fetcher)]),errors={};
   for(const [index,name] of ['navigation','dashboard'].entries())if(parts[index].status==='rejected'){const error=parts[index].reason;if(error.status===401||error.code==='ACCESS_REFRESH_REQUIRED')throw error;errors[name]={status:error.status||503,code:error.code||'UNAVAILABLE',message:error.status?error.message:'This view could not be loaded.'};}
   const current=await store.actor(actor.token_hash);if(current.epoch!==actor.epoch||current.global_admin!==actor.global_admin)throw fail('Your account changed. Reopen your dashboard.',409,'ACCESS_REFRESH_REQUIRED');
-  const result={configuration:{academyOrigin:env.ACADEMY_ORIGIN,localPreview:env.ENVIRONMENT==='local',authorityMode:env.AUTHORITY_MODE||'WEBSITE'},account,navigation:parts[0].status==='fulfilled'?parts[0].value:null,dashboard:parts[1].status==='fulfilled'?parts[1].value:null,errors};return Object.keys(errors).length?json(result):checkedViewReply(request,result);
+  const result={configuration:{academyOrigin:env.ACADEMY_ORIGIN,localPreview:env.ENVIRONMENT==='local',authorityMode:env.AUTHORITY_MODE||'WEBSITE'},account,navigation:parts[0].status==='fulfilled'?parts[0].value:null,dashboard:parts[1].status==='fulfilled'?parts[1].value:null,errors};return Object.keys(errors).length?json(result):checkedViewReply(request,result,env.RELEASE_VERSION);
  }
  if(path==='/api/circles/dashboard'&&method==='GET'){
   const q=url.searchParams;if([...q.keys()].some(k=>!['mode','date','refresh'].includes(k))||q.has('refresh')&&q.get('refresh')!=='1')throw fail('Choose a valid dashboard.');
-  return checkedViewReply(request,await dashboardSnapshot(env,store,actor,{...(q.get('mode')?{mode:q.get('mode')}:{}),...(q.get('date')?{date:q.get('date')}:{}),...(q.has('refresh')?{refresh:true}:{})},fetcher));
+  return checkedViewReply(request,await dashboardSnapshot(env,store,actor,{...(q.get('mode')?{mode:q.get('mode')}:{}),...(q.get('date')?{date:q.get('date')}:{}),...(q.has('refresh')?{refresh:true}:{})},fetcher),env.RELEASE_VERSION);
  }
  if(path==='/api/circles/dashboard'&&method==='POST')return json(await dashboardSnapshot(env,store,actor,await bodyJSON(request.body,4096),fetcher));
  if(path==='/api/circles/lesson-join'&&method==='POST')return json(await circlesNativeJoin(env,store,actor,await bodyJSON(request.body,4096),fetcher));

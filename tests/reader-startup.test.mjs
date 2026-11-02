@@ -7,10 +7,10 @@ test('a completed Course never loads a timetable even when its saved author docu
  assert.equal(readerHasLiveSessions(record),false);assert.equal(readerHasLiveSessions({...record,capabilities:{liveSessions:true}}),true);
  assert.equal(readerHasLiveSessions({...record,kind:'TAFSEER',capabilities:{liveSessions:true}}),false);assert.equal(readerHasLiveSessions(null),false);
 });
-test('initial reader HTML hides the legacy page before any application module or request runs',async()=>{
- const html=await readFile(new URL('../public/index.html',import.meta.url),'utf8');
+test('initial native reader HTML hides private content and contains no retired homepage',async()=>{
+ const html=await readFile(new URL('../public/studio/index.html',import.meta.url),'utf8');
  assert.match(html,/<main[^>]+id="main"[^>]+aria-busy="true"[^>]+hidden>/);
- assert.match(html,/<section id="homepage" hidden>/);assert.match(html,/role="status" aria-live="polite">Loading your learning…/);
+ assert.doesNotMatch(html,/id="homepage"/);assert.match(html,/role="status" aria-live="polite">Loading your learning…/);
 });
 test('a slow Tafseer route stays hidden until ready, and loading failures remain visible',async()=>{
  const root=main(),status={textContent:'Loading your learning…'};let resolve;
