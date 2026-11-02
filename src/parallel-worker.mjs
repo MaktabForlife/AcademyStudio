@@ -4,7 +4,7 @@ import {json} from './protocol.mjs';
 export async function connected(request,env,ctx){
  if(env.ENVIRONMENT!=='parallel'||env.AUTHORITY_MODE!=='ACADEMY'||env.PREVIEW_LOGIN_ENABLED==='1'||!/^https:\/\//.test(env.ACADEMY_ORIGIN||'')||!/^https:\/\//.test(env.ACADEMY_API_ORIGIN||'')||env.ACADEMY_ORIGIN==='https://academy.invalid')return json({success:false,error:'The real parallel configuration is required.'},503);
  if(env.PLATFORM_ENABLED==='1'&&[env.ACADEMY_TO_WEBSITE_SECRET,env.WEBSITE_TO_ACADEMY_SECRET].some(s=>typeof s!=='string'||s.length<32))return json({success:false,error:'The Academy connection is not configured.'},503);
- const path=new URL(request.url).pathname,privateRoute=path.startsWith('/auth/')||path.startsWith('/api/')&&!['/api/config','/api/public/home','/api/public/circles'].includes(path)&&!/^\/api\/public\/circles\/covers\/[a-f0-9]{64}$/.test(path);
+ const path=new URL(request.url).pathname,privateRoute=path.startsWith('/auth/')||path.startsWith('/api/')&&!['/api/config','/api/public/home','/api/public/circles','/api/public/academy-announcements'].includes(path)&&!/^\/api\/public\/academy-announcements\/(?:image|pdf)$/.test(path)&&!/^\/api\/public\/circles\/covers\/[a-f0-9]{64}$/.test(path);
  // Signed imports can arrive while real browser access remains closed. The
  // ordinary receiver still authenticates every delivery before any mutation.
  return env.PARALLEL_ACCESS_ENABLED!=='1'&&privateRoute?json({success:false,error:'Parallel access is being synchronised. Existing Academy screens remain available.',code:'PARALLEL_PREPARING'},503):handle(request,env,ctx);
