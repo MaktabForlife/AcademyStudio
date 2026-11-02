@@ -16,3 +16,13 @@ test('weekly display follows the selected timezone and cancelled classes cannot 
  const lesson=row('2026-11-01',22,{nativeJoin:{joinKey:'same-reference',date:'2026-11-01'}}),data={startDate:'2026-11-01',timezone:'Asia/Riyadh',timetable:[lesson,{...lesson,activityId:'cancelled',status:'CANCELLED'}]},live=lesson.startsAt+1000;
  const {document}=parseHTML(weeklyTimetableHTML(data,{now:live})),cell=document.querySelector('.week-lesson').closest('td');assert.equal(cell.cellIndex,undefined);assert.match(cell.textContent,/01:00–02:00/);assert.equal(document.querySelectorAll('.week-join').length,1);assert.match(document.querySelector('.is-cancelled').textContent,/CANCELLED/);assert.equal(lesson.nativeJoin.date,'2026-11-01');
 });
+
+test('Global Admin week rolls every programme into one entry per local day without altering checked children',()=>{
+ const first=row('2026-11-02',8),duplicates=Array.from({length:4},(_,i)=>({...first,nativeJoin:{joinKey:'class-'+i,date:first.date}}));
+ const later=row('2026-11-02',10,{subjectName:'Hadith'}),cancelled=row('2026-11-02',11,{status:'CANCELLED'}),next=row('2026-11-03'),other=row('2026-11-02',8,{activityId:'other',activityName:'Reboot'});
+ const data={startDate:'2026-11-01',timezone:'UTC',timetable:[...duplicates,later,cancelled,next,other]},before=JSON.stringify(data),week=timetableWeek(data,{now,grouped:true});
+ assert.equal(week.displayRows.length,3);assert.equal(week.rows.length,8);assert.equal(week.displayRows[0].constituents.length,6);assert.equal(week.displayRows[0].startsAt,first.startsAt);assert.equal(week.displayRows[0].endsAt,cancelled.endsAt);assert.equal(JSON.stringify(data),before);
+ const {document}=parseHTML(weeklyTimetableHTML(data,{now:first.startsAt,grouped:true}));assert.equal(document.querySelectorAll('.week-lesson').length,3);assert.match(document.querySelector('.week-lesson').textContent,/08:00–12:00/);assert.equal(document.querySelectorAll('[data-circle-join]').length,2);
+ assert.equal(parseHTML(weeklyTimetableHTML(data,{now:first.startsAt})).document.querySelectorAll('.week-lesson').length,8,'Ordinary scoped views retain their individual sessions');
+ const gap=parseHTML(weeklyTimetableHTML(data,{now:first.endsAt+1,grouped:true})).document;assert.equal(gap.querySelectorAll('[data-circle-join]').length,0,'A programme span cannot widen an individual lesson Join window');
+});

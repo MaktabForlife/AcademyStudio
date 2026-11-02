@@ -81,3 +81,48 @@
 @media(min-width:761px){.circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website{height:clamp(740px,65vw,1040px);min-height:0}.circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-arabic{top:76%!important;bottom:auto!important;left:18%!important;max-height:22%;box-sizing:border-box}.circle .single-circle-home:not(.circles-button-dashboard) .public-visual-foot{margin-top:20px}}
 
 @media(min-width:1100px){.circle .academy-memorisation .memorisation-reel{grid-auto-columns:calc((100% - 80px)/6);gap:16px}.circle .memory-card-top{padding:18px 14px;min-height:145px}.circle .memory-card h3{font-size:23px}.circle .memory-card-bottom{padding:14px}.circle .memory-card button{font-size:11px}}
+
+/* One fixed composition scales as a unit; panel offsets never escape its frame. */
+@media(min-width:821px){
+ .circle .single-circle-home:not(.circles-button-dashboard) .circle-hub-frame{height:calc(650px * var(--home-composition-scale,1))!important}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website{width:1246px;height:650px!important;min-height:0;padding:0}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website>.hub-panel,
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website>.hub-orb{translate:0 0!important;box-sizing:border-box}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-orb.hub-academy-centre{left:350px;top:10px;width:560px;height:560px;aspect-ratio:1;padding:48px 24px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-academy-centre h1{font-size:55px;max-width:360px;margin-bottom:22px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-academy-tagline{font-size:25px;max-width:350px;margin-bottom:24px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-academy-signoff{font-size:14px;max-width:350px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-image{left:50px;top:60px;width:410px!important;height:365px!important}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-image>img{height:250px;object-fit:cover}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-image-copy{padding:16px 20px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-image-copy>*{max-width:100%}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-next.public-combined-worship{left:855px;top:25px;width:345px!important;padding:22px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .public-worship-links a{font-size:16px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .public-worship-links [lang=ar]{font-size:28px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .public-combined-worship>p{font-size:21px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-progress{left:855px;top:375px;width:330px!important;padding:22px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-arabic{left:260px!important;top:525px!important;bottom:auto!important;width:400px!important;max-height:none;min-height:100px;grid-template-columns:88px minmax(0,1fr)}
+}
+@media(min-width:761px) and (max-width:820px){
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website{display:grid;height:auto;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:20px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website>.hub-panel{position:relative;inset:auto!important;width:100%!important;height:auto;max-height:none;translate:none!important}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-orb.hub-academy-centre{position:relative;inset:auto;width:440px;height:440px;grid-column:1/-1;justify-self:center;max-width:100%;transform:none!important}
+}
+
+/* All cards fit their grid tracks; the approved artwork sits behind a green band. */
+.circle .academy-featured-courses{gap:16px;align-items:stretch}
+.circle .academy-featured-courses>.free-course-card{width:auto;min-width:0;max-width:100%;box-sizing:border-box;overflow:hidden}
+.circle .academy-featured-courses .free-course-art[data-card-standard=green]{box-sizing:border-box;width:100%;height:auto;aspect-ratio:1;min-width:0}
+.circle .academy-featured-courses .free-course-art[data-card-standard=green]>img{position:absolute;inset:0;width:100%;height:100%;max-width:100%;object-fit:cover}
+.circle .academy-featured-courses .free-course-art[data-card-standard=green][data-course=resilience]>img{inset:auto;width:210.91954%;max-width:none;height:auto;left:-110.91954%;top:-83.33333%}
+.circle .academy-featured-courses .homepage-course-caption{box-sizing:border-box;padding:34px 14px 42px;min-height:115px;background:linear-gradient(0deg,#254e41 0%,#355e50f5 68%,#355e5000 100%)}
+.circle .academy-featured-courses .homepage-course-caption h3{font:400 clamp(18px,1.65vw,25px)/1.12 Georgia,serif!important;overflow-wrap:normal;letter-spacing:-.3px}
+.circle .academy-featured-courses .homepage-course-caption .access-badge{right:10px;bottom:10px;max-width:calc(100% - 20px);box-sizing:border-box}
+@media(min-width:1200px){.circle .academy-featured-courses{grid-auto-columns:calc((100% - 80px)/6)}}
+@media(min-width:601px) and (max-width:1199px){.circle .academy-featured-courses{grid-auto-columns:calc((100% - 32px)/3)}}
+@media(max-width:600px){.circle .academy-featured-courses{grid-auto-columns:82%;gap:14px}.circle .academy-featured-courses .homepage-course-caption h3{font-size:25px!important}}
+@media(min-width:601px){
+ .circle .academy-featured-courses .free-course-art[data-card-standard=green]{min-height:270px}
+ .circle .academy-featured-courses .homepage-course-caption{padding:28px 12px 42px}
+ .circle .academy-featured-courses .homepage-course-caption h3{font-size:20px!important}
+}

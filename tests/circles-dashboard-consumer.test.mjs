@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import vm from 'node:vm';
-import {addCircleDay,circleWeekStart,selectedCircleDay,teachingScheduleRows,joinableConstituent} from '../public/shared/circle-days.mjs';
+import {addCircleDay,circleWeekStart,selectedCircleDay,teachingScheduleRows,joinableConstituent,programmeDayRows} from '../public/shared/circle-days.mjs';
 import {calendarMonth,offsetCalendarMonth,calendarMonthHTML} from '../public/shared/calendar-month.mjs';
 import {dashboardHTML,attentionRows,timetableProgrammes} from '../public/shared/circles-dashboard-view.mjs';
 import {sessionKey,mayOfferJoin,sessionSubject,sessionTime,localDay} from '../public/shared/learning-circle.mjs';
@@ -23,7 +23,7 @@ async function fixture({mode='learn',initial=start-300000,rows,global=true}={}){
  window.location={assign:value=>navigations.push(value)};window.open=()=>{const popup={opener:window,closed:false,location:{replace:value=>navigations.push(value)},close(){this.closed=true;}};popups.push(popup);return popup;};
  class FixtureDate extends RealDate{static now(){return time;}constructor(...args){super(...(args.length?args:[time]));}}
  const api=async(path,options={})=>{calls.push({path,...options});if(path==='/api/circles/dashboard'){const data=summary();data.mode=options.body.mode||mode;data.timetableWeekVersion=1;data.startDate=circleWeekStart(options.body.date||'2026-11-01');data.endDate=addCircleDay(data.startDate,6);data.weekStart=data.startDate;data.weekEnd=data.endDate;data.selectedDate=options.body.date||data.startDate;if(rows)data.timetable=rows;return data;}if(path.includes('/join')||path==='/api/circles/lesson-join')return new Promise(resolve=>{joinResolve=resolve;});throw Error('Unexpected API request '+path);};
- vm.runInNewContext(script,{window,document,identity,api,dashboardHTML,attentionRows,timetableProgrammes,sessionKey,mayOfferJoin,sessionSubject,sessionTime,localDay,createDashboardJoin,addCircleDay,circleWeekStart,selectedCircleDay,teachingScheduleRows,joinableConstituent,calendarMonth,offsetCalendarMonth,calendarMonthHTML,esc,Date:FixtureDate,Intl,JSON,Map,Set,WeakMap,URL,setTimeout:(fn,delay)=>{const id=++next;timers.set(id,{fn:()=>{timers.delete(id);fn();},delay});return id;},clearTimeout:id=>timers.delete(id)});
+ vm.runInNewContext(script,{window,document,identity,api,dashboardHTML,attentionRows,timetableProgrammes,sessionKey,mayOfferJoin,sessionSubject,sessionTime,localDay,createDashboardJoin,addCircleDay,circleWeekStart,selectedCircleDay,teachingScheduleRows,joinableConstituent,programmeDayRows,calendarMonth,offsetCalendarMonth,calendarMonthHTML,esc,Date:FixtureDate,Intl,JSON,Map,Set,WeakMap,URL,setTimeout:(fn,delay)=>{const id=++next;timers.set(id,{fn:()=>{timers.delete(id);fn();},delay});return id;},clearTimeout:id=>timers.delete(id)});
  let dashboard;dashboard=window.create({onUpdate:()=>dashboard.refresh(),openAcademy:(...args)=>handoffs.push(args),show:()=>visible,getNavigation:()=>({academia:[{key:'alimiyah',label:'Aalimiyah'}],tafseer:'/studio/?collection=tafseer',mothers:true,hifz:null})});
  const click=selector=>{const element=document.querySelector(selector);assert(element,selector);const event=new window.Event('click',{bubbles:true});Object.defineProperty(event,'button',{value:0});element.dispatchEvent(event);};
  await dashboard.load(mode);return {window,document,dashboard,identity,calls,handoffs,navigations,popups,timers,click,setTime:value=>{time=value;},public:()=>{visible=false;dashboard.refresh();},resolveJoin:result=>joinResolve(result)};
@@ -48,7 +48,7 @@ test('a checked public Free programme outside personal activities appears at the
 });
 test('session, all sessions and attention dialogs expose every permitted entry without six-item truncation',async()=>{
  const f=await fixture({global:false});f.click('[data-circle-session]');assert(f.document.querySelector('dialog').textContent.includes('Subject 0'));f.click('[data-circle-dialog-close]');f.click('[data-circle-all]');assert.equal(f.document.querySelectorAll('dialog .circle-session-detail').length,9);f.click('[data-circle-dialog-close]');f.click('[data-circle-attention-all]');assert.equal(f.document.querySelectorAll('dialog article').length,6);
- const admin=await fixture({mode:'admin',rows:[...summary().timetable,session(10,{status:'CANCELLED',subjectName:'Cancelled lesson'}),session(11,{date:'2026-10-31',subjectName:'Earlier lesson'})]});assert.equal(admin.document.querySelectorAll('.wheel-session').length,1,'Global Admin shows one programme entry');admin.click('[data-circle-session]');assert.equal(admin.document.querySelectorAll('dialog .circle-session-detail').length,11,'Its info reveals all real programme sessions including cancelled and earlier dates');
+ const admin=await fixture({mode:'admin',rows:[...summary().timetable,session(10,{status:'CANCELLED',subjectName:'Cancelled lesson'}),session(11,{date:'2026-10-31',subjectName:'Earlier lesson'})]});assert.equal(admin.document.querySelectorAll('.wheel-session').length,1,'Global Admin shows one programme entry');admin.click('[data-circle-session]');assert.equal(admin.document.querySelectorAll('dialog .circle-session-detail').length,11,'Its info reveals every programme session on the displayed local day');
 });
 test('Learn and Teach Calendar are viewing popups while Admin retains the checked edit-calendar route',async()=>{
  for(const mode of ['learn','teach']){const f=await fixture({mode});f.click('[data-circles-academy-action*="calendar"]');assert.match(f.document.querySelector('dialog').textContent,/Term event <text>/);assert.equal(f.document.querySelectorAll('dialog input,dialog textarea').length,0);assert.equal(f.handoffs.length,0);}
@@ -74,7 +74,7 @@ test('programme cards follow the currently checked mode and handoff errors remai
 
 test('verified Global Admin grouping spans Learn Teach and Admin while every original session and Join reference remains in info',async()=>{
  const rows=[...summary().timetable,session(10,{status:'CANCELLED',subjectName:'Cancelled lesson'}),session(11,{date:'2026-10-31',startsAt:start-86400000,endsAt:start-83400000,subjectName:'Earlier lesson'})],before=JSON.stringify(rows);
- for(const mode of ['learn','teach','admin']){const f=await fixture({mode,global:true,rows});assert.equal(f.document.querySelectorAll('.wheel-session').length,1);f.click('[data-circle-session]');assert.equal(f.document.querySelectorAll('dialog .circle-session-detail').length,11);assert.match(f.document.querySelector('dialog').textContent,/Earlier lesson/);assert.match(f.document.querySelector('dialog').textContent,/Cancelled lesson/);f.click('dialog [data-circle-join]');assert.equal(f.calls.at(-1).body.mode,mode);assert.equal(f.calls.at(-1).body.joinKey,rows[0].nativeJoin.joinKey);f.resolveJoin({joinUrl:'https://zoom.test/checked'});await flush();assert.equal(f.navigations.length,1);}
+ for(const mode of ['learn','teach','admin']){const f=await fixture({mode,global:true,rows});assert.equal(f.document.querySelectorAll('.wheel-session').length,1);f.click('[data-circle-session]');assert.equal(f.document.querySelectorAll('dialog .circle-session-detail').length,10);assert.doesNotMatch(f.document.querySelector('dialog').textContent,/Earlier lesson/);assert.match(f.document.querySelector('dialog').textContent,/Cancelled lesson/);f.click('dialog [data-circle-join]');assert.equal(f.calls.at(-1).body.mode,mode);assert.equal(f.calls.at(-1).body.joinKey,rows[0].nativeJoin.joinKey);f.resolveJoin({joinUrl:'https://zoom.test/checked'});await flush();assert.equal(f.navigations.length,1);}
  assert.equal(JSON.stringify(rows),before);
  for(const mode of ['learn','teach','admin']){const f=await fixture({mode,global:false,rows:summary().timetable.slice(0,2)});assert.equal(f.document.querySelectorAll('.wheel-session').length,2);f.click('[data-circle-session]');assert.equal(f.document.querySelectorAll('dialog .circle-session-detail').length,1);}
 });
@@ -85,4 +85,18 @@ test('day browsing reuses a loaded week and requests only one explicit new week;
 });
 test('calendar month navigation is local and leaves the native Admin calendar action intact',async()=>{
  const f=await fixture();f.click('[data-circles-academy-action*=calendar]');assert.match(f.document.querySelector('dialog').textContent,/November 2026/);f.click('[data-calendar-month=next]');assert.match(f.document.querySelector('dialog').textContent,/December 2026/);assert.equal(f.calls.length,1);f.click('[data-calendar-month=today]');assert.match(f.document.querySelector('dialog').textContent,/November 2026/);
+});
+
+test('circle programme info and overflow contain only the displayed day; weekly programme info follows its own day',async()=>{
+ const first=session(),tomorrow=session(1,{date:'2026-11-02',title:'Tomorrow only',subjectName:'Tomorrow only',startsAt:start+86400000,endsAt:start+89400000}),todayRows=Array.from({length:7},(_,i)=>session(i)),rows=[...todayRows,tomorrow],f=await fixture({rows});
+ f.click('.wheel-session [data-circle-session]');assert.equal(f.document.querySelectorAll('dialog article').length,7);assert.doesNotMatch(f.document.querySelector('dialog').textContent,/Tomorrow only/);f.click('[data-circle-dialog-close]');
+ f.click('[data-circle-day=next]');f.click('.wheel-session [data-circle-session]');assert.equal(f.document.querySelectorAll('dialog article').length,1);assert.match(f.document.querySelector('dialog').textContent,/Tomorrow only/);assert.match(f.document.querySelector('dialog h2').textContent,/2026-11-02/);f.click('[data-circle-dialog-close]');
+ f.click('.week-lesson [data-circle-session]');assert.equal(f.document.querySelectorAll('dialog article').length,7);assert.doesNotMatch(f.document.querySelector('dialog').textContent,/Tomorrow only/);assert.equal(f.calls.length,1,'Viewing date-specific details makes no extra API request');
+ const ordinary=await fixture({rows,global:false});ordinary.click('[data-circle-all]');assert.equal(ordinary.document.querySelectorAll('dialog article').length,7);assert.doesNotMatch(ordinary.document.querySelector('dialog').textContent,/Tomorrow only/);
+});
+
+test('Admin management buttons use only their original checked destinations and stay absent from Learn and Teach',async()=>{
+ const f=await fixture({mode:'admin'});
+ for(const tool of ['users','access','curriculum','assessment']){f.click('.circles-manage [data-circles-academy-action*=\"'+tool+'\"]');assert.equal(f.handoffs.at(-1)[1].mode,'admin');assert.equal(f.handoffs.at(-1)[1].tool,tool);}
+ for(const mode of ['learn','teach']){await f.dashboard.load(mode);assert.equal(f.document.querySelector('.circles-manage'),null);}
 });

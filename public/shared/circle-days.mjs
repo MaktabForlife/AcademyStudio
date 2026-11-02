@@ -20,3 +20,18 @@ export function teachingScheduleRows(rows,{timezone='Africa/Johannesburg'}={}){
  return groups.sort((a,b)=>a.startsAt-b.startsAt);
 }
 export const joinableConstituent=(row,now)=>row.constituents?row.constituents.find(child=>child.status==='SCHEDULED'&&(child.nativeJoin||child.studioJoin)&&now>=child.startsAt-300000&&now<child.endsAt):row;
+
+// Presentation groups retain the exact checked children for details and Join.
+export function programmeDayRows(rows,{timezone='Africa/Johannesburg'}={}){
+ const groups=new Map();
+ for(const row of rows){
+  if(!Number.isFinite(row.startsAt)||!Number.isFinite(row.endsAt)||row.endsAt<=row.startsAt)continue;
+  const date=localDay(row.startsAt,timezone),key=JSON.stringify([date,row.kind,row.activityId]);
+  if(!groups.has(key))groups.set(key,[]);groups.get(key).push(row);
+ }
+ return [...groups.values()].map(children=>{
+  children.sort((a,b)=>a.startsAt-b.startsAt||a.endsAt-b.endsAt);
+  const first=children[0];
+  return {...first,startsAt:Math.min(...children.map(r=>r.startsAt)),endsAt:Math.max(...children.map(r=>r.endsAt)),status:children.some(r=>r.status==='SCHEDULED')?'SCHEDULED':first.status,subjectName:'',moduleName:'',title:children.length+' '+(children.length===1?'session':'sessions'),constituents:children};
+ }).sort((a,b)=>a.startsAt-b.startsAt||a.activityName.localeCompare(b.activityName));
+}
