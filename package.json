@@ -1,6 +1,6 @@
 {
   "name": "maktab-web-platform",
-  "version": "109.11",
+  "version": "109.12",
   "private": true,
   "type": "module",
   "scripts": {
