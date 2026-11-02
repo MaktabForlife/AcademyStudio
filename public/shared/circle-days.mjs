@@ -1,4 +1,4 @@
-import {localDay} from './learning-circle.mjs';
+import {localDay,sessionKey} from './learning-circle.mjs';
 export const addCircleDay=(date,offset)=>new Date(Date.parse(date+'T12:00:00Z')+offset*86400_000).toISOString().slice(0,10);
 export const circleWeekStart=date=>addCircleDay(date,-new Date(date+'T12:00:00Z').getUTCDay());
 export function selectedCircleDay(data,date,now=Date.now()){
@@ -30,7 +30,7 @@ export function programmeDayRows(rows,{timezone='Africa/Johannesburg'}={}){
   if(!groups.has(key))groups.set(key,[]);groups.get(key).push(row);
  }
  return [...groups.values()].map(children=>{
-  children.sort((a,b)=>a.startsAt-b.startsAt||a.endsAt-b.endsAt);
+  children.sort((a,b)=>a.startsAt-b.startsAt||a.endsAt-b.endsAt||sessionKey(a).localeCompare(sessionKey(b)));
   const first=children[0];
   return {...first,startsAt:Math.min(...children.map(r=>r.startsAt)),endsAt:Math.max(...children.map(r=>r.endsAt)),status:children.some(r=>r.status==='SCHEDULED')?'SCHEDULED':first.status,subjectName:'',moduleName:'',title:children.length+' '+(children.length===1?'session':'sessions'),constituents:children};
  }).sort((a,b)=>a.startsAt-b.startsAt||a.activityName.localeCompare(b.activityName));

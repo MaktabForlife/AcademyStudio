@@ -100,3 +100,10 @@ test('Admin management buttons use only their original checked destinations and 
  for(const tool of ['users','access','curriculum','assessment']){f.click('.circles-manage [data-circles-academy-action*=\"'+tool+'\"]');assert.equal(f.handoffs.at(-1)[1].mode,'admin');assert.equal(f.handoffs.at(-1)[1].tool,tool);}
  for(const mode of ['learn','teach']){await f.dashboard.load(mode);assert.equal(f.document.querySelector('.circles-manage'),null);}
 });
+
+// Weekly rendering sorts identical slots; click resolution must use the same key.
+test('rolled-up simultaneous classes open and Join with stable identities regardless of checked input order',async()=>{
+ const rows=['class-z','class-a','class-m'].map(joinKey=>session(0,{nativeJoin:{joinKey,date:'2026-11-01'}})),before=JSON.stringify(rows),f=await fixture({mode:'admin',rows,global:true});
+ f.click('.week-lesson [data-circle-session]');assert.equal(f.document.querySelectorAll('dialog .circle-session-detail').length,3);assert.equal(JSON.stringify(rows),before);
+ f.click('.week-lesson [data-circle-join]');assert.equal(f.calls.at(-1).body.joinKey,'class-a');f.resolveJoin({joinUrl:'https://zoom.test/checked'});await flush();assert.equal(f.navigations.length,1);
+});
