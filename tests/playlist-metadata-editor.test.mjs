@@ -14,3 +14,5 @@ test('Learn metadata Edit uses the exact same canonical table, private Save, exp
 test('late metadata reply cannot restore an editor after account change and checked identity stays exact',async()=>{
  const f=fixture({delayed:true}),opening=f.editor.open({playlistId:'exact-playlist',offeringId:'offering',websiteId:'native-website'});await settle();f.identity.account={accountId:'other'};f.identity.generation++;f.editor.clear();f.release();await opening;assert.equal(f.document.querySelector('dialog'),null);assert.equal(f.document.querySelector('main').textContent,'Current Learn page');
 });
+
+test('MOU programme keeps a programme card preview despite its shared Tafseer billing kind',async()=>{const f=fixture();f.current.programmeKey='mothers';await f.editor.open({playlistId:'exact-playlist',offeringId:'offering',websiteId:'native-website'});assert.equal(f.document.querySelector('.is-tafseer'),null);assert(f.document.querySelector('.playlist-artwork-card'));f.editor.clear();});
