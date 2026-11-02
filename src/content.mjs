@@ -1,5 +1,6 @@
 import {carryGuideBindings} from './circles.mjs';
 import {saveRecordedSupport,carryRecordedSupport} from './recorded-support.mjs';
+import {cardPublication,finishCardPublication} from './playlist-cards.mjs';
 import {sourceWebsiteGate} from './access.mjs';
 import {fail,id,text,month,sha256,bodyJSON} from './protocol.mjs';
 import {validatePackage} from './content-package.mjs';
@@ -8,7 +9,7 @@ import {playlistTextAccess,playlistParentTextAccess} from './mou-playlists.mjs';
 export async function objectJSON(bucket,key,limit=1_500_000){const object=await bucket.get(key);if(!object||object.size>limit)throw fail('The saved edition is unavailable.',503);return bodyJSON(object.body,limit);}
 export async function saveContent(env,document,websiteId=document.id){const encoded=JSON.stringify(document);if(new TextEncoder().encode(encoded).length>1_500_000)throw fail('This website edition is too large.',413);const hash=await sha256(encoded),key='websites/'+encodeURIComponent(websiteId)+'/versions/'+hash+'.json';await env.CONTENT.put(key,encoded,{httpMetadata:{contentType:'application/json'}});return key;}
 export async function websiteAccess(store,actor,websiteId,{admin=false,readOnly=!admin}={}){
- const row=await store.first(`SELECT w.*,o.kind,o.active,(SELECT playlist_id FROM mou_playlists mp WHERE mp.website_id=w.website_id) playlist_id,p.purchased,s.role,h.offering_id completed_course,(SELECT programme_key FROM programme_offerings mp WHERE mp.offering_id=o.offering_id) programme_key,(SELECT access_model FROM course_access_models m WHERE m.offering_id=o.offering_id) access_model,
+ const row=await store.first(`SELECT w.*,(SELECT published_title FROM playlist_card_designs c JOIN mou_playlists p USING(playlist_id) WHERE p.website_id=w.website_id) published_title,o.kind,o.active,(SELECT playlist_id FROM mou_playlists mp WHERE mp.website_id=w.website_id) playlist_id,p.purchased,s.role,h.offering_id completed_course,(SELECT programme_key FROM programme_offerings mp WHERE mp.offering_id=o.offering_id) programme_key,(SELECT access_model FROM course_access_models m WHERE m.offering_id=o.offering_id) access_model,
   EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=? AND m.offering_id=w.offering_id UNION ALL SELECT 1 FROM website_months m WHERE m.account_id=? AND m.offering_id=w.offering_id) retained_text,
   EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=? AND m.offering_id=w.offering_id AND m.month=w.completion_month UNION ALL SELECT 1 FROM website_months m WHERE m.account_id=? AND m.offering_id=w.offering_id AND m.month=w.completion_month) paid,
   EXISTS(SELECT 1 FROM surah_grants g WHERE g.account_id=? AND g.website_id=w.website_id) granted
@@ -23,18 +24,19 @@ export async function websiteAccess(store,actor,websiteId,{admin=false,readOnly=
  const privatePlaylistParent=row.programme_key==='mothers'&&!playlist?await store.first('SELECT 1 FROM mou_playlist_only_websites WHERE website_id=?',[websiteId]):null;
  const monthlyText=row.kind==='COURSE'?false:playlist?row.granted||await playlistTextAccess(store,actor,websiteId,row.offering_id):privatePlaylistParent?await playlistParentTextAccess(store,actor,websiteId,row.offering_id):row.paid||row.granted||row.programme_key==='mothers'&&row.retained_text;
  if(!staff&&!(row.kind==='COURSE'&&(row.purchased||row.access_model==='FREE')||row.kind==='TAFSEER'&&monthlyText))throw fail('Your account does not have this material.',403,'MATERIAL_ACCESS_REQUIRED');
- if(!row.enabled||!row.published_key)throw fail('This website is not published.',404);return {...row,is_playlist:Boolean(playlist),playlist_parent:Boolean(privatePlaylistParent)};
+ if(!row.enabled||!row.published_key)throw fail('This website is not published.',404);return {...row,title:row.published_title??row.title,is_playlist:Boolean(playlist),playlist_parent:Boolean(privatePlaylistParent)};
 }
 export async function editWebsite(env,store,actor,websiteId,input){
- input={...input,websiteId};const website=await websiteAccess(store,actor,websiteId,{admin:true}),hash=await store.requestHash(website.offering_id,input),old=await store.replay(actor.account_id,input.operationId,hash);if(old)return old;
+ input={...input,websiteId};const website=await websiteAccess(store,actor,websiteId,{admin:true}),hash=await store.requestHash(website.offering_id,input),old=await store.replay(actor.account_id,input.operationId,hash);if(old){await finishCardPublication(env,store,website.offering_id,old.cardPublication);return old;}
  if(input.revision!==website.revision)throw fail('This website changed elsewhere. Reopen the saved draft.',409);
  if(input.action==='recording-support')return saveRecordedSupport(env,store,actor,website,input);
- const revision=website.revision+1,statements=[];let recordingOnly=false;let historyKey=website.draft_key;
+ const revision=website.revision+1,statements=[];let recordingOnly=false,cardApproval=null;let historyKey=website.draft_key;
  if(input.action==='save'){
-  const document=structuredClone(input.document);const errors=validatePackage(document);if(errors.length)throw fail(errors.join(' '));
+  const document=structuredClone(input.document);if(website.playlist_id){document.name=text(document.name,160).trim();if(!document.name)throw fail('Enter a playlist name.');statements.push(store.statement('UPDATE websites SET title=? WHERE website_id=?',[document.name,websiteId]));}const errors=validatePackage(document);if(errors.length)throw fail(errors.join(' '));
   await assertWebsiteAssets(store,websiteId,document);
   const key=await saveContent(env,document,websiteId);await carryGuideBindings(env,website,document,key);statements.push(...await carryRecordedSupport(env,store,website,document,key));historyKey=key;statements.push(store.statement('UPDATE websites SET draft_key=?,revision=? WHERE website_id=?',[key,revision,websiteId]));
  }else if(input.action==='publish'){
+  const card=await cardPublication(store,website.offering_id,websiteId);statements.push(...card.statements);cardApproval=card.approval;
   if(!website.draft_key)throw fail('Save a draft first.');const document=await objectJSON(env.CONTENT,website.draft_key);let errors=validatePackage(document,{review:true});if(document.lessons.length===0&&await store.first("SELECT 1 FROM attachments a JOIN objects o USING(asset_id) WHERE a.website_id=? AND a.offering_id=? AND a.audience='RECORDING' AND o.mime_type IN('video/youtube','video/mp4') LIMIT 1",[websiteId,website.offering_id])){recordingOnly=true;errors=errors.filter(e=>e!=='Add at least one web lesson.');}if(errors.length)throw fail(errors.join(' '));
   const refs=await assertWebsiteAssets(store,websiteId,document);
   statements.push(store.statement('DELETE FROM published_assets WHERE website_id=?',[websiteId]));
@@ -51,7 +53,9 @@ export async function editWebsite(env,store,actor,websiteId,input){
  }
  else throw fail('Choose a website action.');
  statements.push(store.statement('INSERT INTO website_history VALUES(?,?,?,?,?,?)',[websiteId,revision,input.action,historyKey,Date.now(),actor.account_id]));
- return store.mutate(actor,website.offering_id,input,statements,{websiteId,revision,action:input.action},{expectedSQL:'EXISTS(SELECT 1 FROM websites WHERE website_id=? AND revision=?)'+(recordingOnly?" AND EXISTS(SELECT 1 FROM attachments a JOIN objects o USING(asset_id) WHERE a.website_id=? AND a.offering_id=? AND a.audience='RECORDING' AND o.mime_type IN('video/youtube','video/mp4'))":''),expectedArgs:[websiteId,website.revision,...(recordingOnly?[websiteId,website.offering_id]:[])]});
+ if(website.playlist_id)statements.push(store.statement('UPDATE mou_playlists SET revision=revision+1 WHERE playlist_id=?',[website.playlist_id]));
+ const result=await store.mutate(actor,website.offering_id,input,statements,{websiteId,revision,action:input.action,cardPublication:cardApproval},{studio:Boolean(website.playlist_id),expectedSQL:'NOT EXISTS(SELECT 1 FROM source_access_master_fences WHERE account_id=? AND offering_id=?) AND EXISTS(SELECT 1 FROM websites WHERE website_id=? AND revision=?)'+(recordingOnly?" AND EXISTS(SELECT 1 FROM attachments a JOIN objects o USING(asset_id) WHERE a.website_id=? AND a.offering_id=? AND a.audience='RECORDING' AND o.mime_type IN('video/youtube','video/mp4'))":''),expectedArgs:[actor.account_id,website.offering_id,websiteId,website.revision,...(recordingOnly?[websiteId,website.offering_id]:[])]});
+ await finishCardPublication(env,store,website.offering_id,result.cardPublication);return result;
 }
 export async function flushPublic(env,store){
  const head=await store.first("SELECT * FROM publication_heads WHERE scope='homepage'");if(!head)return {published:false};const edition=await objectJSON(env.CONTENT,head.object_key);

@@ -1,3 +1,4 @@
+import {seedPlaylistArtwork} from './playlist-card-fixture.mjs';
 import test from 'node:test';import assert from 'node:assert/strict';
 import {fixture} from './fixture.mjs';import {Store} from '../src/database.mjs';
 import {playlistWebsiteCandidates} from '../src/mou-playlists.mjs';
@@ -12,7 +13,7 @@ async function setup(t,kind='TAFSEER'){
  const create=async(id='new-playlist')=>{const v=await table(),command={action:'mou-playlist-save',operationId:crypto.randomUUID(),playlistId:id,name:'Exact native playlist',closeDate:'',revision:v.revision,playlistRevision:0,websiteRevision:0};await post(command);assert((await post(command)).replayed);return id;};
  const change=async(action,more)=>post({action,operationId:crypto.randomUUID(),...more});
  const save=async(id,closeDate,more={})=>{const v=await table(),p=v.playlists.find(p=>p.id===id);return post({action:'mou-playlist-save',operationId:crypto.randomUUID(),playlistId:id,name:p.name,closeDate,revision:v.revision,playlistRevision:p.revision,websiteRevision:p.websiteRevision,...more});};
- const publish=async(id,published=true)=>{const v=await table(),p=v.playlists.find(p=>p.id===id);return post({action:'mou-playlist-publication',operationId:crypto.randomUUID(),playlistId:id,published,revision:v.revision,playlistRevision:p.revision,websiteRevision:p.websiteRevision});};
+ const publish=async(id,published=true)=>{if(kind==='COURSE'&&published)await seedPlaylistArtwork(f,id);const v=await table(),p=v.playlists.find(p=>p.id===id);return post({action:'mou-playlist-publication',operationId:crypto.randomUUID(),playlistId:id,published,revision:v.revision,playlistRevision:p.revision,websiteRevision:p.websiteRevision});};
  const recording=async(id,title='Reviewed recording',pdf=true)=>{const pending=pendingMedia({sourceKind:'YOUTUBE',sourceURL:'https://www.youtube.com/watch?v=abcdefghijk',title,teacherIds:['native-teacher'],playlistId:id,cohort:'native-class',lessonDate:kind==='COURSE'?'':'2024-01-11',durationSeconds:60,companion:reviewedCompanion({summary:'An actual recording-specific synthetic summary.',topics:'00:00 Reviewed opening',application:'A reviewed application.',durationSeconds:60}),supportingFiles:pdf?[new File(['%PDF-1.7\nSynthetic PDF\n%%EOF'],'support.pdf',{type:'application/pdf'})]:[]});await saveMediaDraft({pending,api,path});await saveMediaDraft({pending,api,path});const detail=await api(path+'/media-detail?attachment='+pending.attachmentId);assert.equal(detail.recordedContext.playlist.id,id);await publishMediaDraft({detail,operations:{recording:crypto.randomUUID()},api,path});return pending;};
  return {f,offer,admin,api,path,table,post,create,change,save,publish,recording};
 }

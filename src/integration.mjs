@@ -2,8 +2,8 @@ import {dashboardContextStatements} from './dashboard-context.mjs';
 import {checkedProgrammes} from './navigation.mjs';
 import {accessStatements,fenceAccess} from './access.mjs';
 import {bodyJSON,bytes,verify,envelopePurpose,fail,id,text,integer,flag,sha256,safeToken,httpsURL} from './protocol.mjs';
-export async function signedInput(request,env){
- const payload=new TextDecoder().decode(await bytes(request.body,262144));
+export async function signedInput(request,env,{limit=262144}={}){
+ const payload=new TextDecoder().decode(await bytes(request.body,limit));
  if(!await verify(env.ACADEMY_TO_WEBSITE_SECRET,envelopePurpose(request.method,new URL(request.url).pathname),payload,request.headers.get('X-Maktab-Signature')))throw fail('Invalid Academy delivery.',401);
  let data;try{data=JSON.parse(payload);}catch{throw fail('Invalid Academy delivery.');}
  if(!data||Math.abs(Date.now()-integer(data.issuedAt))>300_000)throw fail('This delivery signature has expired.',401);return data;

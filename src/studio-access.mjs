@@ -1,3 +1,4 @@
+import {cardOptions,uploadCover,previewCover} from './playlist-cards.mjs';
 import {academyAuthority} from './access.mjs';
 import {signedInput,receive} from './integration.mjs';
 import {fail,id,integer,sha256,boundedAge} from './protocol.mjs';
@@ -13,8 +14,10 @@ const revisionSQL='COALESCE((SELECT revision FROM access_revisions WHERE offerin
 const revision=async(store,offer)=>(await store.first('SELECT revision FROM access_revisions WHERE offering_id=?',[offer]))?.revision||0;
 
 // Called only by the signed Academy server proxy. No browser actor/role is accepted.
-export async function studioAccess(request,env,store,fetcher){
- const input=await signedInput(request,env),proof=input.proof,now=Date.now();
+export async function studioAccess(request,env,store,fetcher,{coverOnly=false}={}){
+ const input=await signedInput(request,env,{limit:coverOnly?1_000_000:262144}),proof=input.proof,now=Date.now();
+ if(coverOnly&&input.command?.action!=='mou-playlist-cover-upload')throw fail('Use the artwork upload action.');
+ if(!coverOnly&&input.command?.action==='mou-playlist-cover-upload')throw fail('Use the dedicated artwork upload route.');
  if(!proof||proof.verifiedAt<now-60_000||proof.verifiedAt>now+1000||proof.expiresAt<=now||proof.expiresAt>now+60_000)throw fail('Refresh your Academy Admin session.',401,'ADMIN_STATUS_EXPIRED');
  if(!Array.isArray(input.deliveries)||input.deliveries.length>40)throw fail('Invalid Admin confirmation.');
  const acknowledge=[];try{
@@ -28,10 +31,13 @@ export async function studioAccess(request,env,store,fetcher){
  if(command.action==='read')result=await readAccess(store,actor,offer,command);
  else if(command.action==='mou-playlists')result=await playlistTable(store,actor,offer,command);
  else if(command.action==='mou-playlist-correction')result=await playlistCorrection(store,actor,offer,command);
- else if(command.action==='mou-playlist-save')result=await savePlaylist(env,store,actor,offer,command);
- else if(command.action==='mou-playlist-publication')result=await playlistPublication(store,actor,offer,command);
+ else if(command.action==='mou-playlist-save')result=await savePlaylist(env,store,actor,offer,command,fetcher);
+ else if(command.action==='mou-playlist-publication')result=await playlistPublication(env,store,actor,offer,command);
  else if(command.action==='mou-playlist-order')result=await savePlaylistOrder(store,actor,offer,command);
  else if(command.action==='mou-playlist-add')result=await playlistAddRecording(store,actor,offer,command);
+ else if(command.action==='mou-playlist-card-options')result=await cardOptions(env,store,actor,offer,fetcher);
+ else if(command.action==='mou-playlist-cover-upload')result=await uploadCover(env,store,actor,offer,command);
+ else if(command.action==='mou-playlist-cover-preview')result=await previewCover(env,store,actor,offer,command,{json:true});
  else if(command.action==='monthly-grid')result=await monthlyGrid(store,actor,offer,command);
  else if(command.action==='monthly-grid-save')result=await saveMonthlyGrid(env,store,actor,offer,command);
  else if(command.action==='access-table')result=await accessTable(store,actor,offer);
