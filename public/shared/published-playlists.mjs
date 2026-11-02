@@ -1,3 +1,5 @@
+import {playlistCardHTML,ensurePlaylistCardStyles} from './playlist-card.mjs';
+import {tafseerCover} from './tafseer-cover.mjs';
 import {esc} from './model.mjs';
 const nativeId=value=>typeof value==='string'&&/^[-A-Za-z0-9_:]{1,160}$/.test(value);
 export function playlistMediaQuery(websiteId,{after='',playlist=null}={}){
@@ -18,6 +20,7 @@ export function publishedPlaylistRows(value){
 }
 export function publishedPlaylistTable(rows,{legacy=false}={}){
  if(!rows.length)return '';
+ if(!legacy){if(globalThis.document)ensurePlaylistCardStyles(globalThis.document,'/shared/playlist-card.css');return '<section class="published-playlists"><h2>Your recording playlists</h2><div class="playlist-card-grid" aria-label="Published recording playlists">'+rows.map(row=>playlistCardHTML(row,{href:row.href,websiteId:row.websiteId,kind:row.kind,defaultArtwork:tafseerCover(row),accessLabel:row.coursePolicy?.model==='FREE'?'Free':'Open'})).join('')+'</div></section>';}
  return `<section class="published-playlists"><h2>${legacy?'Other learning material':'Your recording playlists'}</h2><div class="recording-playlist-scroll" tabindex="0" role="region" aria-label="Published recording playlists"><table class="recording-playlist-table"><thead><tr><th scope="col">${legacy?'Learning material':'Playlist / Surah'}</th><th scope="col">Programme / Course</th><th scope="col">Recordings</th><th scope="col">Access</th><th scope="col">Open</th></tr></thead><tbody>${rows.map(row=>`<tr><th scope="row">${esc(row.title)}</th><td>${esc(row.offeringTitle||'—')}</td><td>${Number.isSafeInteger(row.recordings)?row.recordings:'—'}</td><td>${legacy?'Available':row.canListen?(row.canRead?'Listen and read':'Listen'):'Reading materials'}</td><td><a href="${esc(row.href)}" data-circles-website="${esc(row.websiteId)}" aria-label="${esc('Open playlist: '+row.title)}">Open playlist →</a></td></tr>`).join('')}</tbody></table></div></section>`;
 }
 export function presentPublishedPlaylists(root,{playlists=[],websites=[],known=[],more=false,onMore=()=>{}}){
