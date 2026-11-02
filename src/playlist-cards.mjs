@@ -26,7 +26,7 @@ export function cardDTO(encoded,{published=false,origin}={}){
  return {...card,image:card.image?{...card.image,url:published?new URL('/api/public/circles/covers/'+card.image.sha256,origin).href:null}:null};
 }
 export async function cardOptions(env,store,actor,offer,fetcher){
- const choices=await mediaTeachers(env,store,actor,offer,undefined,fetcher);return {...choices,teacherRequired:false,cardImageRequired: (await store.scope(actor,offer,{admin:true})).kind==='COURSE',presets,imageUploadLimit:COVER_LIMIT};
+ const choices=await mediaTeachers(env,store,actor,offer,undefined,fetcher,{readOnly:true});return {...choices,teacherRequired:false,cardImageRequired: (await store.scope(actor,offer,{admin:true,readOnly:true})).kind==='COURSE',presets,imageUploadLimit:COVER_LIMIT};
 }
 async function checkedImage(store,offer,playlistId,image){
  if(!image)return null;const a=await store.first('SELECT * FROM playlist_cover_assets WHERE asset_id=? AND offering_id=? AND playlist_id=?',[image.assetId,offer,playlistId]);

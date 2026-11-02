@@ -38,7 +38,7 @@ export async function fixture({freeProgrammeJoinTest=false,dashboardStudioJoinTe
  await content.put('public/home.json',JSON.stringify({revision:0,title:'Umm Abbad Academy',cards:[{offering_id:'course',title:'Whole Course'}],sessions:[],announcements:[]}));
  const request=async(path,{cookie,method='GET',body,headers={}}={})=>{
   const response=await runtime.dispatchFetch(websiteOrigin+path,{method,headers:{...(cookie?{Cookie:cookie}:{}),...(method!=='GET'&&method!=='HEAD'?{Origin:env.WEBSITE_ORIGIN}:{}),...(body&&typeof body==='object'&&!ArrayBuffer.isView(body)?{'Content-Type':'application/json'}:{}),...headers},...(body===undefined?{}:{body:typeof body==='object'&&!ArrayBuffer.isView(body)?JSON.stringify(body):body})});
-  const result=response.headers.get('Content-Type')?.includes('application/json')?await response.json():new Uint8Array(await response.arrayBuffer());return {response,status:response.status,body:result,reads:Number(response.headers.get('X-Local-D1-Rows-Read')),queries:Number(response.headers.get('X-Local-D1-Queries'))};
+  const result=method!=='HEAD'&&response.headers.get('Content-Type')?.includes('application/json')?await response.json():new Uint8Array(await response.arrayBuffer());return {response,status:response.status,body:result,reads:Number(response.headers.get('X-Local-D1-Rows-Read')),queries:Number(response.headers.get('X-Local-D1-Queries'))};
  };
  const login=async(accountId='learner')=>{
   const code=random(),verifier=random(),state=random(),event={type:'handoff',codeHash:await sha256(code),accountId,epoch:1,challenge:await challenge(verifier),state,expiresAt:Date.now()+60_000};

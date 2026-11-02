@@ -16,8 +16,8 @@ export function teacherIds(value){
  if(!Array.isArray(value)||value.length<1||value.length>10)throw fail('Choose one to ten registered Teachers.');
  const ids=value.map(id);if(new Set(ids.map(v=>v.toLowerCase())).size!==ids.length)throw fail('Choose each Teacher once.');return ids;
 }
-export async function mediaTeachers(env,store,actor,offer,selected,fetcher){
- await mediaAdmin(store,actor,offer);if(!actor.source_ref)throw fail('Refresh the native Academy session before choosing a Teacher.',401);
+export async function mediaTeachers(env,store,actor,offer,selected,fetcher,{readOnly=false}={}){
+ await mediaAdmin(store,actor,offer,{readOnly});if(!actor.source_ref)throw fail('Refresh the native Academy session before choosing a Teacher.',401);
  const ids=selected===undefined?undefined:teacherIds(selected);
  store.nativeMediaTeacherProofs??=new Map();const proofKey=JSON.stringify([actor.token_hash,actor.source_ref,offer]);
  let result=store.nativeMediaTeacherProofs.get(proofKey);if(!result){result=await academyCommand(env,store,'/internal/website/media-teachers',{sourceRef:actor.source_ref,offeringId:offer,purpose:'ADMIN_MEDIA',...(ids?{teacherIds:ids}:{})},fetcher);store.nativeMediaTeacherProofs.set(proofKey,result);}
@@ -27,7 +27,7 @@ export async function mediaTeachers(env,store,actor,offer,selected,fetcher){
  const picked=ids?.map(v=>teachers.find(t=>t.id.toLowerCase()===v.toLowerCase()));if(picked?.some(t=>!t))throw fail('Choose a current registered Teacher.',409);
  // Recheck after the awaited native command. The transaction also fences local
  // account/session/epoch/role/ownership changes before any write.
- await mediaAdmin(store,await store.actor(actor.token_hash),offer);
+ await mediaAdmin(store,await store.actor(actor.token_hash),offer,{readOnly});
  return {schema:result.schema,offeringId:offer,teacherRequired:true,classes:Array.isArray(result.classes)?result.classes.map(c=>({id:id(c.id),name:text(c.name,240)})):[],teachers,selectedTeacherIds:picked?.map(t=>t.id)||[],checkedAt:result.checkedAt};
 }
 async function contextFor(store,scope,row,teachers,classes=[]){
@@ -101,7 +101,7 @@ export async function attributionChange(env,store,actor,offer,input,fetcher,{col
 }
 
 export async function mediaOptions(env,store,actor,offer,fetcher){
- const scope=await mediaAdmin(store,actor,offer),choices=await mediaTeachers(env,store,actor,offer,undefined,fetcher);
+ const scope=await mediaAdmin(store,actor,offer,{readOnly:true}),choices=await mediaTeachers(env,store,actor,offer,undefined,fetcher,{readOnly:true});
  const subjects=scope.kind==='COURSE'||scope.programme_key==='mothers'?[]:await store.all('SELECT website_id id,title name FROM websites WHERE offering_id=? ORDER BY website_id LIMIT 101',[offer]);
  const playlists=await store.all('SELECT p.playlist_id id,w.title name,w.completion_date closeDate,w.enabled,p.website_id websiteId,p.revision FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.offering_id=? ORDER BY p.playlist_id LIMIT 101',[offer]);if(playlists.length>100)throw fail('Choose a smaller playlist catalogue.',409);
  if(subjects.length>100)throw fail('Choose a smaller native subject catalogue.',409);
