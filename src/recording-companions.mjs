@@ -2,7 +2,7 @@ import {fail,id,sha256,bodyJSON} from './protocol.mjs';
 import {mediaGate} from './media.mjs';
 import {learnerCompanion,publicationIndex} from '../public/shared/learner-companion.mjs';
 
-export async function companionChanges(env,store,actor,offer,input){
+export async function companionChanges(env,store,actor,offer,input,{statements:extraStatements=[],expectedSQL='1',expectedArgs=[],result:extraResult={}}={}){
  const attachment=id(input.attachmentId),row=await mediaGate(store,actor,attachment,{admin:true});
  if(row.offering_id!==offer||!row.website_id&&row.kind!=='COURSE'||row.audience!=='RECORDING'||!['video/youtube','video/mp4'].includes(row.mime_type))throw fail('Choose the exact recording in this programme.',409);
  const saved=await store.first('SELECT * FROM recording_companions WHERE attachment_id=?',[attachment]);
@@ -21,7 +21,7 @@ export async function companionChanges(env,store,actor,offer,input){
  }else throw fail('Choose a companion action.');
  const next=(saved?.revision??0)+1;
  const statements=input.action==='companion-save'?[store.statement('INSERT INTO recording_companions VALUES(?,?,1,?,NULL,NULL,?) ON CONFLICT(attachment_id) DO UPDATE SET source_revision=excluded.source_revision,revision=recording_companions.revision+1,draft_key=excluded.draft_key,duration_seconds=excluded.duration_seconds',[attachment,input.sourceRevision,key,input.durationSeconds])]:[store.statement('UPDATE recording_companions SET published_key=draft_key,index_json=?,revision=revision+1 WHERE attachment_id=?',[index,attachment])];
- const result=await store.mutate(actor,offer,input,statements,{attachmentId:attachment,revision:next,draftKey:key,published:input.action==='companion-publish'},{studio:true,expectedSQL:"COALESCE((SELECT revision FROM recording_companions WHERE attachment_id=?),0)=? AND EXISTS(SELECT 1 FROM attachments WHERE attachment_id=? AND offering_id=? AND asset_id=? AND website_id IS ?)",expectedArgs:[attachment,input.revision,attachment,offer,row.asset_id,row.website_id]});
+ const result=await store.mutate(actor,offer,input,[...statements,...extraStatements],{...extraResult,attachmentId:attachment,revision:next,draftKey:key,published:input.action==='companion-publish'},{studio:true,expectedSQL:"COALESCE((SELECT revision FROM recording_companions WHERE attachment_id=?),0)=? AND EXISTS(SELECT 1 FROM attachments WHERE attachment_id=? AND offering_id=? AND asset_id=? AND website_id IS ?) AND ("+expectedSQL+")",expectedArgs:[attachment,input.revision,attachment,offer,row.asset_id,row.website_id,...expectedArgs]});
  if(staged)await env.CONTENT.put(key,staged,{httpMetadata:{contentType:'application/json'}});return result;
 }
 export async function permittedCompanionIndexes(store,media){
