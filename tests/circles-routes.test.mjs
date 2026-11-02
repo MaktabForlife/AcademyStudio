@@ -6,7 +6,8 @@ import {learningDestination} from '../public/shared/circles-sign-in.mjs';
 
 test('existing reader/editing bookmarks keep their exact website, edition and reading destination when Circles becomes home',()=>{
  for(const suffix of ['?website=original-surah&edition=published#reading/original-lesson','?view=collections','?manage=1','?destination=academy'])assert.equal(legacyStudioDestination(new URL('https://website.test/'+suffix)),'/studio/'+suffix);
- for(const suffix of ['','?concept=circle&view=website','?login=1&area=tafseer','?next=https://outside.test'])assert.equal(legacyStudioDestination(new URL('https://website.test/'+suffix)),null);
+ for(const suffix of ['','?login=1&area=tafseer','?next=https://outside.test'])assert.equal(legacyStudioDestination(new URL('https://website.test/'+suffix)),null);
+ assert.equal(legacyStudioDestination(new URL('https://website.test/?concept=circle&view=website')),'/');
  for(const path of ['/api/me?website=foo','/auth/exchange?manage=1','/studio/?website=original-surah','/builder/?website=original-surah'])assert.equal(legacyStudioDestination(new URL('https://website.test'+path)),null);
  assert.equal(legacyStudioDestination(new URL('https://website.test/?website=original&next=https://outside.test')),'/studio/?website=original&next=https://outside.test');
 });

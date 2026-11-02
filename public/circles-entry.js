@@ -2,7 +2,7 @@
 // renderer. A requested dashboard shows no account or private cached content.
 (()=>{
  const params=new URL(location.href).searchParams;
- const pending=!window.AcademyCirclesRedirecting&&params.get('public')!=='1'&&(params.get('dashboard')==='1'||['learn','teach','admin'].includes(params.get('workspace')));
+ const pending=!window.AcademyCirclesRedirecting&&params.get('public')!=='1'&&(params.get('dashboard')==='1'||['academy','dashboard'].includes(params.get('view'))||['#overview','#dashboard'].includes(location.hash)||['learn','teach','admin'].includes(params.get('workspace')));
  let phase=pending?'checking':'complete',panel,message,retry;
  function complete(){phase='complete';document.documentElement.removeAttribute('data-circles-home-state');panel?.remove();}
  function fail(){if(!pending)return;phase='error';document.documentElement.setAttribute('data-circles-home-state','error');if(message)message.textContent='Your dashboard could not be checked. Please try again.';if(retry)retry.hidden=false;}

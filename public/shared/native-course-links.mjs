@@ -29,3 +29,11 @@ export function withNativeCourseLink(item,index){
  const match=matches[0];
  return {...item,title:match.title,href:match.href,nativeWebsiteId:match.websiteId,recordingCount:null};
 }
+
+// A registered Course mapping is not a mapping of its old lesson IDs. Preserve
+// the bookmark and offer explicit recovery rather than silently selecting a
+// different recording or guessing an attachment from its title/date/order.
+export function hasHistoricalLessonContext(url){
+ const value=new URL(url),params=value.searchParams;
+ return Boolean(value.hash)||[...params.keys()].some(key=>key!=='course'&&!['concept','branch','embed','role'].includes(key));
+}

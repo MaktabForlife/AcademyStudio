@@ -1,5 +1,6 @@
 import {connected} from './parallel-worker.mjs';
 import {json} from './protocol.mjs';
+import {publicCirclesRoute} from './public-circles-routes.mjs';
 
 // This entry changes the public address/presentation only. The connected entry
 // retains real Academy identity, signed deliveries and all current access gates.
@@ -7,10 +8,10 @@ export async function launch(request,env,ctx){
  if(env.WEBSITE_ORIGIN!=='https://maktab4life.org')return json({success:false,error:'The website address is not configured.'},503);
  const url=new URL(request.url),branded=url.origin===env.WEBSITE_ORIGIN||request.headers.get('X-Maktab-Front-Door')==='maktab4life.org';
  if(url.origin==='https://academy-studio-parallel.naidu-hajira.workers.dev'&&!branded&&['GET','HEAD'].includes(request.method)&&!url.pathname.startsWith('/internal/'))return new Response(null,{status:307,headers:{Location:env.WEBSITE_ORIGIN+url.pathname+url.search,'Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow, noarchive'}});
- let response=await connected(request,env,ctx);response=new Response(response.body,response);
+ let response=publicCirclesRoute(request)||await connected(request,env,ctx);response=new Response(response.body,response);
  response.headers.set('X-AcademyStudio-Mode','website');
  response.headers.set('X-AcademyStudio-Version',env.RELEASE_VERSION||'109');
- const publicHTML=['/','/circles/free-learning.html'].includes(url.pathname)&&response.ok&&response.headers.get('Content-Type')?.includes('text/html');
+ const publicHTML=['/','/prospectus-2027.html','/circles/free-learning.html'].includes(url.pathname)&&response.ok&&response.headers.get('Content-Type')?.includes('text/html');
  // Routing metadata controls discovery only. It never supplies an account,
  // permission or accepted action Origin, and is not an authentication proof.
  if(!publicHTML||!branded)response.headers.set('X-Robots-Tag','noindex, nofollow, noarchive');
