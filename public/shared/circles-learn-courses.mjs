@@ -1,7 +1,7 @@
 // Presentation only: both lists come from the same account-checked navigation.
 // Admin reader access must never be presented as a purchase.
 export function learnCourses(navigation,mode){
- if(!navigation)return null;
+ if(!navigation||!['learn','teach','admin'].includes(mode))return null;
  const purchased=navigation.purchasedCourses;if(!Array.isArray(purchased))return null;
  if(mode!=='learn'||!Array.isArray(navigation.adminCourses))return purchased;
  const courses=new Map(purchased.map(course=>[course.href,course]));

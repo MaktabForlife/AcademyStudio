@@ -41,7 +41,7 @@ export function circlesDashboard({onUpdate,openAcademy,show=()=>true,onWorkspace
   if(!host){host=document.createElement('section');host.id='circles-dashboard';host.className='circles-dashboard';host.setAttribute('aria-label','Your Academy dashboard');}
   if(hero.nextElementSibling!==host)hero.after(host);
   let content=host.querySelector('[data-circles-dashboard-content]');if(!content){content=document.createElement('div');content.dataset.circlesDashboardContent='';host.append(content);}
-  const html=current()?dashboardHTML(data,{globalAdmin:identity.account?.globalAdmin===true,navigation:selectedNavigation(),now:Date.now(),selectedDate}):`<div class="circles-dashboard-panel"><h2>Your Academy dashboard</h2><p role="status">${pending?'Loading your Academy dashboard…':'Your dashboard could not be loaded.'}</p>${error?'<p>Open Academy or try again to check your dashboard.</p>':''}<button type="button" data-circles-dashboard-refresh${pending?' disabled':''}>${pending?'Loading…':'Try again'}</button><button type="button" data-circles-dashboard-home>Open Academy</button></div>`;
+  const html=current()?dashboardHTML(data,{globalAdmin:identity.account?.globalAdmin===true,navigation:selectedNavigation(),now:Date.now(),selectedDate}):pending?'<div class="circles-dashboard-panel" role="status" aria-live="polite"><p>Opening your dashboard…</p></div>':`<div class="circles-dashboard-panel"><h2>Your Academy dashboard</h2><p role="status">Your dashboard could not be loaded.</p>${error?'<p>Open Academy or try again to check your dashboard.</p>':''}<button type="button" data-circles-dashboard-refresh>Try again</button><button type="button" data-circles-dashboard-home>Open Academy</button></div>`;
   if(renderedHost!==content||renderedHTML!==html){renderedHost=content;renderedHTML=html;content.innerHTML=html;}
   if(dialogOwner&&(dialogOwner.owner!==accountKey()||dialogOwner.data!==data||dialogOwner.mode!==mode||!current()))closeDialog();
   writeStatus();syncJoinButtons();armClock();
@@ -52,8 +52,9 @@ export function circlesDashboard({onUpdate,openAcademy,show=()=>true,onWorkspace
  }
  async function load(selected=mode,force=false,date=localDay(Date.now(),data?.timezone||'Africa/Johannesburg')){
   if(!identity.account)return;const owner=accountKey();if(cacheOwner!==owner){cache.clear();requests.clear();cacheOwner=owner;}
-  resetActions();const currentTicket=++ticket,generation=identity.generation;mode=selected;pending=true;error='';status='';refresh();
-  try{const key=JSON.stringify([selected||'default',circleWeekStart(date)]),value=!force&&cache.has(key)&&Date.now()-Number(cache.get(key).checkedAt)<43200000?cache.get(key):await request(selected,force,generation,identity.account.accountId,date);if(currentTicket!==ticket||generation!==identity.generation||owner!==accountKey())return;data=value;selectedDate=selectedCircleDay(value,date,Date.now()).date;dataOwner=owner;available=value.availableModes;mode=value.mode;cache.set(JSON.stringify([mode,circleWeekStart(date)]),value);cache.set(key,value);}
+  const key=JSON.stringify([selected||'default',circleWeekStart(date)]),saved=!force&&cache.get(key),age=saved?Date.now()-Number(saved.checkedAt):NaN,warm=Number.isFinite(age)&&age>=0&&age<43200000;
+  resetActions();const currentTicket=++ticket,generation=identity.generation;mode=selected;pending=!warm;error='';status='';if(!warm)refresh();
+  try{const value=warm?saved:await request(selected,force,generation,identity.account.accountId,date);if(currentTicket!==ticket||generation!==identity.generation||owner!==accountKey())return;data=value;selectedDate=selectedCircleDay(value,date,Date.now()).date;dataOwner=owner;available=value.availableModes;mode=value.mode;cache.set(JSON.stringify([mode,circleWeekStart(date)]),value);cache.set(key,value);}
   catch(e){if(currentTicket!==ticket||generation!==identity.generation||owner!==accountKey())return;data=null;dataOwner='';error=e.message;if([401,403,409].includes(e.status)){cache.clear();requests.clear();}}
   finally{if(currentTicket===ticket&&generation===identity.generation&&owner===accountKey()){pending=false;onUpdate();}}
  }

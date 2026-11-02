@@ -10,11 +10,12 @@ const source=readFileSync(new URL('../public/circles-dashboard.mjs',import.meta.
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 const snapshot=(mode,label=mode)=>({mode,label,checkedAt:Date.now(),timezone:'Africa/Johannesburg',availableModes:['learn','teach','admin'],adminBadge:'Global Admin'});
 function client(){
- const window=new EventTarget(),document=Object.assign(new EventTarget(),{body:{classList:{toggle(){}},dataset:{}},getElementById:()=>null,querySelector:()=>null,querySelectorAll:()=>[]}),identity={account:{accountId:'one',globalAdmin:true},generation:1},calls=[];
+ const headerRenders=[],header={html:'',setAttribute(){},get innerHTML(){return this.html;},set innerHTML(value){this.html=value;headerRenders.push(value);}};
+ const window=new EventTarget(),document=Object.assign(new EventTarget(),{body:{classList:{toggle(){}},dataset:{}},getElementById:()=>null,querySelector:()=>null,querySelectorAll:selector=>selector==='.public-home-header .site-nav'?[header]:[]}),identity={account:{accountId:'one',globalAdmin:true},generation:1},calls=[];
  const api=(path,options)=>{const value=deferred();calls.push({path,options,...value});return value.promise;};
  const context=vm.createContext({window,document,identity,api,createDashboardJoin,...circleDays,localDay,URL,setTimeout,clearTimeout,dashboardHTML:()=>''});vm.runInContext(source,context);
- let updates=0;const dashboard=context.makeDashboard({onUpdate:()=>updates++,openAcademy:()=>{}});
- return {dashboard,identity,window,calls,get updates(){return updates;}};
+ let updates=0;const dashboard=context.makeDashboard({onUpdate:()=>{updates++;dashboard.refresh();},openAcademy:()=>{}});
+ return {dashboard,identity,window,calls,headerRenders,get updates(){return updates;}};
 }
 
 test('identical pending loads and explicit refreshes share one request per account, generation and perspective',async()=>{
@@ -24,6 +25,11 @@ test('identical pending loads and explicit refreshes share one request per accou
  const refreshed=[c.dashboard.load('admin',true),c.dashboard.load('admin',true)];
  assert.equal(c.calls.length,2);assert.equal(c.calls[1].options.body.refresh,true);c.calls[1].resolve(snapshot('admin','fresh'));await Promise.all(refreshed);
  assert.equal(c.dashboard.data.label,'fresh');assert.equal(c.updates,3);
+});
+
+test('a warm dashboard return does not render an intermediate loading state or make another request',async()=>{
+ const c=client(),first=c.dashboard.load('learn');c.calls[0].resolve(snapshot('learn'));await first;
+ const updates=c.updates,before=c.headerRenders.length,returned=c.dashboard.load('learn');assert(c.dashboard.data,'The cached snapshot is restored in the same turn');assert.equal(c.calls.length,1);assert.equal(c.updates,updates+1);assert(!c.headerRenders.slice(before).some(html=>html.includes(' disabled')),'A warm return must never disable the header for a temporary loading screen');await returned;
 });
 
 test('different perspectives and explicit refresh intent do not share the wrong pending result',async()=>{
