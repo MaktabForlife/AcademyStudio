@@ -1,0 +1,5 @@
+# V109.13
+
+Academy and Studio release together. Course Admin uses its native table, combined Details and Participants, and connected playlist Media editor. Details Save draft/Publish card is separate from Content Save draft/manual Publish. Existing processed recordings, PDFs and reading sites are referenced without copying media. Explicit locations only filter navigation; original Course access remains required. Program Media links to its placed Studio playlists without changing academic retention or media ownership.
+
+Ordinary dashboard, Course/Surah reader and MOU startup use checked combined responses, bounded account/session-private validators and revision invalidation. Static assets use content-addressed immutable paths; HTML/private APIs remain current and private. Sensitive Admin changes retain60-second authority and ordinary verification43200 seconds. Studio additive schemas0015/0016 only; Core/Admin/Hifz/DNS/coordinator unchanged. Actual lesson attachment, content publication and rights changes remain manual.
