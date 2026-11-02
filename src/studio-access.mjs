@@ -70,7 +70,7 @@ export async function readAccess(store,actor,offer,input){
   person={...account,months,websiteMonths:websiteMonths.map(m=>m.month),grants,liveFacts:await store.first('SELECT windows_json,has_allocation,course,verified_at,ready FROM source_access_people WHERE account_id=? AND offering_id=?',[accountId,offer])};
  }
  const pendingJobs=await store.all("SELECT operation_id,state,account_id FROM provisioning INDEXED BY provisioning_pending_actor WHERE offering_id=? AND actor_id=? AND state<>'COMPLETE' ORDER BY operation_id LIMIT 11",[offer,actor.account_id]);
- return {revision:current,ownership,kind:scope.kind,coursePolicy:policy,pendingJobs,canLinkAccount:Boolean(actor.global_admin),canChangeStaff:Boolean(actor.global_admin&&!academyAuthority(store.env)),participants:participants.slice(0,25),more:participants.length>25,next:participants.length>25?participants[24].account_id:null,websites,person};
+ return {revision:current,ownership,kind:scope.kind,programmeKey:scope.programme_key||null,coursePolicy:policy,pendingJobs,canLinkAccount:Boolean(actor.global_admin),canChangeStaff:Boolean(actor.global_admin&&!academyAuthority(store.env)),participants:participants.slice(0,25),more:participants.length>25,next:participants.length>25?participants[24].account_id:null,websites,person};
 }
 
 export async function handover(store,actor,offer,input){
