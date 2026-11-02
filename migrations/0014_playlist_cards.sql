@@ -19,12 +19,12 @@ CREATE TABLE playlist_card_designs (
  first_published_at INTEGER
 );
 -- Keep previously published artwork/title and rights available, including
--- withdrawn playlists. Private never-published Courses use the new gate.
+-- withdrawn playlists. New Course cards retain an image on every publication.
 INSERT INTO playlist_card_designs
  SELECT p.playlist_id,'{"version":1,"style":"default","colour":"#759786","gradient":null,"image":null,"teacher":null}',
  CASE WHEN w.published_key IS NOT NULL THEN '{"version":1,"style":"default","colour":"#759786","gradient":null,"image":null,"teacher":null}' END,
  '[]',CASE WHEN w.published_key IS NOT NULL THEN w.title END,
- CASE WHEN o.kind='COURSE' THEN 1 ELSE 0 END,
+ CASE WHEN o.kind='COURSE' AND w.published_key IS NULL THEN 1 ELSE 0 END,
  CASE WHEN w.published_key IS NOT NULL THEN p.created_at END
  FROM mou_playlists p JOIN websites w USING(website_id) JOIN offerings o ON o.offering_id=p.offering_id;
 CREATE TRIGGER playlist_card_on_create AFTER INSERT ON mou_playlists BEGIN
@@ -32,19 +32,20 @@ CREATE TRIGGER playlist_card_on_create AFTER INSERT ON mou_playlists BEGIN
  SELECT NEW.playlist_id,'{"version":1,"style":"default","colour":"#759786","gradient":null,"image":null,"teacher":null}',
  CASE WHEN w.published_key IS NOT NULL THEN '{"version":1,"style":"default","colour":"#759786","gradient":null,"image":null,"teacher":null}' END,
  '[]',CASE WHEN w.published_key IS NOT NULL THEN w.title END,
- CASE WHEN o.kind='COURSE' THEN 1 ELSE 0 END,
+ CASE WHEN o.kind='COURSE' AND w.published_key IS NULL THEN 1 ELSE 0 END,
  CASE WHEN w.published_key IS NOT NULL THEN NEW.created_at END
  FROM websites w JOIN offerings o USING(offering_id) WHERE w.website_id=NEW.website_id;
 END;
 -- Fence every website publication entrypoint, including the canonical editor.
 -- A card snapshot must be set in the same guarded transaction before enabling.
-CREATE TRIGGER playlist_card_first_publish BEFORE UPDATE OF enabled,published_key ON websites
+CREATE TRIGGER playlist_card_publish BEFORE UPDATE OF enabled,published_key ON websites
  WHEN NEW.enabled=1 AND NEW.published_key IS NOT NULL BEGIN
  SELECT RAISE(ABORT,'COURSE_CARD_IMAGE_REQUIRED') WHERE EXISTS(
   SELECT 1 FROM mou_playlists p JOIN playlist_card_designs c USING(playlist_id)
-  WHERE p.website_id=NEW.website_id AND c.image_required=1 AND c.first_published_at IS NULL
-  AND NOT EXISTS(SELECT 1 FROM playlist_cover_assets a WHERE a.asset_id=json_extract(c.published_json,'$.image.assetId')
-   AND a.playlist_id=p.playlist_id AND a.offering_id=p.offering_id AND a.sha256=json_extract(c.published_json,'$.image.sha256'))
+  WHERE p.website_id=NEW.website_id AND c.image_required=1
+  AND NOT EXISTS(SELECT 1 FROM playlist_cover_assets a WHERE json_extract(c.published_json,'$.style')='image' AND a.asset_id=json_extract(c.published_json,'$.image.assetId')
+   AND a.playlist_id=p.playlist_id AND a.offering_id=p.offering_id AND a.sha256=json_extract(c.published_json,'$.image.sha256')
+   AND a.mime_type=json_extract(c.published_json,'$.image.type') AND a.size=json_extract(c.published_json,'$.image.size'))
  );
 END;
 CREATE TRIGGER playlist_card_published AFTER UPDATE OF enabled,published_key ON websites

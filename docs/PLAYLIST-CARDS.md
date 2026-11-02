@@ -27,7 +27,9 @@ Saving draft text or card settings never updates that published snapshot.
 
 Styles: default, colour, gradient, image. Presets: sage, plum, rose, gold, ocean,
 sunset. Colour is normalised to uppercase six-digit hex. Default preserves the
-existing Tafseer presentation. Images can retain a colour/gradient label band.
+existing Tafseer presentation. Default/colour styles require null gradient/image; gradient style requires a
+preset with no image. Image style requires a picture and can retain a preset
+gradient for its label band. Ambiguous style combinations are rejected.
 
 Teacher selection is optional. Nonempty IDs are checked through the existing
 current native Teacher bridge on Save; the saved `teacher:string|null` is derived
@@ -73,9 +75,11 @@ account/session/epoch, sensitive authority and revision checks still apply.
 ## Publication and recovery
 
 Both playlist Publish and canonical website Publish take a card/name snapshot
-in the guarded database transaction. New/private never-published Courses require
-an image before first publication; a database trigger fences alternative website
-publish paths too. Already-published and withdrawn legacy rows remain valid.
+in the guarded database transaction. New/private never-published Courses keep an image requirement on every
+publication, including after withdrawal. Image style and an exact scoped artwork
+reference are both required. A database trigger fences alternative website
+publish paths too. Already-published and withdrawn legacy rows are grandfathered
+with image_required=0 and remain valid.
 
 After the exact publication commits, artwork is copied to the existing immutable
 `/api/public/circles/covers/:sha256` route. Cover bytes require zero D1 reads and
@@ -91,7 +95,7 @@ image, so a later private edit cannot change what that retry promotes. A stale
 or denied publication never promotes artwork.
 
 Apply only the new 0014 migration once. Recovery must retain 0014-aware published
-title/card projections, Teacher checks and the Course first-image barrier;
+title/card projections, Teacher checks and the persistent Course-image barrier;
 unmodified 109.5 can expose a privately edited title. Root owns compatible paired
 recovery and deployment. This feature performs no hosted migration, publication,
 rights change or deployment.

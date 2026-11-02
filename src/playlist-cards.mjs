@@ -10,7 +10,8 @@ export function cardInput(value){
  if(!value||value.version!==1||!['default','colour','gradient','image'].includes(value.style))throw fail('Choose a supported playlist card design.');
  if(typeof value.colour!=='string'||! /^#[a-f0-9]{6}$/i.test(value.colour))throw fail('Choose a six-digit card colour.');
  if(value.gradient!==null&&!presets.includes(value.gradient))throw fail('Choose a saved gradient preset.');
- if(value.style==='gradient'&&!value.gradient)throw fail('Choose a gradient preset.');
+ if(['default','colour'].includes(value.style)&&(value.gradient!==null||value.image!==null))throw fail('Keep colour and default cards free of gradients and pictures.');
+ if(value.style==='gradient'&&(!value.gradient||value.image!==null))throw fail('Choose a gradient preset without a picture.');
  let image=null;if(value.image){const v=value.image;image={assetId:id(v.assetId),sha256:digest(v.sha256),type:text(v.type,40),size:integer(v.size,1),alt:text(v.alt||'',300)};}
  if(value.style==='image'&&!image)throw fail('Choose a playlist picture.');
  // Teacher labels and URLs are derived, never client authority or fetch targets.
@@ -74,8 +75,9 @@ export async function previewCover(env,store,actor,offer,input,{json=false}={}){
 export async function cardPublication(store,offer,websiteId){
  const row=await store.first('SELECT c.*,p.offering_id,w.title FROM mou_playlists p JOIN playlist_card_designs c USING(playlist_id) JOIN websites w USING(website_id) WHERE p.website_id=? AND p.offering_id=?',[websiteId,offer]);
  if(!row)return {statements:[],approval:null};
- const card=JSON.parse(row.draft_json);await checkedImage(store,offer,row.playlist_id,card.image);
- if(row.image_required&&row.first_published_at===null&&!card.image)throw fail('Choose a Course picture before first publication.',409,'COURSE_CARD_IMAGE_REQUIRED');
+ const card=JSON.parse(row.draft_json);
+ if(row.image_required&&(card.style!=='image'||!card.image))throw fail('Keep a Course picture on every publication.',409,'COURSE_CARD_IMAGE_REQUIRED');
+ cardInput(card);await checkedImage(store,offer,row.playlist_id,card.image);
  return {statements:[store.statement('UPDATE playlist_card_designs SET published_json=draft_json,published_title=? WHERE playlist_id=?',[row.title,row.playlist_id])],approval:card.image?{playlistId:row.playlist_id,...card.image}:null};
 }
 export async function finishCardPublication(env,store,offer,approval){

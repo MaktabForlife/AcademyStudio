@@ -16,7 +16,7 @@ async function setup(t){
  const post=body=>f.request('/api/admin/course',{cookie:admin,method:'POST',body});
  const save=async(id,extra)=>ok(await post(await command(id,extra)));
  const publication=async(id,published=true)=>{const c=await command(id);return {action:'mou-playlist-publication',operationId:crypto.randomUUID(),playlistId:id,published,revision:c.revision,playlistRevision:c.playlistRevision,websiteRevision:c.websiteRevision};};
- const recording=async id=>{await f.run("INSERT INTO objects VALUES(?,NULL,'video/youtube',?,0,NULL,'abcdefghijk')",'video-'+id,'video-'+id);await f.run("INSERT INTO attachments VALUES(?,?,?,?,?,'2024-01-11','native-class',?,'RECORDING',1)",'recording-'+id,'course',id,'video-'+id,'lesson-'+id,'Recording '+id);await f.run('INSERT INTO mou_playlist_items VALUES(?,?)',id,'recording-'+id);};
+ const recording=async(id,playlistId=id)=>{await f.run("INSERT INTO objects VALUES(?,NULL,'video/youtube',?,0,NULL,'abcdefghijk')",'video-'+id,'video-'+id);await f.run("INSERT INTO attachments VALUES(?,?,?,?,?,'2024-01-11','native-class',?,'RECORDING',1)",'recording-'+id,'course',id,'video-'+id,'lesson-'+id,'Recording '+id);await f.run('INSERT INTO mou_playlist_items VALUES(?,?)',playlistId,'recording-'+id);};
  const image=async(id,data=png,more={})=>{const revision=(await table()).revision;return f.request('/api/admin/course/playlist-cover?'+new URLSearchParams({playlistId:id,operationId:crypto.randomUUID(),revision,sha256:await sha256(data),...more}),{cookie:admin,method:'PUT',headers:{'Content-Type':'image/png'},body:data});};
  return {...f,admin,table,command,post,save,publication,recording,image};
 }
@@ -26,8 +26,8 @@ test('automatic card, optional checked native Teacher and safe canonical design 
  const c={...defaultCard(),style:'gradient',gradient:'plum',colour:'#aabbcc',teacher:'Forged name'};
  const saved=await f.save('new-card',{card:c,teacherIds:['native-teacher']});assert.equal(saved.card.teacher,'Checked Native Teacher');assert.equal(saved.card.colour,'#AABBCC');assert((await f.post(await f.command('new-card',{card:c,teacherIds:['unregistered']}))).status===400);
  await f.save('new-card',{card:c,teacherIds:[]});p=(await f.table()).playlists.find(p=>p.id==='new-card');assert.equal(p.card.teacher,null);assert.deepEqual(p.teacherIds,[]);
- for(const card of [{...c,gradient:'url(evil)'},{...c,colour:'red;background:url(x)'},{...c,style:'other'}])assert.equal((await f.post(await f.command('new-card',{card}))).status,400);
- assert.equal((await f.post(await f.command('new-card',{card:{...c,image:{assetId:'protected-pdf',sha256:'a'.repeat(64),type:'image/png',size:1,alt:'private'},teacherIds:[]}}))).status,409);
+ for(const card of [{...c,gradient:'url(evil)'},{...c,colour:'red;background:url(x)'},{...c,style:'other'},{...defaultCard(),style:'colour',gradient:'sage'},{...defaultCard(),gradient:'sage'}])assert.equal((await f.post(await f.command('new-card',{card}))).status,400);
+ assert.equal((await f.post(await f.command('new-card',{card:{...c,style:'image',image:{assetId:'protected-pdf',sha256:'a'.repeat(64),type:'image/png',size:1,alt:'private'},teacherIds:[]}}))).status,409);
 });
 test('prospective artwork upload remains private, scoped and bounded without media/rights side effects',async t=>{
  const f=await setup(t),id='prospective-card',hash=await sha256(png),uploaded=ok(await f.image(id)),image=uploaded.image;assert.equal(image.url,null);assert.equal(uploaded.revision,(await f.table()).revision);
@@ -40,11 +40,25 @@ test('prospective artwork upload remains private, scoped and bounded without med
  assert.equal(await f.db.prepare('SELECT count(*) n FROM objects WHERE asset_id=?').bind(image.assetId).first('n'),0);assert.equal(await f.db.prepare('SELECT count(*) n FROM paid_months WHERE offering_id=\'course\'').first('n'),0);
  assert.equal((await f.request('/api/public/circles/covers/'+hash)).status,404);
 });
-test('Course first-image barrier covers playlist, canonical editor and SQL while old published playlists remain valid',async t=>{
+test('persistent Course image gate covers playlist, canonical editor and SQL while legacy published cards stay exempt',async t=>{
  const f=await setup(t);await f.save('first-image');await f.recording('first-image');const pub=await f.publication('first-image');assert.equal((await f.post(pub)).body.code,'COURSE_CARD_IMAGE_REQUIRED');
  assert.equal((await f.request('/api/websites/first-image/edit',{cookie:f.admin,method:'POST',body:{operationId:crypto.randomUUID(),action:'publish',revision:pub.websiteRevision}})).body.code,'COURSE_CARD_IMAGE_REQUIRED');
  await assert.rejects(f.run("UPDATE websites SET enabled=1,published_key=draft_key WHERE website_id='first-image'"),/COURSE_CARD_IMAGE_REQUIRED/);
- await f.run("INSERT INTO mou_playlists VALUES('legacy-course','course','site-course',1,0,0,1)");const legacy=(await f.table()).playlists.find(p=>p.id==='legacy-course');assert.equal(legacy.cardImageRequired,false);assert.equal(legacy.publishedName,'Whole Course');
+ const image=ok(await f.image('first-image')).image;
+ for(const style of ['default','colour','gradient']){const card={...defaultCard(),style,gradient:style==='gradient'?'sage':null,image};assert.equal((await f.post(await f.command('first-image',{card}))).status,400,'Non-image style must reject an unused image reference');}
+ for(const card of [{...defaultCard(),style:'colour',image},{...defaultCard(),style:'image',image:{...image,sha256:'f'.repeat(64)}},{...defaultCard(),style:'image',image:{...image,type:'image/jpeg'}},{...defaultCard(),style:'image',image:{...image,size:image.size+1}}]){
+  await assert.rejects(f.db.batch([f.db.prepare('UPDATE playlist_card_designs SET published_json=? WHERE playlist_id=?').bind(JSON.stringify(card),'first-image'),f.db.prepare('UPDATE websites SET enabled=1,published_key=draft_key WHERE website_id=?').bind('first-image')]),/COURSE_CARD_IMAGE_REQUIRED/);
+  assert.equal(await f.db.prepare('SELECT published_json FROM playlist_card_designs WHERE playlist_id=?').bind('first-image').first('published_json'),null,'Rejected alternative publication rolls back its card snapshot');
+ }
+ await f.save('first-image',{card:{...defaultCard(),style:'image',gradient:'sage',image}});ok(await f.post(await f.publication('first-image')));
+ assert.equal((await f.table()).playlists.find(p=>p.id==='first-image').cardImageRequired,true,'New Course requirement persists after first publication');
+ await f.save('first-image',{name:'Private colour draft',card:{...defaultCard(),style:'colour'}});const previous=await f.db.prepare('SELECT published_json,published_title FROM playlist_card_designs WHERE playlist_id=?').bind('first-image').first();
+ const rejected=await f.publication('first-image');assert.equal((await f.post(rejected)).body.code,'COURSE_CARD_IMAGE_REQUIRED');assert.equal((await f.request('/api/websites/first-image/edit',{cookie:f.admin,method:'POST',body:{operationId:crypto.randomUUID(),action:'publish',revision:rejected.websiteRevision}})).body.code,'COURSE_CARD_IMAGE_REQUIRED');
+ assert.deepEqual(await f.db.prepare('SELECT published_json,published_title FROM playlist_card_designs WHERE playlist_id=?').bind('first-image').first(),previous,'Rejected re-publication keeps the existing published card/name');
+ ok(await f.post(await f.publication('first-image',false)));assert.equal((await f.post(await f.publication('first-image'))).body.code,'COURSE_CARD_IMAGE_REQUIRED');
+ await f.save('first-image',{card:{...defaultCard(),style:'image',image}});ok(await f.post(await f.publication('first-image')));
+ await f.run("INSERT INTO mou_playlists VALUES('legacy-course','course','site-course',1,0,0,1)");const legacy=(await f.table()).playlists.find(p=>p.id==='legacy-course');assert.equal(legacy.cardImageRequired,false);assert.equal(legacy.publishedName,'Whole Course');await f.recording('site-course','legacy-course');
+ ok(await f.post(await f.publication('legacy-course',false)));ok(await f.post(await f.publication('legacy-course')));assert.equal((await f.table()).playlists.find(p=>p.id==='legacy-course').cardImageRequired,false);
 });
 test('explicit publication promotes artwork and snapshots canonical name; Save stays private across list, reader and recording header',async t=>{
  const f=await setup(t),id='publish-card',image=ok(await f.image(id)).image;await f.save(id,{name:'Public name',card:{...defaultCard(),style:'image',image}});await f.recording(id);const publish=await f.publication(id);ok(await f.post(publish));assert((await f.post(publish)).body.replayed);
@@ -56,7 +70,8 @@ test('explicit publication promotes artwork and snapshots canonical name; Save s
  const media=ok(await f.request('/api/offerings/course/media?website='+id,{cookie:learner}));assert.equal(media.playlist.name,'Public name');
  const adminList=ok(await f.request('/api/websites?published=1',{cookie:f.admin}));assert.equal(adminList.playlists.find(p=>p.id===id).canEdit,true);
  const draft=(await f.table()).playlists.find(p=>p.id===id);assert.equal(draft.name,'Private next name');assert.equal(draft.publishedName,'Public name');assert.equal(draft.card.style,'colour');
- ok(await f.post(await f.publication(id)));assert.equal(ok(await f.request('/api/websites/'+id,{cookie:learner})).document.name,'Private next name');
+ assert.equal((await f.post(await f.publication(id))).body.code,'COURSE_CARD_IMAGE_REQUIRED');assert.equal(ok(await f.request('/api/websites/'+id,{cookie:learner})).document.name,'Public name');
+ await f.save(id,{card:{...defaultCard(),style:'image',colour:'#112233',image}}); ok(await f.post(await f.publication(id)));assert.equal(ok(await f.request('/api/websites/'+id,{cookie:learner})).document.name,'Private next name');
  const exported=ok(await f.request('/api/websites/'+id+'/export',{cookie:f.admin}));assert.equal(exported.document.name,'Private next name');const document={...exported.document,name:'Draft editor name',home:{...exported.document.home,description:'Private changed description'}};
  ok(await f.request('/api/websites/'+id+'/edit',{cookie:f.admin,method:'POST',body:{operationId:crypto.randomUUID(),action:'save',revision:exported.revision,document}}));assert.equal(ok(await f.request('/api/websites/'+id,{cookie:learner})).document.home.description,'');
  assert.equal(ok(await f.request('/api/websites/'+id+'/export',{cookie:f.admin})).document.name,'Draft editor name');
