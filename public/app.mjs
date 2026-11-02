@@ -34,7 +34,7 @@ const currentSeriesRecordings=()=>seriesRecordings({companions:delivery?.compani
 const freshDelivery=()=>({companions:[],details:new Map(),bindings:[],media:[],sessions:[],loaded:false,more:false,request:null,sessionRequest:null,serverOffset:0,playlist:null});
 const textEditor=readerEditing({root:$('course-reader'),identity,api,current:()=>current,route:()=>ui,showDraft(record){document.querySelectorAll('[data-reader-toolbar]').forEach(node=>node.hidden=true);beforeEditing={record:current,ui:structuredClone(ui),assets};current={...record,canEdit:true};assets=new Map(record.assets.map(a=>[a.asset_id,{...a,id:a.asset_id,url:a.url+'?draft=1'}]));ui={...ui,route:['recording','about'].includes(ui.route)?'home':ui.route,isPreview:true,completed:[],reflections:{}};draw();},showPublished(){document.querySelectorAll('[data-reader-toolbar]').forEach(node=>node.hidden=false);if(beforeEditing){current=beforeEditing.record;ui=beforeEditing.ui;assets=beforeEditing.assets;beforeEditing=null;draw();}},async refresh(){const id=current.websiteId;beforeEditing=null;await openWebsite(id);}});
 const recordingEditor=recordingTextEditor({api,identity,getCurrent:()=>current,onPublished:async()=>{delivery=freshDelivery();await loadMedia();draw();}});
-const playlistEditor=playlistMetadataEditor({api,identity,getCurrent:()=>current,onPublished:async()=>{if(current){delivery=freshDelivery();await loadMedia();draw();}}});
+const playlistEditor=playlistMetadataEditor({api,identity,getCurrent:()=>current,onPublished:async()=>{if(current)await openWebsite(current.websiteId);}});
 const pins=pinEntry($('sign-in-form'));
 installHeaderDates({programme:true});
 function openSignIn(){pins.clear();$('sign-in-dialog').showModal();}

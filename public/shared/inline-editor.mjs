@@ -14,7 +14,7 @@ export function createInlineEditor({root,request,session:providedSession,active,
  }
  const fail=error=>{if(error.status===403){session.clear();editing=false;document.body.classList.remove('website-inline-editing');showPublished();permissionLost();}if(active()&&error.name!=='AbortError'){notice=error.message;errorNotice=true;controls();}};
  function syncButtons(){for(const button of root.querySelectorAll('[data-inline-action="start"]'))button.remove();if(!allowed()||editing)return;
-  for(const target of root.querySelectorAll('.sp-row-actions,.sp-sidebar,.rs-episode-heading')){const button=document.createElement('button');button.type='button';button.className='sp-inline-entry';button.dataset.inlineAction='start';button.textContent=target.classList.contains('rs-episode-heading')?'Edit reading content':'Edit text';button.setAttribute('aria-label','Edit website text');target.insertBefore(button,target.classList.contains('sp-sidebar')?target.querySelector('nav'):null);}
+  const recordingHeading=root.querySelector('.rs-episode-heading');for(const target of recordingHeading?[recordingHeading]:root.querySelectorAll('.sp-row-actions,.sp-sidebar')){const button=document.createElement('button');button.type='button';button.className='sp-inline-entry';button.dataset.inlineAction='start';button.textContent=target.classList.contains('rs-episode-heading')?'Edit reading content':'Edit text';button.setAttribute('aria-label','Edit website text');target.insertBefore(button,target.classList.contains('sp-sidebar')?target.querySelector('nav'):null);}
  }
  async function start(){
   if(!allowed()||busy()||editing||!canStart())return;
