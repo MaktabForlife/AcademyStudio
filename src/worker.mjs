@@ -1,4 +1,5 @@
 import {existingCollection,referenceCollectionPDF} from './existing-collection.mjs';
+import {publishedAnnouncements} from './announcements.mjs';
 import {COVER_LIMIT,cardOptions,uploadCover,previewCover} from './playlist-cards.mjs';
 import {publishedPlaylistDescriptors} from './playlist-catalogue.mjs';
 import {mediaOptions,attributionChange,attachMedia,addPublishedAttribution,mediaCompanionSave,mediaDetail,addSupportingFiles} from './media-attribution.mjs';
@@ -36,6 +37,7 @@ async function forwardSignIn(request,env,store,input,fetcher){
 }
 async function route(request,env,store,fetcher){
  const url=new URL(request.url),path=url.pathname,method=request.method;
+ if((path==='/api/public/academy-announcements'||path.startsWith('/api/public/academy-announcements/'))&&['GET','HEAD'].includes(method))return publishedAnnouncements(request,env,fetcher);
  if(path==='/api/public/header-date'&&method==='GET')return publicHeaderDate(request,env,fetcher);
  if(path==='/api/public/circles'&&method==='GET')return json(await publicCatalogue(env),200,{'Cache-Control':'public, max-age=60'});
  const publicCover=path.match(/^\/api\/public\/circles\/covers\/([a-f0-9]{64})$/);
