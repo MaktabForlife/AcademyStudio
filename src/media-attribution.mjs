@@ -136,7 +136,7 @@ export async function attachMedia(env,store,actor,offer,input,fetcher,planner){
 
 export async function mediaCompanionSave(env,store,actor,offer,input,fetcher){
  const hasTitle=Object.hasOwn(input,'title'),title=hasTitle?recordingTitle(input.title):null,titleRevision=hasTitle?integer(input.attributionRevision):null;
- await mediaAdmin(store,actor,offer);const row=await mediaGate(store,actor,id(input.attachmentId),{admin:true});if(row.offering_id!==offer)throw fail('Choose this programme’s recording.',403);
+ await mediaAdmin(store,actor,offer);const row=await mediaGate(store,actor,id(input.attachmentId),{admin:true});if(row.offering_id!==offer||!row.website_id&&row.kind!=='COURSE'||row.audience!=='RECORDING'||!['video/mp4','video/youtube'].includes(row.mime_type))throw fail('Choose this programme’s recording.',403);
  const attribution=(await attributionFacts(store,[row.attachment_id]))[0];if(!attribution)throw fail('Save a checked registered Teacher first.',409);await mediaTeachers(env,store,actor,offer,JSON.parse(attribution.draft_json).teacherIds,fetcher);
  // Titles share the existing private attribution draft, never the learner
  // attachment row. Commit the title and companion draft under both revisions.
