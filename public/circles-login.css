@@ -34,3 +34,13 @@
 .circles-free-inactive{opacity:.55;cursor:default;filter:saturate(.45)}.circles-free-inactive:hover{transform:none!important;box-shadow:none!important}.circles-free-placeholders{margin-top:42px}.circles-free-placeholders>h3{margin:0;font:400 28px/1.3 var(--serif,Georgia,serif)}.circles-free-placeholders>p{font:400 13px/1.5 var(--sans,Arial,sans-serif);color:#7b6c74;margin:8px 0 20px}.circles-purchased-course-row{display:flex;gap:18px;overflow-x:auto}.circles-purchased-course{box-sizing:border-box;display:flex;align-items:center;gap:20px;flex:0 0 290px;min-height:170px;padding:24px;background:#eee3dd;border:1px solid #d8c7ce;border-radius:5px;color:#493640;text-decoration:none}.circles-purchased-course>span:last-child{margin-left:auto}.circles-purchased-course img{width:64px;height:90px;object-fit:cover}.circles-purchased-course h3{font:400 25px/1.25 var(--serif,Georgia,serif);margin:10px 0}.circles-purchased-course small{font:500 11px/1.4 var(--sans,Arial,sans-serif)}.circles-purchased-course:focus-visible{outline:3px solid #7d4c68;outline-offset:4px}.circles-purchased-course:hover{background:#e9d9df}
 
 @media(min-width:821px){.circle .public-home-header{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:20px}.circle .public-home-header .academy-brand{grid-column:1;grid-row:1;justify-self:start}.circle .public-home-header .site-nav[aria-label="Your workspaces"]{grid-column:2;grid-row:1;justify-self:center;justify-content:center;margin:0}.circle .public-home-header .visitor-entry-actions{grid-column:3;grid-row:1;justify-self:end}.circle .public-home-header .circles-header-dates{grid-row:2;grid-column:1/-1}}
+
+@media(min-width:821px){.circle .public-home-header .public-login:is([data-circles-account-role="Global Admin"],[data-circles-account-role="Admin"]){padding:12px 22px;min-height:48px;border-radius:12px;font-weight:600;box-shadow:0 3px 12px #654e5e14}}
+@media(max-width:820px){
+ .circle .public-home-header:has(.site-nav[aria-label="Your workspaces"]){display:grid;grid-template-columns:minmax(120px,1fr) auto;gap:10px 8px;align-items:center;height:auto;padding-top:12px;padding-bottom:12px}
+ .circle .public-home-header .academy-brand{grid-column:1;grid-row:1;min-width:0}
+ .circle .public-home-header .site-nav[aria-label="Your workspaces"]{grid-column:2;grid-row:1;justify-self:end;width:auto;gap:3px;flex-wrap:nowrap;order:initial}
+ .circle .public-home-header .site-nav [data-circles-workspace]{min-width:43px;min-height:38px;padding:7px;font-size:10px;white-space:nowrap}
+ .circle .public-home-header .visitor-entry-actions{grid-column:1/-1;grid-row:2;justify-self:end;max-width:100%;gap:3px}
+ .circle .public-home-header .circles-header-dates{grid-column:1/-1;grid-row:3}
+}

@@ -30,3 +30,14 @@
  body.circles-programme-page .programme-studio-modes{grid-column:1/-1;grid-row:3;justify-self:center;margin:0}
  body.circles-programme-page .account-panel{left:auto;right:0}
 }
+
+/* Small-screen workspace selectors share the brand row. */
+@media(max-width:800px){
+ body.circles-programme-page .site-header{grid-template-columns:minmax(118px,1fr) auto;align-items:center;gap:10px 8px}
+ body.circles-programme-page .programme-brand-details{grid-column:1;grid-row:1}
+ body.circles-programme-page .programme-studio-modes{grid-column:2;grid-row:1;justify-self:end;margin:0;max-width:100%}
+ body.circles-programme-page .programme-studio-modes button{min-width:46px;padding:8px;font-size:11px}
+ body.circles-programme-page .account-menu{grid-column:1;grid-row:2;justify-self:start}
+ body.circles-programme-page .programme-page-actions{grid-column:2;grid-row:2;justify-content:flex-end;width:auto;gap:3px;flex-wrap:nowrap}
+ .circles-page-navigation button{font-size:10px}
+}

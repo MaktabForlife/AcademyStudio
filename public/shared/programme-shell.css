@@ -112,3 +112,5 @@ body.circles-programme-page{
 .circles-programme-page .programme-dashboard-bar{display:none}
 @media(max-width:1100px){.circles-programme-page .programme-header-account{gap:8px}.circles-programme-page .programme-profile{max-width:140px}.circles-programme-page .programme-brand-details{gap:12px}.circles-programme-page .circles-header-dates{display:none}}
 @media(max-width:800px){.circles-programme-page .site-header{grid-template-columns:minmax(0,1fr) auto;gap:12px}.circles-programme-page .programme-header-account{grid-column:2;grid-row:1}.circles-programme-page .programme-studio-modes{grid-column:1/-1;grid-row:2}.circles-programme-page .programme-page-actions{justify-content:flex-end}.circles-programme-page .programme-profile{display:none}}
+
+@media(min-width:801px){.circles-programme-page #account-name[data-account-role="Global Admin"]{display:inline-flex;align-items:center;min-height:42px;padding:9px 18px;border-radius:12px;font-weight:600}}
