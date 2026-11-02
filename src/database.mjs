@@ -1,13 +1,14 @@
 import {accessGate,liveAccess,academyAuthority} from './access.mjs';
 import {fail,sha256,boundedAge,id} from './protocol.mjs';
 export class Store {
- constructor(env){this.env=env;this.db=env.DB.withSession('first-primary');this.scopes=new Map();this.metrics={queries:0,rowsRead:0,rowsWritten:0};}
+ constructor(env){this.env=env;this.db=env.DB.withSession('first-primary');this.scopes=new Map();this.readMemo=new Map();this.metrics={queries:0,rowsRead:0,rowsWritten:0};}
+ memo(key,load){if(!this.readMemo.has(key))this.readMemo.set(key,Promise.resolve().then(load));return this.readMemo.get(key);}
  statement(sql,args=[]){return this.db.prepare(sql).bind(...args);}
  count(result){for(const r of Array.isArray(result)?result:[result]){this.metrics.queries++;this.metrics.rowsRead+=r.meta?.rows_read||0;this.metrics.rowsWritten+=r.meta?.rows_written||0;}return result;}
  async all(sql,args=[]){const result=this.count(await this.statement(sql,args).all());return result.results;}
  async first(sql,args=[]){return (await this.all(sql,args))[0]||null;}
- async run(sql,args=[]){return this.count(await this.statement(sql,args).run());}
- async batch(statements){return this.count(await this.db.batch(statements));}
+ async run(sql,args=[]){this.readMemo.clear();return this.count(await this.statement(sql,args).run());}
+ async batch(statements){this.readMemo.clear();return this.count(await this.db.batch(statements));}
  async actor(tokenHash,now=Date.now(),{allowExpiredStatus=false}={}){
   const row=await this.first(`SELECT a.*,s.token_hash,s.expires_at,s.source_ref FROM sessions s JOIN accounts a USING(account_id)
    WHERE s.token_hash=? AND s.revoked=0 AND s.expires_at>? AND s.epoch=a.epoch AND NOT EXISTS(SELECT 1 FROM source_session_revocations r WHERE r.source_ref=s.source_ref) AND a.active=1 AND a.admitted=1`,[tokenHash,now]);

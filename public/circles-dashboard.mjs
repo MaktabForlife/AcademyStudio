@@ -48,13 +48,14 @@ export function circlesDashboard({onUpdate,openAcademy,show=()=>true,onWorkspace
  }
  function request(selected,force,generation,accountId,date){
   const key=JSON.stringify([accountId,generation,selected||'default',force,circleWeekStart(date)]);if(requests.has(key))return requests.get(key);
-  const loading=api('/api/circles/dashboard',{body:{...(selected?{mode:selected}:{}),date,...(force?{refresh:true}:{})}}).finally(()=>{if(requests.get(key)===loading)requests.delete(key);});requests.set(key,loading);return loading;
+  const query=new URLSearchParams({...(selected?{mode:selected}:{}),date,...(force?{refresh:'1'}:{})});
+  const loading=api('/api/circles/dashboard?'+query).finally(()=>{if(requests.get(key)===loading)requests.delete(key);});requests.set(key,loading);return loading;
  }
- async function load(selected=mode,force=false,date=localDay(Date.now(),data?.timezone||'Africa/Johannesburg')){
+ async function load(selected=mode,force=false,date=localDay(Date.now(),data?.timezone||'Africa/Johannesburg'),checked=null,checkedError=null){
   if(!identity.account)return;const owner=accountKey();if(cacheOwner!==owner){cache.clear();requests.clear();cacheOwner=owner;}
   const key=JSON.stringify([selected||'default',circleWeekStart(date)]),saved=!force&&cache.get(key),age=saved?Date.now()-Number(saved.checkedAt):NaN,warm=Number.isFinite(age)&&age>=0&&age<43200000;
   resetActions();const currentTicket=++ticket,generation=identity.generation;mode=selected;pending=!warm;error='';status='';if(!warm)refresh();
-  try{const value=warm?saved:await request(selected,force,generation,identity.account.accountId,date);if(currentTicket!==ticket||generation!==identity.generation||owner!==accountKey())return;data=value;selectedDate=selectedCircleDay(value,date,Date.now()).date;dataOwner=owner;available=value.availableModes;mode=value.mode;cache.set(JSON.stringify([mode,circleWeekStart(date)]),value);cache.set(key,value);}
+  try{if(checkedError)throw checkedError;const value=checked||warm&&saved||await request(selected,force,generation,identity.account.accountId,date);if(currentTicket!==ticket||generation!==identity.generation||owner!==accountKey())return;data=value;selectedDate=selectedCircleDay(value,date,Date.now()).date;dataOwner=owner;available=value.availableModes;mode=value.mode;cache.set(JSON.stringify([mode,circleWeekStart(date)]),value);cache.set(key,value);}
   catch(e){if(currentTicket!==ticket||generation!==identity.generation||owner!==accountKey())return;data=null;dataOwner='';error=e.message;if([401,403,409].includes(e.status)){cache.clear();requests.clear();}}
   finally{if(currentTicket===ticket&&generation===identity.generation&&owner===accountKey()){pending=false;onUpdate();}}
  }
@@ -77,6 +78,7 @@ export function circlesDashboard({onUpdate,openAcademy,show=()=>true,onWorkspace
   modal('media','Manage Media',choices.map(row=>`<p><button type="button" data-circle-media-choice="${esc(row.activityKey)}">${esc(row.name)}</button></p>`).join('')||'<p>No programmes or courses are available in your current Admin scope.</p>');
  }
  window.addEventListener('website-course-policy-changed',()=>{const visible=current(),selected=mode;clear();if(visible&&identity.account)void load(selected);});
+ window.addEventListener('website-display-invalidated',()=>{const visible=current(),selected=mode;clear();if(visible&&identity.account)void load(selected);});
  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')clearClock();else if(current())refresh();});
  document.addEventListener('click',event=>{
   if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;

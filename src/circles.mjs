@@ -42,7 +42,11 @@ export async function websitePresentation(env,website){
 
 // One bounded, account-scoped lookup. Staff authority permits opening a website
 // but never supplies evidence of a purchase, paid month or individual grant.
-export async function catalogueAccess(store,actor,websiteIds,{navigationOnly=false}={}){
+export function catalogueAccess(store,actor,websiteIds,{navigationOnly=false}={}){
+ const load=()=>loadCatalogueAccess(store,actor,websiteIds,{navigationOnly});
+ return store.memo?store.memo('catalogue-access:'+JSON.stringify([actor.account_id,actor.epoch,actor.global_admin,websiteIds,navigationOnly]),load):load();
+}
+async function loadCatalogueAccess(store,actor,websiteIds,{navigationOnly=false}={}){
  if(!Array.isArray(websiteIds)||websiteIds.length>50)throw fail('Choose at most 50 learning websites.');
  const ids=[...new Set(websiteIds.map(id))],policyEpoch=await coursePolicyEpoch(store);if(!ids.length)return {websites:[],coursePolicyEpoch:policyEpoch};
  const rows=await store.all(`SELECT w.website_id,w.offering_id,w.enabled,w.published_key,o.kind,o.active,cm.access_model,cr.revision policy_revision,

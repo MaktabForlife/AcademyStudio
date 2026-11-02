@@ -3,13 +3,17 @@ export const academyAuthority=env=>env.AUTHORITY_MODE==='ACADEMY';
 export const freeCourse=scope=>scope?.kind==='COURSE'&&scope.access_model==='FREE';
 export async function accessGate(store,actor,offeringId,{admin=false,live=false,readOnly=false}={}){
  if(!academyAuthority(store.env))return null;admin=admin||Boolean(actor.global_admin);
- const row=await store.first(`SELECT s.*,o.kind,m.access_model,p.generation person_generation,p.verified_at,p.ready,p.windows_json,p.has_allocation,p.course FROM source_access_scopes s JOIN offerings o USING(offering_id) LEFT JOIN course_access_models m USING(offering_id) LEFT JOIN source_access_people p ON p.offering_id=s.offering_id AND p.account_id=? WHERE s.offering_id=?`,[actor.account_id,offeringId]);
+ // Reuse factual rows only inside this read request. Every caller still checks
+ // its own live/Admin age and conditions; writes always read fresh and retain
+ // their final atomic guard. Store writes discard this request-local memo.
+ const first=(sql,args)=>readOnly&&store.memo?store.memo('scope-fact:'+JSON.stringify([sql,args]),()=>store.first(sql,args)):store.first(sql,args);
+ const row=await first(`SELECT s.*,o.kind,m.access_model,p.generation person_generation,p.verified_at,p.ready,p.windows_json,p.has_allocation,p.course FROM source_access_scopes s JOIN offerings o USING(offering_id) LEFT JOIN course_access_models m USING(offering_id) LEFT JOIN source_access_people p ON p.offering_id=s.offering_id AND p.account_id=? WHERE s.offering_id=?`,[actor.account_id,offeringId]);
  const free=freeCourse(row)&&!admin;
  // A received master-account change takes precedence over every cached proof,
  // including a staff read that otherwise remains valid for twelve hours.
- if(await store.first('SELECT 1 FROM source_access_master_fences WHERE account_id=? AND offering_id=?',[actor.account_id,offeringId]))throw Object.assign(fail('Confirm the current Academy master account before continuing.',409,'ACCESS_REFRESH_REQUIRED'),{offeringId});
+ if(await first('SELECT 1 FROM source_access_master_fences WHERE account_id=? AND offering_id=?',[actor.account_id,offeringId]))throw Object.assign(fail('Confirm the current Academy master account before continuing.',409,'ACCESS_REFRESH_REQUIRED'),{offeringId});
  if(row?.authority==='WEBSITE'){
-  const handover=await store.first("SELECT phase FROM access_handovers WHERE offering_id=?",[offeringId]);
+  const handover=await first("SELECT phase FROM access_handovers WHERE offering_id=?",[offeringId]);
   if(handover?.phase!=='COMMITTED')throw fail('This offering needs a guarded access handover.',409,'HANDOVER_REQUIRED');
   if(!row.enabled)throw fail('This offering is unavailable in Academy.',403,'SOURCE_SCOPE_UNAVAILABLE');
   // Studio owns acquired rights; Academy still owns class windows/lifecycle.

@@ -2,6 +2,7 @@
 // the current account is verified; the dashboard API still checks that mode.
 const key='m4l_circles_dashboard_view_v1';
 export const dashboardWorkspace=value=>['learn','teach','admin'].includes(value)?value:null;
+export function readDashboardPreference(storage){try{const raw=storage?.getItem(key);if(!raw||raw.length>1024)return null;const value=JSON.parse(raw);return typeof value.accountId==='string'&&value.accountId.length<=200&&dashboardWorkspace(value.mode)?{accountId:value.accountId,mode:value.mode}:null;}catch{return null;}}
 export function dashboardHomeHref(mode){return '/?dashboard=1'+(dashboardWorkspace(mode)?'&workspace='+mode:'');}
 export function readDashboardView(storage,accountId){
  if(typeof accountId!=='string'||!accountId)return null;

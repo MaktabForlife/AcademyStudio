@@ -1,3 +1,4 @@
+import {accountView,privateViewTag,privateUnchanged,privateNotModified,privateReply,checkedViewReply} from './read-cache.mjs';
 import {existingCollection,referenceCollectionPDF} from './existing-collection.mjs';
 import {publishedAnnouncements} from './announcements.mjs';
 import {COVER_LIMIT,cardOptions,uploadCover,previewCover} from './playlist-cards.mjs';
@@ -70,11 +71,23 @@ async function route(request,env,store,fetcher){
   if(input.library){const website=await websiteAccess(store,actor,id(input.library.websiteId)),lessonId=input.library.lessonId?id(input.library.lessonId):null;if(lessonId){const document=website.published_key?await objectJSON(env.CONTENT,website.published_key):null;if(!document?.lessons.some(l=>l.id===lessonId))throw fail('Choose a published lesson for the Library return.',404);}library={websiteId:website.website_id,lessonId};}
   const result=await academyCommand(env,store,'/internal/website/open-academy',{sourceRef:actor.source_ref,challenge:input.challenge,state:input.state,...(library?{library}:{}),...(input.navigation?{navigation:input.navigation}:{}),...(input.dashboard?{dashboard:input.dashboard}:{})},fetcher);if(!safeToken(result.code))throw fail('Academy could not prepare the handoff.',503);return json({code:result.code});}
  if(path==='/auth/logout'&&method==='POST'){await store.run('UPDATE sessions SET revoked=1 WHERE token_hash=?',[actor.token_hash]);return json({signedOut:true},200,{'Set-Cookie':cookie('',0)});}
- if(path==='/api/me'&&method==='GET')return json({accountId:actor.account_id,displayName:actor.display_name,globalAdmin:Boolean(actor.global_admin),verifiedAt:actor.verified_at,coursePolicyEpoch:await coursePolicyEpoch(store)});
+ if(path==='/api/me'&&method==='GET')return json(await accountView(actor,store));
+ if(path==='/api/circles/bootstrap'&&method==='GET'){
+  const q=url.searchParams;if([...q.keys()].some(k=>!['mode','date','preferredAccount','preferredMode'].includes(k)))throw fail('Choose a valid dashboard.');
+  const preferred=q.get('preferredAccount')===actor.account_id?q.get('preferredMode'):null,mode=q.get('mode')||preferred,input={...(mode?{mode}:{}),...(q.get('date')?{date:q.get('date')}:{})};
+  const account=await accountView(actor,store),parts=await Promise.allSettled([circlesNavigation(env,store,actor),dashboardSnapshot(env,store,actor,input,fetcher)]),errors={};
+  for(const [index,name] of ['navigation','dashboard'].entries())if(parts[index].status==='rejected'){const error=parts[index].reason;if(error.status===401||error.code==='ACCESS_REFRESH_REQUIRED')throw error;errors[name]={status:error.status||503,code:error.code||'UNAVAILABLE',message:error.status?error.message:'This view could not be loaded.'};}
+  const current=await store.actor(actor.token_hash);if(current.epoch!==actor.epoch||current.global_admin!==actor.global_admin)throw fail('Your account changed. Reopen your dashboard.',409,'ACCESS_REFRESH_REQUIRED');
+  const result={configuration:{academyOrigin:env.ACADEMY_ORIGIN,localPreview:env.ENVIRONMENT==='local',authorityMode:env.AUTHORITY_MODE||'WEBSITE'},account,navigation:parts[0].status==='fulfilled'?parts[0].value:null,dashboard:parts[1].status==='fulfilled'?parts[1].value:null,errors};return Object.keys(errors).length?json(result):checkedViewReply(request,result);
+ }
+ if(path==='/api/circles/dashboard'&&method==='GET'){
+  const q=url.searchParams;if([...q.keys()].some(k=>!['mode','date','refresh'].includes(k))||q.has('refresh')&&q.get('refresh')!=='1')throw fail('Choose a valid dashboard.');
+  return checkedViewReply(request,await dashboardSnapshot(env,store,actor,{...(q.get('mode')?{mode:q.get('mode')}:{}),...(q.get('date')?{date:q.get('date')}:{}),...(q.has('refresh')?{refresh:true}:{})},fetcher));
+ }
  if(path==='/api/circles/dashboard'&&method==='POST')return json(await dashboardSnapshot(env,store,actor,await bodyJSON(request.body,4096),fetcher));
  if(path==='/api/circles/lesson-join'&&method==='POST')return json(await circlesNativeJoin(env,store,actor,await bodyJSON(request.body,4096),fetcher));
  if(path==='/api/circles/navigation'&&method==='GET')return json(await circlesNavigation(env,store,actor));
- if(path==='/api/circles/classrooms/mothers'&&method==='GET'){return json(await mouClassroom(store,actor));}
+ if(path==='/api/circles/classrooms/mothers'&&method==='GET'){const value=await mouClassroom(store,actor,{request});return value instanceof Response?value:json(value);}
  if(path==='/api/circles/access'&&method==='GET')return json(await catalogueAccess(store,actor,url.searchParams.getAll('website')));
  if(path==='/api/websites'&&method==='GET'){
   if(url.searchParams.has('published')&&url.searchParams.get('published')!=='1')throw fail('Choose a published website catalogue.');
@@ -97,9 +110,11 @@ async function route(request,env,store,fetcher){
   if(action==='history'){await websiteAccess(store,actor,websiteId,{admin:true,readOnly:true});return json({history:await store.all('SELECT revision,action,created_at,actor_id FROM website_history WHERE website_id=? AND revision<? ORDER BY revision DESC LIMIT 51',[websiteId,Number(url.searchParams.get('before'))||Number.MAX_SAFE_INTEGER])});}
   if(action==='assets'){const website=await websiteAccess(store,actor,websiteId,{admin:true,readOnly:true});return json({websiteId,offeringId:website.offering_id,...await attachedWebsiteAssets(store,websiteId,{assetId:url.searchParams.get('assetId'),after:url.searchParams.get('after')||''})});}
   const website=await websiteAccess(store,actor,websiteId,{admin:Boolean(action),readOnly:true}),key=action?website.draft_key:website.published_key;
+  const presentation=await websitePresentation(env,website),tag=!action?await privateViewTag(request,store,actor,website.offering_id,{website,presentation}):null;
+  if(tag&&privateUnchanged(request,tag))return privateNotModified(tag);
   const savedDocument=key?await objectJSON(env.CONTENT,key):null,rawDocument=savedDocument&&website.playlist_id?{...savedDocument,name:website.title,home:{...savedDocument.home,headline:website.title}}:savedDocument,{document,contentAccess}=rawDocument&&!action?await recordingScopedDocument(env,store,actor,website,rawDocument):{document:rawDocument,contentAccess:{mode:'FULL_TEXT'}};
   const assets=await editionAssets(store,websiteId,document,{draft:Boolean(action)});
-  return json({websiteId,playlistId:website.playlist_id||null,offeringId:website.offering_id,kind:website.kind,programmeKey:website.programme_key||null,coursePolicy:website.kind==='COURSE'?await coursePolicy(store,website.offering_id):null,presentation:await websitePresentation(env,website),revision:website.revision,document,contentAccess,assets,enabled:Boolean(website.enabled),canEdit:Boolean(actor.global_admin||website.role==='ADMIN'),draftVersion:contentVersion(website.draft_key),publishedVersion:contentVersion(website.published_key),capabilities:{assessments:false,journal:false,liveSessions:!website.completed_course}});
+  const value={websiteId,playlistId:website.playlist_id||null,offeringId:website.offering_id,kind:website.kind,programmeKey:website.programme_key||null,coursePolicy:website.kind==='COURSE'?await coursePolicy(store,website.offering_id):null,presentation,revision:website.revision,document,contentAccess,assets,enabled:Boolean(website.enabled),canEdit:Boolean(actor.global_admin||website.role==='ADMIN'),draftVersion:contentVersion(website.draft_key),publishedVersion:contentVersion(website.published_key),capabilities:{assessments:false,journal:false,liveSessions:!website.completed_course}};return tag?privateReply(value,tag):json(value);
  }
  match=path.match(/^\/api\/media\/([-A-Za-z0-9_:]+)\/companion$/);if(match&&method==='GET')return json(await readCompanion(env,store,actor,match[1]));
  match=path.match(/^\/api\/media\/([-A-Za-z0-9_:]+)$/);if(match&&['GET','HEAD'].includes(method)){const row=await mediaGate(store,actor,match[1],{admin:url.searchParams.get('draft')==='1'});return streamMedia(env,row,request);}
@@ -110,6 +125,7 @@ async function route(request,env,store,fetcher){
   if(action==='media'&&method==='GET'){
    const after=url.searchParams.get('after')||'',websiteId=url.searchParams.get('website');
    let mediaWebsite=null;if(websiteId){const site=await websiteAccess(store,actor,id(websiteId));if(site.offering_id!==offeringId)throw fail('Choose a website in this offering.',400);mediaWebsite=site;}
+   const tag=await privateViewTag(request,store,actor,offeringId,{scope,mediaWebsite});if(privateUnchanged(request,tag))return privateNotModified(tag);
    const filter=websiteId?' AND x.website_id=?':'',tail=websiteId?[websiteId]:[],select='SELECT x.attachment_id,x.asset_id,x.website_id,x.title,x.lesson_id,x.lesson_date,x.cohort,x.audience,o.mime_type type',staff=actor.global_admin||scope.role;
    let rows=[];
    const playlist=websiteId?await store.first('SELECT p.playlist_id,p.revision,COALESCE(c.published_title,w.title) title FROM mou_playlists p JOIN websites w USING(website_id) LEFT JOIN playlist_card_designs c USING(playlist_id) WHERE p.offering_id=? AND p.website_id=?',[offeringId,websiteId]):null;
@@ -122,7 +138,7 @@ async function route(request,env,store,fetcher){
    // Unary + preserves the month value while removing column affinity: SQLite can
    // then use the substr expression index for each paid month, not scan the offer.
    else if(scope.kind==='TAFSEER')rows=await store.all(`${select} FROM paid_months m CROSS JOIN attachments x INDEXED BY attachments_month JOIN objects o USING(asset_id) WHERE m.account_id=? AND m.offering_id=? AND x.offering_id=m.offering_id AND substr(x.lesson_date,1,7)=+m.month AND x.cohort=m.cohort AND x.audience='RECORDING' AND x.published=1 AND NOT EXISTS(SELECT 1 FROM mou_playlist_only_media pm WHERE pm.attachment_id=x.attachment_id) AND x.attachment_id>?${filter} ORDER BY x.attachment_id LIMIT 51`,[actor.account_id,offeringId,after,...tail]);
-   const media=await addSupportingFiles(store,await addPublishedAttribution(store,rows.slice(0,50)));return json({media,more:rows.length>50,...(playlist?{playlist:{id:playlist.playlist_id,name:playlist.title,revision:playlist.revision}}:{}),companions:await permittedCompanionIndexes(store,media),mediaBindings:mediaWebsite?await permittedGuideBindings(env,mediaWebsite,media,store):[]});
+   const media=await addSupportingFiles(store,await addPublishedAttribution(store,rows.slice(0,50)));return privateReply({media,more:rows.length>50,...(playlist?{playlist:{id:playlist.playlist_id,name:playlist.title,revision:playlist.revision}}:{}),companions:await permittedCompanionIndexes(store,media),mediaBindings:mediaWebsite?await permittedGuideBindings(env,mediaWebsite,media,store):[]},tag);
   }
   if(method!=='POST')throw fail('This action needs a POST request.',405);const input=await bodyJSON(request.body,16384);
   if(action==='join'){if(scope.completed_course)throw fail('This completed Course has no live sessions.',403,'JOIN_CLOSED');await accessGate(store,actor,offeringId,{live:true});if(!actor.global_admin&&!scope.live&&!scope.role)throw fail('Current live-session access is required.',403);const session=await store.first('SELECT session_id,starts_at,ends_at,zoom_url,cancelled FROM timetable WHERE session_id=? AND offering_id=?',[id(input.sessionId),offeringId]),now=Date.now();if(!session||session.cancelled||now<session.starts_at-300_000||now>=session.ends_at||!session.zoom_url)throw fail('Joining is available from five minutes before the lesson until it ends.',403,'JOIN_CLOSED');await joinAudience(store,actor,offeringId,session,scope);return json({destination:session.zoom_url});}

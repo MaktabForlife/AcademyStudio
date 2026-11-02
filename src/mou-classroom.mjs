@@ -1,3 +1,4 @@
+import {privateViewTag,privateUnchanged,privateNotModified,privateReply} from './read-cache.mjs';
 import {mouSubjects} from '../public/shared/mou-subjects.mjs';
 import {comingSoonLabel} from '../public/shared/course-notices.mjs';
 import {programmeSnapshot} from './navigation.mjs';
@@ -9,12 +10,20 @@ import {learnerPlaylists} from './mou-playlists.mjs';
 
 const subjectPlan=()=>mouSubjects.map(s=>({key:s.key,title:s.title,state:s.first?'PREPARING':'COMING_SOON',availabilityLabel:s.first?null:comingSoonLabel,website:null}));
 const localMonth=(time,zone)=>{const p=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit'}).formatToParts(new Date(time)).map(p=>[p.type,p.value]));return p.year+'-'+p.month;};
-export async function mouClassroom(store,actor){
+export async function mouClassroom(store,actor,{request}={}){
  if(!(await programmeSnapshot(store,actor)).includes('mothers'))throw fail('Mothers of the Ummah access is required.',403,'MOU_ACCESS_REQUIRED');
  const definition=await mouDefinition(store),now=Date.now(),subjects=subjectPlan();
  const result={schema:'MOU_CLASSROOM_V1',title:'Mothers of the Ummah',context:{accountId:actor.account_id,epoch:actor.epoch},programme:{key:'mothers',kind:'PROGRAMME',accessModel:'MONTHLY',offeringId:null,authority:null,state:'PENDING_CONNECTION'},management:{canManage:false,requiresAuthorityRefresh:false,authority:'ACADEMY_PROXY',offeringId:null},monthly:{state:'NOT_CONNECTED',month:null,hasCurrentMonth:false,hasRetainedMonths:false},materialsConnected:false,subjects,timetable:{state:'NOT_CONNECTED',serverTime:now,sessions:[]}};
  if(!definition)return result;
  const offer=definition.offering_id,scope=await store.scope(actor,offer),source=await accessGate(store,actor,offer,{readOnly:true}),staff=Boolean(actor.global_admin||scope.role),month=localMonth(now,definition.timezone);
+ let tag=null,liveChecked=false;
+ if(request){
+  if(definition.live_enabled&&(staff||scope.live_entitled)){await accessGate(store,actor,offer,{live:true,admin:staff,readOnly:true});liveChecked=true;}
+  const ended=await store.first('SELECT ends_at FROM timetable INDEXED BY timetable_public_offering WHERE offering_id=? AND cancelled=0 AND starts_at>=? AND ends_at<=? ORDER BY ends_at DESC LIMIT 1',[offer,now-86400_000,now]);
+  tag=await privateViewTag(request,store,actor,offer,{definition,scope,source,verifiedAt:actor.verified_at,expiresAt:actor.expires_at,adminFresh:actor.verified_at>=now-boundedAge(store.env,true),ended:ended?.ends_at||0});
+  if(privateUnchanged(request,tag))return privateNotModified(tag);
+ }
+ const finish=value=>tag?privateReply(value,tag):value;
  const months=await store.first(`SELECT EXISTS(SELECT 1 FROM paid_months WHERE account_id=? AND offering_id=? AND month=? UNION ALL SELECT 1 FROM website_months WHERE account_id=? AND offering_id=? AND month=?) current_month,EXISTS(SELECT 1 FROM paid_months WHERE account_id=? AND offering_id=? UNION ALL SELECT 1 FROM website_months WHERE account_id=? AND offering_id=?) retained`,[actor.account_id,offer,month,actor.account_id,offer,month,actor.account_id,offer,actor.account_id,offer]);
  result.programme={...result.programme,offeringId:offer,authority:definition.authority==='WEBSITE'?'STUDIO':'ACADEMY',state:staff||scope.live?'ACTIVE':'MATERIALS_ONLY'};
  result.monthly={state:'CONNECTED',month,hasCurrentMonth:Boolean(months.current_month),hasRetainedMonths:Boolean(months.retained)};
@@ -36,10 +45,10 @@ export async function mouClassroom(store,actor){
   result.subjects[index]={...subjects[index],state:published?'PUBLISHED':'PREPARING',availabilityLabel:null,website:{id:binding.website_id,title:subjects[index].title,completionMonth:binding.completion_month,canOpen:published,canEdit,...(published?{href:'/studio/?website='+encodeURIComponent(binding.website_id)}:{}),...(canEdit?{editorHref:'/builder/?website='+encodeURIComponent(binding.website_id)}:{})}};
  }
  result.materialsConnected=result.subjects.some(s=>s.website?.canOpen)||result.playlists.length>0;
- if(!definition.live_enabled||!staff&&!scope.live_entitled){result.timetable.state='LIVE_ACCESS_REQUIRED';return result;}
- await accessGate(store,actor,offer,{live:true,admin:staff,readOnly:true});
+ if(!definition.live_enabled||!staff&&!scope.live_entitled){result.timetable.state='LIVE_ACCESS_REQUIRED';return finish(result);}
+ if(!liveChecked)await accessGate(store,actor,offer,{live:true,admin:staff,readOnly:true});
  const snapshot=await store.first('SELECT version FROM stream_heads WHERE stream=?',['timetable:'+offer]);
- if(!snapshot){result.timetable.state='PENDING';return result;}
+ if(!snapshot){result.timetable.state='PENDING';return finish(result);}
  const sessions=await store.all(`SELECT t.session_id,t.title,t.starts_at,t.ends_at,t.cancelled,t.zoom_url IS NOT NULL has_zoom,a.class_ids_json,a.teacher_ids_json,d.timezone,d.classes_json,
  (SELECT json_group_array(n.display_name) FROM json_each(a.teacher_ids_json) j JOIN accounts n ON n.account_id=j.value) teacher_labels
  FROM timetable t INDEXED BY timetable_public_offering LEFT JOIN source_session_audiences a USING(session_id) LEFT JOIN source_session_details d USING(session_id)
@@ -53,7 +62,7 @@ export async function mouClassroom(store,actor){
   return {id:s.session_id,title:s.title,startsAt:s.starts_at,endsAt:s.ends_at,timezone:s.timezone||definition.timezone,classIds:JSON.parse(s.class_ids_json||'[]'),classes:JSON.parse(s.classes_json||'null')||JSON.parse(s.class_ids_json||'[]').map(id=>({id,label:null})),teacherLabels:JSON.parse(s.teacher_labels||'[]'),joinOpensAt:s.starts_at-300_000,eligibleToJoin,eligibilityExpiresAt:Math.min(eligibleUntil,s.ends_at),canJoin:Boolean(eligibleToJoin&&now>=s.starts_at-300_000&&now<s.ends_at),joinPath:'/api/offerings/'+encodeURIComponent(offer)+'/join'};
  });
  result.timetable.state=result.timetable.sessions.length?'PUBLISHED':'NO_UPCOMING_SESSIONS';
- return result;
+ return finish(result);
 }
 
 export async function bindMouSubject(store,actor,offer,input,options={}){

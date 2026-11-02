@@ -9,7 +9,7 @@ import {circleBlockNavigation,dashboardProgrammeChoice} from './shared/circles-b
 import {publicHome} from './shared/public-home.mjs';
 import {circlesCourseRow} from './shared/circles-course-row.mjs';
 import {api,identity,changed} from './api.mjs';
-import {dashboardWorkspace,dashboardHomeHref,readDashboardView,rememberDashboardView,clearDashboardView,dashboardViewStorage} from './shared/dashboard-home.mjs';
+import {dashboardWorkspace,dashboardHomeHref,readDashboardPreference,readDashboardView,rememberDashboardView,clearDashboardView,dashboardViewStorage} from './shared/dashboard-home.mjs';
 import {accessArea,signInFromCircles,openAcademyFromCircles} from './shared/circles-sign-in.mjs';
 
 const labels={general:'Your Academy account',academy:'Islamic Academia',tafseer:'Tafseer and Tadabbur',courses:'Your classrooms',mothers:'Mothers of the Ummah',hifz:'Ma’had Arwa Hifz Academy',studio:'Studio','arabic-adventures':'Arabic Adventures'};
@@ -71,13 +71,13 @@ async function loadNavigation(){
  const promise=api('/api/circles/navigation').then(value=>{if(identity.generation===generation&&identity.account?.accountId===accountId){navigation=value;refreshHeader();}}).finally(()=>{if(navRequest?.promise===promise)navRequest=null;});navRequest={key,promise};return promise;
 }
 const ready=(async()=>{
- const [configuration,account]=await Promise.all([api('/api/config'),api('/api/me',{optionalSession:true}).catch(error=>{if(error.status!==401)throw error;return null;})]);
- config=configuration;identity.account=account;
- if(account){
-  const mode=dashboardWorkspace(initialWorkspace)||readDashboardView(dashboardViewStorage(),account.accountId)||undefined;
-  refreshHeader();
-  await Promise.all([loadNavigation().catch(error=>{if(error.name!=='AbortError')showHomeMessage('Your programme links could not be loaded. Please log in again.');}),dashboard.load(mode)]);
- }else{clearDashboardView(dashboardViewStorage());refreshHeader();}
+ const preference=readDashboardPreference(dashboardViewStorage()),query=new URLSearchParams();
+ if(dashboardWorkspace(initialWorkspace))query.set('mode',initialWorkspace);
+ else if(preference){query.set('preferredAccount',preference.accountId);query.set('preferredMode',preference.mode);}
+ const boot=await api('/api/circles/bootstrap'+(query.size?'?'+query:''),{optionalSession:true}).catch(error=>{if(error.status!==401)throw error;return null;});
+ config=boot?.configuration||await api('/api/config');identity.account=boot?.account||null;
+ if(boot){navigation=boot.navigation;if(boot.errors?.navigation)showHomeMessage('Your programme links could not be loaded. Please try Refresh.');refreshHeader();await dashboard.load(boot.dashboard?.mode||dashboardWorkspace(initialWorkspace)||undefined,false,boot.dashboard?.selectedDate,boot.dashboard,boot.errors?.dashboard);}
+ else{clearDashboardView(dashboardViewStorage());refreshHeader();}
  window.AcademyCirclesHomeEntry?.complete();
 })();ready.then(()=>{historyReady=true;pageHistory.update(identity.account);}).catch(()=>window.AcademyCirclesHomeEntry?.fail());
 function returnToCircles(){if(dialog.open)dialog.close();refreshHeader();const card=selected==='general'?element('learning-circles'):document.querySelector(`.hub-panel[data-home-area="${selected}"]`);if(card){if(selected==='general')window.scrollTo({top:0,behavior:'smooth'});else card.scrollIntoView({behavior:'smooth',block:'center'});if(!card.hasAttribute('tabindex'))card.tabIndex=-1;card.focus({preventScroll:true});}}
