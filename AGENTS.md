@@ -1,3 +1,9 @@
+# Reviewed combined source sync — 3 November 2026
+
+The owner authorised coordination with Circles and Studio Media, then uploading reviewed source to GitHub when ready. This authorises a linear, reviewed sync to canonical `studio_dev`; it does not authorise Cloudflare activation, media attachment/publication, rights/schema/DNS changes or Hifz changes. Preserve every local file and branch. All new commits start with `[CF-Pages-Skip] [skip ci]`. The exact deployed V109.15 packages remain frozen in `release/v109.15/`; newer source is unreleased until a separately approved paired Academy/Studio deployment.
+
+Root composes the tested Global Admin dashboard timetable/Join correction, account-checked overlapping bootstrap, Circles palette and bounded Tafseer card rail, post-release media routing fixes, and Studio Media's reviewed existing-media projection. Permission and account/session invalidation remain authoritative. Ordinary navigation reuses the 12-hour verification; sensitive Admin changes retain fresh authority. Keep private content and credentials outside public Git history. Evidence lives in parent `outputs/academy-dashboard-return-integration-20261103/`.
+
 # V109.15 post-release review — LOCAL ONLY, 3 November 2026
 
 The owner requested small live navigation/media checks, local fixes and NO further deployment. This supersedes the fulfilled V109.15 deployment approval below. Preserve every local file, all permissions and Hifz. This isolated feature branch starts from the exact deployed GitHub studio_dev commit. Do not publish content, change rights/data/schema/DNS, deploy or push this review without applicable owner instructions. Keep test/build outputs and original changed bytes in parent outputs/academy-postrelease-review-10915-20261103/.

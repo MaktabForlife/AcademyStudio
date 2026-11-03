@@ -4,7 +4,7 @@ import {circlesCatalogue} from './circles-catalogue.mjs';
 // No requests, entitlement inference, storage or global account state live here.
 export function tafseerRailHTML(items,rights){
  const catalogue=items.filter(item=>item?.kind==='TAFSEER');
- return '<header><h2 id="dashboard-tafseer-title">Tafseer and Tadabbur</h2><a href="/studio/?view=collections&collection=tafseer">Show all ↗</a></header><div class="connected-circles collection-card-only">'+circlesCatalogue(catalogue,rights,{applicationPath:'/studio/',kind:'TAFSEER'})+'</div>';
+ return '<header><h2 id="dashboard-tafseer-title">Tafseer and Tadabbur</h2><a href="/studio/?view=collections&collection=tafseer">Show all ↗</a></header><div class="connected-circles collection-card-only">'+circlesCatalogue(catalogue,rights,{applicationPath:'/studio/',kind:'TAFSEER',checkedOpening:true})+'</div>';
 }
 
 export function mountTafseerRail(document){

@@ -23,6 +23,13 @@ test('no checked right produces a locked badge, never assumed Admin/purchase acc
  assert.equal(document.querySelectorAll('.access-open').length,0);
 });
 
+test('checked Admin opening access is Open without claiming a paid subscription; a denied row stays locked',()=>{
+ const access=[{websiteId:'yaseen',canOpen:true,subscriptionStatus:'required',accessBasis:null},{websiteId:'saffat',canOpen:false,subscriptionStatus:'subscribed'}],before=JSON.stringify(access);
+ const {document}=parseHTML(tafseerRailHTML(items,access));
+ assert.equal(document.querySelector('[data-circles-website="yaseen"] .access-badge').textContent,'Open');assert.match(document.querySelector('[data-circles-website="yaseen"]').getAttribute('aria-label'),/ · Open$/);assert(!document.body.textContent.includes('Subscribed'));
+ assert.equal(document.querySelector('[data-circles-website="saffat"] .access-badge').textContent,'Locked');assert.equal(JSON.stringify(access),before);
+});
+
 test('ready rail is directly above courses, replaces only Tafseer button and preserves artwork',async()=>{
  const document=fixture(),presenter=mountTafseerRail(document),originalCourses=document.querySelector('#programmes').innerHTML;
  presenter.update({visible:true,items,rights});

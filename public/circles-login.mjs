@@ -8,6 +8,8 @@ import {readRemembered,rememberVerified,forgetRemembered} from './shared/remembe
 import {circleBlockNavigation,dashboardProgrammeChoice} from './shared/circles-block-navigation.mjs?v=workspace-separation-1';
 import {publicHome} from './shared/public-home.mjs';
 import {circlesCourseRow} from './shared/circles-course-row.mjs';
+import {mountTafseerRail} from './shared/circles-tafseer-row.mjs';
+import {dashboardTafseerData} from './shared/dashboard-tafseer-data.mjs';
 import {api,identity,changed} from './api.mjs';
 import {takeDashboardBootstrap} from './shared/dashboard-bootstrap.mjs';
 import {dashboardWorkspace,dashboardHomeHref,readDashboardView,rememberDashboardView,clearDashboardView,dashboardViewStorage} from './shared/dashboard-home.mjs';
@@ -24,6 +26,7 @@ const initialEntry=window.AcademyCirclesEntry||{},initialWorkspace=initialEntry.
 let config,selected='general',attempt=0,handoff,navigation=null,navRequest=null,homeMessage='',switching=false,refreshing=false,publicView=initialEntry.public||new URLSearchParams(location.search).get('public')==='1';
 {const url=new URL(location.href);if(publicView)url.searchParams.set('public','1');if(['learn','teach','admin'].includes(initialWorkspace))url.searchParams.set('workspace',initialWorkspace);history.replaceState(null,'',url);}
 const dashboard=circlesDashboard({getNavigation:()=>navigation,onUpdate:refreshHeader,openAcademy,show:()=>!publicView,onWorkspace:()=>setPublicView(false)});
+const tafseerRail=dashboardTafseerData({api,identity,view:mountTafseerRail(document)});
 const storage=()=>{try{return window.localStorage;}catch{return null;}};
 function renderRemembered(){
  const host=element('circles-remembered-accounts');host.replaceChildren();const rows=readRemembered(storage(),config?.academyOrigin);if(!rows.length){host.hidden=true;return;}host.hidden=false;
@@ -60,12 +63,12 @@ function refreshHeader(){
   if(identity.account&&!existing){const signout=document.createElement('button');signout.type='button';signout.className='circles-header-sign-out';signout.dataset.circlesSignOut='';signout.innerHTML=headerIcon('signout');signout.title='Sign out';signout.setAttribute('aria-label','Sign out');entry.after(signout);}else if(!identity.account)existing?.remove();
  }
  for(const entry of document.querySelectorAll('a[data-action="visitor-access"],a[href="https://ummabbadacademy.com/my-account/"],a[href="/circles/?login=1"],a[href="/?login=1"]')){const area=accessArea(entry.dataset.id);entry.href='/?login=1&area='+area;entry.removeAttribute('target');entry.removeAttribute('rel');if(!entry.dataset.action&&!entry.dataset.programmeKey)entry.dataset.circlesLogin='';}
- refinePublicHome();renderBlocks(Boolean(identity.account)&&!publicView,navigation);renderCourses(Boolean(identity.account)&&!publicView,navigation,dashboard.mode);dashboard.refresh();
+ refinePublicHome();renderBlocks(Boolean(identity.account)&&!publicView,navigation);renderCourses(Boolean(identity.account)&&!publicView,navigation,dashboard.mode);dashboard.refresh();void tafseerRail.update(Boolean(identity.account)&&!publicView&&Boolean(navigation));
  const home=element('learning-circles');if(home){let status=element('circles-navigation-status');if(!status){status=document.createElement('p');status.id='circles-navigation-status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');home.append(status);}if(status.textContent!==homeMessage)status.textContent=homeMessage;status.hidden=!homeMessage;}
 }
 function closeAccountMenu({focus=false}={}){for(const menu of document.querySelectorAll('.circles-account-menu')){menu.hidden=true;const account=menu.parentElement.querySelector('.public-login');account?.setAttribute('aria-expanded','false');if(focus)account?.focus();}}
 function setPublicView(value){publicView=value;const url=new URL(location.href);if(value)url.searchParams.set('public','1');else url.searchParams.delete('public');history.replaceState(null,'',url);closeAccountMenu();refreshHeader();if(value)window.scrollTo({top:0,behavior:'smooth'});}
-async function refreshHomepage(){if(refreshing)return;refreshing=true;closeAccountMenu();refreshHeader();try{await Promise.all([loadNavigation(),dashboard.load(dashboard.mode,true)]);showHomeMessage('');}catch(error){showHomeMessage(error.message||'Your homepage could not be refreshed.');}finally{refreshing=false;refreshHeader();}}
+async function refreshHomepage(){if(refreshing)return;refreshing=true;closeAccountMenu();refreshHeader();try{await Promise.all([loadNavigation(),dashboard.load(dashboard.mode,true),tafseerRail.refresh()]);showHomeMessage('');}catch(error){showHomeMessage(error.message||'Your homepage could not be refreshed.');}finally{refreshing=false;refreshHeader();}}
 async function loadNavigation(){
  const generation=identity.generation,accountId=identity.account?.accountId;if(!accountId)return;
  const key=accountId+':'+generation;if(navRequest?.key===key)return navRequest.promise;
@@ -128,5 +131,5 @@ let nextAccountBootstrap=null;
 function clearAccountNavigation(){const boot=nextAccountBootstrap;nextAccountBootstrap=null;handoff?.close();navigation=null;navRequest=null;homeMessage='';clearDashboardView(dashboardViewStorage());const url=new URL(location.href);url.searchParams.delete('workspace');history.replaceState(null,'',url);dashboard.clear();if(boot&&identity.account?.accountId===boot.account?.accountId){navigation=boot.navigation;config=boot.configuration;refreshHeader();void dashboard.load(boot.dashboard?.mode,false,boot.dashboard?.selectedDate,boot.dashboard,boot.errors?.dashboard);}else{refreshHeader();if(identity.account)void dashboard.load();}}
 window.addEventListener('website-session-ended',event=>{clearAccountNavigation();if(event.detail?.externalAccountChange)location.reload();});
 window.addEventListener('storage',event=>{if(event.key?.startsWith('m4l_circles_remembered_ids_v1:')&&dialog.open)renderRemembered();});window.addEventListener('website-account-changed',clearAccountNavigation);
-protectAccountHistory({window,identity,clear(){observer.disconnect();handoff?.close();attempt++;form.reset();pins.clear();if(dialog.open)dialog.close();navigation=null;navRequest=null;homeMessage='';dashboard.clear();refreshHeader();}});
+protectAccountHistory({window,identity,clear(){observer.disconnect();tafseerRail.clear();handoff?.close();attempt++;form.reset();pins.clear();if(dialog.open)dialog.close();navigation=null;navRequest=null;homeMessage='';dashboard.clear();refreshHeader();}});
 const entry=window.AcademyCirclesEntry;if(entry?.login)void begin(entry.area,{switchUser:new URLSearchParams(location.search).get('switch')==='1'});
