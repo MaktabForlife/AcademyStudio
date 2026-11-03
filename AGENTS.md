@@ -1,3 +1,7 @@
+# Paired V109.16 release authorised — 3 November 2026
+
+The owner explicitly approved deploying the tested Academy and Studio updates together. This supersedes earlier live deployment holds for reviewed Source c53a8ea0/Studio4078090. Root owns the matching release. Freeze and verify canonical GitHub source/public packages before activation. Preserve every local file, original bytes, branch and worktree. Keep hosted checks small; do not attach/publish media, change rights/schema/DNS or touch Hifz. Preserve43200/43200/60,43/3/17bindings, four Source schedules and the compatible V109.15 recovery pair. Evidence: parent outputs/academy-paired-release-10916-20261103/.
+
 # Reviewed combined source sync — 3 November 2026
 
 The owner authorised coordination with Circles and Studio Media, then uploading reviewed source to GitHub when ready. This authorises a linear, reviewed sync to canonical `studio_dev`; it does not authorise Cloudflare activation, media attachment/publication, rights/schema/DNS changes or Hifz changes. Preserve every local file and branch. All new commits start with `[CF-Pages-Skip] [skip ci]`. The exact deployed V109.15 packages remain frozen in `release/v109.15/`; newer source is unreleased until a separately approved paired Academy/Studio deployment.
