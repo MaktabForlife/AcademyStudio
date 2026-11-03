@@ -1,4 +1,4 @@
-import {validatePackage} from './content-schema.mjs';
+import {validatePackage} from '../public/shared/content-schema.mjs';
 const id=value=>{if(typeof value!=='string'||!/^[-A-Za-z0-9_:]{1,180}$/.test(value))throw Error('Review the exact website and media identities.');return value;};
 const hash=async value=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',typeof value==='string'?new TextEncoder().encode(value):value))].map(x=>x.toString(16).padStart(2,'0')).join('');
 export async function reviewImport(plan){

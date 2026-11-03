@@ -1,3 +1,9 @@
+# Permanent local preservation rule — 3 November 2026
+
+The owner explicitly instructs: DO NOT DELETE ANYTHING FROM MY MACBOOK EVER. Keep existing physical files, local branches and working copies. Source retirement uses `git rm --cached` only, with exact ignore entries and retained Git history; never use ordinary git rm, git clean, filesystem unlink/remove, worktree removal/pruning or local branch deletion. Disable automatic build/test cleanup and retain test output folders.
+
+The current obsolete-source cleanup is authorised for local testing and reviewed GitHub sync only. No deployment, hosted data/media publication, permission changes or Hifz changes. Supersede older temporary cleanup instructions accordingly.
+
 # GitHub source of truth — 3 November 2026
 
 - Owner explicitly requires GitHub to be the source of truth. Canonical repositories are https://github.com/MaktabForlife/Academy.git and https://github.com/MaktabForlife/AcademyStudio.git. `studio_dev` is the new V109.14 baseline branch in both. This instruction supersedes historical local-only/no-push wording for reviewed source synchronisation. No merge is authorised by this sync.

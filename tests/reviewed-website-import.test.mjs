@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {fixture} from './fixture.mjs';
 import {newBlock} from '../public/shared/model.mjs';import {sha256} from '../src/protocol.mjs';
-import {importReviewedWebsite,reviewImport} from '../public/shared/reviewed-website-import.mjs';
+import {importReviewedWebsite,reviewImport} from '../tools/reviewed-website-import.mjs';
 const picture='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==';
 async function plan(f,websiteId='reviewed-import-site'){
  const document=structuredClone(f.doc);document.home.imageId='reviewed-art';document.home.imageAlt='Reviewed artwork';

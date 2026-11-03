@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test --test-concurrency=1 tests/*.test.mjs",
+    "test": "node tools/test.mjs",
     "dev": "node tools/preview.mjs",
     "check": "node tools/check.mjs",
     "types": "wrangler types",

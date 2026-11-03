@@ -1,0 +1,28 @@
+{
+  "physicalFilesMustRemain": true,
+  "historyRetained": true,
+  "retiredPaths": [
+    "public/import/import.mjs",
+    "public/import/index.html",
+    "public/preview/access.mjs",
+    "public/preview/cards.css",
+    "public/preview/directory.mjs",
+    "public/preview/homepage.mjs",
+    "public/preview/index.html",
+    "public/preview/websites/index.html",
+    "public/shared/circles-home.css",
+    "public/shared/circles-home.mjs",
+    "public/shared/circles-navigation.mjs",
+    "public/shared/reviewed-website-import.mjs",
+    "tools/prepare-circles-cleanup.mjs",
+    "tools/prepare-home-review-1098.mjs",
+    "tools/prepare-legacy-link-review.mjs",
+    "tools/prepare-recording-release.mjs",
+    "tools/prepare-release-1092.mjs",
+    "tools/prepare-ui-1091.mjs",
+    "tools/prepare-ui-10911.mjs",
+    "tools/prepare-unified-pages.mjs",
+    "tools/serve-recording-collections.mjs"
+  ],
+  "reason": "Already excluded from the live Circles package: retired UI/prototypes, replaced template documents, stale UI-only tests and one-use historical packaging tools. Active APIs, protocol bridges and current tools remain."
+}
