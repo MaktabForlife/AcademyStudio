@@ -19,3 +19,9 @@ e0c9d0a7122d6e54b80922da3439ae40efb1c307:release/v109.15/manifest.json:generic-a
 9357153dc30edff0ecbfeb5089701d67a87d6d5b:release/v109.16/manifest.json:generic-api-key:37
 9357153dc30edff0ecbfeb5089701d67a87d6d5b:release/v109.16/manifest.json:generic-api-key:202
 9357153dc30edff0ecbfeb5089701d67a87d6d5b:release/v109.16/manifest.json:generic-api-key:203
+
+# Exact reviewed public SQL fixture statements in code-preservation patches.
+24381bab6fdf267de83375e8b177989ac1b32425:preserved-code/2026-11-03/AcademyStudio-next-ui-1093/committed-code.patch:generic-api-key:2258
+24381bab6fdf267de83375e8b177989ac1b32425:preserved-code/2026-11-03/AcademyStudio-circles-free-join/committed-code.patch:generic-api-key:2304
+24381bab6fdf267de83375e8b177989ac1b32425:preserved-code/2026-11-03/AcademyStudio-global-circle-grouping/committed-code.patch:generic-api-key:2321
+24381bab6fdf267de83375e8b177989ac1b32425:preserved-code/2026-11-03/AcademyStudio-circles-shell-followup/committed-code.patch:generic-api-key:2483
