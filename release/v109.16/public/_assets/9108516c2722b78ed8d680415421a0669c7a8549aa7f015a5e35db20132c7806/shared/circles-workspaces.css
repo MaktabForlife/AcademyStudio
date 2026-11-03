@@ -1,0 +1,158 @@
+/* V109.1: the existing circle remains the signed-in hub. Only presentation
+   changes here; native navigation, authority and teaching palettes remain. */
+.circle .single-circle-home.circles-button-dashboard .circle-hub-frame{height:auto!important;min-height:0!important;aspect-ratio:auto!important;overflow:visible}
+.circle .single-circle-home.circles-button-dashboard #animated-hub{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1.75fr) minmax(0,1fr);align-items:center;gap:clamp(24px,2.5vw,40px);width:100%!important;max-width:none!important;height:auto!important;min-height:0!important;margin:0!important;padding:36px 0 48px!important;transform:none!important;isolation:isolate}
+.circle .single-circle-home.circles-button-dashboard .circles-programme-column{display:flex;flex-direction:column;gap:14px;min-width:0;position:relative;z-index:2}
+.circle .single-circle-home.circles-button-dashboard .circles-programme-column-left{grid-column:1;grid-row:1}
+.circle .single-circle-home.circles-button-dashboard .circles-programme-column-right{grid-column:3;grid-row:1}
+.circle .single-circle-home.circles-button-dashboard .hub-orb{grid-column:2;grid-row:1;position:relative!important;inset:auto!important;display:flex!important;flex-direction:column;align-items:center;justify-content:center;width:100%!important;height:auto!important;min-height:0!important;max-width:560px;aspect-ratio:1;border-radius:50%!important;margin:auto!important;padding:clamp(22px,3.2vw,48px)!important;transform:none!important;opacity:1!important;z-index:1;box-sizing:border-box;overflow:hidden;animation:none!important}
+.circle .single-circle-home.circles-button-dashboard .hub-orb h1{font-size:clamp(32px,4.3vw,62px)!important;line-height:1.08!important;letter-spacing:-.035em;margin:0 0 22px!important;max-width:100%;text-align:center}
+.circle .single-circle-home.circles-button-dashboard .hub-orb .hub-academy-tagline{font-size:clamp(21px,2.35vw,34px)!important;line-height:1.25!important;margin:0!important;text-align:center}
+.circle .single-circle-home.circles-button-dashboard .hub-orb .hub-academy-signoff{font-size:clamp(12px,1.1vw,15px)!important;line-height:1.5!important;margin:28px 0 0!important;text-align:center}
+.circle .single-circle-home.circles-button-dashboard .circles-programme-column .hub-panel{position:static!important;inset:auto!important;width:100%!important;max-width:none!important;height:auto!important;min-height:0!important;margin:0!important;transform:none!important;opacity:1!important;animation:none!important;box-shadow:none!important;box-sizing:border-box}
+.circle .single-circle-home.circles-button-dashboard .circles-programme-column .hub-panel.circles-navigation-group{display:block;padding:0!important;border:0;background:transparent!important;overflow:visible}
+.circle .single-circle-home.circles-button-dashboard .circles-navigation-cards{gap:14px}
+.circle .single-circle-home.circles-button-dashboard .circles-plain-card{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;min-width:0;min-height:82px!important;padding:20px 22px!important;border-radius:6px!important;text-decoration:none;box-shadow:none;transition:filter .15s,box-shadow .15s}
+.circle .single-circle-home.circles-button-dashboard .circles-programme-column .hub-panel.circles-plain-card{min-height:82px!important}
+.circle .single-circle-home.circles-button-dashboard .circles-plain-card h3{font:400 clamp(23px,2.1vw,30px)/1.18 var(--serif,Georgia,serif)!important;overflow-wrap:anywhere;margin:0!important}
+.circle .single-circle-home.circles-button-dashboard .circles-plain-card>span{font-size:20px;flex:none}
+.circle .single-circle-home.circles-button-dashboard .circles-plain-card:hover{filter:brightness(.97);box-shadow:0 4px 14px #49394310}
+.circle .single-circle-home.circles-button-dashboard .hub-panel[hidden],.circle .single-circle-home.circles-button-dashboard .circles-programme-column[hidden]{display:none!important}
+@media(max-width:920px){
+ .circle .single-circle-home.circles-button-dashboard #animated-hub{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;padding:24px 0 32px!important}
+ .circle .single-circle-home.circles-button-dashboard .hub-orb{grid-column:1/-1;grid-row:1;width:min(100%,440px)!important;padding:40px!important}
+ .circle .single-circle-home.circles-button-dashboard .hub-orb h1{font-size:clamp(38px,7vw,54px)!important}
+ .circle .single-circle-home.circles-button-dashboard .hub-orb .hub-academy-tagline{font-size:28px!important}
+ .circle .single-circle-home.circles-button-dashboard .circles-programme-column{align-self:start;grid-row:2}
+ .circle .single-circle-home.circles-button-dashboard .circles-programme-column-left{grid-column:1}
+ .circle .single-circle-home.circles-button-dashboard .circles-programme-column-right{grid-column:2}
+}
+@media(max-width:560px){
+ .circle .single-circle-home.circles-button-dashboard #animated-hub{grid-template-columns:minmax(0,1fr);gap:18px}
+ .circle .single-circle-home.circles-button-dashboard .hub-orb{padding:30px!important}
+ .circle .single-circle-home.circles-button-dashboard .hub-orb h1{font-size:clamp(32px,9vw,46px)!important;margin-bottom:18px!important}
+ .circle .single-circle-home.circles-button-dashboard .hub-orb .hub-academy-tagline{font-size:clamp(21px,5.8vw,28px)!important}
+ .circle .single-circle-home.circles-button-dashboard .hub-orb .hub-academy-signoff{font-size:12px!important;margin-top:20px!important}
+ .circle .single-circle-home.circles-button-dashboard .circles-programme-column{grid-column:1;gap:12px}
+ .circle .single-circle-home.circles-button-dashboard .circles-programme-column-right{grid-row:3}
+ .circle .single-circle-home.circles-button-dashboard .circles-plain-card{min-height:72px!important;padding:18px 20px!important}
+}
+
+/* Shared Studio / administrative shells. Per-course ink and accent variables
+   are intentionally retained inside teaching material and live previews. */
+body.circles-ui-workspace{--ink:#44363f;--accent:#67515f;--soft:#eee5e8;--paper:#f8f5ef;--line:#e1d7ce;background:var(--paper);color:var(--ink);font-family:'DM Sans',Arial,sans-serif}
+.circles-ui-workspace :is(.site-header,.pb-header){background:#fffdf8;border-bottom:1px solid var(--line);padding-block:12px}
+.circles-ui-workspace :is(.brand strong,.pb-brand){font-family:'Libre Caslon Display',Georgia,serif;font-size:24px;font-weight:400;color:var(--ink)}
+.circles-ui-workspace :is(.website-list-panel,.admin-panel,.studio-heading,.design-note,.page-outline,.editor-pane,.preview-toolbar,.studio-mobile-nav){border-color:var(--line);color:var(--ink)}
+.circles-ui-workspace :is(.website-list-card,.admin-panel,.editor-card,fieldset){border-color:var(--line);background:#fffdf8;border-radius:12px;box-shadow:none}
+.circles-ui-workspace :is(h1,h2,.studio-heading strong,.outline-heading strong){font-family:'Libre Caslon Display',Georgia,serif;font-weight:400;letter-spacing:-.02em}
+.circles-ui-workspace :is(.admin-tabs,.toolbar,.heading-actions,.segmented) button{min-height:44px;font-family:'DM Sans',Arial,sans-serif;box-shadow:none}
+.circles-ui-workspace :is(button,input,select,textarea){font-family:'DM Sans',Arial,sans-serif}
+.circles-ui-workspace :is(button.primary,.admin-tabs [aria-current=page]){background:var(--accent);border-color:var(--accent);color:#fffdf8}
+.circles-ui-workspace :is(input,select,textarea){border-color:var(--line);background:#fffdf8;color:var(--ink);border-radius:7px}
+.circles-ui-workspace :is(a,button,input,select,textarea,summary):focus-visible{outline:3px solid #a07a89;outline-offset:3px}
+.circles-ui-workspace :is([lang=ar],.sp-arabic){font-family:Amiri,serif}
+@media(max-width:600px){.circles-ui-workspace :is(.brand strong,.pb-brand){font-size:20px}.circles-ui-workspace .website-list-panel{padding:20px;margin-block:20px}}
+@media(prefers-reduced-motion:reduce){.circles-button-dashboard *{animation:none!important;transition:none!important}}
+
+.academy-brand .circles-release-version{display:block;margin-top:4px;color:#796a72;font:500 11px/1.4 'DM Sans',Arial,sans-serif;letter-spacing:.04em}
+
+/* Local review: the working panels below the circle, shared by all role views. */
+#circles-dashboard{padding:24px 0 32px;scroll-margin-top:20px}
+#circles-dashboard .circles-dashboard-heading{gap:16px;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid #dfd4d7}
+#circles-dashboard .circles-dashboard-heading .eyebrow{font-size:10px;letter-spacing:.14em;margin:0;color:#8c6879}
+#circles-dashboard .circles-dashboard-heading h2{font-family:'Libre Caslon Display',Georgia,serif;font-size:34px;line-height:1.12;letter-spacing:-.025em;margin:5px 0 6px}
+#circles-dashboard .circles-dashboard-heading p:last-child{font-size:11px;color:#796c74;margin:0}
+#circles-dashboard :is(button,.circles-dashboard-link){display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:8px 13px;border-color:#dacdd2;border-radius:7px;font:500 12px/1.3 'DM Sans',Arial,sans-serif;text-align:center;white-space:normal;transition:background .15s,border-color .15s}
+#circles-dashboard :is(button,.circles-dashboard-link):hover{background:#eee5e9;border-color:#a88d9a}
+#circles-dashboard [data-circles-dashboard-refresh]{background:#68515f;border-color:#68515f;color:#fffdf8;flex:none}
+#circles-dashboard [data-circles-dashboard-refresh]:hover{background:#56414e}
+#circles-dashboard .circles-dashboard-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:stretch}
+#circles-dashboard .circles-dashboard-panel{min-width:0;padding:18px;border-radius:10px;border-color:#e2d7db;background:#fffcf8;box-shadow:0 2px 5px #43313b03}
+#circles-dashboard .circles-dashboard-panel h3{font-family:'Libre Caslon Display',Georgia,serif;font-size:24px;line-height:1.15;letter-spacing:-.015em;margin:0 0 14px;color:#493842}
+#circles-dashboard .circles-dashboard-panel h4{font:600 11px/1.5 'DM Sans',Arial,sans-serif;letter-spacing:.035em;color:#79616e;padding-top:12px;margin:14px 0 8px}
+#circles-dashboard .circles-dashboard-panel :is(p,.circles-dashboard-empty){font-size:12px;line-height:1.55;color:#796c74;margin:5px 0 10px}
+#circles-dashboard .circles-dashboard-panel strong{font-size:13px;line-height:1.45;color:#493842}
+#circles-dashboard .circles-dashboard-panel li{gap:12px;padding:11px 0;border-color:#eee6e8}
+#circles-dashboard .circles-dashboard-panel li>div{min-width:0}
+#circles-dashboard .circles-dashboard-panel li>button,#circles-dashboard .circles-dashboard-link{flex:none}
+/* Semantic sections keep the same visual and keyboard reading order. */
+#circles-dashboard .circles-areas{grid-column:1/3}
+#circles-dashboard .circles-week{grid-column:3}
+#circles-dashboard .circles-attention{grid-column:auto}
+#circles-dashboard .circles-calendar{grid-column:1}
+#circles-dashboard .circles-tools{grid-column:2/4}
+#circles-dashboard .circles-dashboard-grid>.circles-curriculum{grid-column:1/-1!important;display:flex;padding:0;border:0;background:transparent;box-shadow:none}
+#circles-dashboard .circles-dashboard-grid:has(>.circles-curriculum)>:not(.circles-curriculum){grid-column:auto}
+#circles-dashboard .circles-areas>ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+#circles-dashboard .circles-areas>ul>li{align-items:center;gap:10px;min-height:66px;padding:10px;border:1px solid #e7dfe1;border-radius:7px;background:#f8f4ef}
+#circles-dashboard .circles-dashboard-panel.circles-areas>ul>li p{font-size:11px;line-height:1.4;letter-spacing:.015em;margin:4px 0 0}
+#circles-dashboard .circles-week>ul{max-height:270px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;padding-right:4px;margin:4px 0 12px}
+#circles-dashboard .circles-programme-entry summary{gap:10px;padding:3px 0}
+#circles-dashboard .circles-session-info{display:inline-flex;align-items:center;justify-content:center;flex:none;width:32px;height:32px;padding:0;border:1px solid #d8c8d0;border-radius:50%;color:#76596a;text-decoration:none;font-size:20px;background:#f6edf1}
+#circles-dashboard details[open] .circles-session-info{background:#68515f;color:#fffdf8;border-color:#68515f}
+#circles-dashboard .circles-day-lessons{padding:5px 0 3px}
+#circles-dashboard .circles-day-lessons li{padding:9px 0}
+#circles-dashboard .circles-day-lessons h4{margin-top:7px}
+#circles-dashboard nav[aria-label="Dashboard tools"]{display:grid;gap:8px;grid-template-columns:repeat(3,minmax(0,1fr))}
+#circles-dashboard nav[aria-label="Dashboard tools"] button{justify-content:center;padding:10px 13px;background:#f8f4ef}
+#circles-dashboard :is(button,a,summary):focus-visible{outline:3px solid #ab7e96;outline-offset:3px}
+@media(max-width:1100px){
+ #circles-dashboard .circles-dashboard-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #circles-dashboard .circles-areas{grid-column:1}
+ #circles-dashboard .circles-week{grid-column:2}
+ #circles-dashboard .circles-calendar{grid-column:auto}
+ #circles-dashboard .circles-tools{grid-column:1/-1}
+ #circles-dashboard .circles-areas>ul{grid-template-columns:1fr}
+}
+@media(max-width:700px){
+ #circles-dashboard .circles-dashboard-grid{grid-template-columns:1fr;gap:12px}
+ #circles-dashboard nav[aria-label="Dashboard tools"]{grid-template-columns:1fr}
+ #circles-dashboard .circles-dashboard-grid>.circles-dashboard-panel{grid-column:1!important}
+ #circles-dashboard .circles-dashboard-panel{padding:18px}
+ #circles-dashboard .circles-dashboard-heading{align-items:center;gap:12px}
+ #circles-dashboard .circles-dashboard-heading h2{font-size:28px}
+ #circles-dashboard .circles-dashboard-heading button{max-width:100px;font-size:11px}
+ #circles-dashboard .circles-week>ul{max-height:none;overflow:visible;padding-right:0}
+ #circles-dashboard .circles-dashboard-panel li{flex-wrap:nowrap}
+ #circles-dashboard .circles-areas>ul{grid-template-columns:1fr}
+ #circles-dashboard :is(button,.circles-dashboard-link){min-height:42px}
+}
+
+/* The signed-in dashboard ends at its working panels. Public-view switching
+   removes circles-button-dashboard and restores these homepage sections. */
+.circle .single-circle-home.circles-button-dashboard~#academy-news,
+.circle .single-circle-home.circles-button-dashboard~#academy-news~*{display:none!important}
+
+/* Owned courses are a compact row directly beneath the signed-in circle. */
+.circle #programmes.circles-dashboard-courses{padding:24px 0 26px;margin:0;border-bottom:1px solid #dfd4d7}
+.circle #programmes.circles-dashboard-courses .section-head{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:8px}
+.circle #programmes.circles-dashboard-courses .eyebrow{font-size:10px;letter-spacing:.14em;color:#8c6879;margin:0 0 6px}
+.circle #programmes.circles-dashboard-courses h2{font:400 32px/1.15 'Libre Caslon Display',Georgia,serif;letter-spacing:-.02em;margin:0}
+.circle #programmes.circles-dashboard-courses .branch-programme-intro{font-size:12px;line-height:1.5;margin:0 0 16px;color:#796c74}
+.circle #programmes.circles-dashboard-courses .circles-show-all-courses{font:500 12px/1.5 'DM Sans',Arial,sans-serif;color:#68515f;text-decoration:underline;text-underline-offset:4px;white-space:nowrap}
+.circle #programmes.circles-dashboard-courses .circles-purchased-course-row{gap:12px;padding-bottom:3px;scroll-snap-type:x proximity}
+.circle #programmes.circles-dashboard-courses .circles-purchased-course{flex-basis:270px;min-height:112px;padding:16px;gap:14px;border-radius:8px;background:#f0e6e3;border-color:#e2d3d8;scroll-snap-align:start}
+.circle #programmes.circles-dashboard-courses .circles-purchased-course img{width:54px;height:72px;border-radius:3px}
+.circle #programmes.circles-dashboard-courses .circles-purchased-course h3{font:400 23px/1.15 'Libre Caslon Display',Georgia,serif;margin:7px 0 0}
+.circle #programmes.circles-dashboard-courses .circles-purchased-course small{font-size:10px;color:#796c74}
+.circle #programmes.circles-dashboard-courses .circles-purchased-course-row>p{font-size:13px;color:#796c74;margin:0;padding:12px 16px;border:1px solid #e4dadd;border-radius:7px;background:#fffcf8;flex:1}
+@media(max-width:700px){.circle #programmes.circles-dashboard-courses h2{font-size:28px}.circle #programmes.circles-dashboard-courses .circles-purchased-course{flex-basis:245px}.circle #programmes.circles-dashboard-courses .circles-show-all-courses{padding:12px 0}}
+
+/* Local owner follow-up: the programme links share a two-line button height. */
+/* My courses retains the approved full artwork cards and green title shading. */
+.circle #programmes.circles-dashboard-courses .circles-purchased-course-row{display:flex;gap:20px;overflow-x:auto;padding:3px 1px 14px;scroll-snap-type:x proximity}
+.circle #programmes.circles-dashboard-courses .circles-purchased-course{display:block;position:relative;flex:0 0 calc((100% - 60px)/4);aspect-ratio:1;min-width:230px;min-height:0;padding:0;border:1px solid #45665a;border-radius:10px;background:#e8ede3;overflow:hidden;scroll-snap-align:start;text-decoration:none}
+.circle #programmes.circles-dashboard-courses .circles-purchased-course>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:0}
+.circle #programmes.circles-dashboard-courses .circles-purchased-course .course-artwork-caption{position:absolute;inset:auto 0 0;padding:40px 20px 48px;background:linear-gradient(0deg,#254e41 0%,#355e50f5 68%,#355e5000 100%);color:#fffaf1}
+.circle #programmes.circles-dashboard-courses .circles-purchased-course h3{font:400 clamp(25px,2.2vw,36px)/1.12 'Libre Caslon Display',Georgia,serif;color:inherit;margin:12px 0 0}
+.circle #programmes.circles-dashboard-courses .circles-purchased-course small{color:#f8f5e9;font-size:12px}
+.circle #programmes.circles-dashboard-courses .circles-purchased-course .access-badge{position:absolute;right:14px;bottom:14px;background:#fffaf1;color:#466457;padding:5px 10px;border-radius:20px;font:600 12px/1.3 'DM Sans',sans-serif;display:flex;align-items:center;gap:5px}
+.circle #programmes.circles-dashboard-courses .circles-purchased-course .access-badge svg{width:15px;height:15px}
+@media(max-width:1000px){.circle #programmes.circles-dashboard-courses .circles-purchased-course{flex-basis:calc((100% - 40px)/3)}}
+@media(max-width:700px){.circle #programmes.circles-dashboard-courses .circles-purchased-course{flex-basis:78%;min-width:240px}.circle #programmes.circles-dashboard-courses .circles-purchased-course h3{font-size:30px}}
+.circle .single-circle-home.circles-button-dashboard{--programme-button-height:104px}
+.circle .single-circle-home.circles-button-dashboard #animated-hub .circles-programme-column .circles-plain-card{height:var(--programme-button-height)!important;min-height:var(--programme-button-height)!important;max-height:var(--programme-button-height)!important;padding:16px 20px!important;box-sizing:border-box;align-items:center}
+.circle .single-circle-home.circles-button-dashboard #animated-hub .circles-programme-column .circles-plain-card h3{font-size:clamp(22px,1.85vw,27px)!important;line-height:1.18!important}
+@media(max-width:920px){.circle .single-circle-home.circles-button-dashboard{--programme-button-height:100px}}
+@media(max-width:560px){.circle .single-circle-home.circles-button-dashboard{--programme-button-height:96px}.circle .single-circle-home.circles-button-dashboard #animated-hub .circles-programme-column .circles-plain-card{padding:14px 18px!important}.circle .single-circle-home.circles-button-dashboard #animated-hub .circles-programme-column .circles-plain-card h3{font-size:23px!important}}

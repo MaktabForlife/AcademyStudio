@@ -1,0 +1,18 @@
+.has-circles-catalogue #my-learning>:not(#learning-cards){display:none}
+.connected-circles{display:block;padding:0 0 30px}
+.circles-collection-nav{display:flex;gap:6px;justify-content:flex-end;margin:0 0 26px;padding:12px 0;border-bottom:1px solid var(--circle-line)}
+.circles-collection-nav button{font:500 13px 'DM Sans',sans-serif;border:0;background:transparent;padding:12px 20px;border-radius:30px;color:var(--circle-ink)}
+.circles-collection-nav button[aria-current=page]{background:#eee6df}
+.connected-circles .collection-card{min-width:0}
+.connected-circles [data-circles-section][hidden]{display:none}
+.connected-circles .collection-cover{display:flex;width:100%;text-decoration:none}
+@media(max-width:700px){.circles-collection-nav{justify-content:center}.connected-circles{padding-bottom:20px}}
+
+/* The same approved artwork treatment applies inside the connected catalogue. */
+.connected-circles [data-circles-section=COURSE] .collection-cover{position:relative;display:block;aspect-ratio:1;height:auto;min-width:0;padding:0;overflow:hidden;border:1px solid #45665a;border-radius:10px;background:#e8ede3}
+.connected-circles [data-circles-section=COURSE] .collection-cover>img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+.connected-circles [data-circles-section=COURSE] .collection-card-name{padding:40px 20px 48px;min-height:0;text-align:left;color:#fffaf1;background:linear-gradient(0deg,#254e41 0%,#355e50f5 68%,#355e5000 100%);font:400 clamp(25px,2.2vw,36px)/1.12 var(--circle-serif,Georgia,serif)}
+.connected-circles [data-circles-section=COURSE] .collection-lock{z-index:5;top:auto;bottom:14px;right:14px}
+.connected-circles [data-circles-section=COURSE] .collection-grid{align-items:stretch;gap:20px}
+
+.published-playlists{margin-top:30px}.published-playlists h2{font:400 30px/1.2 var(--circle-serif,Georgia,serif)}.recording-playlist-scroll{overflow-x:auto;min-width:0;max-width:100%;border:1px solid #ddced7;border-radius:10px;background:#fffaf5}.recording-playlist-table{width:100%;border-collapse:collapse;text-align:left;font-size:13px}.recording-playlist-table th,.recording-playlist-table td{padding:14px 18px;border-bottom:1px solid #e3d6dc;vertical-align:middle}.recording-playlist-table thead th{font:600 10px/1.5 'DM Sans',Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;background:#f2e9ed;color:#796d75}.recording-playlist-table tbody th{font:400 23px/1.3 var(--circle-serif,Georgia,serif)}.recording-playlist-table td:last-child{white-space:nowrap}.recording-playlist-table a[data-circles-website]{display:inline-flex;align-items:center;min-height:44px;padding:8px 16px;box-sizing:border-box;border-radius:7px;background:#526747;color:#fffdf5;text-decoration:none;font-weight:600}.recording-playlist-table a:focus-visible{outline:3px solid #ae8f9f;outline-offset:3px}@media(max-width:800px){.recording-playlist-table{min-width:680px}}

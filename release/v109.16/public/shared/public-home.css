@@ -1,0 +1,151 @@
+.circle .single-circle-home #animated-hub.hub-website .hub-next.public-combined-worship{background:#887378;color:#fff9f3;padding:clamp(18px,2.2vw,34px);z-index:5}
+.public-combined-worship>h3{font:600 12px/1.5 'DM Sans',sans-serif!important;letter-spacing:.07em;margin:0 0 18px!important}
+.public-combined-worship .public-worship-links{display:grid;gap:14px}
+.public-worship-links a{display:flex;align-items:center;justify-content:space-between;gap:16px;color:inherit;font:400 clamp(13px,1.25vw,18px)/1.5 'DM Sans',sans-serif;text-decoration:none;min-height:38px}
+.public-worship-links a:hover{text-decoration:underline;text-underline-offset:5px}
+.public-worship-links [lang=ar]{font:clamp(21px,2vw,32px)/1.5 Amiri,serif;text-align:right;white-space:nowrap}
+.public-combined-worship>p{font:italic 400 clamp(16px,1.7vw,23px)/1.5 Georgia,serif;margin:18px 0 0;text-align:right;color:inherit}
+.hub-panel[data-home-area=mothers][hidden]{display:none!important}
+.announcements-master-detail .announcement-layout{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(260px,.75fr);gap:28px;align-items:start}
+.announcements-master-detail .announcement-detail{display:block;overflow:visible;padding:0;margin:0;min-width:0}
+.announcements-master-detail .academy-news-card{width:100%!important;min-width:0!important;max-width:none!important;height:620px!important;min-height:0!important;margin:0;box-sizing:border-box}
+.announcements-master-detail .academy-news-card[hidden]{display:none!important}
+.announcements-master-detail .news-flyer-image{width:100%;height:100%;background:#f4eee8;position:relative}
+.announcements-master-detail .news-flyer-image img{height:100%;width:100%;object-fit:contain;display:block}
+.announcements-master-detail .flyer-overlay-button{position:absolute;inset:auto 12px 12px auto;font-size:11px;max-width:170px}
+.announcements-master-detail .news-intehaan{padding:30px;overflow:auto;background:#f6f0e9}
+.announcements-master-detail .news-intehaan h3{font-size:34px;line-height:1.15;margin:16px 0}
+.announcements-master-detail .news-intehaan>p{font-size:14px;line-height:1.8;margin:0 0 16px}
+.announcements-master-detail .news-duas{margin-top:18px;padding-top:14px}
+.announcements-master-detail .news-dua{margin:12px 0}.announcements-master-detail .news-dua [lang=ar]{font:27px/1.8 Amiri,serif;text-align:right;margin:8px 0}
+.announcements-master-detail .news-dua p:not([lang=ar]){font-size:13px;line-height:1.6}
+.announcement-steps{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;color:#fff9f3;font:12px 'DM Sans',sans-serif}
+.announcement-steps button{width:42px;height:42px;border:1px solid #dfcdd4;border-radius:50%;background:transparent;color:inherit;font-size:22px;cursor:pointer}
+.announcement-summary-list{display:grid;gap:10px;max-height:562px;overflow:auto;padding:1px 6px 2px 1px;scrollbar-width:thin}
+.announcement-summary-list>button{display:grid;gap:8px;width:100%;padding:20px 22px;border:1px solid #dbc7d077;border-radius:8px;background:#fff9f30b;color:#fff9f3;text-align:left;cursor:pointer}
+.announcement-summary-list>button[aria-current=true]{background:#f5ece8;color:#604955;border-color:#f5ece8}
+.announcement-summary-list small{font:600 10px/1.5 'DM Sans',sans-serif;letter-spacing:.1em;text-transform:uppercase}
+.announcement-summary-list strong{font:400 25px/1.2 Georgia,serif}.announcement-summary-list span{font:12px/1.7 'DM Sans',sans-serif;opacity:.8}
+@media(max-width:760px){.announcements-master-detail .announcement-layout{grid-template-columns:minmax(0,1fr);gap:18px}.announcements-master-detail .academy-news-card{height:auto!important;max-height:none}.announcements-master-detail .news-flyer-image{height:auto}.announcements-master-detail .news-flyer-image img{height:auto;max-height:660px}.announcement-summary-list{display:flex;max-height:none;overflow:auto;padding-bottom:8px}.announcement-summary-list>button{min-width:240px;max-width:300px}.announcement-steps{margin-bottom:10px}.public-worship-links a{flex-wrap:wrap;gap:2px}.public-worship-links [lang=ar]{margin-left:auto}}
+
+.free-course-card .free-course-art[data-card-standard=green]{position:relative;height:270px;overflow:hidden;border:1px solid #45665a;border-radius:9px;background:#e8ece3}.free-course-card .free-course-art[data-card-standard=green]>img{width:100%;height:100%;object-fit:cover}.homepage-course-caption{position:absolute;inset:auto 0 0;padding:16px 74px 16px 16px;min-height:80px;background:linear-gradient(0deg,#355c50f5,#456d60ed);color:#fff9ef}.homepage-course-caption h3{font:400 23px/1.15 Georgia,serif!important;color:inherit!important;margin:0!important}.homepage-course-caption small{display:block;font:11px/1.6 'DM Sans',sans-serif;margin-top:7px}.homepage-course-caption .access-badge{position:absolute;bottom:10px;right:10px;display:inline-flex;align-items:center;gap:4px;padding:4px 7px;background:#fff9ef;color:#466457;border-radius:14px;font:600 10px/1.2 'DM Sans',sans-serif}.homepage-course-caption .access-badge svg{width:13px;height:13px}
+
+.announcement-summaries{min-width:0}.announcement-layout{width:100%;min-width:0}.announcement-summary-list{min-width:0;max-width:100%;box-sizing:border-box}
+/* Four public panels frame the circle; keep its central message unobstructed. */
+@media(min-width:761px){
+ .circle .single-circle-home #animated-hub.hub-website{position:relative;display:block;height:clamp(690px,57vw,950px);min-height:0}
+ .circle .single-circle-home #animated-hub.hub-website .hub-orb.hub-academy-centre{left:29%;top:3%;width:47%;height:auto;min-height:0;aspect-ratio:1;transform:none!important;animation:none!important;border-radius:50%;padding:34px 25px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+ .circle .single-circle-home #animated-hub.hub-website .hub-academy-centre h1{max-width:58%;font-size:clamp(35px,3.7vw,64px);line-height:1.12;margin:0 0 24px;text-align:center}
+ .circle .single-circle-home #animated-hub.hub-website .hub-academy-tagline{max-width:65%;font-size:clamp(19px,2vw,32px);line-height:1.3;margin:0 0 24px}
+ .circle .single-circle-home #animated-hub.hub-website .hub-academy-signoff{max-width:60%;font-size:clamp(11px,1vw,16px);margin:0}
+ .circle .single-circle-home #animated-hub.hub-website .hub-image{left:3%;top:10%;width:33%;height:40%;z-index:4}
+ .circle .single-circle-home #animated-hub.hub-website .hub-next.public-combined-worship{left:66%;right:auto;top:4%;width:31%;min-height:0;padding:22px;z-index:5}
+ .circle .single-circle-home #animated-hub.hub-website .hub-progress{left:66%;right:auto;top:50%;bottom:auto!important;width:29%;min-height:0;z-index:5}
+ .circle .single-circle-home #animated-hub.hub-website .hub-arabic{left:18%;right:auto;top:auto;bottom:13%!important;width:32%;z-index:5}
+}
+
+@media(min-width:821px){.circle .single-circle-home #animated-hub.hub-website>:not(.layout-positioned){translate:0 0!important}.circle .single-circle-home #animated-hub.hub-website .hub-orb:not(.layout-positioned){transform:none!important}}
+@media(min-width:821px){
+ .circle .single-circle-home #animated-hub.hub-website>.hub-panel{position:absolute!important;margin:0!important;grid-area:auto!important}
+ .circle .single-circle-home #animated-hub.hub-website>.hub-orb{position:absolute!important;margin:0!important;grid-area:auto!important}
+ .circle .single-circle-home #animated-hub.hub-website .hub-image{width:33%!important;height:40%!important}
+ .circle .single-circle-home #animated-hub.hub-website .hub-next{width:31%!important}
+ .circle .single-circle-home #animated-hub.hub-website .hub-progress{width:29%!important}
+ .circle .single-circle-home #animated-hub.hub-website .hub-arabic{width:32%!important}
+ .circle .single-circle-home #animated-hub.hub-website .hub-academy-centre h1{max-width:65%}
+}
+
+/* Existing flyers stay full size in the viewer; the homepage uses a collage. */
+.announcements-collage .announcement-layout{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start;gap:32px}
+.announcement-picture-collage{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:clamp(110px,12vw,170px);gap:12px;min-width:0}
+.announcement-picture-collage button{min-width:0;padding:0;border:0;border-radius:7px;overflow:hidden;background:#f5eee5;cursor:pointer}
+.announcement-picture-collage button:first-child{grid-column:span 2;grid-row:span 2}
+.announcement-picture-collage img{width:100%;height:100%;object-fit:cover;object-position:top;display:block;transition:transform .2s}
+.announcement-picture-collage button:hover img{transform:scale(1.025)}
+.announcements-collage .announcement-summary-list{max-height:none;overflow:visible;padding:0;gap:8px}
+.announcements-collage .announcement-summary-list>button{padding:15px 18px;gap:4px;border-color:#c7d0bd;background:#e4e9dc;color:#43533b}
+.announcements-collage .announcement-summary-list>button:hover{background:#f1f3e9}
+.announcements-collage .announcement-summary-list strong{font-size:21px}.announcements-collage .announcement-summary-list span{font-size:12px;line-height:1.5}
+.announcement-enrol{margin-top:18px;min-height:44px;padding:12px 24px;border:1px solid #526747;border-radius:7px;background:#526747;color:#fffdf5;font:600 14px/1.5 'DM Sans',sans-serif;cursor:pointer}
+.announcement-viewer{position:fixed;width:min(900px,94vw);max-width:none;max-height:92vh;box-sizing:border-box;margin:auto;padding:0;border:1px solid #d9cbd2;border-radius:12px;background:#f8f3ed;color:#54424e;overflow:auto}
+.announcement-viewer::backdrop{background:#2e222cb0}.announcement-viewer>header{position:sticky;top:0;z-index:8;display:flex;gap:20px;justify-content:space-between;align-items:center;padding:16px 22px;background:#fbf7f3;border-bottom:1px solid #ddced7}
+.announcement-viewer>header h2{font:400 28px/1.2 Georgia,serif;margin:0}.announcement-viewer>header button{flex:none;padding:10px 16px;border:1px solid #c7b4bf;border-radius:7px;background:#fffaf5;color:#5e4858;min-height:44px;cursor:pointer}
+.announcements-collage .announcement-viewer .academy-news-card{height:auto!important;max-height:none!important;width:100%!important;border:0;border-radius:0;margin:0;overflow:visible}
+.announcements-collage .announcement-viewer .news-flyer-image,.announcements-collage .announcement-viewer .news-flyer-image img{height:auto;width:100%;max-height:none;object-fit:contain}
+.announcements-collage .announcement-viewer .news-intehaan{box-sizing:border-box;padding:28px}.announcement-viewer .news-duas{margin-top:20px}
+.announcement-picture-collage button:focus-visible,.announcement-summary-list>button:focus-visible,.announcement-enrol:focus-visible{outline:3px solid #f4e8ce;outline-offset:3px}
+@media(max-width:760px){.announcements-collage .announcement-layout{grid-template-columns:minmax(0,1fr);gap:24px}.announcement-picture-collage{grid-auto-rows:110px;gap:8px}.announcements-collage .announcement-summary-list{display:grid}.announcements-collage .announcement-summary-list>button{min-width:0;max-width:none}.announcement-viewer>header{padding:12px 16px}.announcement-viewer>header h2{font-size:23px}}
+
+/* Keep saved drag offsets within the hero's document flow. */
+.circle .single-circle-home .circle-hub-frame{height:auto!important;min-height:0;overflow:visible}
+@media(min-width:761px){.circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website{height:clamp(740px,65vw,1040px);min-height:0}.circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-arabic{top:76%!important;bottom:auto!important;left:18%!important;max-height:22%;box-sizing:border-box}.circle .single-circle-home:not(.circles-button-dashboard) .public-visual-foot{margin-top:20px}}
+
+@media(min-width:1100px){.circle .academy-memorisation .memorisation-reel{grid-auto-columns:calc((100% - 80px)/6);gap:16px}.circle .memory-card-top{padding:18px 14px;min-height:145px}.circle .memory-card h3{font-size:23px}.circle .memory-card-bottom{padding:14px}.circle .memory-card button{font-size:11px}}
+
+/* One fixed composition scales as a unit; panel offsets never escape its frame. */
+@media(min-width:821px){
+ .circle .single-circle-home:not(.circles-button-dashboard) .circle-hub-frame{height:calc(650px * var(--home-composition-scale,1))!important}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website{width:1246px;height:650px!important;min-height:0;padding:0}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website>.hub-panel,
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website>.hub-orb{translate:0 0!important;box-sizing:border-box}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-orb.hub-academy-centre{left:350px;top:10px;width:560px;height:560px;aspect-ratio:1;padding:48px 24px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-academy-centre h1{font-size:55px;max-width:360px;margin-bottom:22px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-academy-tagline{font-size:25px;max-width:350px;margin-bottom:24px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-academy-signoff{font-size:14px;max-width:350px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-image{left:50px;top:60px;width:410px!important;height:365px!important}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-image>img{height:250px;object-fit:cover}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-image-copy{padding:16px 20px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-image-copy>*{max-width:100%}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-next.public-combined-worship{left:855px;top:25px;width:345px!important;padding:22px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .public-worship-links a{font-size:16px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .public-worship-links [lang=ar]{font-size:28px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .public-combined-worship>p{font-size:21px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-progress{left:855px;top:375px;width:330px!important;padding:22px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-arabic{left:260px!important;top:525px!important;bottom:auto!important;width:400px!important;max-height:none;min-height:100px;grid-template-columns:88px minmax(0,1fr)}
+}
+@media(min-width:761px) and (max-width:820px){
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website{display:grid;height:auto;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:20px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website>.hub-panel{position:relative;inset:auto!important;width:100%!important;height:auto;max-height:none;translate:none!important}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-orb.hub-academy-centre{position:relative;inset:auto;width:440px;height:440px;grid-column:1/-1;justify-self:center;max-width:100%;transform:none!important}
+}
+
+/* All cards fit their grid tracks; the approved artwork sits behind a green band. */
+.circle .academy-featured-courses{gap:16px;align-items:stretch}
+.circle .academy-featured-courses>.free-course-card{width:auto;min-width:0;max-width:100%;box-sizing:border-box;overflow:hidden}
+.circle .academy-featured-courses .free-course-art[data-card-standard=green]{box-sizing:border-box;width:100%;height:auto;aspect-ratio:1;min-width:0}
+.circle .academy-featured-courses .free-course-art[data-card-standard=green]>img{position:absolute;inset:0;width:100%;height:100%;max-width:100%;object-fit:cover}
+.circle .academy-featured-courses .free-course-art[data-card-standard=green][data-course=resilience]>img{inset:auto;width:210.91954%;max-width:none;height:auto;left:-110.91954%;top:-83.33333%}
+.circle .academy-featured-courses .homepage-course-caption{box-sizing:border-box;padding:34px 14px 42px;min-height:115px;background:linear-gradient(0deg,#254e41 0%,#355e50f5 68%,#355e5000 100%)}
+.circle .academy-featured-courses .homepage-course-caption h3{font:400 clamp(18px,1.65vw,25px)/1.12 Georgia,serif!important;overflow-wrap:normal;letter-spacing:-.3px}
+.circle .academy-featured-courses .homepage-course-caption .access-badge{right:10px;bottom:10px;max-width:calc(100% - 20px);box-sizing:border-box}
+@media(min-width:1200px){.circle .academy-featured-courses{grid-auto-columns:calc((100% - 80px)/6)}}
+@media(min-width:601px) and (max-width:1199px){.circle .academy-featured-courses{grid-auto-columns:calc((100% - 32px)/3)}}
+@media(max-width:600px){.circle .academy-featured-courses{grid-auto-columns:82%;gap:14px}.circle .academy-featured-courses .homepage-course-caption h3{font-size:25px!important}}
+@media(min-width:601px){
+ .circle .academy-featured-courses .free-course-art[data-card-standard=green]{min-height:270px}
+ .circle .academy-featured-courses .homepage-course-caption{padding:28px 12px 42px}
+ .circle .academy-featured-courses .homepage-course-caption h3{font-size:20px!important}
+}
+
+/* Four compact pathways follow the circle on smaller screens. */
+@media(max-width:820px){
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;height:auto!important;align-items:stretch;isolation:isolate}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website>.hub-panel{position:relative!important;inset:auto!important;width:100%!important;min-width:0;max-width:100%;height:auto!important;max-height:none;translate:none!important;transform:none!important;animation:none!important;margin:0!important;padding:16px!important;box-sizing:border-box}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-orb.hub-academy-centre{position:relative!important;inset:auto!important;grid-column:1/-1;grid-row:1;justify-self:center;width:min(100%,420px)!important;height:auto!important;min-height:0!important;aspect-ratio:1;box-sizing:border-box;transform:none!important;translate:none!important;margin:0 0 12px!important;padding:38px!important;animation:none!important}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-next{grid-column:1;grid-row:2;min-height:0}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-image{grid-column:2;grid-row:2;padding:0!important;overflow:hidden;display:flex;flex-direction:column}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-image>img{width:100%;height:105px;flex:none;object-fit:cover}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-image-copy{padding:12px;min-width:0;flex:1}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-progress{grid-column:1;grid-row:3}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-arabic{grid-column:2;grid-row:3;display:flex;flex-direction:column;gap:10px;min-height:0}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-arabic>img{width:100%;height:70px;object-fit:contain;flex:none}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-panel h3{font-size:21px!important;line-height:1.2;letter-spacing:-.3px;margin:6px 0 10px!important}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-panel p{font-size:11px!important;line-height:1.55;margin:8px 0!important}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-panel .meta{font-size:8px;line-height:1.55;letter-spacing:.04em}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .public-combined-worship>h3{font-size:10px!important;letter-spacing:.03em;line-height:1.6}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .public-worship-links{gap:9px}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .public-worship-links a{display:grid;gap:2px;font-size:11px;line-height:1.4;min-height:0}
+ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .public-worship-links [lang=ar]{font-size:22px;white-space:normal;justify-self:end;margin:0}
+}
+
+@media(max-width:820px){.circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-next.public-combined-worship{display:flex!important;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:0}.circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .public-combined-worship>*{width:100%;max-width:100%;min-width:0}.circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .public-combined-worship>p{margin-top:auto!important;padding-top:12px}}

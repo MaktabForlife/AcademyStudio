@@ -1,0 +1,18 @@
+.academy-memorisation.section{padding-top:25px}
+.memorisation-reel{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 32px)/3);gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:3px 1px 12px}
+.memorisation-reel::-webkit-scrollbar{display:none}
+.memory-card{min-width:0;scroll-snap-align:start;border:1px solid #cdbbcf;border-radius:18px;overflow:hidden;background:#f1e7f2;color:#4d3a51;display:flex;flex-direction:column}
+.memory-card:nth-child(3n+2){background:#e5ede4;border-color:#becfbe}.memory-card:nth-child(3n+3){background:#f3e4dc;border-color:#dbc1b4}
+.memory-card-top{padding:22px 22px 20px;min-height:165px;position:relative;background:radial-gradient(ellipse at top right,#ffffffb0,transparent 75%);overflow:hidden}
+.memory-card-top:after{content:'';position:absolute;right:-15px;top:-36px;width:108px;height:108px;border:1px solid #ffffffbf;border-radius:50%;pointer-events:none}
+.memory-level{font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:600;color:#735d74}
+.circle .memory-card h3{font:400 27px/1.2 var(--serif);margin:18px 0 9px;letter-spacing:-.5px}
+.memory-card p{font-size:12px;margin:0;color:#736275}
+.memory-card-bottom{padding:17px 21px 20px;background:#ffffffb3;margin-top:auto}
+.memory-card button{width:100%;min-height:44px;border:1px solid #c5aabf;background:#fffaf7;border-radius:12px;color:#674e5b;font-size:12px;font-weight:600;padding:10px}
+.memory-task-list{list-style:none;padding:0;margin:20px 0 0;border-top:1px solid #e2d7dc;max-height:52vh;overflow:auto}
+.memory-task-list li{padding:13px 2px;border-bottom:1px solid #e2d7dc;font-size:14px;line-height:1.6}
+.memory-set-meta{font-size:12px;color:#816a77}
+@media(max-width:600px){.memorisation-reel{grid-auto-columns:82%;gap:14px}.academy-memorisation.section{padding-top:20px}}
+
+.academy-memorisation .section-head{margin-bottom:18px}.memorisation-intro{font-size:13px;line-height:1.8;max-width:760px;margin:0 0 26px;color:#7d7075}
