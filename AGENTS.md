@@ -1,3 +1,7 @@
+# Paired source-cleanup release V109.15 — authorised 3 November 2026
+
+The owner authorised finishing the remaining checks and deploying Academy and Studio together. This supersedes the historical cleanup-only deployment hold for this reviewed release. Keep live checks small. No local file deletion, Hifz, schema/data/rights/DNS change or actual media attachment/publication. Use only the tested matching pair and committed GitHub public packages; retain V109.14 recovery and all outputs. Later releases require applicable owner approval.
+
 # Permanent local preservation rule — 3 November 2026
 
 The owner explicitly instructs: DO NOT DELETE ANYTHING FROM MY MACBOOK EVER. Keep existing physical files, local branches and working copies. Source retirement uses `git rm --cached` only, with exact ignore entries and retained Git history; never use ordinary git rm, git clean, filesystem unlink/remove, worktree removal/pruning or local branch deletion. Disable automatic build/test cleanup and retain test output folders.
