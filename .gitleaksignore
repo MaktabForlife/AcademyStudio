@@ -7,3 +7,9 @@ a54108259b7bd4b1e0446d68c6aeadb659090936:release/v109.14/manifest.json:generic-a
 a54108259b7bd4b1e0446d68c6aeadb659090936:release/v109.14/manifest.json:generic-api-key:89
 a54108259b7bd4b1e0446d68c6aeadb659090936:release/v109.14/manifest.json:generic-api-key:199
 a54108259b7bd4b1e0446d68c6aeadb659090936:release/v109.14/manifest.json:generic-api-key:284
+
+# Exact reviewed V109.15 public integrity hashes and unchanged storage identifiers.
+e0c9d0a7122d6e54b80922da3439ae40efb1c307:release/v109.15/manifest.json:generic-api-key:12
+e0c9d0a7122d6e54b80922da3439ae40efb1c307:release/v109.15/manifest.json:generic-api-key:13
+e0c9d0a7122d6e54b80922da3439ae40efb1c307:release/v109.15/manifest.json:generic-api-key:176
+e0c9d0a7122d6e54b80922da3439ae40efb1c307:release/v109.15/manifest.json:generic-api-key:177
