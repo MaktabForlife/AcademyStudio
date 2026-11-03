@@ -1,0 +1,94 @@
+diff --git a/tests/fixture.mjs b/tests/fixture.mjs
+index eebcc0e..b118d56 100644
+--- a/tests/fixture.mjs
++++ b/tests/fixture.mjs
+@@ -3,12 +3,13 @@ import {build} from 'esbuild';
+ import {readFileSync} from 'node:fs';
+ import {random,sha256,challenge,signedHeaders} from '../src/protocol.mjs';
+ import {newCourse} from '../public/shared/model.mjs';
+-export async function fixture({academy=false}={}){
++import {localAssets} from '../tools/local-assets.mjs';
++export async function fixture({academy=false,assets=false}={}){
+  const secret=random()+random(),entry=new URL('../src/worker.mjs',import.meta.url).pathname;
+  const script=(await build({stdin:{contents:`import {handle} from ${JSON.stringify(entry)};export default {fetch(r,e,c){${academy?"if(new URL(r.url).hostname==='academy.test')return e.ACADEMY_TEST.fetch(r);":''}return handle(r,e,c,${academy?'(u,o)=>e.ACADEMY_TEST.fetch(u,o)':"async()=>{throw Error('No Academy network call is allowed in this fixture');}"});}};`,resolveDir:process.cwd()},bundle:true,write:false,format:'esm',platform:'browser',external:['cloudflare:workers']})).outputFiles[0].text;
+  const env={PLATFORM_ENABLED:'1',ENVIRONMENT:'local',WEBSITE_ORIGIN:'https://website.test',ACADEMY_ORIGIN:'https://academy.test',ACCOUNT_MAX_AGE_SECONDS:'86400',ADMIN_MAX_AGE_SECONDS:'300',ACADEMY_TO_WEBSITE_SECRET:secret,WEBSITE_TO_ACADEMY_SECRET:random()+random()};
+  const source=academy?await (await import('./academy-runtime.mjs')).academyRuntime(env):null;
+- const runtime=new Miniflare(convertV4MiniflareOptions({workers:[{name:'platform',modules:true,script,compatibilityDate:'2026-09-28',compatibilityFlags:['nodejs_compat'],bindings:env,d1Databases:{DB:'platform-local'},r2Buckets:{CONTENT:'content-local',MEDIA:'media-local'},...(academy?{serviceBindings:{ACADEMY_TEST:'academy'}}:{})},...(source?.workers||[])]}));
++ const runtime=new Miniflare(convertV4MiniflareOptions({workers:[{name:'platform',modules:true,script,compatibilityDate:'2026-09-28',compatibilityFlags:['nodejs_compat'],bindings:env,d1Databases:{DB:'platform-local'},r2Buckets:{CONTENT:'content-local',MEDIA:'media-local'},...((academy||assets)?{serviceBindings:{...(assets?{ASSETS:localAssets()}:{}),...(academy?{ACADEMY_TEST:'academy'}:{})}}:{})},...(source?.workers||[])]}));
+  if(source)try{await source.seed(runtime);}catch(error){await runtime.dispose();source.f.close();throw error;}
+  const db=await runtime.getD1Database('DB','platform'),content=await runtime.getR2Bucket('CONTENT','platform'),media=await runtime.getR2Bucket('MEDIA','platform');
+  const schema=readFileSync(new URL('../migrations/0001_platform.sql',import.meta.url),'utf8');for(const sql of schema.split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(sql).run();
+diff --git a/tests/local-assets.test.mjs b/tests/local-assets.test.mjs
+new file mode 100644
+index 0000000..9087028
+--- /dev/null
++++ b/tests/local-assets.test.mjs
+@@ -0,0 +1,44 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {mkdtemp,mkdir,writeFile,symlink,rm} from 'node:fs/promises';
++import {tmpdir} from 'node:os';
++import {join} from 'node:path';
++import {localAssets} from '../tools/local-assets.mjs';
++import {fixture} from './fixture.mjs';
++
++test('local assets serve page files, HEAD and missing-file responses without exposing private siblings',async()=>{
++ const root=await mkdtemp(join(tmpdir(),'studio-assets-'));
++ try{
++  const directory=join(root,'public');await mkdir(directory);
++  await writeFile(join(root,'private.json'),'private');
++  await writeFile(join(directory,'index.html'),'<html>Reader</html>');
++  await symlink(join(root,'private.json'),join(directory,'escaped.json'));
++  const assets=localAssets(directory),get=path=>assets(new Request('https://website.test'+path));
++  const page=await get('/?website=one');assert.equal(page.status,200);assert.match(page.headers.get('Content-Type'),/^text\/html/);assert.equal(await page.text(),'<html>Reader</html>');
++  const head=await assets(new Request('https://website.test/',{method:'HEAD'}));assert.equal(head.status,200);assert.equal(await head.text(),'');assert.equal(head.headers.get('Content-Length'),'19');
++  for(const path of ['/missing.mjs','/%2e%2e%2fprivate.json','/escaped.json','/.hidden','/%00','/%zz','/%5cprivate.json'])assert.equal((await get(path)).status,404,path);
++  assert.equal((await assets(new Request('https://website.test/',{method:'POST'}))).status,405);
++ }finally{await rm(root,{recursive:true,force:true});}
++});
++
++test('production Worker fixture serves reader and builder dependency files through ASSETS while keeping APIs gated',async()=>{
++ const f=await fixture({assets:true});
++ try{
++  const queue=['/','/builder/'],seen=new Set();
++  while(queue.length){
++   const path=queue.shift();if(seen.has(path))continue;seen.add(path);
++   const response=await f.runtime.dispatchFetch(f.env.WEBSITE_ORIGIN+path);
++   assert.equal(response.status,200,path);assert.equal(response.headers.get('X-Content-Type-Options'),'nosniff',path);
++   const type=response.headers.get('Content-Type')||'';
++   if(!/text\/|image\/svg/.test(type)){await response.arrayBuffer();continue;}
++   const source=await response.text();
++   if(path==='/')assert.match(source,/<script type="module" src="\/app.mjs"/);
++   const links=type.includes('text/html')?[...source.matchAll(/(?:src|href)="([^"#]+)"/g)].map(m=>m[1]):type.includes('javascript')?[...source.matchAll(/(?:\bfrom\s*|\bimport\s*\(?\s*)['"]([^'"]+)['"]/g)].map(m=>m[1]):type.includes('text/css')?[...source.matchAll(/url\(\s*['"]?([^\s'")]+)['"]?\s*\)/g)].map(m=>m[1]):[];
++   for(const link of links){if(type.includes('javascript')&&!/^(?:\/|\.{1,2}\/)[^\s]+\.mjs$/.test(link))continue;const url=new URL(link,f.env.WEBSITE_ORIGIN+path);if(url.origin===f.env.WEBSITE_ORIGIN)queue.push(url.pathname);}
++  }
++  assert(seen.has('/app.mjs'));assert(seen.has('/shared/recording-companion.css'));assert(seen.has('/shared/model.mjs'));assert(seen.size>35,'Reader/builder dependency graph was checked');
++  assert.equal((await f.request('/api/websites/site-course')).status,401);
++  assert.equal((await f.request('/api/media/private-file')).status,401);
++  assert.equal((await f.runtime.dispatchFetch(f.env.WEBSITE_ORIGIN+'/not-a-page')).status,404);
++ }finally{await f.close();}
++});
+diff --git a/tests/preview-fixture.mjs b/tests/preview-fixture.mjs
+index 6ef8521..56d73bc 100644
+--- a/tests/preview-fixture.mjs
++++ b/tests/preview-fixture.mjs
+@@ -1,17 +1,12 @@
+ import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
+ import {build} from 'esbuild';
+ import {readFile} from 'node:fs/promises';
+-import {resolve,extname} from 'node:path';
+ import {previewAccessCode} from '../src/preview-identity.mjs';
++import {localAssets} from '../tools/local-assets.mjs';
+ export async function previewFixture(){
+  const entry=new URL('../src/preview-worker.mjs',import.meta.url).pathname,script=(await build({entryPoints:[entry],bundle:true,write:false,format:'esm',platform:'browser'})).outputFiles[0].text;
+  const env={ENVIRONMENT:'isolated-preview',PLATFORM_ENABLED:'1',ACADEMY_ORIGIN:'https://academy.invalid',WEBSITE_ORIGIN:'https://website.test',PREVIEW_LOGIN_ENABLED:'1',PREVIEW_ACCESS_EXPIRES_AT:String(Date.now()+7*86400_000),PREVIEW_INVITE_SECRET:'Synthetic local fixture key '+crypto.randomUUID(),ACCOUNT_MAX_AGE_SECONDS:'3600',ADMIN_MAX_AGE_SECONDS:'300'};
+- const publicRoot=resolve('public'),mime={'.html':'text/html; charset=utf-8','.mjs':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.ttf':'font/ttf','.woff2':'font/woff2'};
+- const runtime=new Miniflare(convertV4MiniflareOptions({modules:true,script,compatibilityDate:'2026-09-28',compatibilityFlags:['nodejs_compat'],bindings:env,d1Databases:{DB:'private-preview'},r2Buckets:{CONTENT:'private-preview-content',MEDIA:'private-preview-media'},serviceBindings:{ASSETS:async request=>{
+-  const path=new URL(request.url).pathname,file=resolve(publicRoot,'.'+(path.endsWith('/')?path+'index.html':path));
+-  if(!file.startsWith(publicRoot+'/'))return new Response('Not found',{status:404});
+-  try{return new Response(await readFile(file),{headers:{'Content-Type':mime[extname(file)]||'application/octet-stream'}});}catch{return new Response('Not found',{status:404});}
+- }}}));
++ const runtime=new Miniflare(convertV4MiniflareOptions({modules:true,script,compatibilityDate:'2026-09-28',compatibilityFlags:['nodejs_compat'],bindings:env,d1Databases:{DB:'private-preview'},r2Buckets:{CONTENT:'private-preview-content',MEDIA:'private-preview-media'},serviceBindings:{ASSETS:localAssets()}}));
+  const db=await runtime.getD1Database('DB'),content=await runtime.getR2Bucket('CONTENT'),media=await runtime.getR2Bucket('MEDIA');
+  for(const sql of (await readFile('migrations/0001_platform.sql','utf8')).split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(sql).run();
+  const run=(sql,...args)=>db.prepare(sql).bind(...args).run();

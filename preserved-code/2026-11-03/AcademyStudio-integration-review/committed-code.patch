@@ -1,0 +1,114 @@
+diff --git a/src/access.mjs b/src/access.mjs
+index 9eae554..7020fde 100644
+--- a/src/access.mjs
++++ b/src/access.mjs
+@@ -5,7 +5,7 @@ export async function accessGate(store,actor,offeringId,{admin=false,live=false}
+  const row=await store.first(`SELECT s.*,p.generation person_generation,p.verified_at,p.ready,p.windows_json,p.has_allocation,p.course FROM source_access_scopes s LEFT JOIN source_access_people p ON p.offering_id=s.offering_id AND p.account_id=? WHERE s.offering_id=?`,[actor.account_id,offeringId]);
+  if(row?.authority==='WEBSITE')return null;
+  if(!actor.source_ref)throw fail('Sign in through Academy for parallel access.',401,'SIGN_IN_REQUIRED');
+- const liveAge=Math.max(30,Math.min(3600,Number(store.env.LIVE_ACCESS_MAX_AGE_SECONDS)||300))*1000,maxAge=live?Math.min(liveAge,boundedAge(store.env,admin)):boundedAge(store.env,admin);
++ const liveAge=Math.max(30,Math.min(86400,Number(store.env.LIVE_ACCESS_MAX_AGE_SECONDS)||boundedAge(store.env)/1000))*1000,maxAge=live?Math.min(liveAge,boundedAge(store.env,admin)):boundedAge(store.env,admin);
+  if(row&&!row.enabled)throw fail('This offering is unavailable in Academy.',403,'SOURCE_SCOPE_UNAVAILABLE');
+  if(!row?.ready||row.person_generation!==row.generation||row.verified_at<Date.now()-maxAge)throw Object.assign(fail('Academy access needs to be confirmed.',409,'ACCESS_REFRESH_REQUIRED'),{offeringId});return row;
+ }
+diff --git a/src/parallel-worker.mjs b/src/parallel-worker.mjs
+index c701b8c..7274d6b 100644
+--- a/src/parallel-worker.mjs
++++ b/src/parallel-worker.mjs
+@@ -10,10 +10,10 @@ export async function parallel(request,env,ctx){
+  let response=env.PARALLEL_ACCESS_ENABLED!=='1'&&privateRoute?json({success:false,error:'Parallel access is being synchronised. Existing Academy screens remain available.',code:'PARALLEL_PREPARING'},503):await handle(request,env,ctx);response=new Response(response.body,response);
+  response.headers.set('X-Robots-Tag','noindex, nofollow, noarchive');
+  response.headers.set('X-AcademyStudio-Mode','parallel');
+- response.headers.set('X-AcademyStudio-Version',env.RELEASE_VERSION||'108.0');
++ response.headers.set('X-AcademyStudio-Version',env.RELEASE_VERSION||'108.1');
+  if(response.headers.get('Content-Type')?.includes('text/html')){
+   response.headers.set('Cache-Control','no-store');
+-  response=new HTMLRewriter().on('body',{element(el){el.prepend('<aside role="note" style="padding:12px 24px;background:#fff3cd;color:#493b16;text-align:center;font:16px system-ui">AcademyStudio V108.0 · Parallel testing · Existing Academy screens remain available</aside>',{html:true});}}).transform(response);
++  response=new HTMLRewriter().on('body',{element(el){el.prepend('<aside role="note" style="padding:12px 24px;background:#fff3cd;color:#493b16;text-align:center;font:16px system-ui">AcademyStudio V108.1 · Parallel testing · Existing Academy screens remain available</aside>',{html:true});}}).transform(response);
+  }
+  return response;
+ }
+diff --git a/tests/fixture.mjs b/tests/fixture.mjs
+index 3a1a690..9b299ce 100644
+--- a/tests/fixture.mjs
++++ b/tests/fixture.mjs
+@@ -3,10 +3,10 @@ import {build} from 'esbuild';
+ import {readFileSync} from 'node:fs';
+ import {random,sha256,challenge,signedHeaders} from '../src/protocol.mjs';
+ import {newCourse} from '../public/shared/model.mjs';
+-export async function fixture({academy=false,authorityMode='WEBSITE',academyApiOrigin}={}){
++export async function fixture({academy=false,authorityMode='WEBSITE',academyApiOrigin,verification={}}={}){
+  const secret=random()+random(),entry=new URL('../src/worker.mjs',import.meta.url).pathname;
+  const script=(await build({stdin:{contents:`import {handle} from ${JSON.stringify(entry)};export default {fetch(r,e,c){${academy?"if(new URL(r.url).hostname==='academy.test')return e.ACADEMY_TEST.fetch(r);":''}return handle(r,e,c,${academy?'(u,o)=>{if(e.ACADEMY_API_ORIGIN&&new URL(u).origin!==e.ACADEMY_API_ORIGIN)throw Error("Server commands must use the API origin");return e.ACADEMY_TEST.fetch(u,o)}':"async()=>{throw Error('No Academy network call is allowed in this fixture');}"});}};`,resolveDir:process.cwd()},bundle:true,write:false,format:'esm',platform:'browser',external:['cloudflare:workers']})).outputFiles[0].text;
+- const env={PLATFORM_ENABLED:'1',ENVIRONMENT:'local',WEBSITE_ORIGIN:'https://website.test',ACADEMY_ORIGIN:'https://academy.test',AUTHORITY_MODE:authorityMode,...(academyApiOrigin?{ACADEMY_API_ORIGIN:academyApiOrigin}:{}),ACCOUNT_MAX_AGE_SECONDS:'86400',ADMIN_MAX_AGE_SECONDS:'300',ACADEMY_TO_WEBSITE_SECRET:secret,WEBSITE_TO_ACADEMY_SECRET:random()+random()};
++ const env={PLATFORM_ENABLED:'1',ENVIRONMENT:'local',WEBSITE_ORIGIN:'https://website.test',ACADEMY_ORIGIN:'https://academy.test',AUTHORITY_MODE:authorityMode,...(academyApiOrigin?{ACADEMY_API_ORIGIN:academyApiOrigin}:{}),ACCOUNT_MAX_AGE_SECONDS:String(verification.accountSeconds??86400),ADMIN_MAX_AGE_SECONDS:String(verification.adminSeconds??300),...(verification.liveSeconds===undefined?{}:{LIVE_ACCESS_MAX_AGE_SECONDS:String(verification.liveSeconds)}),ACADEMY_TO_WEBSITE_SECRET:secret,WEBSITE_TO_ACADEMY_SECRET:random()+random()};
+  const source=academy?await (await import('./academy-runtime.mjs')).academyRuntime(env):null;
+  const runtime=new Miniflare(convertV4MiniflareOptions({workers:[{name:'platform',modules:true,script,compatibilityDate:'2026-09-28',compatibilityFlags:['nodejs_compat'],bindings:env,d1Databases:{DB:'platform-local'},r2Buckets:{CONTENT:'content-local',MEDIA:'media-local'},...(academy?{serviceBindings:{ACADEMY_TEST:'academy'}}:{})},...(source?.workers||[])]}));
+  if(source)try{await source.seed(runtime);}catch(error){await runtime.dispose();source.f.close();throw error;}
+diff --git a/tests/verification-freshness.test.mjs b/tests/verification-freshness.test.mjs
+new file mode 100644
+index 0000000..5b05da0
+--- /dev/null
++++ b/tests/verification-freshness.test.mjs
+@@ -0,0 +1,61 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {readFileSync} from 'node:fs';
++import {fixture} from './fixture.mjs';
++import {accessFixture,signIn,ok} from './access-fixture.mjs';
++import {accessGate} from '../src/access.mjs';
++import {boundedAge} from '../src/protocol.mjs';
++
++const {vars}=JSON.parse(readFileSync(new URL('../wrangler.parallel.jsonc',import.meta.url),'utf8'));
++const verification={accountSeconds:vars.ACCOUNT_MAX_AGE_SECONDS,adminSeconds:vars.ADMIN_MAX_AGE_SECONDS,liveSeconds:vars.LIVE_ACCESS_MAX_AGE_SECONDS};
++const TWELVE_HOURS=12*3600_000;
++
++test('learner and live verification use twelve hours while staff retain the shorter bound',async()=>{
++ assert.equal(boundedAge(vars),TWELVE_HOURS);assert.equal(boundedAge(vars,true),60_000);
++ const actor={account_id:'learner',source_ref:'source-session'},row={enabled:1,ready:1,generation:1,person_generation:1,verified_at:Date.now()-TWELVE_HOURS+60_000};
++ const store={env:vars,first:async()=>row};
++ assert.equal(await accessGate(store,actor,'course',{live:true}),row);
++ // An omitted live override follows the account policy rather than silently retaining five minutes.
++ assert.equal(await accessGate({...store,env:{...vars,LIVE_ACCESS_MAX_AGE_SECONDS:undefined}},actor,'course',{live:true}),row);
++ row.verified_at=Date.now()-TWELVE_HOURS-1;
++ await assert.rejects(accessGate(store,actor,'course',{live:true}),{code:'ACCESS_REFRESH_REQUIRED'});
++ row.verified_at=Date.now()-61_000;
++ await assert.rejects(accessGate(store,actor,'course',{admin:true,live:true}),{code:'ACCESS_REFRESH_REQUIRED'});
++});
++
++test('near twelve hours, website/media/catalogue/Join reuse local rights; delivered removals and suspension still block',async()=>{
++ const f=await fixture({academy:true,authorityMode:'ACADEMY',verification});try{
++  const x=await accessFixture(f),cookie=await signIn(f),now=Date.now(),verified=now-TWELVE_HOURS+60_000;
++  const session=await f.db.prepare("SELECT session_id FROM timetable WHERE offering_id='course' AND cancelled=0 LIMIT 1").first();assert(session);
++  await f.run('UPDATE timetable SET starts_at=?,ends_at=? WHERE session_id=?',now-60_000,now+3600_000,session.session_id);
++  await f.run("INSERT INTO objects VALUES('cached-video',NULL,'video/youtube','Synthetic video',0,NULL,'abcdefghijk')");
++  await f.run("INSERT INTO attachments VALUES('cached-recording','course','site-course','cached-video','lesson-id','2026-10-30','','Recording','RECORDING',1)");
++  await f.run('UPDATE accounts SET verified_at=? WHERE account_id=?',verified,x.student);
++  await f.run('UPDATE source_access_people SET verified_at=? WHERE account_id=?',verified,x.student);
++  f.source.resetMetrics();
++  for(const path of ['/api/me','/api/websites','/api/websites/site-course','/api/websites/site-surah','/api/offerings/course/media','/api/media/cached-recording'])ok(await f.request(path,{cookie}));
++  ok(await f.request('/api/offerings/course/join',{cookie,method:'POST',body:{sessionId:session.session_id}}));
++  assert.equal(f.source.metrics.queries,0,'normal use must not renew authority in Academy before twelve hours');
++  await x.run('UPDATE course_subscription_decisions SET active=0 WHERE account_id=? AND activity_key=?',x.student,x.courseA);await x.recover(8);
++  assert.equal((await f.request('/api/websites/site-course',{cookie})).status,403);
++  assert.equal((await f.request('/api/media/cached-recording',{cookie})).status,403);
++  await x.run('UPDATE accounts SET active=0 WHERE account_id=?',x.student);await x.recover(8);
++  assert.equal((await f.request('/api/me',{cookie})).status,401);
++ }finally{await f.close();}
++});
++
++test('twelve-hour expiry requires renewal, permission proof expires independently, and staff refresh remains one minute',async()=>{
++ const f=await fixture({academy:true,authorityMode:'ACADEMY',verification});try{
++  const x=await accessFixture(f),cookie=await signIn(f);
++  await f.run('UPDATE accounts SET verified_at=? WHERE account_id=?',Date.now()-TWELVE_HOURS-1,x.student);
++  assert.equal((await f.request('/api/me',{cookie})).body.code,'STATUS_EXPIRED');
++  ok(await f.request('/auth/refresh',{cookie,method:'POST',body:{}}));ok(await f.request('/api/websites/site-course',{cookie}));
++  await f.run('UPDATE source_access_people SET verified_at=? WHERE account_id=?',Date.now()-TWELVE_HOURS-1,x.student);
++  assert.equal((await f.request('/api/websites/site-course',{cookie})).body.code,'ACCESS_REFRESH_REQUIRED');
++  ok(await f.request('/auth/access',{cookie,method:'POST',body:{offeringId:'course'}}));ok(await f.request('/api/websites/site-course',{cookie}));
++  const admin=await signIn(f,'adminA'),accountId=f.source.f.actors.adminA;
++  await f.run('UPDATE accounts SET verified_at=? WHERE account_id=?',Date.now()-61_000,accountId);
++  assert.equal((await f.request('/api/websites/site-course/edit',{cookie:admin})).body.code,'ADMIN_STATUS_EXPIRED');
++  ok(await f.request('/auth/refresh',{cookie:admin,method:'POST',body:{}}));ok(await f.request('/api/websites/site-course/edit',{cookie:admin}));
++ }finally{await f.close();}
++});

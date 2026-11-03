@@ -1,0 +1,808 @@
+diff --git a/public/course-notices.css b/public/course-notices.css
+new file mode 100644
+index 0000000..633d3f3
+--- /dev/null
++++ b/public/course-notices.css
+@@ -0,0 +1,8 @@
++.free-library-card.course-coming-soon{cursor:default;color:#624b58}
++.free-library-card.course-coming-soon>.course-notice-cover{box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:44px 22px 24px;border:1px solid #dfd1cb;background:#efe7e2;text-align:center}
++.course-coming-soon:nth-child(even)>.course-notice-cover{background:#e8ebdf;color:#52604b}
++.course-coming-soon .course-notice-ornament{font:400 32px/1 var(--serif,Georgia,serif);opacity:.6}
++.free-library-card.course-coming-soon h2{margin:8px 0;font:400 clamp(23px,2.3vw,29px)/1.25 var(--serif,Georgia,serif);letter-spacing:-.3px}
++.free-library-card.course-coming-soon .course-notice-status{margin:0;font:500 12px/1.8 var(--sans,Arial,sans-serif)}
++.course-notice-status [lang=ar]{display:inline-block;font:400 17px/1.5 Amiri,serif}
++@media(max-width:680px){.free-library-card.course-coming-soon>.course-notice-cover{min-height:250px}.free-library-card.course-coming-soon h2{font-size:29px}}
+diff --git a/public/shared/circles-navigation.mjs b/public/shared/circles-navigation.mjs
+index 00e0b32..eea6efe 100644
+--- a/public/shared/circles-navigation.mjs
++++ b/public/shared/circles-navigation.mjs
+@@ -1 +1,3 @@
+-export const mothersClassroom=()=>`<section class="card"><p class="eyebrow">YOUR CLASSROOM</p><h1>Mothers of the Ummah</h1><p>Your existing programme membership is active.</p><p>The classroom materials are still being connected.</p><a href="/">Return to Circles</a></section>`;
++import {mouSubjectsHTML} from './mou-subjects.mjs';
++
++export const mothersClassroom=()=>`<section class="mou-programme"><header class="card"><p class="eyebrow">YOUR CLASSROOM</p><h1>Mothers of the Ummah</h1><p>Your monthly programme access and published classes are being connected.</p></header>${mouSubjectsHTML()}<p><a href="/">Return to Circles</a></p></section>`;
+diff --git a/public/shared/course-notices.mjs b/public/shared/course-notices.mjs
+new file mode 100644
+index 0000000..19e04f1
+--- /dev/null
++++ b/public/shared/course-notices.mjs
+@@ -0,0 +1,13 @@
++import {esc} from './model.mjs';
++
++// Confirmed catalogue presentation only. These notices have no website,
++// enrolment, offering identity or content-access grant.
++export const forthcomingCourseNotices=Object.freeze([
++ Object.freeze({key:'parenting-for-the-aakirah',title:'Parenting for the Aakhirah',access:'free'}),
++ Object.freeze({key:'names-of-allah-course',title:'Names of Allah',access:'free'})
++]);
++export const comingSoonLabel='Coming soon إن شاء الله';
++
++export function comingSoonCard(item){
++ return `<article class="free-library-card course-coming-soon" aria-label="${esc(item.title)} · ${comingSoonLabel}"><div class="free-cover course-notice-cover"><span class="free-library-badge">Free</span><span class="course-notice-ornament" aria-hidden="true">◇</span><h2>${esc(item.title)}</h2><p class="course-notice-status">Coming soon <span lang="ar" dir="rtl">إن شاء الله</span></p></div></article>`;
++}
+diff --git a/public/shared/mou-subjects.mjs b/public/shared/mou-subjects.mjs
+new file mode 100644
+index 0000000..6717428
+--- /dev/null
++++ b/public/shared/mou-subjects.mjs
+@@ -0,0 +1,21 @@
++import {esc} from './model.mjs';
++import {comingSoonLabel} from './course-notices.mjs';
++
++// Display keys from the confirmed prospectus plan are not native website IDs
++// or permissions. No content/media/enrolment link is made from these labels.
++export const mouSubjects=Object.freeze([
++ ['surah-al-baqarah','Tadabbur: Surah al-Baqarah'],
++ ['riyadus-saaliheen','Riyadus Saaliheen'],
++ ['arbaeen-imam-nawawi','Arba’een of Imam Nawawi'],
++ ['murshidul-qaari','Murshidul Qaari'],
++ ['madaarijus-saalikeen','Madaarijus Saalikeen'],
++ ['al-adab-al-mufrad','Al-Adab al-Mufrad'],
++ ['ihya-ulumid-deen','Ihya Ulumid Deen'],
++ ['taarikh-history-of-islam','Taarikh: History of Islam'],
++ ['kitabul-adhkar','Kitabul Adhkar'],
++ ['shamail-of-nabi','Shamail of Nabi ﷺ']
++].map(([key,title],index)=>Object.freeze({key,title,first:index===0})));
++
++export function mouSubjectsHTML(){
++ return `<section class="mou-subjects" aria-labelledby="mou-subjects-title"><h2 id="mou-subjects-title">Programme content</h2><div class="card-grid">${mouSubjects.map(subject=>`<article class="card mou-subject-card" aria-label="${esc(subject.title)} · ${subject.first?'First subject':comingSoonLabel}">${subject.first?'<p class="eyebrow">FIRST SUBJECT</p>':''}<h3>${esc(subject.title)}</h3><p>${subject.first?'The first subject is being prepared.':'Coming soon <span lang="ar" dir="rtl">إن شاء الله</span>'}</p></article>`).join('')}</div></section>`;
++}
+diff --git a/src/access.mjs b/src/access.mjs
+index 47f9acb..ac99511 100644
+--- a/src/access.mjs
++++ b/src/access.mjs
+@@ -27,7 +27,12 @@ export function liveAccess(row,scope,now=Date.now()){
+  return windows.length?windows.some(w=>w.active&&classes.has(w.classId.toLowerCase())&&(!w.start||w.start<=today)&&(!w.end||w.end>=today)):!row.has_allocation&&classes.size===1;
+ }
+ export async function sourceWebsiteGate(store,actor,website){
+- const scope=await accessGate(store,actor,website.offering_id,{admin:Boolean(website.role)});if(scope&&website.kind==='TAFSEER'){const mapped=await store.first('SELECT enabled FROM source_access_websites WHERE offering_id=? AND website_id=?',[website.offering_id,website.website_id]);if(!mapped?.enabled)throw fail('This Surah is unavailable in Academy.',403);}return scope;
++ const scope=await accessGate(store,actor,website.offering_id,{admin:Boolean(website.role)});
++ if(scope&&website.kind==='TAFSEER'){
++  const programme=await store.first("SELECT 1 FROM programme_offerings WHERE programme_key='mothers' AND offering_id=?",[website.offering_id]);
++  const mapped=programme?await store.first('SELECT enabled FROM programme_subjects WHERE offering_id=? AND website_id=?',[website.offering_id,website.website_id]):await store.first('SELECT enabled FROM source_access_websites WHERE offering_id=? AND website_id=?',[website.offering_id,website.website_id]);
++  if(!mapped?.enabled)throw fail('This programme subject is unavailable.',403);
++ }return scope;
+ }
+ export async function accessStatements(store,event,version,accountStatements){
+  if(!academyAuthority(store.env))throw fail('Academy access projection is disabled.',409,'ACADEMY_AUTHORITY_DISABLED');
+@@ -39,6 +44,7 @@ export async function accessStatements(store,event,version,accountStatements){
+   const seen=new Set();for(const w of event.websites){id(w.website_id);date(w.completion_date);if(seen.has(w.website_id))throw fail('Duplicate source website.');seen.add(w.website_id);const mapped=await store.first('SELECT offering_id FROM websites WHERE website_id=?',[w.website_id]);if(!mapped||mapped.offering_id!==offer)throw fail('Source website mapping needs review.',409);}
+   out.push(store.statement('INSERT INTO offerings VALUES(?,?,?,?,0) ON CONFLICT(offering_id) DO UPDATE SET active=excluded.active WHERE offerings.kind=excluded.kind',[offer,event.offering.kind,text(event.offering.title),flag(event.enabled)]),store.statement(`INSERT INTO source_access_scopes(offering_id,generation,version,enabled,live_enabled,timezone,classes_json) VALUES(?,?,?,?,?,?,?) ON CONFLICT(offering_id) DO UPDATE SET generation=excluded.generation,version=excluded.version,enabled=excluded.enabled,live_enabled=excluded.live_enabled,timezone=excluded.timezone,classes_json=excluded.classes_json `,[offer,generation,version,flag(event.enabled),flag(event.liveEnabled),text(event.timezone,100),JSON.stringify(event.classes.map(id))]),store.statement('UPDATE source_access_websites SET enabled=0 WHERE offering_id=?',[offer]));
+   if(event.offering.kind==='COURSE'){const model=event.accessModel||'PAID';if(!['FREE','PAID'].includes(model))throw fail('Invalid Course access model.');out.push(store.statement('INSERT INTO course_access_models VALUES(?,?) ON CONFLICT(offering_id) DO UPDATE SET access_model=excluded.access_model WHERE NOT EXISTS(SELECT 1 FROM course_publications p WHERE p.offering_id=excluded.offering_id AND p.access_model<>excluded.access_model)',[offer,model]));}
++ if(event.programmeKey!==undefined){if(event.programmeKey!=='mothers'||event.offering.kind!=='TAFSEER'||event.accessModel!=='MONTHLY')throw fail('Invalid independent monthly programme.');const prior=await store.first('SELECT offering_id FROM programme_offerings WHERE programme_key=?',[event.programmeKey]);if(prior&&prior.offering_id!==offer)throw fail('This programme already has a different native identity.',409,'PROGRAMME_MAPPING_CONFLICT');out.push(store.statement("INSERT INTO programme_offerings VALUES('mothers',?,'MONTHLY') ON CONFLICT(programme_key) DO NOTHING",[offer]));}
+  for(const w of event.websites)out.push(store.statement('INSERT INTO source_access_websites VALUES(?,?,?) ON CONFLICT(website_id) DO UPDATE SET enabled=excluded.enabled',[w.website_id,offer,flag(Boolean(w.active))]),store.statement('UPDATE websites SET completion_date=?,completion_month=? WHERE website_id=?',[w.completion_date,w.completion_date.slice(0,7),w.website_id]));
+  }else{
+   const accountId=id(event.account.accountId),p=event.participation;if(!p||!Array.isArray(p.windows)||p.windows.length>100||!Array.isArray(event.months)||event.months.length>512||!Array.isArray(event.websiteMonths)||event.websiteMonths.length>240||!Array.isArray(event.grants)||event.grants.length>128||![null,'ADMIN','TEACHER'].includes(event.role))throw fail('Invalid source access snapshot.');
+@@ -67,10 +73,16 @@ export async function joinAudience(store,actor,offeringId,session,scope){
+  const source=await accessGate(store,actor,offeringId,{live:true});if(!source)return;
+  if(actor.global_admin||scope.role==='ADMIN')return;
+  const audience=await store.first('SELECT * FROM source_session_audiences WHERE session_id=?',[session.session_id]);if(!audience)throw fail('Academy session audience has not been confirmed.',403,'JOIN_AUDIENCE');
+- const teachers=JSON.parse(audience.teacher_ids_json).map(v=>v.toLowerCase());if(scope.role==='TEACHER'&&teachers.includes(actor.account_id.toLowerCase()))return;
+- if(source.course&&scope.live)return;
++ if(permittedSessionAudience(actor,scope,source,audience,session))return;
++ throw fail('This session belongs to another Academy audience.',403,'JOIN_AUDIENCE');
++}
++export function permittedSessionAudience(actor,scope,source,audience,session){
++ if(!source||actor.global_admin||scope.role==='ADMIN')return true;
++ if(!audience?.teacher_ids_json||!audience.class_ids_json)return false;
++ const teachers=JSON.parse(audience.teacher_ids_json).map(v=>v.toLowerCase());if(scope.role==='TEACHER'&&teachers.includes(actor.account_id.toLowerCase()))return true;
++ if(source.course&&scope.live)return true;
+  if(!source.course&&scope.enrolled&&source.live_enabled){const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:source.timezone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(session.starts_at)).map(p=>[p.type,p.value])),day=parts.year+'-'+parts.month+'-'+parts.day,classes=new Set(JSON.parse(source.classes_json).map(v=>v.toLowerCase())),sessionClasses=JSON.parse(audience.class_ids_json).map(v=>v.toLowerCase()),windows=JSON.parse(source.windows_json||'[]');
+-  if(windows.length?windows.some(w=>w.active&&classes.has(w.classId.toLowerCase())&&sessionClasses.includes(w.classId.toLowerCase())&&(!w.start||w.start<=day)&&(!w.end||w.end>=day)):!source.has_allocation&&classes.size===1&&sessionClasses.some(c=>classes.has(c)))return;
++  if(windows.length?windows.some(w=>w.active&&classes.has(w.classId.toLowerCase())&&sessionClasses.includes(w.classId.toLowerCase())&&(!w.start||w.start<=day)&&(!w.end||w.end>=day)):!source.has_allocation&&classes.size===1&&sessionClasses.some(c=>classes.has(c)))return true;
+  }
+- throw fail('This session belongs to another Academy audience.',403,'JOIN_AUDIENCE');
++ return false;
+ }
+diff --git a/src/admin.mjs b/src/admin.mjs
+index e967e07..54d178a 100644
+--- a/src/admin.mjs
++++ b/src/admin.mjs
+@@ -1,9 +1,11 @@
++import {bindMouSubject} from './mou-classroom.mjs';
+ import {academyAuthority,rejectAuthorityWrite} from './access.mjs';
+ import {fail,id,text,integer,flag,month,date,sha256,bytes,httpsURL} from './protocol.mjs';
+ import {fileKind,newCourse} from '../public/shared/model.mjs';
+ import {saveContent} from './content.mjs';
+ import {validatePackage} from './content-package.mjs';
+ export async function change(env,store,actor,offeringId,input,guardOptions={}){
++ if(input.action==='mou-subject')return bindMouSubject(store,actor,offeringId,input,guardOptions);
+  if(!guardOptions.collect&&['access-batch','participant','paid-months','website-months','staff','surah-grant','completion-month','completion-date','enrolment-decision','website-create','attachment'].includes(input.action))await rejectAuthorityWrite(store,offeringId);
+  if(!guardOptions.collect)await store.scope(actor,offeringId,{admin:true});const statements=[];const s=(sql,args=[])=>statements.push(store.statement(sql,args));
+  if(input.action==='access-batch'){
+diff --git a/src/circles.mjs b/src/circles.mjs
+index 70dccd3..8236595 100644
+--- a/src/circles.mjs
++++ b/src/circles.mjs
+@@ -1,6 +1,7 @@
+ import {academyAuthority} from './access.mjs';
+ import {bodyJSON,boundedAge,fail,id} from './protocol.mjs';
+ import {contentVersion} from './content-package.mjs';
++import {recordedSupport} from './recorded-support.mjs';
+ 
+ // Only deliberately published, whitelisted card metadata crosses this boundary.
+ // Private migration manifests and author exports are never public catalogue input.
+@@ -86,10 +87,10 @@ export async function carryGuideBindings(env,website,document,key){
+  const saved=await env.CONTENT.put(guideBindingsKey(website.website_id,edition),JSON.stringify(value),{onlyIf:{etagDoesNotMatch:'*'},httpMetadata:{contentType:'application/json'}});
+  if(!saved){const existing=await readBindings(env,website.website_id,edition);if(JSON.stringify(existing)!==JSON.stringify(value.bindings))throw fail('This edition has different recording links. Review the existing mapping.',409,'RECORDING_MAPPING_CONFLICT');}
+ }
+-export async function permittedGuideBindings(env,website,media){
++export async function permittedGuideBindings(env,website,media,store){
+  const edition=contentVersion(website.published_key);
+  if(!/^[a-f0-9]{64}$/.test(edition||'')||!media.length)return [];
+- const bindings=await readBindings(env,website.website_id,edition);if(!bindings)return [];
++ const support=store&&website.programme_key==='mothers'?await recordedSupport(env,store,website,edition):null,bindings=support?.bindings??await readBindings(env,website.website_id,edition);if(!bindings)return [];
+  const counts=new Map();for(const b of bindings)counts.set(b.editorialLessonId,(counts.get(b.editorialLessonId)||0)+1);
+  return bindings.filter(b=>counts.get(b.editorialLessonId)===1&&media.some(r=>r.attachment_id&&['video/youtube','video/mp4'].includes(r.type)&&r.asset_id===b.assetId&&r.lesson_id===b.nativeLessonId));
+ }
+diff --git a/src/content.mjs b/src/content.mjs
+index e5b60c6..9a3af72 100644
+--- a/src/content.mjs
++++ b/src/content.mjs
+@@ -1,4 +1,5 @@
+ import {carryGuideBindings} from './circles.mjs';
++import {saveRecordedSupport,carryRecordedSupport} from './recorded-support.mjs';
+ import {sourceWebsiteGate} from './access.mjs';
+ import {fail,id,text,month,sha256,bodyJSON} from './protocol.mjs';
+ import {validatePackage} from './content-package.mjs';
+@@ -6,26 +7,28 @@ import {assertWebsiteAssets} from './website-assets.mjs';
+ export async function objectJSON(bucket,key,limit=1_500_000){const object=await bucket.get(key);if(!object||object.size>limit)throw fail('The saved edition is unavailable.',503);return bodyJSON(object.body,limit);}
+ export async function saveContent(env,document,websiteId=document.id){const encoded=JSON.stringify(document);if(new TextEncoder().encode(encoded).length>1_500_000)throw fail('This website edition is too large.',413);const hash=await sha256(encoded),key='websites/'+encodeURIComponent(websiteId)+'/versions/'+hash+'.json';await env.CONTENT.put(key,encoded,{httpMetadata:{contentType:'application/json'}});return key;}
+ export async function websiteAccess(store,actor,websiteId,{admin=false}={}){
+- const row=await store.first(`SELECT w.*,o.kind,o.active,p.purchased,s.role,(SELECT access_model FROM course_access_models m WHERE m.offering_id=o.offering_id) access_model,
++ const row=await store.first(`SELECT w.*,o.kind,o.active,p.purchased,s.role,(SELECT programme_key FROM programme_offerings mp WHERE mp.offering_id=o.offering_id) programme_key,(SELECT access_model FROM course_access_models m WHERE m.offering_id=o.offering_id) access_model,
++  EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=? AND m.offering_id=w.offering_id UNION ALL SELECT 1 FROM website_months m WHERE m.account_id=? AND m.offering_id=w.offering_id) retained_text,
+   EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=? AND m.offering_id=w.offering_id AND m.month=w.completion_month UNION ALL SELECT 1 FROM website_months m WHERE m.account_id=? AND m.offering_id=w.offering_id AND m.month=w.completion_month) paid,
+   EXISTS(SELECT 1 FROM surah_grants g WHERE g.account_id=? AND g.website_id=w.website_id) granted
+   FROM websites w JOIN offerings o USING(offering_id)
+   LEFT JOIN participation p ON p.account_id=? AND p.offering_id=w.offering_id
+-  LEFT JOIN staff s ON s.account_id=? AND s.offering_id=w.offering_id WHERE w.website_id=?`,[actor.account_id,actor.account_id,actor.account_id,actor.account_id,actor.account_id,id(websiteId)]);
++  LEFT JOIN staff s ON s.account_id=? AND s.offering_id=w.offering_id WHERE w.website_id=?`,[actor.account_id,actor.account_id,actor.account_id,actor.account_id,actor.account_id,actor.account_id,actor.account_id,id(websiteId)]);
+  if(!row||!row.active)throw fail('This website is unavailable.',404);await sourceWebsiteGate(store,actor,row);
+  if(admin){await store.scope(actor,row.offering_id,{admin:true});return row;}
+  const staff=actor.global_admin||row.role==='ADMIN'||row.role==='TEACHER';
+- if(!staff&&!(row.kind==='COURSE'&&(row.purchased||row.access_model==='FREE')||row.kind==='TAFSEER'&&(row.paid||row.granted)))throw fail('Your account does not have this material.',403,'MATERIAL_ACCESS_REQUIRED');
++ if(!staff&&!(row.kind==='COURSE'&&(row.purchased||row.access_model==='FREE')||row.kind==='TAFSEER'&&(row.paid||row.granted||row.programme_key==='mothers'&&row.retained_text)))throw fail('Your account does not have this material.',403,'MATERIAL_ACCESS_REQUIRED');
+  if(!row.enabled||!row.published_key)throw fail('This website is not published.',404);return row;
+ }
+ export async function editWebsite(env,store,actor,websiteId,input){
+  input={...input,websiteId};const website=await websiteAccess(store,actor,websiteId,{admin:true}),hash=await store.requestHash(website.offering_id,input),old=await store.replay(actor.account_id,input.operationId,hash);if(old)return old;
+  if(input.revision!==website.revision)throw fail('This website changed elsewhere. Reopen the saved draft.',409);
++ if(input.action==='recording-support')return saveRecordedSupport(env,store,actor,website,input);
+  const revision=website.revision+1,statements=[];let historyKey=website.draft_key;
+  if(input.action==='save'){
+   const document=structuredClone(input.document);const errors=validatePackage(document);if(errors.length)throw fail(errors.join(' '));
+   await assertWebsiteAssets(store,websiteId,document);
+-  const key=await saveContent(env,document,websiteId);await carryGuideBindings(env,website,document,key);historyKey=key;statements.push(store.statement('UPDATE websites SET draft_key=?,revision=? WHERE website_id=?',[key,revision,websiteId]));
++  const key=await saveContent(env,document,websiteId);await carryGuideBindings(env,website,document,key);statements.push(...await carryRecordedSupport(env,store,website,document,key));historyKey=key;statements.push(store.statement('UPDATE websites SET draft_key=?,revision=? WHERE website_id=?',[key,revision,websiteId]));
+  }else if(input.action==='publish'){
+   if(!website.draft_key)throw fail('Save a draft first.');const document=await objectJSON(env.CONTENT,website.draft_key);const errors=validatePackage(document,{review:true});if(errors.length)throw fail(errors.join(' '));
+   const refs=await assertWebsiteAssets(store,websiteId,document);
+diff --git a/src/database.mjs b/src/database.mjs
+index b52a1b6..bed50df 100644
+--- a/src/database.mjs
++++ b/src/database.mjs
+@@ -15,10 +15,10 @@ export class Store {
+   if(!allowExpiredStatus&&row.verified_at<now-boundedAge(this.env))throw fail('Your Academy account status needs to be refreshed.',401,'STATUS_EXPIRED');return row;
+  }
+  async scope(actor,offeringId,{admin=false,teacher=false}={}){
+-  id(offeringId);const cacheKey=actor.account_id+':'+offeringId;let row=this.scopes.get(cacheKey);if(!row){row=await this.first(`SELECT o.*,p.enrolled,p.live,p.purchased,p.cohort,s.role,(SELECT access_model FROM course_access_models m WHERE m.offering_id=o.offering_id) access_model,s.can_create_account
++  id(offeringId);const cacheKey=actor.account_id+':'+offeringId;let row=this.scopes.get(cacheKey);if(!row){row=await this.first(`SELECT o.*,(SELECT programme_key FROM programme_offerings mp WHERE mp.offering_id=o.offering_id) programme_key,p.enrolled,p.live,p.purchased,p.cohort,s.role,(SELECT access_model FROM course_access_models m WHERE m.offering_id=o.offering_id) access_model,s.can_create_account
+    FROM offerings o LEFT JOIN participation p ON p.offering_id=o.offering_id AND p.account_id=?
+    LEFT JOIN staff s ON s.offering_id=o.offering_id AND s.account_id=? WHERE o.offering_id=? AND o.active=1`,[actor.account_id,actor.account_id,offeringId]);if(row)this.scopes.set(cacheKey,row);}
+-  if(!row)throw fail('This offering is unavailable.',404);const source=await accessGate(this,actor,offeringId,{admin:admin||teacher||Boolean(row.role)});if(source)row={...row,live:liveAccess(source,row)};
++  if(!row)throw fail('This offering is unavailable.',404);row={...row,live_entitled:Boolean(row.live)};const source=await accessGate(this,actor,offeringId,{admin:admin||teacher||Boolean(row.role)});if(source)row={...row,live:liveAccess(source,row)};
+   if(admin||teacher){if(!actor.global_admin&&row.role!=='ADMIN'&&!(teacher&&row.role==='TEACHER'))throw fail('Your account cannot manage this offering.',403);if(actor.verified_at<Date.now()-boundedAge(this.env,true))throw fail('Refresh your Academy account before administration.',401,'ADMIN_STATUS_EXPIRED');}
+   return row;
+  }
+diff --git a/src/integration.mjs b/src/integration.mjs
+index 099754b..961b714 100644
+--- a/src/integration.mjs
++++ b/src/integration.mjs
+@@ -23,7 +23,7 @@ export async function receive(request,env,store){
+  if(data.version!==(old?.version||0)+1)throw fail('Deliver the missing version first.',409,'DELIVERY_GAP');
+  const statements=[];let extraSQL='1',extraArgs=[];
+  if(data.superseded===true&&['access','access-scope'].includes(event.type)){await fenceAccess(store,event,data.version);}
+- else if(['access','access-scope'].includes(event.type)){statements.push(...await accessStatements(store,event,data.version,a=>accountStatements(store,a,{insertOnly:true})));const authority=await store.first('SELECT authority FROM source_access_scopes WHERE offering_id=?',[event.offeringId||event.offering.id]);extraSQL="COALESCE((SELECT authority FROM source_access_scopes WHERE offering_id=?),'ACADEMY')=?";extraArgs=[event.offeringId||event.offering.id,authority?.authority||'ACADEMY'];}
++ else if(['access','access-scope'].includes(event.type)){statements.push(...await accessStatements(store,event,data.version,a=>accountStatements(store,a,{insertOnly:true})));const authority=await store.first('SELECT authority FROM source_access_scopes WHERE offering_id=?',[event.offeringId||event.offering.id]);extraSQL="COALESCE((SELECT authority FROM source_access_scopes WHERE offering_id=?),'ACADEMY')=?";extraArgs=[event.offeringId||event.offering.id,authority?.authority||'ACADEMY'];if(event.programmeKey){extraSQL+=" AND NOT EXISTS(SELECT 1 FROM programme_offerings WHERE programme_key=? AND offering_id<>?)";extraArgs.push(event.programmeKey,event.offering.id);}}
+  else if(event.type==='account'){
+   if(data.stream!=='account:'+event.account.accountId)throw fail('Invalid account stream.');statements.push(...accountStatements(store,event.account));
+   const a=event.account;statements.push(store.statement('DELETE FROM source_access_master_fences WHERE account_id=? AND EXISTS(SELECT 1 FROM accounts a WHERE a.account_id=source_access_master_fences.account_id AND (a.epoch>source_access_master_fences.epoch OR a.epoch=source_access_master_fences.epoch AND a.active=source_access_master_fences.active AND a.admitted=source_access_master_fences.admitted AND a.global_admin=source_access_master_fences.global_admin))',[id(a.accountId)]),store.statement('DELETE FROM circles_navigation WHERE account_id=? AND epoch<=?',[id(a.accountId),integer(a.epoch)]));
+@@ -42,7 +42,15 @@ export async function receive(request,env,store){
+   if(cancelled.length)statements.push(store.statement('UPDATE timetable SET cancelled=1,revision=? WHERE offering_id=? AND session_id IN(SELECT value FROM json_each(?))',[data.version,offeringId,JSON.stringify(cancelled)]));
+   const seen=new Set(cancelled);for(const session of event.sessions){if(session.classIds!==undefined&&(!Array.isArray(session.classIds)||session.classIds.length>100)||session.teacherIds!==undefined&&(!Array.isArray(session.teacherIds)||session.teacherIds.length>100))throw fail('Invalid session audience.');const sessionId=id(session.id);if(seen.has(sessionId))throw fail('Repeated session identity.');seen.add(sessionId);
+    const starts=integer(session.startsAt),ends=integer(session.endsAt,starts+1),zoom=session.zoomUrl?httpsURL(session.zoomUrl,{zoom:true}):null;
++   let detailsStatement;if(session.timezone!==undefined){
++    const timezone=text(session.timezone,100);try{new Intl.DateTimeFormat('en',{timeZone:timezone}).format();}catch{throw fail('Invalid session timezone.');}
++    if(!Array.isArray(session.classes)||session.classes.length>100)throw fail('Invalid class presentation.');
++    const classIds=(session.classIds||[]).map(id),labels=session.classes.map(c=>({id:id(c.id),label:c.label===null?null:text(c.label,200)}));
++    if(new Set(labels.map(c=>c.id)).size!==labels.length||labels.length!==classIds.length||labels.some(c=>!classIds.includes(c.id)))throw fail('Class labels must match the signed session audience.');
++    detailsStatement=store.statement('INSERT INTO source_session_details VALUES(?,?,?) ON CONFLICT(session_id) DO UPDATE SET timezone=excluded.timezone,classes_json=excluded.classes_json',[sessionId,timezone,JSON.stringify(labels)]);
++   }else detailsStatement=store.statement('DELETE FROM source_session_details WHERE session_id=?',[sessionId]);
+    statements.push(store.statement(`INSERT INTO timetable VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(session_id) DO UPDATE SET title=excluded.title,starts_at=excluded.starts_at,ends_at=excluded.ends_at,zoom_url=excluded.zoom_url,cancelled=excluded.cancelled,revision=excluded.revision`,[sessionId,offeringId,text(session.title),starts,ends,zoom,flag(session.cancelled||false),data.version]));statements.push(store.statement('INSERT INTO source_session_audiences VALUES(?,?,?) ON CONFLICT(session_id) DO UPDATE SET class_ids_json=excluded.class_ids_json,teacher_ids_json=excluded.teacher_ids_json',[sessionId,JSON.stringify((session.classIds||[]).map(id)),JSON.stringify((session.teacherIds||[]).map(id))]));
++   statements.push(detailsStatement);
+   }
+  }else if(event.type==='handoff'){
+   if(data.stream!=='handoff:'+event.codeHash||!/^[a-f0-9]{64}$/.test(event.codeHash||'')||!safeToken(event.challenge)||!safeToken(event.state))throw fail('Invalid sign-in handoff.');
+diff --git a/src/media.mjs b/src/media.mjs
+index b92b5a9..baff9c6 100644
+--- a/src/media.mjs
++++ b/src/media.mjs
+@@ -1,6 +1,7 @@
+ import {accessGate} from './access.mjs';
+ import {fail,id} from './protocol.mjs';
+ import {websiteAccess} from './content.mjs';
++import {recordedAssetAccess} from './recorded-support.mjs';
+ export async function mediaGate(store,actor,attachmentId,{admin=false}={}){
+  const row=await store.first(`SELECT x.*,o.object_key,o.mime_type,o.filename,o.byte_size,o.youtube_id,f.kind,f.active,p.purchased,s.role,(SELECT access_model FROM course_access_models m WHERE m.offering_id=f.offering_id) access_model,
+   EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=? AND m.offering_id=x.offering_id AND m.month=substr(x.lesson_date,1,7) AND m.cohort=x.cohort) paid
+@@ -11,7 +12,7 @@ export async function mediaGate(store,actor,attachmentId,{admin=false}={}){
+  if(admin){await store.scope(actor,row.offering_id,{admin:true});return row;}
+  if(!row.published)throw fail('This attachment is not published.',404);
+  const staff=actor.global_admin||row.role==='ADMIN'||row.role==='TEACHER';
+- if(row.audience==='WEBSITE'){await websiteAccess(store,actor,row.website_id);if(!await store.first('SELECT asset_id FROM published_assets WHERE website_id=? AND asset_id=?',[row.website_id,row.asset_id]))throw fail('This file is not in the published website.',404);}
++ if(row.audience==='WEBSITE'){const website=await websiteAccess(store,actor,row.website_id);if(!await store.first('SELECT asset_id FROM published_assets WHERE website_id=? AND asset_id=?',[row.website_id,row.asset_id]))throw fail('This file is not in the published website.',404);await recordedAssetAccess(store.env,store,actor,website,row.asset_id);}
+  else if(!staff&&!(row.kind==='COURSE'&&(row.purchased||row.access_model==='FREE')||row.kind==='TAFSEER'&&row.paid))throw fail('This lesson requires its own material rights.',403);
+  return row;
+ }
+diff --git a/src/mou-classroom.mjs b/src/mou-classroom.mjs
+new file mode 100644
+index 0000000..7039b2f
+--- /dev/null
++++ b/src/mou-classroom.mjs
+@@ -0,0 +1,62 @@
++import {mouSubjects} from '../public/shared/mou-subjects.mjs';
++import {comingSoonLabel} from '../public/shared/course-notices.mjs';
++import {programmeSnapshot} from './navigation.mjs';
++import {mouDefinition} from './programme-policy.mjs';
++import {accessGate,permittedSessionAudience} from './access.mjs';
++import {websiteAccess} from './content.mjs';
++import {fail,id,date,flag,boundedAge} from './protocol.mjs';
++
++const subjectPlan=()=>mouSubjects.map(s=>({key:s.key,title:s.title,state:s.first?'PREPARING':'COMING_SOON',availabilityLabel:s.first?null:comingSoonLabel,website:null}));
++const localMonth=(time,zone)=>{const p=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit'}).formatToParts(new Date(time)).map(p=>[p.type,p.value]));return p.year+'-'+p.month;};
++export async function mouClassroom(store,actor){
++ if(!(await programmeSnapshot(store,actor)).includes('mothers'))throw fail('Mothers of the Ummah access is required.',403,'MOU_ACCESS_REQUIRED');
++ const definition=await mouDefinition(store),now=Date.now(),subjects=subjectPlan();
++ const result={schema:'MOU_CLASSROOM_V1',title:'Mothers of the Ummah',context:{accountId:actor.account_id,epoch:actor.epoch},programme:{key:'mothers',kind:'PROGRAMME',accessModel:'MONTHLY',offeringId:null,authority:null,state:'PENDING_CONNECTION'},management:{canManage:false,requiresAuthorityRefresh:false,authority:'ACADEMY_PROXY',offeringId:null},monthly:{state:'NOT_CONNECTED',month:null,hasCurrentMonth:false,hasRetainedMonths:false},materialsConnected:false,subjects,timetable:{state:'NOT_CONNECTED',serverTime:now,sessions:[]}};
++ if(!definition)return result;
++ const offer=definition.offering_id,scope=await store.scope(actor,offer),source=await accessGate(store,actor,offer),staff=Boolean(actor.global_admin||scope.role),month=localMonth(now,definition.timezone);
++ const months=await store.first(`SELECT EXISTS(SELECT 1 FROM paid_months WHERE account_id=? AND offering_id=? AND month=? UNION ALL SELECT 1 FROM website_months WHERE account_id=? AND offering_id=? AND month=?) current_month,EXISTS(SELECT 1 FROM paid_months WHERE account_id=? AND offering_id=? UNION ALL SELECT 1 FROM website_months WHERE account_id=? AND offering_id=?) retained`,[actor.account_id,offer,month,actor.account_id,offer,month,actor.account_id,offer,actor.account_id,offer]);
++ result.programme={...result.programme,offeringId:offer,authority:definition.authority==='WEBSITE'?'STUDIO':'ACADEMY',state:staff||scope.live?'ACTIVE':'MATERIALS_ONLY'};
++ result.monthly={state:'CONNECTED',month,hasCurrentMonth:Boolean(months.current_month),hasRetainedMonths:Boolean(months.retained)};
++ const canManage=Boolean(actor.global_admin||scope.role==='ADMIN');
++ result.management={canManage,requiresAuthorityRefresh:canManage&&actor.verified_at<now-boundedAge(store.env,true),authority:'ACADEMY_PROXY',offeringId:offer};
++ // Only the first real bound subject is looked up. Nine forthcoming display
++ // entries have no operational identities, entitlement queries or actions.
++ const binding=await store.first("SELECT b.website_id FROM programme_subjects b JOIN websites w ON w.website_id=b.website_id AND w.offering_id=b.offering_id WHERE b.offering_id=? AND b.display_key='surah-al-baqarah' AND b.enabled=1",[offer]);
++ if(binding){
++  const admin=Boolean(actor.global_admin||scope.role==='ADMIN');let website=null;
++  try{website=await websiteAccess(store,actor,binding.website_id,{admin});}catch(error){if(![403,404].includes(error.status))throw error;}
++  if(website){
++   const published=Boolean(website.enabled&&website.published_key),canEdit=admin&&actor.verified_at>=now-boundedAge(store.env,true);
++   result.subjects[0]={...subjects[0],state:published?'PUBLISHED':'PREPARING',website:{id:website.website_id,title:website.title,completionMonth:website.completion_month,canOpen:published,canEdit,...(published?{href:'/studio/?website='+encodeURIComponent(website.website_id)}:{}),...(canEdit?{editorHref:'/builder/?website='+encodeURIComponent(website.website_id)}:{})}};result.materialsConnected=published;
++  }else result.subjects[0]={...subjects[0],state:'LOCKED'};
++ }
++ if(!staff&&!scope.live_entitled){result.timetable.state='LIVE_ACCESS_REQUIRED';return result;}
++ await accessGate(store,actor,offer,{live:true,admin:staff});
++ const snapshot=await store.first('SELECT version FROM stream_heads WHERE stream=?',['timetable:'+offer]);
++ if(!snapshot){result.timetable.state='PENDING';return result;}
++ const sessions=await store.all(`SELECT t.session_id,t.title,t.starts_at,t.ends_at,t.cancelled,t.zoom_url IS NOT NULL has_zoom,a.class_ids_json,a.teacher_ids_json,d.timezone,d.classes_json,
++ (SELECT json_group_array(n.display_name) FROM json_each(a.teacher_ids_json) j JOIN accounts n ON n.account_id=j.value) teacher_labels
++ FROM timetable t INDEXED BY timetable_public_offering LEFT JOIN source_session_audiences a USING(session_id) LEFT JOIN source_session_details d USING(session_id)
++ WHERE t.offering_id=? AND t.cancelled=0 AND t.ends_at>? AND t.starts_at>=? ORDER BY t.starts_at,t.session_id LIMIT 50`,[offer,now,now-86400_000]);
++ const maxAge=Math.min(Math.max(30,Math.min(86400,Number(store.env.LIVE_ACCESS_MAX_AGE_SECONDS)||boundedAge(store.env)/1000))*1000,boundedAge(store.env,staff));
++ const eligibleUntil=Math.min(actor.expires_at,actor.verified_at+boundedAge(store.env),source.verified_at+maxAge);
++ // List only this actor's real audience. Eligibility is time-independent, but
++ // expires with the proof; a browser timer cannot turn a denied gate into true.
++ result.timetable.sessions=sessions.filter(s=>permittedSessionAudience(actor,scope,source,s,s)).map(s=>{
++  const eligibleToJoin=Boolean(definition.live_enabled&&(staff||scope.live_entitled)&&source.ready&&eligibleUntil>now&&s.has_zoom);
++  return {id:s.session_id,title:s.title,startsAt:s.starts_at,endsAt:s.ends_at,timezone:s.timezone||definition.timezone,classIds:JSON.parse(s.class_ids_json||'[]'),classes:JSON.parse(s.classes_json||'null')||JSON.parse(s.class_ids_json||'[]').map(id=>({id,label:null})),teacherLabels:JSON.parse(s.teacher_labels||'[]'),joinOpensAt:s.starts_at-300_000,eligibleToJoin,eligibilityExpiresAt:Math.min(eligibleUntil,s.ends_at),canJoin:Boolean(eligibleToJoin&&now>=s.starts_at-300_000&&now<s.ends_at),joinPath:'/api/offerings/'+encodeURIComponent(offer)+'/join'};
++ });
++ result.timetable.state=result.timetable.sessions.length?'PUBLISHED':'NO_UPCOMING_SESSIONS';
++ return result;
++}
++
++export async function bindMouSubject(store,actor,offer,input,options={}){
++ const scope=await store.scope(actor,offer,{admin:true}),definition=await mouDefinition(store);
++ if(scope.programme_key!=='mothers'||definition?.offering_id!==offer||definition.authority!=='WEBSITE'||definition.phase!=='COMMITTED')throw fail('Complete the independent MOU handover before binding a subject.',409,'MOU_HANDOVER_REQUIRED');
++ if(input.displayKey!=='surah-al-baqarah')throw fail('Only the confirmed first MOU subject can be connected. Forthcoming subjects stay inert.');
++ const websiteId=id(input.websiteId),enabled=flag(input.enabled),website=await store.first('SELECT offering_id,completion_date,completion_month FROM websites WHERE website_id=?',[websiteId]);
++ if(website?.offering_id!==offer)throw fail('Choose an existing native website in this MOU programme.',403,'MOU_SUBJECT_SCOPE');
++ if(website.completion_date&&date(website.completion_date).slice(0,7)!==website.completion_month)throw fail('Review the saved subject completion date.',409,'MOU_SUBJECT_REVIEW_REQUIRED');
++ const expectedSQL=`(${options.expectedSQL||'1'}) AND EXISTS(SELECT 1 FROM programme_offerings WHERE programme_key='mothers' AND offering_id=?) AND EXISTS(SELECT 1 FROM websites WHERE website_id=? AND offering_id=?)`;
++ return store.mutate(actor,offer,input,[store.statement("INSERT INTO programme_subjects VALUES(?,'surah-al-baqarah',?,?) ON CONFLICT(offering_id,display_key) DO UPDATE SET website_id=excluded.website_id,enabled=excluded.enabled",[offer,websiteId,enabled])],{saved:true,websiteId},{...options,studio:true,expectedSQL,expectedArgs:[...(options.expectedArgs||[]),offer,websiteId,offer]});
++}
+diff --git a/src/navigation.mjs b/src/navigation.mjs
+index 1cfe903..2bad6fd 100644
+--- a/src/navigation.mjs
++++ b/src/navigation.mjs
+@@ -1,3 +1,4 @@
++import {mouDefinition,studioMouVisible} from './programme-policy.mjs';
+ import {fail,id,boundedAge} from './protocol.mjs';
+ import {publicCatalogue,catalogueAccess} from './circles.mjs';
+ export const programmeLabels={alimiyah:'Aalimiyah',reboot:'Reboot Your Maktab','arabic-intensive':'Arabic Intensive',mothers:'Mothers of the Ummah',hifz:'Hifz Academy'};
+@@ -8,7 +9,9 @@ export function checkedProgrammes(value){
+ export async function programmeSnapshot(store,actor){
+  const row=await store.first('SELECT epoch,verified_at,programmes_json FROM circles_navigation WHERE account_id=?',[actor.account_id]);
+  if(!row||row.epoch!==actor.epoch||row.verified_at<Date.now()-boundedAge(store.env))throw fail('Confirm your programme access to continue.',409,'ACCESS_REFRESH_REQUIRED');
+- return checkedProgrammes({programmes:JSON.parse(row.programmes_json)});
++ const programmes=checkedProgrammes({programmes:JSON.parse(row.programmes_json)}),mou=await mouDefinition(store);
++ if(mou?.authority==='WEBSITE'){const current=programmes.filter(k=>k!=='mothers');if(await studioMouVisible(store,actor,mou))current.push('mothers');return current;}
++ return programmes;
+ }
+ export async function circlesNavigation(env,store,actor){
+  const programmes=await programmeSnapshot(store,actor),items=(await publicCatalogue(env)).items.filter(i=>i.kind==='COURSE'&&i.websiteId&&!i.pending);
+diff --git a/src/programme-policy.mjs b/src/programme-policy.mjs
+new file mode 100644
+index 0000000..d4ab70c
+--- /dev/null
++++ b/src/programme-policy.mjs
+@@ -0,0 +1,14 @@
++// Definitions are signed Source facts, cached only inside one request's Store.
++export async function mouDefinition(store){
++ if(store.mouDefinition!==undefined)return store.mouDefinition;
++ return store.mouDefinition=await store.first("SELECT p.offering_id,p.access_model,s.authority,s.enabled,s.live_enabled,s.timezone,h.phase FROM programme_offerings p JOIN source_access_scopes s USING(offering_id) LEFT JOIN access_handovers h USING(offering_id) WHERE p.programme_key='mothers'");
++}
++export async function studioMouVisible(store,actor,definition){
++ if(!definition?.enabled||definition.authority!=='WEBSITE'||definition.phase!=='COMMITTED')return false;
++ if(actor.global_admin)return true;
++ return Boolean(await store.first(`SELECT 1 WHERE EXISTS(SELECT 1 FROM participation WHERE account_id=? AND offering_id=? AND enrolled=1)
++ OR EXISTS(SELECT 1 FROM staff WHERE account_id=? AND offering_id=?)
++ OR EXISTS(SELECT 1 FROM paid_months WHERE account_id=? AND offering_id=?)
++ OR EXISTS(SELECT 1 FROM website_months WHERE account_id=? AND offering_id=?)
++ OR EXISTS(SELECT 1 FROM surah_grants g JOIN websites w USING(website_id) WHERE g.account_id=? AND w.offering_id=?)`,Array.from({length:5},()=>[actor.account_id,definition.offering_id]).flat()));
++}
+diff --git a/src/recorded-support.mjs b/src/recorded-support.mjs
+new file mode 100644
+index 0000000..3b8f6bf
+--- /dev/null
++++ b/src/recorded-support.mjs
+@@ -0,0 +1,106 @@
++import {bodyJSON,fail,id,sha256} from './protocol.mjs';
++import {contentVersion} from './content-package.mjs';
++import {referencedAssets} from '../public/shared/model.mjs';
++
++const pair=(reading,section)=>JSON.stringify([reading,section]);
++const sourceLesson=key=>typeof key==='string'?key.match(/^recording(?:-quote|-topics|-application)?:(.+)$/)?.[1]:null;
++const parseObject=async(env,key)=>{const o=await env.CONTENT.get(key);if(!o||o.size>1_500_000)throw fail('The saved recording support needs review.',503);return bodyJSON(o.body,1_500_000);};
++
++export async function recordedSupport(env,store,website,edition=contentVersion(website.published_key)){
++ const cacheKey=website.website_id+':'+edition;store.recordedSupportCache??=new Map();
++ if(store.recordedSupportCache.has(cacheKey))return store.recordedSupportCache.get(cacheKey);
++ const row=await store.first('SELECT object_key FROM website_recording_support WHERE website_id=? AND edition=?',[website.website_id,edition]);
++ const value=row?await parseObject(env,row.object_key):null;
++ if(value&&(value.format!=='RECORDING_SUPPORT_V1'||value.websiteId!==website.website_id||value.edition!==edition||!Array.isArray(value.bindings)||!Array.isArray(value.sections)))throw fail('The saved recording support needs review.',503);
++ store.recordedSupportCache.set(cacheKey,value);return value;
++}
++
++// Preserve explicit parent associations through ordinary wording/layout edits.
++// New sections and changed source identities are never inferred. This returns
++// a D1 pointer statement for the editor's existing atomic save, rather than
++// making an index visible before the fresh authority/revision guard commits.
++export async function carryRecordedSupport(env,store,website,document,key){
++ if(website.programme_key!=='mothers')return [];
++ const edition=contentVersion(key),draft=contentVersion(website.draft_key),published=contentVersion(website.published_key);
++ if(edition===draft)return [];
++ const existing=await recordedSupport(env,store,website,edition);if(existing)return [];
++ const prior=await recordedSupport(env,store,website,draft)??await recordedSupport(env,store,website,published);if(!prior)return [];
++ const declared=new Map();for(const reading of document.lessons)for(const section of reading.sections)declared.set(pair(reading.id,section.id),section);
++ const mentioned=new Set([...declared.values()].flatMap(s=>s.blocks.map(b=>sourceLesson(b.sourceKey)).filter(Boolean))),bindings=prior.bindings.filter(b=>mentioned.has(b.editorialLessonId));
++ const native=await store.all(`SELECT x.lesson_id,x.asset_id FROM attachments x JOIN objects o USING(asset_id) WHERE x.website_id=? AND x.offering_id=? AND x.audience='RECORDING' AND o.mime_type IN('video/youtube','video/mp4') AND x.lesson_id IN(SELECT value FROM json_each(?)) LIMIT 401`,[website.website_id,website.offering_id,JSON.stringify([...new Set([...prior.sections.flatMap(s=>s.lessonIds),...prior.bindings.map(b=>b.nativeLessonId)])])]);
++ if(native.length>400)throw fail('This website needs a narrower support review.',409);
++ const validBindings=bindings.filter(b=>native.some(n=>n.lesson_id===b.nativeLessonId&&n.asset_id===b.assetId)),byEditorial=new Map(validBindings.map(b=>[b.editorialLessonId,b]));
++ const sections=prior.sections.filter(s=>{
++  const section=declared.get(pair(s.readingId,s.sectionId));if(!section||s.lessonIds.some(l=>!native.some(n=>n.lesson_id===l)))return false;
++  if(s.access==='ANY'&&(!Array.isArray(section.sourcePages)||!section.sourcePages.length||section.sourcePages.some(p=>!Number.isInteger(p)||p<1)||section.blocks.some(b=>sourceLesson(b.sourceKey))))return false;
++  return section.blocks.every(b=>{const editorial=sourceLesson(b.sourceKey);return !editorial||byEditorial.has(editorial)&&s.lessonIds.includes(byEditorial.get(editorial).nativeLessonId);});
++ });
++ const value={format:'RECORDING_SUPPORT_V1',websiteId:website.website_id,edition,bindings:validBindings,sections},encoded=JSON.stringify(value),objectKey='websites/'+website.website_id+'/recording-support/'+await sha256(encoded)+'.json';
++ await env.CONTENT.put(objectKey,encoded,{httpMetadata:{contentType:'application/json'}});
++ return [store.statement('INSERT INTO website_recording_support VALUES(?,?,?) ON CONFLICT DO NOTHING',[website.website_id,edition,objectKey])];
++}
++
++// Native content administration selects immutable metadata only after the same
++// fresh account/scope/revision guard as the website editor. Uncommitted R2 bytes
++// are unreachable; a failed/stale save cannot alter an already published view.
++export async function saveRecordedSupport(env,store,actor,website,input){
++ if(website.programme_key!=='mothers')throw fail('Recording-scoped support is only enabled for the reviewed MOU programme.',409);
++ const edition=contentVersion(website.draft_key);if(!edition)throw fail('Save the actual website draft before linking its recording support.',409);
++ if(!Array.isArray(input.bindings)||input.bindings.length>200||!Array.isArray(input.sections)||input.sections.length>1000)throw fail('Keep the recording support index bounded.');
++ const document=await parseObject(env,website.draft_key),declared=new Map();
++ for(const reading of document.lessons)for(const section of reading.sections)declared.set(pair(reading.id,section.id),section);
++ const bindings=input.bindings.map(b=>({editorialLessonId:id(b.editorialLessonId),nativeLessonId:id(b.nativeLessonId),assetId:id(b.assetId)}));
++ const byEditorial=new Map(bindings.map(b=>[b.editorialLessonId,b]));if(byEditorial.size!==bindings.length)throw fail('Choose each editorial recording once.');
++ const mentioned=new Set([...declared.values()].flatMap(s=>s.blocks.map(b=>sourceLesson(b.sourceKey)).filter(Boolean)));
++ if(bindings.some(b=>!mentioned.has(b.editorialLessonId)))throw fail('A recording guide is absent from this exact draft.');
++ const seen=new Set(),sections=input.sections.map(s=>{
++  const readingId=id(s.readingId),sectionId=id(s.sectionId),key=pair(readingId,sectionId),section=declared.get(key);
++  if(!section||seen.has(key)||!Array.isArray(s.lessonIds)||!s.lessonIds.length||s.lessonIds.length>200)throw fail('Choose each real support section once with its exact recorded lessons.');seen.add(key);
++  const lessonIds=s.lessonIds.map(id);if(new Set(lessonIds).size!==lessonIds.length)throw fail('Choose each support lesson once.');
++  const access=s.access||'ALL';if(!['ALL','ANY'].includes(access))throw fail('Choose explicit all-parent or shared-source access.');
++  if(access==='ANY'&&(!Array.isArray(section.sourcePages)||!section.sourcePages.length||section.sourcePages.some(p=>!Number.isInteger(p)||p<1)||section.blocks.some(b=>sourceLesson(b.sourceKey))))throw fail('Any-parent access is only for explicitly reviewed shared PDF source sections, without recording-specific guide blocks.');
++  // A mixed-recording section is all-or-nothing. Split or explicitly index
++  // smaller source sections rather than exposing another month's summary.
++  for(const b of section.blocks){const editorial=sourceLesson(b.sourceKey);if(editorial&&(!byEditorial.has(editorial)||!lessonIds.includes(byEditorial.get(editorial).nativeLessonId)))throw fail('Every recording-specific block needs its exact parent lesson.');}
++  return {readingId,sectionId,lessonIds,access};
++ });
++ const wanted=[...new Set([...bindings.map(b=>b.nativeLessonId),...sections.flatMap(s=>s.lessonIds)])];
++ const lessons=wanted.length?await store.all(`SELECT x.lesson_id,x.asset_id FROM attachments x JOIN objects o USING(asset_id)
++  WHERE x.offering_id=? AND x.website_id=? AND x.audience='RECORDING' AND o.mime_type IN('video/youtube','video/mp4') AND x.lesson_id IN(SELECT value FROM json_each(?)) LIMIT 401`,[website.offering_id,website.website_id,JSON.stringify(wanted)]):[];
++ if(lessons.length>400||wanted.some(l=>!lessons.some(x=>x.lesson_id===l))||bindings.some(b=>!lessons.some(x=>x.lesson_id===b.nativeLessonId&&x.asset_id===b.assetId)))throw fail('Use exact recording lessons/assets already attached to this website. No timetable association is required.');
++ const value={format:'RECORDING_SUPPORT_V1',websiteId:website.website_id,edition,bindings,sections},encoded=JSON.stringify(value),key='websites/'+website.website_id+'/recording-support/'+await sha256(encoded)+'.json';
++ await env.CONTENT.put(key,encoded,{httpMetadata:{contentType:'application/json'}});
++ const revision=website.revision+1;
++ return store.mutate(actor,website.offering_id,input,[
++  store.statement('INSERT INTO website_recording_support VALUES(?,?,?) ON CONFLICT(website_id,edition) DO UPDATE SET object_key=excluded.object_key',[website.website_id,edition,key]),
++  store.statement('UPDATE websites SET revision=? WHERE website_id=?',[revision,website.website_id]),
++  store.statement('INSERT INTO website_history VALUES(?,?,?,?,?,?)',[website.website_id,revision,'recording-support',website.draft_key,Date.now(),actor.account_id])
++ ],{websiteId:website.website_id,revision,action:input.action,edition},{studio:true,expectedSQL:`EXISTS(SELECT 1 FROM websites WHERE website_id=? AND revision=? AND draft_key=?)
++  AND NOT EXISTS(SELECT 1 FROM json_each(?) l WHERE NOT EXISTS(SELECT 1 FROM attachments a JOIN objects o USING(asset_id) WHERE a.offering_id=? AND a.website_id=? AND a.lesson_id=l.value AND a.audience='RECORDING' AND o.mime_type IN('video/youtube','video/mp4')))
++  AND NOT EXISTS(SELECT 1 FROM json_each(?) b WHERE NOT EXISTS(SELECT 1 FROM attachments a WHERE a.offering_id=? AND a.website_id=? AND a.lesson_id=json_extract(b.value,'$.nativeLessonId') AND a.asset_id=json_extract(b.value,'$.assetId') AND a.audience='RECORDING'))`,expectedArgs:[website.website_id,input.revision,website.draft_key,JSON.stringify(wanted),website.offering_id,website.website_id,JSON.stringify(bindings),website.offering_id,website.website_id]});
++}
++
++export async function recordingScopedDocument(env,store,actor,website,document){
++ if(website.programme_key!=='mothers'||actor.global_admin||website.role||website.granted)return {document,contentAccess:{mode:'FULL_TEXT'}};
++ const support=await recordedSupport(env,store,website);
++ // One bounded indexed month/lesson query per website response. No Source calls
++ // or per-reading permission queries; recording-only lessons remain in media.
++ const rows=await store.all(`SELECT x.lesson_id FROM paid_months m CROSS JOIN attachments x INDEXED BY attachments_month
++  WHERE m.account_id=? AND m.offering_id=? AND x.offering_id=m.offering_id AND substr(x.lesson_date,1,7)=+m.month AND x.cohort=m.cohort AND x.website_id=? AND x.audience='RECORDING' AND x.published=1 LIMIT 401`,[actor.account_id,website.offering_id,website.website_id]);
++ if(rows.length>400)throw fail('This website needs a narrower recorded-lesson view.',409,'RECORDING_SCOPE_LIMIT');
++ const allowed=new Set(rows.map(r=>r.lesson_id)),sections=new Map((support?.sections||[]).map(s=>[pair(s.readingId,s.sectionId),s]));
++ const filtered=structuredClone(document);filtered.lessons=filtered.lessons.flatMap(reading=>{
++  const visible=reading.sections.filter(s=>{const support=sections.get(pair(reading.id,s.id)),parents=support?.lessonIds;return parents?.length&&(support.access==='ANY'?parents.some(l=>allowed.has(l)):parents.every(l=>allowed.has(l)));});
++  return visible.length?[{...reading,summary:'',sections:visible}]:[];
++ });
++ // Unassigned global text/files are not inferred to belong to any recording.
++ filtered.home={...filtered.home,headline:filtered.name,subtitle:'',description:'',caption:'',journeyTitle:'',themes:[],imageId:''};
++ filtered.materials={...filtered.materials,intro:'',files:[]};delete filtered.academyMediaIds;
++ return {document:filtered,contentAccess:{mode:'RECORDING_SCOPED',supportConnected:Boolean(support)}};
++}
++
++export async function recordedAssetAccess(env,store,actor,website,assetId){
++ if(website.programme_key!=='mothers'||actor.global_admin||website.role||website.granted)return;
++ const document=await parseObject(env,website.published_key),filtered=await recordingScopedDocument(env,store,actor,website,document);
++ if(!referencedAssets(filtered.document).includes(assetId))throw fail('This file needs its own recorded-lesson text rights.',403,'MATERIAL_ACCESS_REQUIRED');
++}
+diff --git a/src/studio-access.mjs b/src/studio-access.mjs
+index 8fd6e82..551f86d 100644
+--- a/src/studio-access.mjs
++++ b/src/studio-access.mjs
+@@ -22,7 +22,7 @@ export async function studioAccess(request,env,store,fetcher){
+  const offer=id(input.offeringId),command=input.command||{};if(!command.action?.startsWith('handover-'))await store.scope(actor,offer,{admin:true});let result;
+  if(command.action==='read')result=await readAccess(store,actor,offer,command);
+  else if(command.action==='save'){
+-  if(!['access-batch','participant','paid-months','website-months','surah-grant','staff'].includes(command.change?.action))throw fail('Choose a supported access change.');
++  if(!['access-batch','participant','paid-months','website-months','surah-grant','staff','mou-subject'].includes(command.change?.action))throw fail('Choose a supported access change.');
+   const expected=integer(command.revision),options={expectedSQL:revisionSQL,expectedArgs:[offer,expected]};
+   // Native Save preserves exact operation receipts, scope checks and mutation guards.
+   result=await change(env,store,actor,offer,command.change,options);
+diff --git a/src/worker.mjs b/src/worker.mjs
+index 4bbe30b..b54c57d 100644
+--- a/src/worker.mjs
++++ b/src/worker.mjs
+@@ -1,9 +1,11 @@
++import {mouClassroom} from './mou-classroom.mjs';
+ import {coursePublication} from './course-publication.mjs';
+ import {dashboardSnapshot} from './dashboard.mjs';
+ import {publicHeaderDate} from './header-date.mjs';
+ import {circlesNavigation,programmeSnapshot} from './navigation.mjs';
+ import {publicCatalogue,catalogueAccess,permittedGuideBindings,websitePresentation} from './circles.mjs';
+ import {academyAuthority,accessGate,joinAudience} from './access.mjs';
++import {recordingScopedDocument} from './recorded-support.mjs';
+ import {Store} from './database.mjs';
+ import {fail,failure,json,bodyJSON,parseCookie,sha256,originCheck,cookie,id,text,integer,bytes,signedHeaders,safeToken,boundedAge} from './protocol.mjs';
+ import {receive,exchange} from './integration.mjs';
+@@ -58,7 +60,7 @@ async function route(request,env,store,fetcher){
+  if(path==='/api/me'&&method==='GET')return json({accountId:actor.account_id,displayName:actor.display_name,globalAdmin:Boolean(actor.global_admin),verifiedAt:actor.verified_at});
+  if(path==='/api/circles/dashboard'&&method==='POST')return json(await dashboardSnapshot(env,store,actor,await bodyJSON(request.body,4096),fetcher));
+  if(path==='/api/circles/navigation'&&method==='GET')return json(await circlesNavigation(env,store,actor));
+- if(path==='/api/circles/classrooms/mothers'&&method==='GET'){if(!(await programmeSnapshot(store,actor)).includes('mothers'))throw fail('Mothers of the Ummah membership is required.',403);return json({title:'Mothers of the Ummah',materialsConnected:false});}
++ if(path==='/api/circles/classrooms/mothers'&&method==='GET'){return json(await mouClassroom(store,actor));}
+  if(path==='/api/circles/access'&&method==='GET')return json(await catalogueAccess(store,actor,url.searchParams.getAll('website')));
+  if(path==='/api/websites'&&method==='GET'){
+   // Start with this account's indexed rights, rather than scanning all sites for an OR condition.
+@@ -78,9 +80,10 @@ async function route(request,env,store,fetcher){
+   if(method!=='GET')throw fail('Use GET to read website content.',405);
+   if(action==='history'){await websiteAccess(store,actor,websiteId,{admin:true});return json({history:await store.all('SELECT revision,action,created_at,actor_id FROM website_history WHERE website_id=? AND revision<? ORDER BY revision DESC LIMIT 51',[websiteId,Number(url.searchParams.get('before'))||Number.MAX_SAFE_INTEGER])});}
+   if(action==='assets'){const website=await websiteAccess(store,actor,websiteId,{admin:true});return json({websiteId,offeringId:website.offering_id,...await attachedWebsiteAssets(store,websiteId,{assetId:url.searchParams.get('assetId'),after:url.searchParams.get('after')||''})});}
+-  const website=await websiteAccess(store,actor,websiteId,{admin:Boolean(action)}),key=action?website.draft_key:website.published_key,document=key?await objectJSON(env.CONTENT,key):null;
++  const website=await websiteAccess(store,actor,websiteId,{admin:Boolean(action)}),key=action?website.draft_key:website.published_key;
++  const rawDocument=key?await objectJSON(env.CONTENT,key):null,{document,contentAccess}=rawDocument&&!action?await recordingScopedDocument(env,store,actor,website,rawDocument):{document:rawDocument,contentAccess:{mode:'FULL_TEXT'}};
+   const assets=await editionAssets(store,websiteId,document,{draft:Boolean(action)});
+-  return json({websiteId,offeringId:website.offering_id,kind:website.kind,presentation:await websitePresentation(env,website),revision:website.revision,document,assets,enabled:Boolean(website.enabled),canEdit:Boolean(actor.global_admin||website.role==='ADMIN'),draftVersion:contentVersion(website.draft_key),publishedVersion:contentVersion(website.published_key),capabilities:{assessments:false,journal:false}});
++  return json({websiteId,offeringId:website.offering_id,kind:website.kind,presentation:await websitePresentation(env,website),revision:website.revision,document,contentAccess,assets,enabled:Boolean(website.enabled),canEdit:Boolean(actor.global_admin||website.role==='ADMIN'),draftVersion:contentVersion(website.draft_key),publishedVersion:contentVersion(website.published_key),capabilities:{assessments:false,journal:false}});
+  }
+  match=path.match(/^\/api\/media\/([-A-Za-z0-9_:]+)$/);if(match&&['GET','HEAD'].includes(method)){const row=await mediaGate(store,actor,match[1],{admin:url.searchParams.get('draft')==='1'});return streamMedia(env,row,request);}
+  match=path.match(/^\/api\/offerings\/([-A-Za-z0-9_:]+)\/(sessions|media|join|enrol|provision|resume)$/);
+@@ -95,7 +98,7 @@ async function route(request,env,store,fetcher){
+    // Unary + preserves the month value while removing column affinity: SQLite can
+    // then use the substr expression index for each paid month, not scan the offer.
+    else if(scope.kind==='TAFSEER')rows=await store.all(`${select} FROM paid_months m CROSS JOIN attachments x INDEXED BY attachments_month JOIN objects o USING(asset_id) WHERE m.account_id=? AND m.offering_id=? AND x.offering_id=m.offering_id AND substr(x.lesson_date,1,7)=+m.month AND x.cohort=m.cohort AND x.audience='RECORDING' AND x.published=1 AND x.attachment_id>?${filter} ORDER BY x.attachment_id LIMIT 51`,[actor.account_id,offeringId,after,...tail]);
+-   const media=rows.slice(0,50);return json({media,more:rows.length>50,mediaBindings:mediaWebsite?await permittedGuideBindings(env,mediaWebsite,media):[]});
++   const media=rows.slice(0,50);return json({media,more:rows.length>50,mediaBindings:mediaWebsite?await permittedGuideBindings(env,mediaWebsite,media,store):[]});
+   }
+   if(method!=='POST')throw fail('This action needs a POST request.',405);const input=await bodyJSON(request.body,16384);
+   if(action==='join'){await accessGate(store,actor,offeringId,{live:true});if(!actor.global_admin&&!scope.live&&!scope.role)throw fail('Current live-session access is required.',403);const session=await store.first('SELECT session_id,starts_at,ends_at,zoom_url,cancelled FROM timetable WHERE session_id=? AND offering_id=?',[id(input.sessionId),offeringId]),now=Date.now();if(!session||session.cancelled||now<session.starts_at-300_000||now>=session.ends_at||!session.zoom_url)throw fail('Joining is available from five minutes before the lesson until it ends.',403,'JOIN_CLOSED');await joinAudience(store,actor,offeringId,session,scope);return json({destination:session.zoom_url});}
+diff --git a/tests/academy-runtime.mjs b/tests/academy-runtime.mjs
+index 218caac..fbe5ac1 100644
+--- a/tests/academy-runtime.mjs
++++ b/tests/academy-runtime.mjs
+@@ -1,16 +1,16 @@
+ import {build} from 'esbuild';import {readFileSync,existsSync} from 'node:fs';import {resolve} from 'node:path';import {pathToFileURL} from 'node:url';
+ export async function academyRuntime(bindings){
+  const metrics={queries:0,rowsRead:0,rowsWritten:0},statements=[],telemetry=async request=>{const item=await request.json();for(const key of Object.keys(metrics))metrics[key]+=item[key];statements.push(...item.statements);return new Response('counted');},instrument=new URL('./source-d1-metrics.mjs',import.meta.url).pathname;
+- const root=resolve(process.env.ACADEMY_SOURCE||'../Academy-course-studio-publication');
++ const root=resolve(process.env.ACADEMY_SOURCE||'../Academy-mou-studio-migration');
+  const {splitFixture}=await import(pathToFileURL(root+'/backend/tests/fixtures/academy-split-fixture.mjs'));
+  const {importSQL}=await import(pathToFileURL(root+'/backend/tools/academy-split/artifact.mjs'));
+- const f=await splitFixture();if(bindings.DASHBOARD_TEST==='1'&&!f.databases.core.prepare("SELECT 1 FROM sqlite_schema WHERE name='messaging_drafts'").get())f.databases.core.exec(readFileSync(root+'/backend/migrations/academy-core/0003_messaging.sql','utf8'));for(const [table,name] of [['program_monthly_subscriptions','0006_program_monthly_subscriptions.sql'],['program_surahs','0007_program_surah_websites.sql'],['program_surah_grants','0008_program_surah_grants.sql']])if(!f.databases.core.prepare("SELECT 1 FROM sqlite_schema WHERE name=?").get(table))f.databases.core.exec(readFileSync(root+'/backend/migrations/academy-core/'+name,'utf8'));for(const migration of ['0011_website_platform.sql','0012_website_schedule_library.sql','0013_website_parallel_access.sql','0016_course_studio_publication.sql',...(existsSync(root+'/backend/migrations/academy-core/0014_website_navigation.sql')?['0014_website_navigation.sql']:[]),...(existsSync(root+'/backend/migrations/academy-core/0015_studio_access_admin.sql')?['0015_studio_access_admin.sql']:[])])f.databases.core.exec(readFileSync(root+'/backend/migrations/academy-core/'+migration,'utf8'));f.databases.core.exec("UPDATE website_platform_control SET enabled=1;UPDATE split_deployment_state SET state='READY'");
++ const f=await splitFixture();if(bindings.DASHBOARD_TEST==='1'&&!f.databases.core.prepare("SELECT 1 FROM sqlite_schema WHERE name='messaging_drafts'").get())f.databases.core.exec(readFileSync(root+'/backend/migrations/academy-core/0003_messaging.sql','utf8'));for(const [table,name] of [['program_monthly_subscriptions','0006_program_monthly_subscriptions.sql'],['program_surahs','0007_program_surah_websites.sql'],['program_surah_grants','0008_program_surah_grants.sql']])if(!f.databases.core.prepare("SELECT 1 FROM sqlite_schema WHERE name=?").get(table))f.databases.core.exec(readFileSync(root+'/backend/migrations/academy-core/'+name,'utf8'));for(const migration of ['0011_website_platform.sql','0012_website_schedule_library.sql','0013_website_parallel_access.sql','0016_course_studio_publication.sql','0017_monthly_programme_bridge.sql',...(existsSync(root+'/backend/migrations/academy-core/0014_website_navigation.sql')?['0014_website_navigation.sql']:[]),...(existsSync(root+'/backend/migrations/academy-core/0015_studio_access_admin.sql')?['0015_studio_access_admin.sql']:[])])f.databases.core.exec(readFileSync(root+'/backend/migrations/academy-core/'+migration,'utf8'));f.databases.core.exec("UPDATE website_platform_control SET enabled=1;UPDATE split_deployment_state SET state='READY'");
+  const api=root+'/backend/src/academy-development-runtime.js',bridge=root+'/backend/src/academy/d1/web-platform/bridge.mjs';
+  const bundle=async input=>(await build({stdin:{contents:input,resolveDir:root},bundle:true,format:'esm',platform:'browser',write:false,external:['cloudflare:workers']})).outputFiles[0].text;
+  const sourceScript=await bundle(`import app from ${JSON.stringify(api)};import {measuredBindings} from ${JSON.stringify(instrument)};import {recoverWebsite} from ${JSON.stringify(bridge)};import {resumeCourseStudio} from ${JSON.stringify(root+'/backend/src/academy/d1/web-platform/course-publication.mjs')};export {ProgramTimetableCoordinator} from ${JSON.stringify(api)};export default {async fetch(r,raw,c){const e=measuredBindings(raw);if(new URL(r.url).pathname==='/__local/course-setup'){const input=await r.json();await resumeCourseStudio(e,{activityKey:input.activity,fetcher:async(u,o)=>{if(input.mode==='offline')throw Error('Synthetic network outage');const reply=await e.PLATFORM_TEST.fetch(u,o);if(input.mode==='lost-ack'&&JSON.parse(o.body).command.action==='handover-commit')throw Error('Synthetic lost commit acknowledgement');return reply;}});return Response.json({done:true});}if(new URL(r.url).pathname==='/__local/recover'){await recoverWebsite(e,{fetcher:(u,o)=>e.PLATFORM_TEST.fetch(u,o)});return Response.json({done:true});}const background=[];const context=e.ACADEMY_COURSE_STUDIO_PUBLICATION==='1'?{waitUntil(p){background.push(p);c.waitUntil(p);}}:c;const response=await app.fetch(r,{...e,AUTH_LOGIN_RATE_LIMITER:{limit:async()=>({success:true})}},context);await Promise.allSettled(background);return response;}};`);
+  const coordinatorScript=await bundle(`import {AcademySplitCoordinator as Base} from ${JSON.stringify(root+'/backend/src/academy-split-coordinator.js')};import {measuredBindings} from ${JSON.stringify(instrument)};export class AcademySplitCoordinator extends Base{constructor(ctx,e){super(ctx,measuredBindings(e));}}export default {fetch:()=>new Response('Not found',{status:404})};`);
+  const d1Databases={ACADEMY_DB:'source-core',ACADEMY_ADMIN_DB:'source-admin'},durableObjects={ACADEMY_SPLIT_COORDINATOR:{className:'AcademySplitCoordinator',scriptName:'source-coordinator',useSQLite:true}};
+- const env={...Object.fromEntries(Object.entries(f.source.env).filter(([,v])=>typeof v==='string')),ACADEMY_DB_GENERATION:'SPLIT_V1',ACADEMY_D1_RUN_ID:f.prepared.report.sourceDigest,ACADEMY_ACCEPTED_SETUP:'1',ACADEMY_LEARNING_OPERATIONS:'3',ACADEMY_MEDIA_SEPARATION:'1',ENVIRONMENT:'local',ALLOWED_ORIGINS:'https://academy.test',ACADEMY_WEB_PLATFORM:'1',...(bindings.COURSE_PUBLICATION_TEST==='1'?{ACADEMY_COURSE_STUDIO_PUBLICATION:'1'}:{}),...(bindings.DASHBOARD_TEST==='1'?{ACADEMY_MESSAGING:'1'}:{}),...(bindings.NAVIGATION_TEST?{WEBSITE_PLATFORM_NAVIGATION:JSON.stringify(Object.fromEntries(Object.entries(bindings.NAVIGATION_TEST).map(([key,scope])=>[key,f.scopes[scope].slice(8)])))}:{}),ACADEMY_TO_WEBSITE_SECRET:bindings.ACADEMY_TO_WEBSITE_SECRET,WEBSITE_TO_ACADEMY_SECRET:bindings.WEBSITE_TO_ACADEMY_SECRET,WEBSITE_PLATFORM_ORIGIN:'https://website.test',WEBSITE_PLATFORM_ACADEMY_ORIGIN:'https://academy.test',...(bindings.AUTHORITY_MODE==='ACADEMY'?{ACADEMY_MONTHLY_SUBSCRIPTIONS:'1',ACADEMY_SURAH_GRANTS:'1'}:{}),ACADEMY_OPEN_LIBRARY_STORAGE_KEY:'local-synthetic-library'};
++ const env={...Object.fromEntries(Object.entries(f.source.env).filter(([,v])=>typeof v==='string')),ACADEMY_DB_GENERATION:'SPLIT_V1',ACADEMY_D1_RUN_ID:f.prepared.report.sourceDigest,ACADEMY_ACCEPTED_SETUP:'1',ACADEMY_LEARNING_OPERATIONS:'3',ACADEMY_MEDIA_SEPARATION:'1',ENVIRONMENT:'local',ALLOWED_ORIGINS:'https://academy.test',ACADEMY_WEB_PLATFORM:'1',...(bindings.MOU_TEST==='1'?{ACADEMY_MOU_STUDIO:'1'}:{}),...(bindings.COURSE_PUBLICATION_TEST==='1'?{ACADEMY_COURSE_STUDIO_PUBLICATION:'1'}:{}),...(bindings.DASHBOARD_TEST==='1'?{ACADEMY_MESSAGING:'1'}:{}),...(bindings.NAVIGATION_TEST?{WEBSITE_PLATFORM_NAVIGATION:JSON.stringify(Object.fromEntries(Object.entries(bindings.NAVIGATION_TEST).map(([key,scope])=>[key,f.scopes[scope].slice(8)])))}:{}),ACADEMY_TO_WEBSITE_SECRET:bindings.ACADEMY_TO_WEBSITE_SECRET,WEBSITE_TO_ACADEMY_SECRET:bindings.WEBSITE_TO_ACADEMY_SECRET,WEBSITE_PLATFORM_ORIGIN:'https://website.test',WEBSITE_PLATFORM_ACADEMY_ORIGIN:'https://academy.test',...(bindings.AUTHORITY_MODE==='ACADEMY'?{ACADEMY_MONTHLY_SUBSCRIPTIONS:'1',ACADEMY_SURAH_GRANTS:'1'}:{}),ACADEMY_OPEN_LIBRARY_STORAGE_KEY:'local-synthetic-library'};
+  const workers=[{name:'academy',modules:true,script:sourceScript,compatibilityDate:'2026-09-28',compatibilityFlags:['nodejs_compat'],bindings:env,d1Databases,durableObjects:{...durableObjects,PROGRAM_TIMETABLE_COORDINATOR:{className:'ProgramTimetableCoordinator',useSQLite:true}},r2Buckets:{MEDIA_BUCKET:'source-media-public',LESSON_MEDIA_BUCKET:'source-media-private',ASSESSMENT_BUCKET:'source-assessments'},serviceBindings:{PLATFORM_TEST:'platform',WEBSITE_PLATFORM_SERVICE:'platform',LOCAL_D1_METRICS:telemetry},outboundService:async()=>new Response('External access blocked in local tests',{status:503})},{name:'source-coordinator',modules:true,script:coordinatorScript,compatibilityDate:'2026-09-28',compatibilityFlags:['nodejs_compat'],d1Databases,durableObjects,serviceBindings:{LOCAL_D1_METRICS:telemetry}}];
+  return {f,root,workers,metrics,statements,resetMetrics(){for(const key of Object.keys(metrics))metrics[key]=0;statements.length=0;},async seed(runtime){for(const owner of ['core','admin']){const db=f.databases[owner],target=await runtime.getD1Database(owner==='core'?'ACADEMY_DB':'ACADEMY_ADMIN_DB','academy'),objects=db.prepare("SELECT type,sql FROM sqlite_schema WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' ORDER BY rowid").all(),schema={tableSQL:objects.filter(o=>o.type==='table').map(o=>o.sql+';').join('\n'),afterSQL:objects.filter(o=>o.type!=='table').map(o=>o.sql+';').join('\n')},list=importSQL(db,schema,{statementsOnly:true}).flatMap(sql=>sql===schema.tableSQL?objects.filter(o=>o.type==='table').map(o=>o.sql):sql===schema.afterSQL?objects.filter(o=>o.type!=='table').map(o=>o.sql):[sql]);for(let i=0;i<list.length;i+=30)await target.batch(list.slice(i,i+30).map(sql=>target.prepare(sql)));}}};
+ }
+diff --git a/tests/course-notices.test.mjs b/tests/course-notices.test.mjs
+new file mode 100644
+index 0000000..061c32c
+--- /dev/null
++++ b/tests/course-notices.test.mjs
+@@ -0,0 +1,33 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {readFile} from 'node:fs/promises';
++import {resolve,join} from 'node:path';
++import {runInNewContext} from 'node:vm';
++import {forthcomingCourseNotices,comingSoonCard,comingSoonLabel} from '../public/shared/course-notices.mjs';
++
++const build=process.env.CIRCLES_UI_BUILD&&resolve(process.env.CIRCLES_UI_BUILD);
++test('forthcoming free notices have no website, enrolment or interactive action',()=>{
++ assert.equal(comingSoonLabel,'Coming soon إن شاء الله');
++ assert.deepEqual(forthcomingCourseNotices.map(c=>c.title),['Parenting for the Aakhirah','Names of Allah']);
++ for(const notice of forthcomingCourseNotices){
++  assert.deepEqual(Object.keys(notice).sort(),['access','key','title']);assert.equal(notice.access,'free');
++  const html=comingSoonCard(notice);assert.match(html,/Coming soon <span lang="ar" dir="rtl">إن شاء الله<\/span>/);
++  assert.doesNotMatch(html,/<a\b|<button\b|href=|tabindex=|data-action=|enrol/i);
++ }
++});
++test('the composed catalogue adds notices only to free display, preserving four paid and ten rotating free courses',{skip:!build},async()=>{
++ const read=p=>readFile(join(build,p),'utf8'),context={};
++ runInNewContext(await read('circles/free-learning-catalogue.js'),context);runInNewContext(await read('circles/free-learning.js'),context);
++ assert.equal(context.AcademyPaidCourses.length,4);assert.equal(context.AcademyApprovedFreeCourses.length,10);
++ assert.deepEqual(Array.from(context.AcademyPaidCourses,c=>c.key).sort(),['spending','stillness-in-my-salah','surah-al-kahf','tawakkul-mindset']);
++ assert(![...context.AcademyPaidCourses,...context.AcademyApprovedFreeCourses].some(c=>c.key==='qanaah'));
++ for(const now of [Date.parse('2026-10-31'),Date.parse('2026-11-06')]){
++  const home=context.AcademyFreeLearning.homepageCourses(now);assert.equal(home.length,5);
++  assert(!home.some(c=>forthcomingCourseNotices.some(n=>n.key===c.key)));assert.equal(context.AcademyFreeLearning.homepagePaidCourses(now).length,1);
++ }
++ const source=await read('circles/podcast-view.mjs');assert(source.includes("${freeCatalogue.map(coverCard).join('')}${forthcomingCourseNotices.map(comingSoonCard).join('')}"));
++ assert.match(await read('circles/free-learning.html'),/href="\/course-notices.css"/);
++ assert.doesNotMatch(await read('circles/academy/mothers/surah-al-baqarah/index.html'),/course-notices.css/);
++ const imratun=JSON.parse(await read('circles/free-learning/imratun-muminah.json'));
++ assert.match(JSON.stringify(imratun),/Qana|Contentment/i,'Existing Qana’ah material remains inside Imra’tun Mu’minah');
++});
+diff --git a/tests/fixture.mjs b/tests/fixture.mjs
+index 9261cde..f946729 100644
+--- a/tests/fixture.mjs
++++ b/tests/fixture.mjs
+@@ -4,10 +4,10 @@ import {build} from 'esbuild';
+ import {readFileSync} from 'node:fs';
+ import {random,sha256,challenge,signedHeaders} from '../src/protocol.mjs';
+ import {newCourse} from '../public/shared/model.mjs';
+-export async function fixture({academy=false,authorityMode='WEBSITE',academyApiOrigin,verification={},navigation,dashboard=false,coursePublication=false}={}){
++export async function fixture({academy=false,authorityMode='WEBSITE',academyApiOrigin,verification={},navigation,dashboard=false,coursePublication=false,mou=false}={}){
+  const secret=random()+random(),entry=new URL('../src/worker.mjs',import.meta.url).pathname;
+  const script=(await build({stdin:{contents:`import {handle} from ${JSON.stringify(entry)};export default {fetch(r,e,c){${academy?"if(new URL(r.url).hostname==='academy.test')return e.ACADEMY_TEST.fetch(r);":''}return handle(r,e,c,${academy?'(u,o)=>{if(e.ACADEMY_API_ORIGIN&&new URL(u).origin!==e.ACADEMY_API_ORIGIN)throw Error("Server commands must use the API origin");return e.ACADEMY_TEST.fetch(u,o)}':"async()=>{throw Error('No Academy network call is allowed in this fixture');}"});}};`,resolveDir:process.cwd()},bundle:true,write:false,format:'esm',platform:'browser',external:['cloudflare:workers']})).outputFiles[0].text;
+- const env={PLATFORM_ENABLED:'1',...(coursePublication?{COURSE_PUBLICATION_TEST:'1'}:{}),ENVIRONMENT:'local',WEBSITE_ORIGIN:'https://website.test',ACADEMY_ORIGIN:'https://academy.test',AUTHORITY_MODE:authorityMode,...(dashboard?{DASHBOARD_TEST:'1'}:{}),...(navigation?{NAVIGATION_TEST:navigation}:{}),...(academyApiOrigin?{ACADEMY_API_ORIGIN:academyApiOrigin}:{}),ACCOUNT_MAX_AGE_SECONDS:String(verification.accountSeconds??86400),ADMIN_MAX_AGE_SECONDS:String(verification.adminSeconds??300),...(verification.liveSeconds===undefined?{}:{LIVE_ACCESS_MAX_AGE_SECONDS:String(verification.liveSeconds)}),ACADEMY_TO_WEBSITE_SECRET:secret,WEBSITE_TO_ACADEMY_SECRET:random()+random()};
++ const env={PLATFORM_ENABLED:'1',...(mou?{MOU_TEST:'1'}:{}),...(coursePublication?{COURSE_PUBLICATION_TEST:'1'}:{}),ENVIRONMENT:'local',WEBSITE_ORIGIN:'https://website.test',ACADEMY_ORIGIN:'https://academy.test',AUTHORITY_MODE:authorityMode,...(dashboard?{DASHBOARD_TEST:'1'}:{}),...(navigation?{NAVIGATION_TEST:navigation}:{}),...(academyApiOrigin?{ACADEMY_API_ORIGIN:academyApiOrigin}:{}),ACCOUNT_MAX_AGE_SECONDS:String(verification.accountSeconds??86400),ADMIN_MAX_AGE_SECONDS:String(verification.adminSeconds??300),...(verification.liveSeconds===undefined?{}:{LIVE_ACCESS_MAX_AGE_SECONDS:String(verification.liveSeconds)}),ACADEMY_TO_WEBSITE_SECRET:secret,WEBSITE_TO_ACADEMY_SECRET:random()+random()};
+  const source=academy?await (await import('./academy-runtime.mjs')).academyRuntime(env):null;
+  const runtime=new Miniflare(convertV4MiniflareOptions({workers:[{name:'platform',modules:true,script,compatibilityDate:'2026-09-28',compatibilityFlags:['nodejs_compat'],bindings:env,d1Databases:{DB:'platform-local'},r2Buckets:{CONTENT:'content-local',MEDIA:'media-local'},...(academy?{serviceBindings:{ACADEMY_TEST:'academy'}}:{})},...(source?.workers||[])]}));
+  if(source)try{await source.seed(runtime);}catch(error){await runtime.dispose();source.f.close();throw error;}
+diff --git a/tests/mou-subjects.test.mjs b/tests/mou-subjects.test.mjs
+new file mode 100644
+index 0000000..e2d45e8
+--- /dev/null
++++ b/tests/mou-subjects.test.mjs
+@@ -0,0 +1,18 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {mouSubjects,mouSubjectsHTML} from '../public/shared/mou-subjects.mjs';
++import {mothersClassroom} from '../public/shared/circles-navigation.mjs';
++
++test('MOU has Baqarah first, once, followed by the nine confirmed forthcoming subjects',()=>{
++ assert.equal(mouSubjects.length,10);assert.equal(new Set(mouSubjects.map(s=>s.key)).size,10);
++ assert.deepEqual(mouSubjects[0],{key:'surah-al-baqarah',title:'Tadabbur: Surah al-Baqarah',first:true});
++ assert.equal(mouSubjects.filter(s=>s.first).length,1);
++ const html=mouSubjectsHTML();assert.equal(html.split('Coming soon <span lang="ar" dir="rtl">إن شاء الله</span>').length-1,9);
++ for(const subject of mouSubjects){assert.match(html,new RegExp(subject.title));assert.deepEqual(Object.keys(subject).sort(),['first','key','title']);}
++ assert.doesNotMatch(html,/<a\b|<button\b|<iframe\b|href=|src=|data-website|data-enrol|data-media|data-join/);
++});
++test('the programme shell makes no paid-month or material-access claim from membership',()=>{
++ const html=mothersClassroom();assert.match(html,/monthly programme access and published classes are being connected/);
++ assert.doesNotMatch(html,/membership is active|Free course|Subscribed|paid months|\/free-learning|\.pdf|youtube|Published edition/i);
++ assert.equal(html.split('class="card mou-subject-card"').length-1,10);
++});
+diff --git a/tests/mou.test.mjs b/tests/mou.test.mjs
+new file mode 100644
+index 0000000..259e98b
+--- /dev/null
++++ b/tests/mou.test.mjs
+@@ -0,0 +1,151 @@
++import {test} from 'node:test';import assert from 'node:assert/strict';
++import {fixture} from './fixture.mjs';import {signIn,ok} from './access-fixture.mjs';
++async function mouFixture(t){
++ const f=await fixture({academy:true,authorityMode:'ACADEMY',mou:true,navigation:{mothers:'programB'},verification:{accountSeconds:43200,adminSeconds:60,liveSeconds:43200}});t.after(()=>f.close());
++ const db=await f.runtime.getD1Database('ACADEMY_DB','academy'),scope=f.source.f.scopes.programB,offer=scope.slice(8);
++ const native=async(path,body,token)=>{const response=await f.runtime.dispatchFetch('https://academy.test'+path,{method:'POST',headers:{Origin:'https://academy.test','Content-Type':'application/json','X-Academy-Workspace':'ADMIN',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(body)});return {status:response.status,body:await response.json()};};
++ const token=ok(await native('/api/account/login',{uniqueid:'separation-global',pin:'1234'})).token;
++ const register=async(input={})=>native('/api/admin/platform/programme-studio/register',{programmeKey:'mothers',accessModel:'MONTHLY',noMediaMigration:true,operationId:crypto.randomUUID(),...input},token);
++ const recover=async(n=20)=>{for(let i=0;i<n;i++){const r=await f.runtime.dispatchFetch('https://academy.test/__local/recover');assert.equal(r.status,200,await r.text());}};
++ const proxy=async command=>native('/api/admin/platform/studio-access',{activityKey:scope,command},token);
++ const handover=async()=>{const transferId=crypto.randomUUID();ok(await proxy({action:'handover-start',transferId}));let done=false;for(let i=0;i<30;i++){const r=ok(await proxy({action:'handover-reconcile',transferId}));await recover(2);if(r.reconciliation.done&&!r.reconciliation.dataset){done=true;break;}}assert(done);let page;for(let i=0;i<20;i++){page=ok(await proxy({action:'handover-page',transferId}));if(!page.more)break;}assert.equal(page.more,false);ok(await proxy({action:'handover-commit',transferId}));return transferId;};
++ const save=async change=>{const read=ok(await proxy({action:'read'}));return proxy({action:'save',revision:read.revision,change:{operationId:crypto.randomUUID(),...change}});};
++ return {f,db,scope,offer,native,token,register,recover,proxy,handover,save};
++}
++test('MOU registration uses the exact reviewed programme and preserves empty months and all native media policy/roles',async t=>{
++ const {f,db,scope,offer,register,recover}=await mouFixture(t);
++ const before={roles:(await db.prepare('SELECT * FROM role_assignments WHERE activity_key=?').bind(scope).all()).results,policies:(await db.prepare('SELECT * FROM program_monthly_media_policies WHERE activity_key=?').bind(scope).all()).results};
++ const input={operationId:crypto.randomUUID()},r=ok(await register(input));assert.equal(r.offeringId,offer);assert.equal(r.mediaImported,false);assert.equal(ok(await register(input)).replayed,true);
++ await recover();assert.equal(await f.db.prepare("SELECT offering_id FROM programme_offerings WHERE programme_key='mothers'").first('offering_id'),offer);
++ assert.equal(await f.db.prepare('SELECT count(*) n FROM paid_months WHERE offering_id=?').bind(offer).first('n'),0);
++ assert.equal(await f.db.prepare('SELECT count(*) n FROM attachments WHERE offering_id=?').bind(offer).first('n'),0);
++ assert.deepEqual((await db.prepare('SELECT * FROM role_assignments WHERE activity_key=?').bind(scope).all()).results,before.roles);
++ assert.deepEqual((await db.prepare('SELECT * FROM program_monthly_media_policies WHERE activity_key=?').bind(scope).all()).results,before.policies);
++ const cookie=await signIn(f,'studentB'),view=ok(await f.request('/api/circles/classrooms/mothers',{cookie}));assert.equal(view.schema,'MOU_CLASSROOM_V1');assert.equal(view.programme.accessModel,'MONTHLY');assert.equal(view.monthly.hasCurrentMonth,false);assert.equal(view.subjects.length,10);assert.equal(view.subjects[0].key,'surah-al-baqarah');assert.equal(view.subjects.filter(x=>x.key==='surah-al-baqarah').length,1);assert(view.subjects.slice(1).every(x=>x.availabilityLabel==='Coming soon إن شاء الله'&&x.website===null));assert.equal(view.materialsConnected,false);assert(!JSON.stringify(view).includes('zoom.us'));
++ assert.equal(view.management.canManage,false);
++ const admin=ok(await f.request('/api/circles/classrooms/mothers',{cookie:await signIn(f,'adminB')}));assert.equal(admin.management.canManage,true);assert.equal(admin.management.offeringId,offer);
++ assert.equal((await f.request('/api/circles/classrooms/mothers',{cookie:await signIn(f,'studentA')})).status,403);
++});
++
++test('MOU months, original cohorts and website-only rights remain separate from Tafseer and do not import old media',async t=>{
++ const x=await mouFixture(t),{f,db,scope,offer,register,recover,handover,save}=x;ok(await register());await recover();await handover();
++ const a=f.source.f.actors.studentB,b=f.source.f.actors.studentA;const cookie=await signIn(f,'studentB'),other=await signIn(f,'studentA');
++ const month=new Date().toISOString().slice(0,7),completionDate=month+'-01';
++ await f.run("INSERT INTO websites VALUES('synthetic-mou-baqarah',?,'Synthetic Baqarah',?,'websites/site-course/versions/seed.json','websites/site-course/versions/seed.json',0,1,?)",offer,month,completionDate);
++ ok(await save({action:'mou-subject',displayKey:'surah-al-baqarah',websiteId:'synthetic-mou-baqarah',enabled:true}));
++ const editor=ok(await f.request('/api/circles/classrooms/mothers',{cookie:await signIn(f,'adminB')}));assert.equal(editor.management.canManage,true);assert.equal(editor.subjects[0].website.editorHref,'/builder/?website=synthetic-mou-baqarah');
++ for(const [asset,cohort,date] of [['mou-future-recording','mou-cohort',month+'-01'],['mou-wrong-cohort','other-cohort',month+'-01'],['mou-wrong-month','mou-cohort','2020-01-01']]){
++  await f.run('INSERT INTO objects VALUES(?,NULL,?,?,0,NULL,?)',asset,'video/youtube',asset,'abcdefghijk');await f.run("INSERT INTO attachments VALUES(?,?,'synthetic-mou-baqarah',?,'synthetic-prepared-lesson',?,?,?,'RECORDING',1)",asset,offer,asset,date,cohort,asset);
++ }
++ // A Tafseer payment for the same month/cohort is no MOU entitlement.
++ await f.run('INSERT INTO paid_months VALUES(?,?,?,?,?)',a,'tafseer',month,'mou-cohort','Other programme');
++ assert.equal((await f.request('/api/media/mou-future-recording',{cookie})).status,403);
++ ok(await save({action:'paid-months',changes:[{accountId:a,month,cohort:'mou-cohort',paid:true,reason:'Synthetic verified MOU month'}]}));
++ assert.equal(ok(await f.request('/api/circles/classrooms/mothers',{cookie})).monthly.hasCurrentMonth,true);
++ ok(await f.request('/api/media/mou-future-recording',{cookie}));assert.equal((await f.request('/api/media/mou-wrong-cohort',{cookie})).status,403);assert.equal((await f.request('/api/media/mou-wrong-month',{cookie})).status,403);
++ ok(await save({action:'surah-grant',accountId:b,websiteId:'synthetic-mou-baqarah',enabled:true,reason:'Synthetic website only'}));
++ const view=ok(await f.request('/api/circles/classrooms/mothers',{cookie:other}));assert.equal(view.subjects[0].website.canOpen,true);assert.equal(view.monthly.hasCurrentMonth,false);assert.equal((await f.request('/api/media/mou-future-recording',{cookie:other})).status,403);
++ assert.equal(await db.prepare('SELECT count(*) n FROM program_monthly_subscriptions WHERE activity_key=?').bind(scope).first('n'),0,'Studio month edits never change old Academy rows');
++ const before=f.source.metrics.queries;await f.request('/api/circles/classrooms/mothers',{cookie});assert.equal(f.source.metrics.queries,before,'Ordinary classroom reading makes no Academy request');
++});
++test('MOU published sessions keep exact class/teacher/time/cancellation gates and never expose Zoom in snapshots',async t=>{
++ const x=await mouFixture(t),{f,db,scope,offer,register,recover,handover,save}=x;ok(await register());
++ const student=f.source.f.actors.studentB,teacher=f.source.f.actors.teacherB,klass=await db.prepare('SELECT class_id FROM classes WHERE activity_key=? AND active=1 LIMIT 1').bind(scope).first('class_id'),today=new Date().toISOString().slice(0,10);
++ await db.prepare('UPDATE class_memberships SET start_date=?,end_date=NULL,active=1 WHERE activity_key=? AND account_id=?').bind(today,scope,student).run();
++ const start=new Date(Date.now()+120_000).toISOString().slice(11,16),end=new Date(Date.now()+3600_000).toISOString().slice(11,16),weekly={schema:'105.3.2.2-weekly',format:'105.3.2.2-weekly',programId:offer,effectiveFrom:today,timezone:'UTC',programZoomLink:'https://example.zoom.us/j/123456789',rules:[{id:'mou-published-rule',weekdays:[new Date().getUTCDay()],startTime:start,endTime:end,classIds:[klass],teacherIds:[teacher],moduleName:'Synthetic published MOU lesson',zoomLink:'',effectiveZoomLink:'https://example.zoom.us/j/123456789',zoomSource:'PROGRAM'}]};
++ await db.prepare("INSERT INTO timetable_publications(activity_key,publication_id,scope_key,version_no,pattern,effective_from,timezone,snapshot_json,source_snapshot_sha256,conversion) VALUES(?,'mou-publication',?,10001,'WEEKLY',?,'UTC',?,?,'EXACT')").bind(scope,scope,today,JSON.stringify(weekly),'a'.repeat(64)).run();
++ await recover();await handover();const cookie=await signIn(f,'studentB'),view=ok(await f.request('/api/circles/classrooms/mothers',{cookie}));
++ assert.equal(view.timetable.state,'PUBLISHED',JSON.stringify(view));assert(view.timetable.sessions.length);const session=view.timetable.sessions[0];assert.equal(session.canJoin,true,JSON.stringify(view));assert.equal(session.eligibleToJoin,true);assert(session.eligibilityExpiresAt>Date.now());assert.equal(session.timezone,'UTC');assert.deepEqual(session.classIds,[klass]);assert.equal(session.classes[0].id,klass);assert(!JSON.stringify(view).includes('zoom.us'));
++ assert.equal(ok(await f.request(session.joinPath,{cookie,method:'POST',body:{sessionId:session.id}})).destination,'https://example.zoom.us/j/123456789');
++ await f.run('UPDATE timetable SET starts_at=? WHERE session_id=?',Date.now()+600_000,session.id);assert.equal((await f.request(session.joinPath,{cookie,method:'POST',body:{sessionId:session.id}})).status,403);
++ const future=ok(await f.request('/api/circles/classrooms/mothers',{cookie})).timetable.sessions.find(s=>s.id===session.id);assert.equal(future.eligibleToJoin,true);assert.equal(future.canJoin,false);
++ await f.run('UPDATE source_session_audiences SET class_ids_json=?,teacher_ids_json=? WHERE session_id=?',JSON.stringify(['different-class']),JSON.stringify([f.source.f.actors.teacherA]),session.id);
++ assert(!ok(await f.request('/api/circles/classrooms/mothers',{cookie})).timetable.sessions.some(s=>s.id===session.id),'Learners do not receive another class session');
++ const teacherCookie=await signIn(f,'teacherB');assert(!ok(await f.request('/api/circles/classrooms/mothers',{cookie:teacherCookie})).timetable.sessions.some(s=>s.id===session.id),'Teachers do not receive another teacher session');
++ await f.run('UPDATE source_session_audiences SET class_ids_json=?,teacher_ids_json=? WHERE session_id=?',JSON.stringify([klass]),JSON.stringify([teacher]),session.id);
++ await f.run('UPDATE timetable SET starts_at=?,cancelled=1 WHERE session_id=?',Date.now()+120_000,session.id);assert.equal((await f.request(session.joinPath,{cookie,method:'POST',body:{sessionId:session.id}})).status,403);
++ const publicSnapshot=await f.content.get('public/schedule.json');assert(!await publicSnapshot.text().then(x=>x.includes('zoom.us')));
++ await f.run('UPDATE source_access_people SET verified_at=? WHERE account_id=? AND offering_id=?',Date.now()-43200_001,student,offer);assert.equal((await f.request(session.joinPath,{cookie,method:'POST',body:{sessionId:session.id}})).body.code,'ACCESS_REFRESH_REQUIRED');await signIn(f,'studentB');
++ await db.prepare("INSERT INTO program_publication_lifecycle VALUES(?,'mou-publication','CANCELLED',?)").bind(scope,new Date().toISOString()).run();await recover(12);
++ assert.equal(await f.db.prepare('SELECT cancelled FROM timetable WHERE session_id=?').bind(session.id).first('cancelled'),1,'Actual Source cancellation reaches the stored target publication');
++ assert(!ok(await f.request('/api/circles/classrooms/mothers',{cookie})).timetable.sessions.some(s=>s.id===session.id));assert.equal((await f.request(session.joinPath,{cookie,method:'POST',body:{sessionId:session.id}})).status,403);
++ ok(await save({action:'participant',accountId:student,enrolled:false,live:false,purchased:false,reason:'Synthetic withdrawal'}));assert.equal((await f.request('/api/circles/classrooms/mothers',{cookie})).status,403,'A stale native Student role cannot restore Studio membership');
++});
++
++test('MOU native content operations preserve independent recording lessons and enforce account and scoped staff changes',async t=>{
++ const {f,db,scope,offer,register,recover,handover,save}=await mouFixture(t);ok(await register());await recover();await handover();
++ const admin=await signIn(f,'adminB'),student=await signIn(f,'studentB'),wrongAdmin=await signIn(f,'adminA');
++ const document=await f.content.get('websites/site-course/versions/seed.json').then(x=>x.json()),websiteId='mou-native-created-site',date=new Date().toISOString().slice(0,10);
++ const change=body=>f.request('/api/admin/'+offer,{cookie:admin,method:'POST',body:{operationId:crypto.randomUUID(),...body}});
++ const input={action:'website-create',websiteId,title:'Synthetic native MOU',document};
++ assert.equal((await f.request('/api/admin/'+offer,{cookie:wrongAdmin,method:'POST',body:{operationId:crypto.randomUUID(),...input}})).status,403);
++ ok(await change(input));ok(await change({action:'youtube',assetId:'mou-native-recording',videoId:'abcdefghijk',title:'Synthetic recording only'}));
++ // This recording has no timetable row and no supporting reading. Neither is required.
++ ok(await change({action:'attachment',attachmentId:'mou-native-attachment',websiteId,assetId:'mou-native-recording',lessonId:'mou-native-lesson',lessonDate:date,cohort:'verified-synthetic-cohort',title:'Recording-only lesson',audience:'RECORDING',published:true}));
++ ok(await save({action:'mou-subject',displayKey:'surah-al-baqarah',websiteId,enabled:true}));
++ assert.equal(await f.db.prepare('SELECT count(*) n FROM timetable WHERE session_id=?').bind('mou-native-lesson').first('n'),0);
++ assert.equal((await f.request('/api/media/mou-native-attachment',{cookie:student})).status,403);
++ f.source.resetMetrics();const result=await save({action:'paid-months',changes:[{accountId:f.source.f.actors.studentB,month:date.slice(0,7),cohort:'verified-synthetic-cohort',paid:true,reason:'Synthetic reviewed month'}]});ok(result);t.diagnostic(JSON.stringify({stage:'MOU native monthly save including preceding read',source:{...f.source.metrics},targetSave:result.body.localReadBudget}));
++ const sourceBefore={...f.source.metrics};const media=await f.request('/api/media/mou-native-attachment',{cookie:student});ok(media);
++ assert.equal(f.source.metrics.queries,sourceBefore.queries);assert.equal(f.source.metrics.rowsWritten,sourceBefore.rowsWritten);
++ const state=ok(await f.request('/api/circles/classrooms/mothers',{cookie:admin}));assert.equal(state.subjects[0].website.canEdit,true);assert.equal(state.subjects[0].website.canOpen,false);
++ await db.prepare("UPDATE role_assignments SET active=0 WHERE activity_key=? AND account_id=? AND role='PROGRAM_ADMIN'").bind(scope,f.source.f.actors.adminB).run();await recover(12);
++ const denied=await f.request('/api/websites/'+websiteId+'/edit',{cookie:admin});assert([401,403].includes(denied.status),JSON.stringify(denied.body));
++ await db.prepare('UPDATE accounts SET active=0 WHERE account_id=?').bind(f.source.f.actors.studentB).run();await recover(12);
++ assert.equal((await f.request('/api/media/mou-native-attachment',{cookie:student})).status,401);
++ assert.equal((await f.request('/api/circles/classrooms/mothers',{cookie:student})).status,401);
++});
++
++test('ongoing MOU support is isolated by recorded lesson/month/cohort, without invented completion or timetable',async t=>{
++ const {f,offer,register,recover,handover,save}=await mouFixture(t);ok(await register());await recover();await handover();
++ const {newCourse,newLesson,newSection,newBlock}=await import('../public/shared/model.mjs');
++ const admin=await signIn(f,'adminB'),student=await signIn(f,'studentB'),other=await signIn(f,'studentA'),websiteId='mou-ongoing-support';
++ const timetableBefore=await f.db.prepare('SELECT count(*) n FROM timetable WHERE offering_id=?').bind(offer).first('n');
++ const note=(sectionId,editorial,text)=>{const section=newSection();section.id=sectionId;section.title='Verified support';const b=newBlock('note');b.aside=true;b.sourceKey='recording:'+editorial;b.text=text;section.blocks=[b];return section;};
++ const document=newCourse();document.name='Ongoing synthetic MOU';document.lessons=[newLesson('Mixed-month reading','Support'),newLesson('Second February reading','Support')];
++ document.lessons[0].sections=[note('support-feb','editorial-feb','FEBRUARY_PRIVATE_SUPPORT'),note('support-mar','editorial-mar','MARCH_PRIVATE_SUPPORT'),note('support-other','editorial-other','OTHER_COHORT_PRIVATE_SUPPORT'),note('support-mixed','editorial-feb','FEB_AND_MARCH_SHARED_PRIVATE_SUPPORT')];
++ const second=newBlock('note');second.aside=true;second.sourceKey='recording:editorial-mar';second.text='SECOND_MARCH_PRIVATE_SUPPORT';document.lessons[0].sections[3].blocks.push(second);
++ document.lessons[1].sections=[note('support-feb-again','editorial-feb','SECOND_FEBRUARY_READING')];
++ const unassigned=newSection();unassigned.id='unassigned-support';unassigned.blocks[0].text='UNASSIGNED_PRIVATE_SOURCE';document.lessons[1].sections.push(unassigned);const shared=newSection();shared.id='reviewed-shared-pdf';shared.sourcePages=[2];shared.blocks[0].text='REVIEWED_SHARED_PDF_SUPPORT';document.lessons[1].sections.push(shared);
++ const native=body=>f.request('/api/admin/'+offer,{cookie:admin,method:'POST',body:{operationId:crypto.randomUUID(),...body}});
++ const pdf=new TextEncoder().encode('%PDF-1.4\nSynthetic full notes\n%%EOF');ok(await f.request('/api/admin/'+offer+'/files?assetId=mou-full-pdf&filename=Notes.pdf&operationId='+crypto.randomUUID(),{cookie:admin,method:'PUT',body:pdf}));
++ ok(await native({action:'website-create',websiteId,title:'Ongoing synthetic MOU',document}));
++ ok(await save({action:'mou-subject',displayKey:'surah-al-baqarah',websiteId,enabled:true}));
++ ok(await native({action:'attachment',attachmentId:'mou-full-pdf-link',assetId:'mou-full-pdf',websiteId,lessonId:'shared-notes-source',lessonDate:'2026-02-17',cohort:'original-mou-cohort',title:'Full shared PDF',audience:'WEBSITE',published:false}));
++ // Add the whole PDF as deliberate full-text material. Partial-month readers must
++ // not receive its URL or open it by guessing the attachment identity.
++ document.materials.files=[{id:'full-pdf-material',assetId:'mou-full-pdf',title:'Full notes',description:'Shared PDF source'}];
++ let view=ok(await f.request('/api/websites/'+websiteId+'/edit',{cookie:admin}));
++ ok(await f.request('/api/websites/'+websiteId+'/edit',{cookie:admin,method:'POST',body:{operationId:crypto.randomUUID(),action:'save',revision:view.revision,document}}));
++ for(const [suffix,date] of [['feb','2026-02-17'],['mar','2026-03-03'],['may','2026-05-05'],['other','2026-02-17']]){
++  ok(await native({action:'youtube',assetId:'mou-support-video-'+suffix,videoId:'abcdefghijk',title:'Synthetic '+suffix}));
++  ok(await native({action:'attachment',attachmentId:'mou-support-link-'+suffix,assetId:'mou-support-video-'+suffix,websiteId,lessonId:'mou-recorded-'+suffix,lessonDate:date,cohort:suffix==='other'?'different-mou-cohort':'original-mou-cohort',title:'Recorded '+suffix,audience:'RECORDING',published:true}));
++ }
++ ok(await save({action:'mou-subject',displayKey:'surah-al-baqarah',websiteId,enabled:true}));
++ const bindings=['feb','mar','other'].map(s=>({editorialLessonId:'editorial-'+s,nativeLessonId:'mou-recorded-'+s,assetId:'mou-support-video-'+s}));
++ const sections=[{readingId:document.lessons[1].id,sectionId:'reviewed-shared-pdf',lessonIds:['mou-recorded-feb','mou-recorded-mar'],access:'ANY'},{readingId:document.lessons[0].id,sectionId:'support-other',lessonIds:['mou-recorded-other']},{readingId:document.lessons[0].id,sectionId:'support-feb',lessonIds:['mou-recorded-feb']},{readingId:document.lessons[0].id,sectionId:'support-mar',lessonIds:['mou-recorded-mar']},{readingId:document.lessons[0].id,sectionId:'support-mixed',lessonIds:['mou-recorded-feb','mou-recorded-mar']},{readingId:document.lessons[1].id,sectionId:'support-feb-again',lessonIds:['mou-recorded-feb']}];
++ view=ok(await f.request('/api/websites/'+websiteId+'/edit',{cookie:admin}));const supportInput={operationId:crypto.randomUUID(),action:'recording-support',revision:view.revision,bindings,sections};
++ const indexed=ok(await f.request('/api/websites/'+websiteId+'/edit',{cookie:admin,method:'POST',body:supportInput}));assert.equal(ok(await f.request('/api/websites/'+websiteId+'/edit',{cookie:admin,method:'POST',body:supportInput})).replayed,true);
++ ok(await f.request('/api/websites/'+websiteId+'/edit',{cookie:admin,method:'POST',body:{operationId:crypto.randomUUID(),action:'publish',revision:indexed.revision}}));
++ ok(await save({action:'paid-months',changes:['2026-02','2026-05'].map(month=>({accountId:f.source.f.actors.studentB,month,cohort:'original-mou-cohort',paid:true,reason:'Synthetic verified month'}))}));
++ const sourceBefore={...f.source.metrics},read=await f.request('/api/websites/'+websiteId,{cookie:student});ok(read);const text=JSON.stringify(read.body);
++ assert.equal(read.body.contentAccess.mode,'RECORDING_SCOPED');assert.equal(read.body.document.lessons.length,2);assert(text.includes('FEBRUARY_PRIVATE_SUPPORT'));assert(text.includes('SECOND_FEBRUARY_READING'));assert(text.includes('REVIEWED_SHARED_PDF_SUPPORT'));assert(!text.includes('MARCH_PRIVATE_SUPPORT'));assert(!text.includes('OTHER_COHORT_PRIVATE_SUPPORT'));assert(!text.includes('FEB_AND_MARCH'));assert(!text.includes('UNASSIGNED_PRIVATE_SOURCE'));assert.equal(read.body.assets.length,0);assert.equal(f.source.metrics.queries,sourceBefore.queries);
++ const growth=JSON.stringify(Array.from({length:4000},(_,i)=>'unrelated-mou-'+i));
++ await f.run("INSERT INTO attachments SELECT value,?,?,'mou-support-video-mar',value,'2020-01-01','different-mou-cohort','Unrelated recording','RECORDING',1 FROM json_each(?)",offer,websiteId,growth);
++ const afterGrowth=await f.request('/api/websites/'+websiteId,{cookie:student});ok(afterGrowth);assert(afterGrowth.reads<=read.reads+12,JSON.stringify({before:read.reads,after:afterGrowth.reads}));assert.equal(f.source.metrics.queries,sourceBefore.queries);
++ t.diagnostic(JSON.stringify({stage:'MOU protected support reading',before:{queries:read.queries,rowsRead:read.reads,rowsWritten:Number(read.response.headers.get('X-Local-D1-Rows-Written'))},after4000UnrelatedRecordings:{queries:afterGrowth.queries,rowsRead:afterGrowth.reads,rowsWritten:Number(afterGrowth.response.headers.get('X-Local-D1-Rows-Written'))},academyQueries:0}));
++ assert.equal((await f.request('/api/media/mou-full-pdf-link',{cookie:student})).status,403);
++ const feed=ok(await f.request('/api/offerings/'+offer+'/media?website='+websiteId,{cookie:student}));assert.deepEqual(feed.media.map(x=>x.lesson_id).sort(),['mou-recorded-feb','mou-recorded-may']);assert.equal(feed.mediaBindings.length,1);ok(await f.request('/api/media/mou-support-link-may',{cookie:student}));
++ const editPath='/api/websites/'+websiteId+'/edit',edit=ok(await f.request(editPath,{cookie:admin})),changed=structuredClone(edit.document);changed.lessons[0].sections[0].blocks[0].text='EDITED_FEBRUARY_SUPPORT';changed.lessons[0].sections[1].blocks[0].sourceKey='recording:editorial-feb';
++ const addedSection=structuredClone(changed.lessons[0].sections[0]);addedSection.id='new-unindexed-section';addedSection.blocks[0].id='new-unindexed-block';addedSection.blocks[0].text='NEW_UNASSIGNED_SUPPORT';changed.lessons[0].sections.push(addedSection);
++ let edited=ok(await f.request(editPath,{cookie:admin,method:'POST',body:{operationId:crypto.randomUUID(),action:'save',revision:edit.revision,document:changed}}));
++ let published=ok(await f.request(editPath,{cookie:admin,method:'POST',body:{operationId:crypto.randomUUID(),action:'publish',revision:edited.revision}}));
++ const afterEdit=ok(await f.request('/api/websites/'+websiteId,{cookie:student}));assert(JSON.stringify(afterEdit.document).includes('EDITED_FEBRUARY_SUPPORT'));assert(!JSON.stringify(afterEdit.document).includes('NEW_UNASSIGNED_SUPPORT'));assert(!afterEdit.document.lessons.flatMap(l=>l.sections).some(s=>s.id==='support-mar'),'Conflicting changed sourceKey drops the old March association');
++ const afterEditFeed=ok(await f.request('/api/offerings/'+offer+'/media?website='+websiteId,{cookie:student}));assert.equal(afterEditFeed.mediaBindings.length,1);
++ const restored=ok(await f.request(editPath,{cookie:admin,method:'POST',body:{operationId:crypto.randomUUID(),action:'restore',revision:published.revision,historyRevision:indexed.revision}}));
++ ok(await f.request(editPath,{cookie:admin,method:'POST',body:{operationId:crypto.randomUUID(),action:'publish',revision:restored.revision}}));assert(JSON.stringify(ok(await f.request('/api/websites/'+websiteId,{cookie:student})).document).includes('FEBRUARY_PRIVATE_SUPPORT'));
++ assert.equal(await f.db.prepare('SELECT completion_date FROM websites WHERE website_id=?').bind(websiteId).first('completion_date'),null);assert.equal(await f.db.prepare('SELECT count(*) n FROM timetable WHERE offering_id=?').bind(offer).first('n'),timetableBefore,'Recording imports do not create or republish timetable sessions');
++ ok(await save({action:'surah-grant',accountId:f.source.f.actors.studentA,websiteId,enabled:true,reason:'Deliberate text-only grant'}));const granted=ok(await f.request('/api/websites/'+websiteId,{cookie:other}));assert.equal(granted.contentAccess.mode,'FULL_TEXT');assert(JSON.stringify(granted.document).includes('MARCH_PRIVATE_SUPPORT'));ok(await f.request('/api/media/mou-full-pdf-link',{cookie:other}));assert.equal((await f.request('/api/media/mou-support-link-feb',{cookie:other})).status,403);
++ ok(await save({action:'paid-months',changes:[{accountId:f.source.f.actors.studentB,month:'2026-02',cohort:'original-mou-cohort',paid:false,reason:'Synthetic removal'}]}));
++ const removed=ok(await f.request('/api/websites/'+websiteId,{cookie:student}));assert.equal(removed.document.lessons.length,0,'May recording-only rights do not leak another month or unassigned notes');
++});

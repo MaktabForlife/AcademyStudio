@@ -1,0 +1,559 @@
+diff --git a/public/shared/course-media-workflow.css b/public/shared/course-media-workflow.css
+index 0ac9caa..685eea7 100644
+--- a/public/shared/course-media-workflow.css
++++ b/public/shared/course-media-workflow.css
+@@ -1 +1,5 @@
+ .course-media-workflow{--cmw-ink:#493d43;--cmw-muted:#7c7274;--cmw-line:#dfd6cf;--cmw-paper:#fffdf9;--cmw-active:#68515c;color:var(--cmw-ink);font-size:14px;line-height:1.5;min-width:0}.course-media-workflow *{box-sizing:border-box}.course-media-workflow [hidden]{display:none!important}.course-media-workflow h3{font:400 30px/1.15 'Libre Caslon Display',Georgia,serif;margin:0 0 10px}.course-media-workflow h4{font-family:inherit;font-weight:600;font-size:16px;line-height:1.4;margin:0 0 8px}.course-media-workflow p{margin:8px 0 16px;color:var(--cmw-muted)}.course-media-workflow button{background:var(--cmw-active);color:#fff;border:1px solid var(--cmw-active);border-radius:8px;padding:9px 14px;min-height:40px;font-family:inherit;font-weight:600;font-size:13px;cursor:pointer}.course-media-workflow button:disabled{opacity:.45;cursor:default}.course-media-workflow .cmw-quiet{background:transparent;color:var(--cmw-ink);border-color:var(--cmw-line)}.course-media-workflow .cmw-link,.course-media-workflow .cmw-back{background:transparent;color:var(--cmw-active);border:0;padding:6px;min-height:36px}.course-media-workflow .cmw-back{margin-bottom:12px}.cmw-panel{border:1px solid var(--cmw-line);border-radius:12px;background:var(--cmw-paper);padding:22px;margin-bottom:20px;min-width:0}.cmw-toolbar,.cmw-actions,.cmw-tags,.cmw-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.cmw-toolbar{margin-bottom:22px}.cmw-toolbar p{margin-bottom:0}.cmw-actions,.cmw-tags{justify-content:flex-start}.cmw-tags{margin-bottom:16px}.cmw-tag{display:inline-flex;border-radius:5px;background:#f4ecdf;color:#806134;padding:4px 8px;font-size:11px;font-weight:600;white-space:nowrap}.cmw-tag.cmw-published{background:#e5eee6;color:#37604a}.cmw-table-wrap{max-width:100%;overflow:auto;border:1px solid var(--cmw-line);border-radius:8px}.course-media-workflow table{border-collapse:collapse;width:100%;min-width:620px;text-align:left;font-size:13px}.course-media-workflow th,.course-media-workflow td{padding:10px 13px;border-bottom:1px solid var(--cmw-line);vertical-align:middle}.course-media-workflow th{font-size:12px;background:#f2eee8;color:var(--cmw-muted)}.course-media-workflow tr:last-child>*{border-bottom:0}.course-media-workflow td:first-child{width:40%}.course-media-workflow td:last-child{text-align:right}.cmw-columns{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(260px,.75fr);gap:30px}.course-media-workflow label{display:block;font-size:13px;font-weight:600;margin-bottom:18px}.course-media-workflow label input:not([type=checkbox]),.course-media-workflow label select,.course-media-workflow label textarea{display:block;width:100%;color:var(--cmw-ink);background:#fff;border:1px solid var(--cmw-line);border-radius:7px;padding:11px;margin-top:6px;font:inherit;font-weight:400;min-width:0}.course-media-workflow textarea{min-height:105px;resize:vertical}.course-media-workflow fieldset{border:0;padding:0;margin:0 0 20px;min-width:0}.course-media-workflow legend{font-weight:600;font-size:13px;margin-bottom:6px}.course-media-workflow .cmw-check{display:flex;align-items:center;gap:10px;margin:8px 0;font-weight:400}.course-media-workflow input[type=checkbox]{width:18px;height:18px;accent-color:var(--cmw-active);flex:none}.course-media-workflow small{display:block;font-size:12px;font-weight:400;color:var(--cmw-muted)}.cmw-row{padding:10px 0;border-bottom:1px solid var(--cmw-line)}.cmw-row>span,.cmw-row>strong{flex:1;min-width:180px}.course-media-workflow a{color:#45665a}.cmw-art{min-width:0}.cmw-art .playlist-card-editor{display:block;padding:14px;margin:0}.cmw-art .playlist-card-preview{max-width:260px;margin:0 auto 18px}.cmw-art .playlist-card-fields>p:first-child{display:none}.cmw-art .playlist-card-label strong{font-size:28px}.course-media-workflow footer{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:25px;padding-top:18px;border-top:1px solid var(--cmw-line)}.course-media-workflow footer p{max-width:60ch;font-size:12px;margin:0}.course-media-workflow nav{display:flex;gap:7px;border-bottom:1px solid var(--cmw-line);margin:12px 0 24px;padding-bottom:9px}.course-media-workflow nav button{background:transparent;color:var(--cmw-muted);border:0}.course-media-workflow nav button[aria-current=page]{background:var(--cmw-active);color:#fff}.cmw-eyebrow{font-size:10px;letter-spacing:.13em;font-weight:700}.cmw-content-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;border-bottom:1px solid var(--cmw-line);padding:15px 0}.cmw-content-row button{min-height:35px;padding:6px 10px;font-size:12px}.cmw-empty{padding:30px;text-align:center;border:1px dashed var(--cmw-line);border-radius:8px;color:var(--cmw-muted)}[data-cmw-status]:empty{display:none}[data-cmw-status]{padding:12px 15px;background:#edf1e8;border-left:3px solid #45665a;margin-bottom:18px!important}[data-cmw-status][role=alert]{background:#f8eae4;border-color:#985646}.course-media-dialog{width:min(710px,calc(100vw - 30px));max-height:88vh;border:1px solid var(--cmw-line);border-radius:13px;background:var(--cmw-paper);color:var(--cmw-ink);padding:24px;overflow:auto}.course-media-dialog::backdrop{background:#352e3a77}.course-media-dialog header{display:flex;justify-content:space-between;align-items:center;gap:12px}.cmw-choice{display:flex!important;align-items:flex-start;gap:12px;padding:14px 0;border-bottom:1px solid var(--cmw-line);margin:0!important;font-weight:400!important}.cmw-choice input{margin-top:3px}.cmw-choice small{margin-top:5px}.cmw-prose{white-space:pre-wrap;line-height:1.8}.course-media-workflow :focus-visible{outline:3px solid #b49da7;outline-offset:3px}@media(max-width:760px){.cmw-columns{grid-template-columns:minmax(0,1fr)}.cmw-panel{padding:18px 15px}.cmw-content-row{grid-template-columns:minmax(0,1fr)}.course-media-workflow footer .cmw-actions{width:100%;justify-content:flex-end}.cmw-art .playlist-card-preview{max-width:250px}.course-media-dialog{padding:20px 16px}.cmw-toolbar{align-items:flex-start}}
++
++.course-media-workflow{max-width:1180px;margin-inline:auto}.existing-media-materials{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;border-bottom:1px solid #dfd6cf;margin-bottom:24px;padding-bottom:12px}.existing-media-status,.existing-media-note{font-size:12px;color:#7f777d}.existing-media-recording{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.65fr);gap:24px;padding:20px 0;border-bottom:1px solid #dfd6cf}.existing-media-summary{white-space:pre-wrap}.existing-media-recording blockquote{margin:0;padding:14px 20px;border-left:2px solid #a98e9c}.existing-media-recording cite{display:block;font-size:12px;margin-top:8px}@media(max-width:760px){.existing-media-materials,.existing-media-recording{grid-template-columns:minmax(0,1fr)}}
++
++.existing-media-recording{grid-template-columns:minmax(0,1fr)}.existing-media-recording.has-quote{grid-template-columns:minmax(0,1fr) minmax(0,.65fr)}@media(max-width:600px){.course-media-workflow table{min-width:0;font-size:12px}.course-media-workflow th,.course-media-workflow td{padding:9px 5px}.course-media-workflow th:nth-child(4),.course-media-workflow td:nth-child(4){display:none}.course-media-workflow td:first-child{width:40%}.course-media-workflow table button{padding:7px 9px;font-size:12px}.existing-media-recording.has-quote{grid-template-columns:minmax(0,1fr)}}
+diff --git a/public/shared/course-media-workflow.mjs b/public/shared/course-media-workflow.mjs
+index 2780bf1..1ca7e69 100644
+--- a/public/shared/course-media-workflow.mjs
++++ b/public/shared/course-media-workflow.mjs
+@@ -1,3 +1,4 @@
++import {existingMaterialLinks,existingRecordingRows} from './existing-media-view.mjs';
+ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const copy=v=>JSON.parse(JSON.stringify(v));
+ const tag=(s,on=false)=>`<span class="cmw-tag${on?' cmw-published':''}">${esc(s)}</span>`;
+@@ -6,8 +7,8 @@ export {readActions as courseMediaReadActions};
+ 
+ // Native Source and Studio use this same view with their existing checked
+ // transports. No sample catalogue, account, lesson mapping or stored credential.
+-export function mountCourseMedia(root,{request,cardTools,courseName='Course',websiteOrigin='',initialPlaylistId=null,current=()=>true}){
+- let disposed=false,busy=false,pending=null,dirty=false,listing=null,p=null,tab='content',cardBinding=null,options=null,teachers=null,dialog=null,choice=null,notice='';
++export function mountCourseMedia(root,{request,cardTools,courseName='Course',websiteOrigin='',initialPlaylistId=null,projectMaterials={},current=()=>true}){
++ let disposed=false,busy=false,pending=null,dirty=false,listing=null,p=null,tab='content',cardBinding=null,options=null,teachers=null,dialog=null,choice=null,notice='',existing=null;
+  root.classList.add('course-media-workflow');
+  const active=()=>!disposed&&current()&&root.isConnected;
+  const canLeave=()=>!busy&&!pending&&!dirty&&!choice?.selected?.size;
+@@ -17,8 +18,14 @@ export function mountCourseMedia(root,{request,cardTools,courseName='Course',web
+  const revisions=()=>({playlistId:p.id,revision:listing.revision,playlistRevision:p.revision||0,websiteRevision:p.websiteRevision||0,contentRevision:p.contentRevision||0});
+  function lockControls(){if(pending&&!root.querySelector('[data-cmw=retry]')){const button=document.createElement('button');button.type='button';button.dataset.cmw='retry';button.textContent='Retry this save';root.querySelector('[data-cmw-status]')?.after(button);}for(const el of root.querySelectorAll('input,select,textarea,button'))el.disabled=busy||Boolean(pending&&el.dataset.cmw!=='retry')||el.dataset.cmwLocked==='true';root.setAttribute('aria-busy',String(busy));}
+  async function run(fn){if(busy)return;busy=true;lockControls();try{await fn();}catch(e){if(active()){if(!listing)root.innerHTML='<p data-cmw-status role="alert">'+esc(e.message)+'</p><button type="button" data-cmw="reload">Try again</button>';else tell(e.message,true);}}finally{busy=false;if(active())lockControls();}}
+- async function list(){const next=await call('course-playlists');listing=next;p=null;dirty=false;draw();}
+- async function open(key,section='content'){const next=await call('course-playlist-detail',{playlistId:key});listing.revision=next.revision;p=next.playlist;dirty=false;tab=section;draw();}
++ async function list(){const next=await call('course-playlists');listing=next;p=null;existing=null;dirty=false;draw();}
++ async function open(key,section='content'){const next=await call('course-playlist-detail',{playlistId:key});listing.revision=next.revision;existing=null;p=next.playlist;dirty=false;tab=section;draw();}
++ async function openExisting(websiteId,unassigned=false,after=''){
++  const next=await call('course-playlist-detail',{...(unassigned?{unassigned:'1'}:{websiteId}),...(after?{after}:{})});
++  listing.revision=next.revision;p=null;
++  existing=after?{...next.collection,recordings:[...existing.recordings,...next.collection.recordings],pdfs:[...existing.pdfs,...next.collection.pdfs]}:next.collection;
++  draw();
++ }
+  async function mutation(action,input,message,after){
+   const body={...copy(input),operationId:crypto.randomUUID()};
+   const perform=async()=>{pending={action,body,message,after};lockControls();try{await call(action,body);const next=await call('course-playlists');listing=next;if(after==='list')p=null;else await open(body.playlistId,after||tab);pending=null;dirty=false;draw();tell(message);}catch(e){if(e.status&&e.status<500){pending=null;if(e.status===409)tell(e.message+' Refresh before reviewing this change again.',true);}throw e;}};
+@@ -28,7 +35,11 @@ export function mountCourseMedia(root,{request,cardTools,courseName='Course',web
+  function leave(){if(!canLeave()){tell(pending?'Retry the pending save first.':busy?'Wait for this action to finish.':'Save your changes before leaving this playlist.',true);return false;}return true;}
+  function heading(){return `<p data-cmw-status role="status" aria-live="polite">${esc(notice)}</p>${pending?'<button type="button" data-cmw="retry">Retry this save</button>':''}`;}
+  function draw(){if(!active())return;cardBinding?.destroy();cardBinding=null;
+-  if(!p){root.innerHTML=heading()+`<section class="cmw-panel"><div class="cmw-toolbar"><div><h3>Playlists</h3><p>Open a playlist to add recordings, or create a new group.</p></div><button type="button" data-cmw="create">+ Create playlist</button></div><div class="cmw-table-wrap" role="region" aria-label="Course playlists" tabindex="0"><table><thead><tr><th>Playlist</th><th>Recordings</th><th>Card</th><th>Content</th><th></th></tr></thead><tbody>${listing.playlists.map(r=>`<tr><td><strong>${esc(r.name)}</strong></td><td>${r.recordings}</td><td>${tag(r.cardPublished?'Published':'Private',r.cardPublished)}</td><td>${tag(r.contentRevision===r.publishedContentRevision&&r.contentRevision?'Published':'Draft',r.contentRevision===r.publishedContentRevision&&r.contentRevision>0)}</td><td><button type="button" class="cmw-quiet" data-cmw="open" data-id="${esc(r.id)}">Open</button></td></tr>`).join('')||'<tr><td colspan="5">No playlists yet. Create a playlist, then add recordings.</td></tr>'}</tbody></table></div>${listing.more?'<button type="button" class="cmw-quiet" data-cmw="more-playlists">More playlists</button>':''}</section><section class="cmw-panel"><h3>Reading websites</h3><p>Course readings are organised into lessons alongside the playlists.</p>${listing.websites.map(w=>`<div class="cmw-row"><strong>${esc(w.title)}</strong><a href="${esc(websiteOrigin)}/builder/?website=${encodeURIComponent(w.id)}">Edit website</a>${w.enabled?`<a href="${esc(websiteOrigin)}/studio/?website=${encodeURIComponent(w.id)}">Read</a>`:''}</div>`).join('')||'<p>No reading website is registered for this Course.</p>'}${listing.legacy.length?`<details><summary>Existing playlists</summary>${listing.legacy.map(w=>`<div class="cmw-row"><strong>${esc(w.title)}</strong><a href="${esc(websiteOrigin)}/builder/?website=${encodeURIComponent(w.websiteId)}">Open existing editor</a></div>`).join('')}</details>`:''}</section>`;lockControls();return;}
++  if(existing){root.innerHTML=heading()+`<button type="button" class="cmw-back" data-cmw="list">← Playlists and material</button><section class="cmw-panel"><h3>${esc(existing.name)}</h3>${existing.unassigned?'<p>These recordings have no website or playlist association. They remain separate until their destination is verified.</p>':''}${existingMaterialLinks({...existing,projectPdfs:projectMaterials[existing.websiteId]||[]},{origin:websiteOrigin})}<h4>Recordings</h4>${existingRecordingRows(existing.recordings)}${!existing.recordings.length?'<p>No recordings attached to this collection.</p>':''}${existing.more?'<button type="button" class="cmw-quiet" data-cmw="more-existing">Load more material</button>':''}</section>`;lockControls();return;}
++  if(!p){
++   const collections=[...(listing.websites||[]),...(listing.legacy||[])],unassigned=listing.unassigned;
++   root.innerHTML=heading()+`<section class="cmw-panel"><div class="cmw-toolbar"><div><h3>Playlists and material</h3><p>Open a collection to see its recordings, PDFs and reading website together.</p></div><button type="button" data-cmw="create">+ Create playlist</button></div><div class="cmw-table-wrap" role="region" aria-label="Course playlists and material" tabindex="0"><table><thead><tr><th>Playlist / collection</th><th>Recordings</th><th>PDFs</th><th>Website / card</th><th></th></tr></thead><tbody>${listing.playlists.map(r=>`<tr><td><strong>${esc(r.name)}</strong></td><td>${r.recordings}</td><td>In content</td><td>${tag(r.cardPublished?'Published':'Private draft',r.cardPublished)}</td><td><button type="button" class="cmw-quiet" data-cmw="open" data-id="${esc(r.id)}">Open</button></td></tr>`).join('')}${collections.map(w=>`<tr><td><strong>${esc(w.title||w.name)}</strong><small>${w.enabled&&w.hasPublishedWebsite?'Published website':'Private draft'}</small></td><td>${w.recordings||0}${w.privateRecordings?`<small>${w.privateRecordings} private</small>`:''}</td><td>${w.pdfs||0}${projectMaterials[w.websiteId||w.id]?.length?`<small>+ ${projectMaterials[w.websiteId||w.id].length} project PDF</small>`:''}</td><td>${tag(w.enabled&&w.hasPublishedWebsite?'Published':'Private draft',w.enabled&&w.hasPublishedWebsite)}</td><td><button type="button" class="cmw-quiet" data-cmw="open-existing" data-id="${esc(w.websiteId||w.id)}">Open</button></td></tr>`).join('')}${!listing.playlists.length&&!collections.length?'<tr><td colspan="5">No playlists or material registered for this Course.</td></tr>':''}</tbody></table></div>${listing.more?'<button type="button" class="cmw-quiet" data-cmw="more-playlists">More playlists</button>':''}</section>${unassigned&&(unassigned.recordings||unassigned.pdfs)?`<section class="cmw-panel"><h4>Unassigned recordings and material</h4><p>${unassigned.recordings} recordings · ${unassigned.pdfs} PDFs. Their destination has not been verified.</p><button type="button" class="cmw-quiet" data-cmw="unassigned">Review unassigned material</button></section>`:''}`;lockControls();return;
++  }
+   root.innerHTML=heading()+`<button type="button" class="cmw-back" data-cmw="list">← Playlists</button><section class="cmw-panel"><header><p class="cmw-eyebrow">${p.isNew?'NEW PLAYLIST':'PLAYLIST'}</p><h3 data-cmw-heading>${esc(p.name||'Create playlist')}</h3>${!p.isNew?`<div class="cmw-tags">${tag(p.cardPublished?'Card published':'Card private',p.cardPublished)}${tag(p.contentRevision===p.publishedContentRevision&&p.contentRevision?'Content published':'Content draft',p.contentRevision===p.publishedContentRevision&&p.contentRevision>0)}</div><nav aria-label="Playlist sections"><button type="button" data-cmw="details" aria-current="${tab==='details'?'page':'false'}">Details</button><button type="button" data-cmw="content" aria-current="${tab==='content'?'page':'false'}">Content</button></nav>`:''}</header>${p.isNew||tab==='details'?details():content()}</section>`;
+   if(p.isNew||tab==='details')bindCard();lockControls();
+  }
+@@ -40,10 +51,10 @@ export function mountCourseMedia(root,{request,cardTools,courseName='Course',web
+  async function candidates(kind,after=''){const value=await call('course-playlist-candidates',{kind,after});choice.page=value.items;choice.more=value.more;choice.next=value.next;choice.kind=kind;drawChoices();}
+  function drawChoices(){if(!dialog||!choice)return;const query=(dialog.querySelector('[name=search]')?.value||'').toLowerCase(),attached=new Set(p.content.map(e=>e.kind+':'+e.referenceId));dialog.querySelector('[data-cmw-choices]').innerHTML=choice.page.filter(r=>r.title.toLowerCase().includes(query)).map(r=>{const ready=choice.kind!=='RECORDING'||r.companionKey&&r.attributionRevision,already=attached.has(choice.kind+':'+r.id);return `<label class="cmw-choice"><input type="checkbox" data-cmw-choice="${esc(r.id)}"${already||choice.selected.has(r.id)?' checked':''}${already||!ready?' data-cmw-locked="true" disabled':''}><span><strong>${esc(r.title)}</strong><small>${already?'Already attached':ready?'Ready to add':'Still processing · saved Teacher and companion required'}</small></span></label>`;}).join('')||'<p>No items on this page match.</p>';dialog.querySelector('[data-cmw-dialog=more]').hidden=!choice.more;dialog.querySelector('[data-cmw-selection]').textContent=choice.selected.size+' selected';dialog.querySelector('[data-cmw-dialog=attach]').disabled=!choice.selected.size;dialog.querySelector('[data-cmw-dialog=attach]').dataset.cmwLocked=String(!choice.selected.size);}
+  async function showCandidates(kind){choice={selected:new Map(),page:[],kind};makeDialog(kind==='RECORDING'?'Add recordings':'Add material',`${kind==='RECORDING'?'<p>Select processed recordings. Their existing summaries and follow-along are included.</p>':'<label>Material type<select name="material-kind"><option value="PDF">PDFs already in Studio</option><option value="READING">Course reading websites</option></select></label>'}<label>Search this page<input type="search" name="search"></label><div data-cmw-choices></div><button type="button" data-cmw-dialog="more">More items</button><footer><span data-cmw-selection>0 selected</span><button type="button" data-cmw-dialog="attach">Add selected</button></footer>`);await candidates(kind);}
+- async function review(key){const value=await call('course-playlist-recording',{attachmentId:key}),c=value.companion||{};makeDialog(value.title,`${value.source?.url?'<p><a href="'+esc(value.source.url.startsWith('/')?websiteOrigin+value.source.url:value.source.url)+'" target="_blank" rel="noopener">Review recording ↗</a></p>':''}<h4>Summary</h4><p class="cmw-prose">${esc(c.summary||'No saved summary.')}</p><h4>Follow-along</h4>${(c.topicNotes||[]).map(n=>`<section><h4>${esc(n.time)} ${esc(n.title)}</h4><p class="cmw-prose">${esc([n.chapter,n.reflection].filter(Boolean).join('\n\n'))}</p><p class="cmw-prose">${esc(n.practice||'')}</p></section>`).join('')||'<p>No saved follow-along notes.</p>'}<h4>Topics</h4>${(c.topics||[]).map(t=>`<p>${esc(t.time)} · ${esc(t.title)}</p>`).join('')}`);}
++ async function review(key){const value=await call('course-playlist-recording',{attachmentId:key}),c=value.companion||existing?.recordings.find(r=>r.attachmentId===key)||{};makeDialog(value.title,`${value.source?.url?'<p><a href="'+esc(value.source.url.startsWith('/')?websiteOrigin+value.source.url:value.source.url)+'" target="_blank" rel="noopener">Review recording ↗</a></p>':''}<h4>Summary</h4><p class="cmw-prose">${esc(c.summary||'No saved summary.')}</p><h4>Follow-along</h4>${(c.topicNotes||[]).map(n=>`<section><h4>${esc(n.time)} ${esc(n.title)}</h4><p class="cmw-prose">${esc([n.chapter,n.reflection].filter(Boolean).join('\n\n'))}</p><p class="cmw-prose">${esc(n.practice||'')}</p></section>`).join('')||'<p>No saved follow-along notes.</p>'}<h4>Topics</h4>${(c.topics||[]).map(t=>`<p>${esc(t.time)} · ${esc(t.title)}</p>`).join('')}`);}
+  async function click(event){const d=event.target.closest('[data-cmw-dialog]');if(d){event.preventDefault();if(d.dataset.cmwDialog==='close'){if(!busy&&!pending){choice=null;dialog.close();}}else await run(async()=>{if(d.dataset.cmwDialog==='more')await candidates(choice.kind,choice.next);if(d.dataset.cmwDialog==='attach'){for(const r of choice.selected.values())p.content.push({kind:choice.kind,referenceId:r.id,snapshot:{title:r.title}});choice=null;dialog.close();dirty=true;draw();}});return;}
+   const b=event.target.closest('[data-cmw]');if(!b)return;event.preventDefault();const action=b.dataset.cmw;
+-  await run(async()=>{if(action==='reload'){await list();return;}if(action==='retry'){await retry();return;}if(pending)throw Error('Retry the pending save first.');if(action==='list'){if(dirty)throw Error('Save your changes before returning to Playlists.');await list();}if(action==='discard'){dirty=false;if(p.isNew){p=null;draw();}else await open(p.id,tab);return;}if(action==='open')await open(b.dataset.id);if(action==='create'){await prepareDetails();p={id:crypto.randomUUID(),isNew:true,name:'',description:'',card:copy(cardTools.CARD_DEFAULT),teacherIds:[],content:[],publishedContent:[],placements:[],contentRevision:0};const own=options.locations.find(l=>l.activityKey===options.ownerActivityKey);if(own)p.placements=[{activityKey:own.activityKey,offeringId:own.offeringId,classId:'',title:own.name,className:''}];dirty=false;tab='details';draw();}
++  await run(async()=>{if(action==='reload'){await list();return;}if(action==='retry'){await retry();return;}if(pending)throw Error('Retry the pending save first.');if(action==='list'){if(dirty)throw Error('Save your changes before returning to Playlists.');await list();}if(action==='discard'){dirty=false;if(p.isNew){p=null;draw();}else await open(p.id,tab);return;}if(action==='open-existing')await openExisting(b.dataset.id);if(action==='unassigned')await openExisting(null,true);if(action==='more-existing')await openExisting(existing.websiteId,existing.unassigned,existing.next);if(action==='open')await open(b.dataset.id);if(action==='create'){await prepareDetails();p={id:crypto.randomUUID(),isNew:true,name:'',description:'',card:copy(cardTools.CARD_DEFAULT),teacherIds:[],content:[],publishedContent:[],placements:[],contentRevision:0};const own=options.locations.find(l=>l.activityKey===options.ownerActivityKey);if(own)p.placements=[{activityKey:own.activityKey,offeringId:own.offeringId,classId:'',title:own.name,className:''}];dirty=false;tab='details';draw();}
+    if(['details','content'].includes(action)){if(dirty)throw Error('Save your changes before switching sections.');if(action==='details')await prepareDetails();tab=action;draw();}
+    if(action==='add-placement'){const form=root.querySelector('form'),index=form.elements.location.value,location=options.locations[index];if(!location)throw Error('Choose a location.');const classId=form.elements.class.value,klass=(options.classes||[]).find(c=>c.id===classId);if(p.placements.some(x=>x.activityKey===location.activityKey&&x.classId===classId))throw Error('This location is already selected.');p.placements.push({activityKey:location.activityKey,offeringId:location.offeringId,classId,title:location.name,className:klass?.name||''});dirty=true;draw();}
+    if(action==='remove-placement'){p.placements.splice(Number(b.dataset.index),1);dirty=true;draw();}
+diff --git a/public/shared/existing-media-view.mjs b/public/shared/existing-media-view.mjs
+new file mode 100644
+index 0000000..ee121bc
+--- /dev/null
++++ b/public/shared/existing-media-view.mjs
+@@ -0,0 +1,13 @@
++import {esc} from './model.mjs';
++
++// Protected Studio links only. Project PDFs are supplied exclusively by the
++// loopback review harness, never bundled into the production catalogue.
++export function existingMaterialLinks({websiteId,websitePublished=false,unassigned=false,pdfs=[],projectPdfs=[]},{origin=''}={}){
++ const files=[...new Map(pdfs.map(file=>[file.assetId||file.attachmentId,file])).values()];
++ const local=projectPdfs.filter(file=>/^\/review-files\/[a-f0-9]{64}\.pdf$/.test(file.href||''));
++ return '<div class="existing-media-materials">'+(!unassigned&&websiteId?'<section><h4>Reading website</h4><p><span class="existing-media-status">'+(websitePublished?'Published':'Private draft')+'</span></p><p>'+(websitePublished?'<a href="'+esc(origin)+'/studio/?website='+encodeURIComponent(websiteId)+'" target="_blank" rel="noopener">Read website</a> · ':'')+'<a href="'+esc(origin)+'/builder/?website='+encodeURIComponent(websiteId)+'" target="_blank" rel="noopener">Edit website</a></p></section>':'')+'<section><h4>PDFs</h4>'+files.map(file=>'<p><a href="'+esc(origin)+'/api/media/'+encodeURIComponent(file.attachmentId)+'?draft=1" target="_blank" rel="noopener">'+esc(file.title)+'</a> <span class="existing-media-status">'+(file.published?'Published':'Private draft')+'</span></p>').join('')+local.map(file=>'<p><a href="'+esc(file.href)+'" target="_blank" rel="noopener">'+esc(file.title)+'</a> <span class="existing-media-status">Project copy · local review only</span></p>').join('')+(!files.length&&!local.length?'<p>No PDF attached in Studio.</p>':'')+(local.length?'<p class="existing-media-note">Project PDFs have not been uploaded or published to Studio.</p>':'')+'</section></div>';
++}
++
++export function existingRecordingRows(rows,{action='review',attribute='data-cmw'}={}){
++ return '<div class="existing-media-recordings">'+rows.map(row=>'<article class="existing-media-recording'+(row.quote?.text?' has-quote':'')+'"><div><p>'+esc(row.recordedDate||row.lesson_date||'Date not supplied')+' · <span class="existing-media-status">'+(row.published?'Published':'Private draft')+'</span></p><h4>'+esc(row.title)+'</h4><p class="existing-media-summary">'+esc(row.summary||'A recording summary has not been attached yet.')+'</p><button type="button" '+attribute+'="'+action+'" data-id="'+esc(row.attachmentId||row.attachment_id)+'">Review recording</button></div>'+(row.quote?.text?'<blockquote>'+esc(row.quote.text)+'<cite>'+esc(row.quote.attribution||'')+'</cite></blockquote>':'')+'</article>').join('')+'</div>';
++}
+diff --git a/public/shared/monthly-media-page.css b/public/shared/monthly-media-page.css
+index 030391e..8490d80 100644
+--- a/public/shared/monthly-media-page.css
++++ b/public/shared/monthly-media-page.css
+@@ -1,2 +1,6 @@
+ .monthly-media-page{max-width:1100px;margin:auto}.monthly-media-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem}.monthly-media-page .toolbar,.monthly-selected-actions{display:flex;gap:.5rem;flex-wrap:wrap;margin:1rem 0}.monthly-media-page button[data-monthly=edit]{background:#45665a;color:#fff;border-radius:1.2rem;padding:.7rem 1.6rem;font-weight:700}.monthly-recording{padding:1.3rem 0;border-bottom:1px solid #d7dbd2}.monthly-summary{white-space:pre-wrap;overflow-wrap:anywhere}.monthly-recording-detail,.monthly-recording-editor{padding:1.2rem;background:#fffcf7;border:1px solid #d7dbd2;border-radius:1rem}.monthly-media-page label{display:block;margin:.7rem 0}.monthly-media-page input:not([type=checkbox]),.monthly-media-page textarea,.monthly-media-page select{max-width:100%;box-sizing:border-box}.monthly-media-page .mou-playlist-scroll{overflow:visible}.monthly-media-page [data-playlist-purpose=media] table,.monthly-media-page [data-playlist-purpose=media] tbody,.monthly-media-page [data-playlist-purpose=media] tr,.monthly-media-page [data-playlist-purpose=media] td{display:block;width:auto}.monthly-media-page [data-playlist-purpose=media] thead{display:none}.monthly-media-page [data-playlist-purpose=media] td{padding:.75rem}.monthly-media-page [data-playlist-purpose=media] td:nth-child(2){display:none}.monthly-historical{margin:1.4rem 0}.monthly-historical small{overflow-wrap:anywhere}.monthly-recording-editor footer{display:flex;gap:.6rem;flex-wrap:wrap}.monthly-recording-editor textarea{width:100%}@media(max-width:600px){.monthly-media-heading{display:block}.monthly-media-page .playlist-card-grid{grid-template-columns:1fr}.monthly-media-page .playlist-card-editor{display:block}.monthly-media-page button{max-width:100%;white-space:normal}.monthly-recording-detail,.monthly-recording-editor{padding:.8rem}}
+ .monthly-media-page [data-playlist-field=name]{display:block;width:100%;max-width:42rem;font-size:1.1rem}.monthly-media-page [data-playlist-purpose=media] td:first-child:before{content:'Playlist name';display:block;font-weight:600;margin-bottom:.5rem}.monthly-media-page [data-playlist-purpose=media] td:nth-child(3):before{content:'Recordings: '}.monthly-media-page [data-playlist-purpose=media] td:nth-child(4):before{content:'Status: '}.monthly-media-page .pms-toolbar{display:flex;gap:.5rem;flex-wrap:wrap}.monthly-recording-editor label>input:not([type=checkbox]){display:block;width:100%;margin-top:.4rem}.monthly-recording-editor input[type=number]{max-width:9rem}.monthly-recording.has-quote{display:grid;grid-template-columns:2fr 1fr;gap:2rem}.monthly-recording blockquote{align-self:center;font:italic 1.3rem Georgia,serif;color:#694165;border-left:3px solid #b5c5b5;padding-left:1rem}.monthly-recording cite{display:block;font:normal .85rem Arial,sans-serif;margin-top:.6rem}@media(max-width:600px){.monthly-recording.has-quote{display:block}}
++
++.monthly-media-page{max-width:1180px;margin-inline:auto}.monthly-existing,.monthly-unassigned{margin:24px 0;padding:20px;border:1px solid #dfd6cf;border-radius:10px}.monthly-table-wrap{overflow:auto}.monthly-existing table{width:100%;min-width:540px;border-collapse:collapse;text-align:left}.monthly-existing th,.monthly-existing td{padding:11px 13px;border-bottom:1px solid #dfd6cf}.monthly-existing th{font-size:12px;background:#f2eee8}.monthly-existing small{display:block;color:#7f777d}.existing-media-materials{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;padding-bottom:12px;margin:16px 0 24px;border-bottom:1px solid #dfd6cf}.existing-media-status,.existing-media-note{font-size:12px;color:#7f777d}@media(max-width:760px){.existing-media-materials{grid-template-columns:minmax(0,1fr)}.monthly-existing,.monthly-unassigned{padding:14px}}
++
++.monthly-mobile-status{display:none!important}@media(max-width:600px){.monthly-existing table{min-width:0;font-size:12px}.monthly-existing th,.monthly-existing td{padding:9px 5px}.monthly-existing th:nth-child(4),.monthly-existing td:nth-child(4){display:none}.monthly-existing td:first-child{width:38%}.monthly-existing button{padding:7px 9px;font-size:12px}.monthly-existing .monthly-mobile-status{display:block!important}}
+diff --git a/public/shared/monthly-media-page.mjs b/public/shared/monthly-media-page.mjs
+index 6355079..918d411 100644
+--- a/public/shared/monthly-media-page.mjs
++++ b/public/shared/monthly-media-page.mjs
+@@ -1,3 +1,4 @@
++import {existingMaterialLinks} from './existing-media-view.mjs';
+ import {seriesRecordings,seriesRoute} from './recording-website.mjs';
+ import {recordingGuides} from './recording-companion.mjs';
+ import {bindRecordingGuides} from './media-bindings.mjs';
+@@ -18,7 +19,7 @@ export function clearMonthlyMediaCache(){caches.clear();}
+ for(const name of ['website-account-changed','website-session-ended','website-content-changed'])
+  globalThis.window?.addEventListener(name,clearMonthlyMediaCache);
+ 
+-export function mountMonthlyMedia(host,{api,mutate,identity,offering,current,initialRecord,onParticipants=()=>{}}){
++export function mountMonthlyMedia(host,{api,mutate,identity,offering,current,initialRecord,onParticipants=()=>{},projectMaterials={}}){
+  const owner=JSON.stringify([identity.account?.accountId,identity.generation]),key=owner+'|'+offering.offering_id;
+  let cache=caches.get(key);if(!cache){if(caches.size>=12)caches.delete(caches.keys().next().value);caches.set(key,cache=new Map());}
+  if(cache.get('__revision')!==initialRecord.mediaRevision)cache.clear();cache.set('__revision',initialRecord.mediaRevision);
+@@ -39,18 +40,21 @@ export function mountMonthlyMedia(host,{api,mutate,identity,offering,current,ini
+  function shell(){
+   host.classList.add('monthly-media-page');host.innerHTML='<header class="monthly-media-heading"><div><p class="eyebrow">'+(mou?'MOTHERS OF THE UMMAH':'TAFSEER')+' · MEDIA</p><h2>'+esc(selected?.name||(creating?'Create '+(mou?'MOU playlist':'Surah playlist'):label))+'</h2></div><div class="toolbar">'+(selected||creating?button('back','← '+label):button('create','Create '+(mou?'playlist':'Surah playlist')))+button('participants','Participants')+button('refresh','Refresh')+'</div></header><p data-monthly-status role="status" aria-live="polite"></p><div data-monthly-body></div>';
+  }
+- function catalogue(){shell();const native=table.playlists.filter(row=>!row.legacy),legacy=table.playlists.filter(row=>row.legacy);host.querySelector('[data-monthly-body]').innerHTML='<p>Choose one playlist to build its card and recordings. Recordings are independent of timetable sessions.</p><div class="playlist-card-grid">'+native.map(row=>cards.playlistCardHTML({...row,card:row.publishedCard||row.card},{kind:mou?'PROGRAM':'TAFSEER',defaultArtwork:mou?'':tafseerCourseCover({name:row.name,displayIdentity:{kind:'TAFSEER'}}),action:'monthly-open',accessLabel:row.enabled?'Published':'Private draft'})).join('')+'</div>'+(!native.length?'<p>No playlists yet.</p>':'')+'<details class="monthly-historical"><summary>Existing websites and historical recordings</summary><p>These retain their existing identities, dates and access. No native playlist association has been inferred.</p><ul>'+legacy.map(row=>'<li>'+button('legacy',esc(row.name),'data-id="'+esc(row.id)+'"')+' <small>'+esc(row.id)+'</small></li>').join('')+'</ul>'+button('unassigned','Other historical recordings')+'</details>';}
++ function catalogue(){
++  shell();const native=table.playlists.filter(row=>!row.legacy),legacy=table.playlists.filter(row=>row.legacy),unassigned=table.unassigned;
++  host.querySelector('[data-monthly-body]').innerHTML='<p>Open a collection to see its recordings, PDFs and reading website together.</p>'+(native.length?'<div class="playlist-card-grid">'+native.map(row=>cards.playlistCardHTML({...row,card:row.publishedCard||row.card},{kind:mou?'PROGRAM':'TAFSEER',defaultArtwork:mou?'':tafseerCourseCover({name:row.name,displayIdentity:{kind:'TAFSEER'}}),action:'monthly-open',accessLabel:row.enabled?'Published':'Private draft'})).join('')+'</div>':'')+(legacy.length?'<section class="monthly-existing"><h3>Existing collections</h3><div class="monthly-table-wrap" role="region" aria-label="Existing recordings, PDFs and websites" tabindex="0"><table><thead><tr><th>Collection</th><th>Recordings</th><th>PDFs</th><th>Website</th><th></th></tr></thead><tbody>'+legacy.map(row=>'<tr><td><strong>'+esc(row.name)+'</strong><small class="monthly-mobile-status">'+(row.websitePublished?'Published website':'Private draft')+'</small></td><td>'+(row.recordings||0)+(row.privateRecordings?'<small>'+row.privateRecordings+' private</small>':'')+'</td><td>'+(row.pdfs||0)+(projectMaterials[row.websiteId]?.length?'<small>+ '+projectMaterials[row.websiteId].length+' project PDF</small>':'')+'</td><td>'+(row.websitePublished?'Published':'Private draft')+'</td><td>'+button('legacy','Open','data-id="'+esc(row.id)+'"')+'</td></tr>').join('')+'</tbody></table></div></section>':'')+(!native.length&&!legacy.length?'<p>No playlists or material registered yet.</p>':'')+(unassigned&&(unassigned.recordings||unassigned.pdfs)?'<section class="monthly-unassigned"><h3>Unassigned recordings and material</h3><p>'+unassigned.recordings+' recordings · '+unassigned.pdfs+' PDFs. Their destination has not been verified; they remain separate.</p>'+button('unassigned','Review unassigned material')+'</section>':'');
++ }
+  function contents(){
+   shell();const body=host.querySelector('[data-monthly-body]');
+-  body.innerHTML='<nav class="admin-tabs" aria-label="Playlist sections">'+['recordings','settings'].map(name=>button(name,name==='settings'?'Settings':'Recordings','aria-current="'+(section===name?'page':'false')+'"')).join('')+'</nav><div class="monthly-selected-actions">'+(!isLegacy()||attachment?button('edit',attachment?'Edit recording':'Edit'):'')+(section==='recordings'&&!attachment&&!isLegacy()?button('attach','Attach recording')+(mou?button('existing','Attach existing playlist')+button('prepared','Other prepared media'):''):'')+'</div><section data-monthly-content></section>';
++  body.innerHTML='<nav class="admin-tabs" aria-label="Playlist sections">'+(selected.id==='unassigned'?['recordings']:['recordings','settings']).map(name=>button(name,name==='settings'?'Settings':'Recordings','aria-current="'+(section===name?'page':'false')+'"')).join('')+'</nav><div class="monthly-selected-actions">'+(!isLegacy()||attachment?button('edit',attachment?'Edit recording':'Edit'):'')+(section==='recordings'&&!attachment&&!isLegacy()?button('attach','Attach recording')+(mou?button('existing','Attach existing playlist')+button('prepared','Other prepared media'):''):'')+'</div><section data-monthly-content></section>';
+   const target=host.querySelector('[data-monthly-content]');
+   if(section==='settings'){
+-   target.innerHTML='<h3>Playlist settings</h3><dl><dt>Name</dt><dd>'+esc(selected.name)+'</dd><dt>Playlist Teacher</dt><dd>'+esc(selected.card?.teacher||'Optional · not listed')+'</dd><dt>Status</dt><dd>'+(selected.enabled?'Published':'Private draft')+'</dd><dt>Access date</dt><dd>'+esc(selected.closeDate||selected.closeMonth||'Open · current paid month')+'</dd></dl><p>Subscriptions, grants and date-to-month settings stay in Participants. Publishing playlist details does not publish any recording.</p>'+button('participants','Open Participants')+(isLegacy()?'<p>Existing website · no native playlist mapping. Its original website and recording access remain separate.</p><a href="/builder/?website='+encodeURIComponent(selected.websiteId)+'">Open existing website editor</a>':'');return;
++   target.innerHTML='<h3>Playlist settings</h3><dl><dt>Name</dt><dd>'+esc(selected.name)+'</dd><dt>Playlist Teacher</dt><dd>'+esc(selected.card?.teacher||'Optional · not listed')+'</dd><dt>Status</dt><dd>'+(selected.enabled?'Published':'Private draft')+'</dd><dt>Access date</dt><dd>'+esc(selected.closeDate||selected.closeMonth||'Open · current paid month')+'</dd></dl><p>Subscriptions, grants and date-to-month settings stay in Participants. Publishing playlist details does not publish any recording.</p>'+button('participants','Open Participants')+(isLegacy()&&selected.websiteId?'<p>Existing website · no native playlist mapping. Its original website and recording access remain separate.</p><a href="/builder/?website='+encodeURIComponent(selected.websiteId)+'">Open existing website editor</a>':'');return;
+   }
+-  target.innerHTML=(isLegacy()?'<p>Existing media · saved website association only. No recordings have been moved or copied.</p>':'')+(resources.length?'<section><h3>Shared original PDFs</h3>'+resources.map(file=>'<p><a href="/api/media/'+encodeURIComponent(file.attachmentId)+'?draft=1" target="_blank" rel="noopener">'+esc(file.title)+'</a></p>').join('')+'</section>':'')+'<div class="monthly-recordings">'+rows.filter(row=>['video/mp4','video/youtube'].includes(row.type||row.mime_type)).map(row=>'<article class="monthly-recording'+(row.quote?.text?' has-quote':'')+'"><div><p>'+esc(row.recordedDate||row.lesson_date||'Original date not supplied')+' · '+(row.published?'Published':'Private draft')+'</p><h3>'+esc(row.title)+'</h3><p class="monthly-summary">'+esc(row.summary||'The recording summary has not been added yet.')+'</p>'+button('recording','Open recording','data-id="'+esc(row.attachmentId||row.attachment_id)+'"')+'</div>'+(row.quote?.text?'<blockquote>'+esc(row.quote.text)+'<cite>'+esc(row.quote.attribution||'')+'</cite></blockquote>':'')+'</article>').join('')+'</div>'+(!rows.length?'<p>No recordings in this playlist.</p>':'')+(more?button('more','Load more historical recordings'):'');
++  target.innerHTML=existingMaterialLinks({websiteId:selected.websiteId,websitePublished:isLegacy()?Boolean(selected.websitePublished):Boolean(selected.enabled),unassigned:selected.id==='unassigned',pdfs:resources,projectPdfs:projectMaterials[selected.websiteId]||[]})+'<div class="monthly-recordings">'+rows.filter(row=>['video/mp4','video/youtube'].includes(row.type||row.mime_type)).map(row=>'<article class="monthly-recording'+(row.quote?.text?' has-quote':'')+'"><div><p>'+esc(row.recordedDate||row.lesson_date||'Original date not supplied')+' · '+(row.published?'Published':'Private draft')+'</p><h3>'+esc(row.title)+'</h3><p class="monthly-summary">'+esc(row.summary||'The recording summary has not been added yet.')+'</p>'+button('recording','Open recording','data-id="'+esc(row.attachmentId||row.attachment_id)+'"')+'</div>'+(row.quote?.text?'<blockquote>'+esc(row.quote.text)+'<cite>'+esc(row.quote.attribution||'')+'</cite></blockquote>':'')+'</article>').join('')+'</div>'+(!rows.some(row=>['video/mp4','video/youtube'].includes(row.type||row.mime_type))?'<p>No recordings attached to this collection.</p>':'')+(more?button('more','Load more historical recordings'):'');
+  }
+  async function legacySummaries(values,after='',files=[]){
+-  const entry=selected,ticket=epoch;if(mou||!entry?.websiteId||!entry.enabled)return {rows:values,resources:files};
++  const entry=selected,ticket=epoch;if(!entry?.websiteId||!entry.enabled||entry.websitePublished===false)return {rows:values,resources:files};
+   const source=entry.websiteId,[record,feed]=await Promise.all([selectedRead('/api/websites/'+encodeURIComponent(source),ticket),selectedRead('/api/offerings/'+encodeURIComponent(offering.offering_id)+'/media?'+new URLSearchParams({website:source,...(after?{after}:{})}),ticket)]);
+   if(!active()||ticket!==epoch)return {rows:values,resources:files};
+   const entries=seriesRecordings({media:feed.media,guides:bindRecordingGuides(recordingGuides(record.document),feed.media,feed.mediaBindings),companions:feed.companions});
+@@ -59,16 +63,16 @@ export function mountMonthlyMedia(host,{api,mutate,identity,offering,current,ini
+  }
+  async function loadCatalogue(fresh=false){const stamp=++epoch,next=await selectedRead(path+'/playlists',stamp,{fresh});if(!active()||stamp!==epoch)return;table=next;selected=null;attachment=null;section='recordings';catalogue();}
+  async function choose(id,{legacy=false,unassigned=false}={}){
+-  const stamp=++epoch;cleanup();attachment=null;section='recordings';selected=unassigned?{id:'unassigned',name:'Other historical recordings',legacy:true}:table.playlists.find(row=>row.id===id&&Boolean(row.legacy)===legacy);if(!selected)throw Error('Reopen the exact saved playlist.');shell();tell('Loading recordings…');
++  const stamp=++epoch;cleanup();attachment=null;section='recordings';selected=unassigned?{id:'unassigned',name:'Unassigned recordings and material',legacy:true}:table.playlists.find(row=>row.id===id&&Boolean(row.legacy)===legacy);if(!selected)throw Error('Reopen the exact saved playlist.');shell();tell('Loading recordings…');
+   const result=await selectedRead(isLegacy()?path+'/media-review?'+new URLSearchParams(unassigned?{unassigned:'1'}:{website:selected.websiteId}):path+'/playlists?playlist='+encodeURIComponent(selected.id),stamp);if(!active()||stamp!==epoch)return;
+   if(!isLegacy()){table=result;selected=result.playlists.find(row=>row.id===selected.id)||selected;}
+-  let nextRows=isLegacy()?result.media:result.items||[],nextResources=isLegacy()?nextRows.filter(row=>row.mime_type==='application/pdf').map(row=>({attachmentId:row.attachment_id,assetId:row.asset_id,title:row.title,published:row.published})):(result.pdfs||[]);
++  more=isLegacy()&&result.media.length>50;let nextRows=isLegacy()?result.media.slice(0,50):result.items||[],nextResources=isLegacy()?nextRows.filter(row=>row.mime_type==='application/pdf').map(row=>({attachmentId:row.attachment_id,assetId:row.asset_id,title:row.title,published:row.published})):(result.pdfs||[]);
+   if(mou&&!isLegacy()){
+    const sources=[...new Set(nextRows.map(row=>row.websiteId).filter(id=>id&&id!==selected.websiteId))];if(sources.length>8)throw Error('Review this playlist in smaller source collections.');
+    for(const source of sources){try{const collection=await selectedRead(path+'/existing-collection?website='+encodeURIComponent(source),stamp);if(!active()||stamp!==epoch)return;for(const pdf of collection.pdfs)if(!nextResources.some(row=>row.assetId===pdf.assetId))nextResources.push(pdf);nextRows=nextRows.map(row=>{const original=collection.recordings.find(item=>item.attachmentId===row.attachmentId);return original?{...row,summary:row.summary||original.summary,topics:original.topics,readingIds:original.readingIds,quote:original.quote}:row;});}catch(error){if(error.stale||[401,403].includes(error.status))throw error;}}
+   }
+   if(isLegacy()){const page=await legacySummaries(nextRows,'',nextResources);nextRows=page.rows;nextResources=page.resources;}
+-  if(!active()||stamp!==epoch)return;more=isLegacy()&&nextRows.length>50;rows=nextRows.slice(0,isLegacy()?50:400);resources=nextResources;contents();
++  if(!active()||stamp!==epoch)return;rows=nextRows.slice(0,isLegacy()?50:400);resources=nextResources;contents();
+  }
+  function selectedCurrent(){return selected?{websiteId:selected.websiteId||selected.id,canEdit:initialRecord.canManageContent}:null;}
+  async function detail(id){const stamp=++epoch,value=await selectedRead(path+'/media-detail?attachment='+encodeURIComponent(id),stamp);if(!active()||stamp!==epoch)return;attachment=value;contents();const target=host.querySelector('[data-monthly-content]'),c=value.companion||rows.find(row=>(row.attachmentId||row.attachment_id)===id);
+@@ -85,6 +89,7 @@ export function mountMonthlyMedia(host,{api,mutate,identity,offering,current,ini
+  async function existing(websiteId=null){
+   cleanup();contents();const target=host.querySelector('[data-monthly-content]');
+   if(!websiteId){target.innerHTML='<h3>Attach an existing MOU playlist</h3><p>Review the existing registered material and its original PDF before adding references to this private playlist.</p><label>Existing material<select data-existing-source><option value="">Choose existing material</option>'+initialRecord.websites.filter(row=>row.website_id!==selected.websiteId).map(row=>'<option value="'+esc(row.website_id)+'">'+esc(row.title)+'</option>').join('')+'</select></label>'+button('review-collection','Review collection');return;}
++  target.replaceChildren();
+   const stamp=++epoch,next=await selectedRead(path+'/existing-collection?website='+encodeURIComponent(websiteId),stamp,{fresh:true});if(!active()||stamp!==epoch)return;
+   if(next.websiteId!==websiteId||next.href!=='/studio/?website='+encodeURIComponent(websiteId))throw Error('The collection reader changed. Review this existing collection again.');review=next;
+   target.innerHTML='<h3>'+esc(review.title)+'</h3><p>Target: <strong>'+esc(selected.name)+'</strong> · '+(selected.enabled?'Published · choose a private target':'Private playlist')+'</p><p>'+review.recordings.length+' existing recordings · '+review.pdfs.length+' shared original PDF(s). Existing source publication and access remain unchanged. The target association stays private until you separately Publish this playlist.</p><p><a href="'+esc(review.href)+'" target="_blank" rel="noopener">Open existing recordings ↗</a></p>'+review.pdfs.map(pdf=>'<p><a href="/api/media/'+encodeURIComponent(pdf.attachmentId)+'?draft=1" target="_blank" rel="noopener">'+esc(pdf.title)+'</a> · '+pdf.size+' bytes</p>').join('')+'<ol class="monthly-existing-recordings">'+review.recordings.map((item,index)=>'<li><h4>'+esc(item.title)+'</h4><p>Lesson '+(index+1)+' · '+esc(item.recordedDate||'Original date not supplied')+'</p><p><a href="'+esc(review.href+'#'+seriesRoute('recording',item.attachmentId))+'" target="_blank" rel="noopener">Review recording ↗</a></p><p class="monthly-summary">'+esc(item.summary)+'</p><details><summary>Topics and associated readings</summary><ol>'+item.topics.map(topic=>'<li>'+esc(topic.time)+' '+esc(topic.title)+'</li>').join('')+'</ol><p>'+item.readingIds.map(esc).join(', ')+'</p></details></li>').join('')+'</ol>'+(review.unresolved.length?'<p role="alert">Unresolved mappings: '+esc(JSON.stringify(review.unresolved))+'</p>':'')+button('attach-collection','Attach playlist',''+(!review.canAttach||selected.enabled?'disabled':''))+'<p data-collection-progress role="status" aria-live="polite"></p>';
+@@ -104,7 +109,7 @@ export function mountMonthlyMedia(host,{api,mutate,identity,offering,current,ini
+   if(action==='existing')await existing();if(action==='review-collection'){const id=host.querySelector('[data-existing-source]').value;if(id)await existing(id);}if(action==='attach-collection')await attachReviewed();if(action==='prepared')await prepared();
+   if(action==='edit')await edit();if(action==='create'){if(!table){tell('Loading playlists. Try again in a moment.');return;}epoch++;await create();}if(action==='attach')await attach();
+   if(action==='recording')await detail(control.dataset.id);if(action==='list')await choose(selected.id,{legacy:isLegacy(),unassigned:selected.id==='unassigned'});
+-  if(action==='more'){const stamp=++epoch,result=await selectedRead(path+'/media-review?'+new URLSearchParams({after:rows.at(-1).attachment_id,...(selected.id==='unassigned'?{unassigned:'1'}:{website:selected.websiteId})}),stamp);if(active()&&stamp===epoch){more=result.media.length>50;const next=await legacySummaries(result.media.slice(0,50),rows.at(-1).attachment_id,[...resources]);if(!active()||stamp!==epoch)return;rows.push(...next.rows);resources=next.resources;contents();}}
++  if(action==='more'){const stamp=++epoch,result=await selectedRead(path+'/media-review?'+new URLSearchParams({after:rows.at(-1).attachment_id,...(selected.id==='unassigned'?{unassigned:'1'}:{website:selected.websiteId})}),stamp);if(active()&&stamp===epoch){more=result.media.length>50;const batch=result.media.slice(0,50),files=[...resources];for(const row of batch)if(row.mime_type==='application/pdf'&&!files.some(f=>f.assetId===row.asset_id))files.push({attachmentId:row.attachment_id,assetId:row.asset_id,title:row.title,published:row.published});const next=await legacySummaries(batch,rows.at(-1).attachment_id,files);if(!active()||stamp!==epoch)return;rows.push(...next.rows);resources=next.resources;contents();}}
+  }catch(error){if(active()&&!error.stale){if([401,403].includes(error.status)){cleanup();host.querySelector('[data-monthly-body]').replaceChildren();invalidate();}tell(error.message);}}}
+  host.addEventListener('click',click);cards.ensurePlaylistCardStyles(document,'/shared/playlist-card.css');if(!document.querySelector('link[data-monthly-media-style]')){const link=document.createElement('link');link.rel='stylesheet';link.href='/shared/monthly-media-page.css';link.dataset.monthlyMediaStyle='';document.head.append(link);}shell();
+  void loadCatalogue().catch(failure);
+diff --git a/src/course-playlist-workflow.mjs b/src/course-playlist-workflow.mjs
+index 2c0bbf6..bc3f37f 100644
+--- a/src/course-playlist-workflow.mjs
++++ b/src/course-playlist-workflow.mjs
+@@ -6,6 +6,7 @@ import {playlistScope} from './mou-playlists.mjs';
+ import {cardInput,optionalTeacherIds,savedCard,cardDTO,cardPublication,finishCardPublication} from './playlist-cards.mjs';
+ import {attributionChange,mediaDetail} from './media-attribution.mjs';
+ import {streamMedia} from './media.mjs';
++import {existingMediaCounts,existingMediaDetail,emptyMediaCounts} from './existing-media-view.mjs';
+ 
+ const revision=async(store,offer)=>(await store.first('SELECT revision FROM access_revisions WHERE offering_id=?',[offer]))?.revision||0;
+ async function scope(store,actor,offer,readOnly=false){const s=await playlistScope(store,actor,offer,{readOnly});if(s.kind!=='COURSE')throw fail('Open Course Media.',403);return s;}
+@@ -26,6 +27,7 @@ export async function coursePlaylistRead(env,store,actor,offer,input={},fetcher)
+  await scope(store,actor,offer,true);const start=await revision(store,offer);
+  if(input.action==='course-playlist-options')return locations(env,store,actor,offer,{after:input.after||'',...(input.activityKey?{activityKey:input.activityKey}:{})},fetcher,{readOnly:true});
+  if(input.action==='course-playlist-detail'){
++  if(input.websiteId||input.unassigned){const collection=await existingMediaDetail(env,store,offer,input);if(start!==await revision(store,offer))throw fail('The Course changed. Refresh it.',409,'CHANGE_CONFLICT');return {collection,revision:start};}
+   const row=await rowFor(store,offer,input.playlistId);if(!row)throw fail('Choose a saved Course playlist.',404);
+   const card=await store.first('SELECT * FROM playlist_card_designs WHERE playlist_id=?',[row.playlist_id]);
+   const result={playlist:{id:row.playlist_id,name:row.title,description:row.description_draft,revision:row.revision,websiteId:row.website_id,websiteRevision:row.website_revision,contentRevision:row.content_revision,publishedContentRevision:row.content_published_revision,cardPublished:Boolean(row.enabled&&row.published_key),publishedDescription:row.description_published,card:cardDTO(card.draft_json),teacherIds:JSON.parse(card.teacher_ids_json),placements:await metadata(store,row.playlist_id,'DRAFT'),publishedPlacements:await metadata(store,row.playlist_id,'PUBLISHED'),content:await entries(store,row.playlist_id,'DRAFT'),publishedContent:await entries(store,row.playlist_id,'PUBLISHED')},revision:start};
+@@ -41,9 +43,11 @@ export async function coursePlaylistRead(env,store,actor,offer,input={},fetcher)
+   return {items:rows.slice(0,50),more:rows.length>50,next:rows.length>50?rows[49].id:null,revision:start};
+  }
+  const rows=await store.all(`SELECT p.playlist_id id,w.title name,p.revision,w.revision websiteRevision,w.enabled,w.published_key,c.content_revision contentRevision,c.content_published_revision publishedContentRevision,(SELECT count(*) FROM course_playlist_content x WHERE x.playlist_id=p.playlist_id AND x.stage='DRAFT' AND x.kind='RECORDING') recordings FROM mou_playlists p JOIN websites w USING(website_id) JOIN course_playlist_workflows c USING(playlist_id) WHERE p.offering_id=? AND p.playlist_id>? ORDER BY p.playlist_id LIMIT 51`,[offer,input.after||'']);
+- const websites=await store.all('SELECT website_id id,title,enabled FROM websites w WHERE offering_id=? AND NOT EXISTS(SELECT 1 FROM mou_playlists p WHERE p.website_id=w.website_id) ORDER BY website_id LIMIT 101',[offer]);if(websites.length>100)throw fail('Choose a narrower reading website list.',409);
+- const legacy=await store.all('SELECT p.playlist_id id,w.title,w.website_id websiteId FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.offering_id=? AND NOT EXISTS(SELECT 1 FROM course_playlist_workflows c WHERE c.playlist_id=p.playlist_id) ORDER BY p.playlist_id LIMIT 101',[offer]);if(legacy.length>100)throw fail('Choose a narrower existing playlist list.',409);
+- return {playlists:rows.slice(0,50).map(r=>({...r,cardPublished:Boolean(r.enabled&&r.published_key),published_key:undefined})),websites,legacy,revision:start,more:rows.length>50,next:rows.length>50?rows[49].id:null};
++ const websites=await store.all('SELECT website_id id,title,enabled,published_key IS NOT NULL hasPublishedWebsite FROM websites w WHERE offering_id=? AND NOT EXISTS(SELECT 1 FROM mou_playlists p WHERE p.website_id=w.website_id) ORDER BY website_id LIMIT 101',[offer]);if(websites.length>100)throw fail('Choose a narrower reading website list.',409);
++ const legacy=await store.all('SELECT p.playlist_id id,w.title,w.website_id websiteId,w.enabled,w.published_key IS NOT NULL hasPublishedWebsite FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.offering_id=? AND NOT EXISTS(SELECT 1 FROM course_playlist_workflows c WHERE c.playlist_id=p.playlist_id) ORDER BY p.playlist_id LIMIT 101',[offer]);if(legacy.length>100)throw fail('Choose a narrower existing playlist list.',409);
++ const counts=await existingMediaCounts(store,offer),decorate=w=>({...w,...(counts.websites.get(w.websiteId||w.id)||emptyMediaCounts)});
++ if(start!==await revision(store,offer))throw fail('The Course changed. Refresh it.',409,'CHANGE_CONFLICT');
++ return {playlists:rows.slice(0,50).map(r=>({...r,cardPublished:Boolean(r.enabled&&r.published_key),published_key:undefined})),websites:websites.map(decorate),legacy:legacy.map(decorate),unassigned:counts.unassigned,revision:start,more:rows.length>50,next:rows.length>50?rows[49].id:null};
+ }
+ 
+ export async function coursePlaylistSave(env,store,actor,offer,input,fetcher){
+diff --git a/src/existing-media-view.mjs b/src/existing-media-view.mjs
+new file mode 100644
+index 0000000..e9a33d3
+--- /dev/null
++++ b/src/existing-media-view.mjs
+@@ -0,0 +1,47 @@
++import {fail,id} from './protocol.mjs';
++import {objectJSON} from './content.mjs';
++import {recordingGuides} from '../public/shared/recording-companion.mjs';
++import {bindRecordingGuides} from '../public/shared/media-bindings.mjs';
++import {seriesRecordings} from '../public/shared/recording-website.mjs';
++import {permittedGuideBindings} from './circles.mjs';
++
++// Scoped Admin callers only. This projection never creates a playlist, moves
++// a recording, or changes publication/access rights.
++export async function existingMediaCounts(store,offer){
++ const rows=await store.all(`SELECT a.website_id websiteId,
++ count(CASE WHEN a.audience='RECORDING' AND o.mime_type IN('video/mp4','video/youtube') THEN 1 END) recordings,
++ count(CASE WHEN a.audience='RECORDING' AND o.mime_type IN('video/mp4','video/youtube') AND a.published=0 THEN 1 END) privateRecordings,
++ count(DISTINCT CASE WHEN o.mime_type='application/pdf' THEN a.asset_id END) pdfs,
++ count(DISTINCT CASE WHEN o.mime_type='application/pdf' AND a.published=0 THEN a.asset_id END) privatePdfs
++ FROM attachments a JOIN objects o USING(asset_id) WHERE a.offering_id=?
++ AND (a.website_id IS NOT NULL OR NOT EXISTS(SELECT 1 FROM mou_playlist_items i WHERE i.attachment_id=a.attachment_id))
++ GROUP BY a.website_id ORDER BY a.website_id LIMIT 202`,[offer]);
++ if(rows.length>201)throw fail('Choose a narrower media collection.',409);
++ return {websites:new Map(rows.filter(r=>r.websiteId).map(r=>[r.websiteId,r])),unassigned:rows.find(r=>r.websiteId===null)||{recordings:0,privateRecordings:0,pdfs:0,privatePdfs:0}};
++}
++export const emptyMediaCounts={recordings:0,privateRecordings:0,pdfs:0,privatePdfs:0};
++
++export async function existingMediaDetail(env,store,offer,input){
++ const unassigned=input.unassigned===true||input.unassigned==='1';
++ if(unassigned&&input.websiteId)throw fail('Choose one media collection.');
++ const website=unassigned?null:await store.first('SELECT w.*,website_id id,title name,published_key IS NOT NULL hasPublishedWebsite FROM websites w WHERE offering_id=? AND website_id=?',[offer,id(input.websiteId)]);
++ if(!unassigned&&!website)throw fail('Choose an existing website in this Course.',404);
++ const after=input.after?id(input.after):'';
++ const rows=await store.all(`SELECT a.attachment_id attachmentId,a.asset_id assetId,a.lesson_id lessonId,a.title,a.lesson_date recordedDate,a.published,o.mime_type type,c.index_json companionIndex
++ FROM attachments a JOIN objects o USING(asset_id) LEFT JOIN recording_companions c USING(attachment_id)
++ WHERE a.offering_id=? AND a.attachment_id>? AND ${unassigned?'a.website_id IS NULL AND NOT EXISTS(SELECT 1 FROM mou_playlist_items i WHERE i.attachment_id=a.attachment_id)':'a.website_id=?'}
++ AND (o.mime_type='application/pdf' OR a.audience='RECORDING' AND o.mime_type IN('video/mp4','video/youtube'))
++ ORDER BY a.attachment_id LIMIT 51`,[offer,after,...(unassigned?[]:[website.id])]);
++ let page=rows.slice(0,50).map(({companionIndex,...r})=>({...r,summary:companionIndex?JSON.parse(companionIndex).summary:null}));
++ const key=website?.published_key||website?.draft_key;
++ if(key&&page.some(r=>r.type!=='application/pdf')){
++  const document=await objectJSON(env.CONTENT,key),media=page.filter(r=>r.type!=='application/pdf').map(r=>({...r,attachment_id:r.attachmentId,asset_id:r.assetId,lesson_id:r.lessonId,lesson_date:r.recordedDate}));
++  const bindings=website.published_key?await permittedGuideBindings(env,website,media,store):[];
++  const entries=seriesRecordings({media,guides:bindRecordingGuides(recordingGuides(document),media,bindings)});
++  page=page.map(row=>{const entry=entries.find(e=>e.id===row.attachmentId);return entry?{...row,summary:row.summary||entry.summary,topics:entry.topics,readingIds:entry.readingIds,quote:entry.quote}:row;});
++  const latest=await store.first('SELECT revision,draft_key,published_key FROM websites WHERE website_id=? AND offering_id=?',[website.id,offer]);
++  if(!latest||latest.revision!==website.revision||latest.draft_key!==website.draft_key||latest.published_key!==website.published_key)throw fail('This collection changed. Reopen it.',409,'CHANGE_CONFLICT');
++ }
++ return {id:website?.id||'unassigned',name:website?.name||'Unassigned recordings and material',websiteId:website?.id||null,websitePublished:Boolean(website?.enabled&&website?.hasPublishedWebsite),unassigned,
++ recordings:page.filter(r=>r.type!=='application/pdf'),pdfs:page.filter(r=>r.type==='application/pdf'),more:rows.length>50,next:rows.length>50?rows[49].attachmentId:null};
++}
+diff --git a/src/mou-playlists.mjs b/src/mou-playlists.mjs
+index eca71a1..03be970 100644
+--- a/src/mou-playlists.mjs
++++ b/src/mou-playlists.mjs
+@@ -4,6 +4,7 @@ import {newCourse} from '../public/shared/model.mjs';
+ import {saveContent,objectJSON} from './content.mjs';
+ import {assertWebsiteAssets} from './website-assets.mjs';
+ import {cardInput,optionalTeacherIds,savedCard,cardDTO,cardPublication,finishCardPublication} from './playlist-cards.mjs';
++import {existingMediaCounts,emptyMediaCounts} from './existing-media-view.mjs';
+ 
+ 
+ // Recomputed from the server clock for every request, independently of the
+@@ -53,10 +54,11 @@ export async function playlistTable(store,actor,offer,input={}){
+  let items,pdfs;
+  if(input.playlistId){const selected=rows.find(r=>r.id===id(input.playlistId));if(!selected)throw fail('Choose a saved playlist.',404);items=await store.all('SELECT i.attachment_id attachmentId,a.title,a.published,a.lesson_date recordedDate,a.website_id websiteId,r.position,o.mime_type type,c.index_json companionIndex FROM recording_playlist_positions r JOIN mou_playlist_items i USING(playlist_id,attachment_id) JOIN attachments a USING(attachment_id) JOIN objects o USING(asset_id) LEFT JOIN recording_companions c USING(attachment_id) WHERE r.playlist_id=? ORDER BY r.position,r.attachment_id LIMIT 401',[selected.id]);if(items.length>400)throw fail('Choose a narrower recording order.',409);}
+  if(input.playlistId){const selected=rows.find(row=>row.id===input.playlistId);pdfs=await store.all("SELECT a.attachment_id attachmentId,a.asset_id assetId,a.title,a.published,o.byte_size size FROM attachments a JOIN objects o USING(asset_id) WHERE a.website_id=? AND a.audience='WEBSITE' AND o.mime_type='application/pdf' ORDER BY a.attachment_id LIMIT 101",[selected.websiteId]);if(pdfs.length>100)throw fail('Review a smaller playlist file list.',409);}
+- const legacy=await store.all('SELECT w.website_id id,w.website_id websiteId,w.title name,w.completion_date closeDate,w.completion_month closeMonth,w.revision websiteRevision,w.enabled FROM websites w WHERE w.offering_id=? AND NOT EXISTS(SELECT 1 FROM mou_playlists p WHERE p.website_id=w.website_id) ORDER BY w.website_id LIMIT 201',[offer]);if(legacy.length>200)throw fail('Choose a narrower historical website selector.',409);
++ const existing=await store.all('SELECT w.website_id id,w.website_id websiteId,w.title name,w.completion_date closeDate,w.completion_month closeMonth,w.revision websiteRevision,w.enabled,w.published_key IS NOT NULL hasPublishedWebsite FROM websites w WHERE w.offering_id=? AND NOT EXISTS(SELECT 1 FROM mou_playlists p WHERE p.website_id=w.website_id) ORDER BY w.website_id LIMIT 201',[offer]);if(existing.length>200)throw fail('Choose a narrower historical website selector.',409);
++ const counts=await existingMediaCounts(store,offer),legacy=existing.map(row=>({...row,...(counts.websites.get(row.id)||emptyMediaCounts),websitePublished:Boolean(row.enabled&&row.hasPublishedWebsite)}));
+  if(revision!==await currentRevision(store,offer))throw fail('The playlist register changed. Refresh it.',409,'CHANGE_CONFLICT');
+  const definition=await playlistDefinition(store,offer);
+- return {schema:'MOU_PLAYLISTS_V1',revision,accessModel:definition.accessModel,label:definition.label,timezone:definition.timezone,currentMonth:definition.currentMonth,playlists:[...rows.map(row=>({...Object.fromEntries(Object.entries(row).filter(([k])=>!['draft_json','published_json','teacher_ids_json','published_title','image_required','first_published_at'].includes(k))),card:cardDTO(row.draft_json),publishedCard:row.published_json?cardDTO(row.published_json,{published:true,origin:store.env.WEBSITE_ORIGIN}):null,teacherIds:JSON.parse(row.teacher_ids_json),publishedName:row.published_title,cardImageRequired:Boolean(row.image_required),canEdit:true,editorHref:'/builder/?website='+encodeURIComponent(row.websiteId),accessModel:definition.accessModel,state:row.closeDate?'CLOSED':'OPEN'})),...legacy.map(row=>({...row,accessModel:definition.accessModel,legacy:true,readOnly:true,state:'LEGACY'}))],legacy:legacy.map(row=>({...row,legacy:true,readOnly:true,state:'LEGACY'})),...(items?{items:items.map(row=>({...row,summary:row.companionIndex?JSON.parse(row.companionIndex).summary:null,companionIndex:undefined}))}:{}),...(memberOf?{memberOf}:{}),...(pdfs?{pdfs}:{})};
++ return {schema:'MOU_PLAYLISTS_V1',revision,unassigned:counts.unassigned,accessModel:definition.accessModel,label:definition.label,timezone:definition.timezone,currentMonth:definition.currentMonth,playlists:[...rows.map(row=>({...Object.fromEntries(Object.entries(row).filter(([k])=>!['draft_json','published_json','teacher_ids_json','published_title','image_required','first_published_at'].includes(k))),card:cardDTO(row.draft_json),publishedCard:row.published_json?cardDTO(row.published_json,{published:true,origin:store.env.WEBSITE_ORIGIN}):null,teacherIds:JSON.parse(row.teacher_ids_json),publishedName:row.published_title,cardImageRequired:Boolean(row.image_required),canEdit:true,editorHref:'/builder/?website='+encodeURIComponent(row.websiteId),accessModel:definition.accessModel,state:row.closeDate?'CLOSED':'OPEN'})),...legacy.map(row=>({...row,accessModel:definition.accessModel,legacy:true,readOnly:true,state:'LEGACY'}))],legacy:legacy.map(row=>({...row,legacy:true,readOnly:true,state:'LEGACY'})),...(items?{items:items.map(row=>({...row,summary:row.companionIndex?JSON.parse(row.companionIndex).summary:null,companionIndex:undefined}))}:{}),...(memberOf?{memberOf}:{}),...(pdfs?{pdfs}:{})};
+ }
+ async function priorHolders(store,offer,month){
+  if(!month)return [];
+diff --git a/src/worker.mjs b/src/worker.mjs
+index ef577a1..19803cd 100644
+--- a/src/worker.mjs
++++ b/src/worker.mjs
+@@ -179,7 +179,8 @@ async function route(request,env,store,fetcher,checkedActor=null){
+    if(url.searchParams.get('participants')==='1')return json({canManageContent:!academyAuthority(env)||Boolean(adminScope.studioAuthority),participants:[],media:[],websites:[],requests:[],months:[],card:null});
+    const website=url.searchParams.get('website'),unassigned=url.searchParams.get('unassigned')==='1',after=url.searchParams.get('after')||'';
+    if(website&&!await store.first('SELECT 1 FROM websites WHERE website_id=? AND offering_id=?',[id(website),offeringId]))throw fail('Choose a website in this offering.',403);
+-   const filter=website?' AND x.website_id=?':unassigned?' AND NOT EXISTS(SELECT 1 FROM mou_playlist_items i WHERE i.attachment_id=x.attachment_id)':'';
++   if(website&&unassigned)throw fail('Choose one media collection.');
++   const filter=website?' AND x.website_id=?':unassigned?' AND x.website_id IS NULL AND NOT EXISTS(SELECT 1 FROM mou_playlist_items i WHERE i.attachment_id=x.attachment_id)':'';
+    const rows=await store.all('SELECT x.*,o.filename,o.mime_type,t.revision attribution_revision,t.draft_json attribution_draft,t.published_json attribution_published,c.index_json companion_index FROM attachments x JOIN objects o USING(asset_id) LEFT JOIN media_attributions t USING(attachment_id) LEFT JOIN recording_companions c USING(attachment_id) WHERE x.offering_id=? AND x.attachment_id>?'+filter+' ORDER BY x.attachment_id LIMIT 51',[offeringId,after,...(website?[website]:[])]);
+    return json({canManageContent:!academyAuthority(env)||Boolean(adminScope.studioAuthority),mediaRevision:(await store.first('SELECT revision FROM access_revisions WHERE offering_id=?',[offeringId]))?.revision||0,websites:await store.all('SELECT website_id,title,completion_month,revision,enabled FROM websites WHERE offering_id=? ORDER BY website_id LIMIT 100',[offeringId]),media:rows.map(row=>({...row,summary:row.companion_index?JSON.parse(row.companion_index).summary:null,companion_index:undefined}))});
+   }
+diff --git a/tests/existing-media-view-ui.test.mjs b/tests/existing-media-view-ui.test.mjs
+new file mode 100644
+index 0000000..e6b4de0
+--- /dev/null
++++ b/tests/existing-media-view-ui.test.mjs
+@@ -0,0 +1,42 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {parseHTML} from 'linkedom';
++import {mountCourseMedia} from '../public/shared/course-media-workflow.mjs';
++import {mountMonthlyMedia,clearMonthlyMediaCache} from '../public/shared/monthly-media-page.mjs';
++import {existingMaterialLinks} from '../public/shared/existing-media-view.mjs';
++const settle=async()=>{for(let i=0;i<8;i++)await new Promise(r=>setImmediate(r));};
++function dom(){const {document,window}=parseHTML('<html><head></head><body><main></main></body></html>');Object.assign(globalThis,{document,window});return document.querySelector('main');}
++
++test('existing Course collection opens its recordings, PDF and website together without mutation requests',async()=>{
++ const host=dom(),calls=[];
++ const request=async(action,body)=>{calls.push({action,body});if(action==='course-playlists')return {revision:1,playlists:[],legacy:[],websites:[{id:'kahf',title:'Surah Al Kahf',enabled:1,hasPublishedWebsite:1,recordings:2,pdfs:1}],unassigned:{recordings:0,pdfs:0}};if(action==='course-playlist-detail')return {revision:1,collection:{name:'Surah Al Kahf',websiteId:'kahf',websitePublished:true,pdfs:[{attachmentId:'notes',assetId:'pdf',title:'Original notes',published:1}],recordings:[{attachmentId:'one',title:'First recording',published:1,summary:'The first recording summary'},{attachmentId:'two',title:'Second recording',published:0,summary:'Private recording summary'}]}};throw Error('Unexpected action '+action);};
++ const dispose=mountCourseMedia(host,{request,cardTools:{},websiteOrigin:'https://checked.studio'});await dispose.ready;
++ assert(!host.textContent.includes('No playlists'));assert.equal(host.querySelector('tbody tr').children[1].textContent,'2');
++ host.querySelector('[data-cmw=open-existing]').click();await settle();
++ assert.match(host.textContent,/First recording/);assert.match(host.textContent,/Second recording/);assert.match(host.textContent,/Private draft/);assert.match(host.textContent,/The first recording summary/);
++ assert.equal(host.querySelector('a[href="https://checked.studio/api/media/notes?draft=1"]').textContent,'Original notes');
++ assert(host.querySelector('a[href="https://checked.studio/studio/?website=kahf"]'));
++ assert.equal(host.querySelector('[data-cmw=publish-content]'),null);assert.deepEqual(calls.map(c=>c.action),['course-playlists','course-playlist-detail']);dispose();
++});
++test('Tafseer and MOU expose existing collections directly, label private material, and keep six unassigned recordings separate',async()=>{
++ for(const mothers of [false,true]){
++  const host=dom();clearMonthlyMediaCache();const calls=[],offer=mothers?'mothers':'tafseer';
++  const api=async path=>{calls.push(path);if(path.endsWith('/playlists'))return {revision:1,playlists:[{id:'private',websiteId:'private',name:'Existing private collection',legacy:true,enabled:0,websitePublished:false,recordings:1,privateRecordings:1,pdfs:1}],unassigned:{recordings:6,pdfs:0}};
++   if(path.endsWith('/media-review?website=private'))return {media:[{attachment_id:'recording',title:'Private recording',mime_type:'video/youtube',published:0,summary:'Private genuine summary'},{attachment_id:'pdf',asset_id:'asset',title:'Private PDF',mime_type:'application/pdf',published:0}]};
++   if(path.endsWith('/media-review?unassigned=1'))return {media:Array.from({length:6},(_,i)=>({attachment_id:'u'+i,title:'Unassigned '+i,mime_type:'video/youtube',published:1}))};throw Error('Unexpected URL '+path);};
++  const dispose=mountMonthlyMedia(host,{api,identity:{account:{accountId:'admin'},generation:1},offering:{offering_id:offer,programme_key:mothers?'mothers':null},current:()=>true,initialRecord:{canManageContent:true,mediaRevision:1}});await settle();
++  assert(host.querySelector('.monthly-existing table'));assert.match(host.textContent,/6 recordings/);assert.equal(host.querySelector('details.monthly-historical'),null);
++  host.querySelector('[data-monthly=legacy]').click();await settle();assert.match(host.textContent,/Private genuine summary/);assert.match(host.textContent,/Private PDF/);assert.match(host.textContent,/Private draft/);
++  assert.equal([...host.querySelectorAll('a')].find(a=>a.textContent==='Read website'),undefined);assert(!calls.some(p=>p.startsWith('/api/websites/')));
++  host.querySelector('[data-monthly=back]').click();await settle();host.querySelector('[data-monthly=unassigned]').click();await settle();assert.equal(host.querySelectorAll('.monthly-recording').length,6);assert.equal([...host.querySelectorAll('a')].find(a=>a.textContent==='Edit website'),undefined);dispose();
++ }
++});
++test('project PDFs remain local-only links and private websites have no published reader link',()=>{
++ const html=existingMaterialLinks({websiteId:'private',projectPdfs:[{title:'Verified original',href:'/review-files/'+'a'.repeat(64)+'.pdf'},{title:'Forged external',href:'https://external.invalid/secret.pdf'}]});
++ assert.match(html,/Project copy · local review only/);assert.match(html,/Verified original/);assert(!html.includes('Forged external'));assert(!html.includes('Read website'));assert(!html.includes('https://external'));
++});
++test('a late Course collection response cannot paint after switching the account or Course',async()=>{
++ const host=dom();let active=true,release;const delayed=new Promise(r=>release=r);
++ const dispose=mountCourseMedia(host,{current:()=>active,cardTools:{},request:async action=>action==='course-playlists'?{revision:1,playlists:[],legacy:[],websites:[{id:'private',title:'Existing',recordings:1}]}:delayed});await dispose.ready;
++ host.querySelector('[data-cmw=open-existing]').click();await settle();active=false;release({revision:1,collection:{name:'Secret late title',recordings:[],pdfs:[]}});await settle();assert(!host.textContent.includes('Secret late title'));dispose();
++});
+diff --git a/tests/existing-media-view.test.mjs b/tests/existing-media-view.test.mjs
+new file mode 100644
+index 0000000..87209c3
+--- /dev/null
++++ b/tests/existing-media-view.test.mjs
+@@ -0,0 +1,69 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {fixture} from './fixture.mjs';
++import {studioFixture} from './studio-access-fixture.mjs';
++const ok=r=>{assert.equal(r.status,200,JSON.stringify(r.body));return r.body;};
++
++async function setup(t){
++ const f=await fixture();t.after(()=>f.close());
++ await f.run("INSERT INTO source_access_scopes VALUES('course','WEBSITE',1,1,1,1,'Africa/Johannesburg','[]')");
++ await f.run("INSERT INTO source_access_scopes VALUES('tafseer','WEBSITE',1,1,1,1,'Africa/Johannesburg','[]')");
++ const admin=(await f.login('admin')).cookie,learner=(await f.login()).cookie;
++ const add=async(id,{offer='course',site='site-course',type='video/youtube',published=1}={})=>{
++  await f.run('INSERT INTO objects VALUES(?,?,?,?,?,?,?)','asset-'+id,type==='application/pdf'?'private/'+id+'.pdf':null,type,id,type==='application/pdf'?4:0,type==='application/pdf'?'a'.repeat(64):null,type==='application/pdf'?null:'abcdefghijk');
++  await f.run('INSERT INTO asset_owners VALUES(?,?)','asset-'+id,offer);
++  await f.run("INSERT INTO attachments VALUES(?,?,?,?,?,'2026-10-18','','Original '+?,'RECORDING',?)",id,offer,site,'asset-'+id,'lesson-'+id,id,published);
++ };
++ const read=(input={})=>f.request('/api/admin/course/course-playlists?'+new URLSearchParams(input),{cookie:admin});
++ return {...f,admin,learner,add,read};
++}
++test('existing Course recordings, PDFs and website appear without creating playlists or publishing private material',async t=>{
++ const f=await setup(t);await f.add('video-public');await f.add('video-private',{published:0});await f.add('pdf',{type:'application/pdf'});
++ const before=await f.db.prepare('SELECT attachment_id,published,website_id FROM attachments ORDER BY attachment_id').all();
++ const listing=await f.read(),list=ok(listing),site=list.websites.find(w=>w.id==='site-course');
++ assert.equal(site.recordings,2);assert.equal(site.privateRecordings,1);assert.equal(site.pdfs,1);assert.equal(list.playlists.length,0);
++ const response=await f.read({action:'course-playlist-detail',websiteId:'site-course'}),detail=ok(response).collection;
++ t.diagnostic(JSON.stringify({existingCourse:{list:{rowsRead:listing.reads,queries:listing.queries},detail:{rowsRead:response.reads,queries:response.queries}},hostedRequests:0}));
++ assert.equal(detail.websiteId,'site-course');assert.equal(detail.recordings.length,2);assert.equal(detail.pdfs.length,1);assert.equal(detail.recordings.find(r=>r.attachmentId==='video-private').published,0);
++ assert(!JSON.stringify(detail).includes('private/pdf.pdf'));
++ assert.equal((await f.request('/api/admin/course/course-playlists?action=course-playlist-detail&websiteId=site-course',{cookie:f.learner})).status,403);
++ assert.equal((await f.request('/api/media/video-private',{cookie:f.learner})).status,404);
++ assert.equal(await f.db.prepare('SELECT count(*) n FROM mou_playlists').first('n'),0);
++ assert.deepEqual(await f.db.prepare('SELECT attachment_id,published,website_id FROM attachments ORDER BY attachment_id').all(),before);
++});
++test('foreign websites and Teacher-only sessions cannot read an existing Course collection',async t=>{
++ const f=await setup(t);assert.equal((await f.read({action:'course-playlist-detail',websiteId:'site-surah'})).status,404);
++ const teacher=(await f.login('teacher')).cookie;
++ assert.equal((await f.request('/api/admin/course/course-playlists?action=course-playlist-detail&websiteId=site-course',{cookie:teacher})).status,403);
++ await f.run("UPDATE accounts SET epoch=2 WHERE account_id='admin'");assert.equal((await f.read()).status,401);
++});
++test('six unassigned Tafseer recordings stay separate from website-linked recordings and retain their identities',async t=>{
++ const f=await setup(t);await f.add('linked',{offer:'tafseer',site:'site-surah'});await f.add('notes',{offer:'tafseer',site:'site-surah',type:'application/pdf'});
++ for(let i=0;i<6;i++)await f.add('unassigned-'+i,{offer:'tafseer',site:null});
++ const list=ok(await f.request('/api/admin/tafseer/playlists',{cookie:f.admin}));
++ assert.equal(list.unassigned.recordings,6);assert.equal(list.legacy.find(w=>w.id==='site-surah').recordings,1);assert.equal(list.legacy.find(w=>w.id==='site-surah').pdfs,1);
++ const separate=ok(await f.request('/api/admin/tafseer/media-review?unassigned=1',{cookie:f.admin})).media;
++ assert.equal(separate.length,6);assert(separate.every(r=>r.website_id===null&&r.attachment_id.startsWith('unassigned-')));
++ const grouped=ok(await f.request('/api/admin/tafseer/media-review?website=site-surah',{cookie:f.admin})).media;assert.equal(grouped.length,2);
++ assert.equal(await f.db.prepare('SELECT count(*) n FROM mou_playlist_items').first('n'),0);
++});
++test('existing Course pagination preserves private flags and includes PDFs on later pages',async t=>{
++ const f=await setup(t);for(let i=0;i<51;i++)await f.add('rec-'+String(i).padStart(2,'0'),{published:i%2});await f.add('zz-pdf',{type:'application/pdf',published:0});
++ const a=ok(await f.read({action:'course-playlist-detail',websiteId:'site-course'})).collection;assert.equal(a.recordings.length,50);assert(a.more);
++ const b=ok(await f.read({action:'course-playlist-detail',websiteId:'site-course',after:a.next})).collection;assert.equal(b.recordings.length,1);assert.equal(b.pdfs[0].published,0);assert.equal(b.more,false);
++ assert.equal(new Set([...a.recordings,...b.recordings].map(r=>r.attachmentId)).size,51);
++});
++test('existing summaries use the exact saved recording lesson, never a matching title or position',async t=>{
++ const f=await setup(t);await f.add('exact');await f.add('unmapped');
++ const doc={...f.doc,lessons:[{id:'reading',sections:[{blocks:[{type:'note',aside:true,sourceKey:'recording:lesson-exact',text:'A verified recording-specific summary.',attribution:'Reviewed recording'}]}]}]};
++ await f.content.put('websites/site-course/versions/seed.json',JSON.stringify(doc));
++ const r=ok(await f.read({action:'course-playlist-detail',websiteId:'site-course'})).collection;
++ assert.equal(r.recordings.find(r=>r.attachmentId==='exact').summary,'A verified recording-specific summary.');
++ assert(!r.recordings.find(r=>r.attachmentId==='unmapped').summary);
++});
++test('the native Academy Admin proxy transports existing Course collection reads with their original scope',async t=>{
++ const z=await studioFixture();t.after(()=>z.f.close());await z.handover();
++ const list=await z.good({action:'course-playlists'});assert(Array.isArray(list.websites));
++ const missing=await z.proxy({action:'course-playlist-detail',websiteId:'foreign-or-missing'});assert.equal(missing.status,404);assert.match(missing.body.error,/existing website in this Course/);
++ assert.equal((await z.proxy({action:'course-playlist-detail',websiteId:'foreign-or-missing'},{who:'studentA'})).status,403);
++});
+diff --git a/tests/monthly-media-review-ui.test.mjs b/tests/monthly-media-review-ui.test.mjs
+index ee7b673..25ac1f0 100644
+--- a/tests/monthly-media-review-ui.test.mjs
++++ b/tests/monthly-media-review-ui.test.mjs
+@@ -37,3 +37,30 @@ test('collection review rejects a different website or reader destination instea
+   const f=await screen(change);try{assert.match(f.host.textContent,/collection reader changed/);assert.equal(f.host.querySelector('[data-monthly=attach-collection]'),null);assert.equal(f.host.querySelector('a'),null);assert.equal(f.calls.length,3);}finally{f.dispose();clearMonthlyMediaCache();}
+  }
+ });
++
++async function legacyScreen({programmeKey='mothers',deny=false,delayed=false}={}){
++ const {document,window}=parseHTML('<html><head></head><body><main></main></body></html>');globalThis.document=document;globalThis.window=window;clearMonthlyMediaCache();
++ const host=document.querySelector('main'),calls=[],identity={account:{accountId:'admin'},generation:1},websiteId='saved-website';let finish;
++ const documentReply={document:{lessons:[{id:'reading-one',sections:[{blocks:[{type:'note',aside:true,sourceKey:'recording:editorial-one',text:'The existing reviewed summary.',attribution:'Recorded lesson'}]}]}]},assets:[{type:'application/pdf',asset_id:'shared-pdf',attachment_id:'protected-pdf',title:'Shared original notes'}]};
++ const media=[{attachment_id:'recording-one',asset_id:'original-video',lesson_id:'native-one',type:'video/youtube',title:'Original recording',published:true},{attachment_id:'different-recording',asset_id:'different-video',lesson_id:'unmapped',type:'video/youtube',title:'Unmapped recording',published:true}];
++ const api=async path=>{calls.push(path);if(path.endsWith('/playlists'))return {playlists:[{id:websiteId,websiteId,name:'Existing collection',enabled:true,websitePublished:true,legacy:true}]};if(path.includes('/media-review?'))return {media};if(path==='/api/websites/'+websiteId){if(deny)throw Object.assign(Error('Current access denied'),{status:403});if(delayed)return new Promise(resolve=>finish=()=>resolve(documentReply));return documentReply;}if(path.includes('/media?'))return {media,mediaBindings:[{editorialLessonId:'editorial-one',nativeLessonId:'native-one',assetId:'original-video'}]};throw Error(path);};
++ const dispose=mountMonthlyMedia(host,{api,identity,offering:{offering_id:'offering',programme_key:programmeKey},current:()=>true,initialRecord:{canManageContent:true,mediaRevision:1}});
++ await settle();host.querySelector('[data-monthly=legacy]').click();await settle();
++ return {host,calls,identity,dispose,finish:()=>finish()};
++}
++
++test('existing MOU and Tafseer collections show their exact published summaries and shared PDFs, reusing warm reads',async()=>{
++ for(const programmeKey of ['mothers','tafseer']){
++  const f=await legacyScreen({programmeKey});try{
++   assert.match(f.host.textContent,/The existing reviewed summary/);assert.match(f.host.textContent,/Shared original notes/);assert(f.host.querySelector('a[href="/api/media/protected-pdf?draft=1"]'));
++   const cards=[...f.host.querySelectorAll('.monthly-recording')];assert.equal(cards.length,2);assert.match(cards[1].textContent,/summary has not been added/,'An unmatched recording cannot borrow another recording’s summary');assert.equal(f.calls.length,4);
++   f.host.querySelector('[data-monthly=back]').click();await settle();f.host.querySelector('[data-monthly=legacy]').click();await settle();assert.equal(f.calls.length,4,'Returning to the same collection reuses the checked presentation cache');assert.equal(f.host.querySelectorAll('a').length,3);
++  }finally{f.dispose();clearMonthlyMediaCache();}
++ }
++});
++test('denied legacy MOU content cannot retain recordings, summaries or PDF links in the Admin panel',async()=>{
++ const f=await legacyScreen({deny:true});try{assert.match(f.host.textContent,/Current access denied/);assert.equal(f.host.querySelector('[data-monthly-body]').textContent,'');assert.equal(f.host.querySelector('a'),null);}finally{f.dispose();clearMonthlyMediaCache();}
++});
++test('a delayed legacy MOU enrichment cannot expose the previous account’s summaries or PDFs',async()=>{
++ const f=await legacyScreen({delayed:true});try{f.identity.generation++;f.identity.account={accountId:'student'};f.finish();await settle();assert(!f.host.textContent.includes('The existing reviewed summary'));assert(!f.host.textContent.includes('Shared original notes'));assert.equal(f.host.querySelector('a'),null);}finally{f.dispose();clearMonthlyMediaCache();}
++});
+diff --git a/tools/check-existing-media-browser.mjs b/tools/check-existing-media-browser.mjs
+new file mode 100644
+index 0000000..836ed17
+--- /dev/null
++++ b/tools/check-existing-media-browser.mjs
+@@ -0,0 +1,27 @@
++import './preserve-local-files.mjs';
++import assert from 'node:assert/strict';
++import {createRequire} from 'node:module';
++import {mkdir,writeFile} from 'node:fs/promises';
++import {resolve} from 'node:path';
++const require=createRequire(import.meta.url),{chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
++const base=process.env.MEDIA_REVIEW_URL;if(!/^http:\/\/127\.0\.0\.1:\d+\/$/.test(base||''))throw Error('Use the loopback review server.');
++const out=resolve(process.env.MEDIA_REVIEW_OUTPUT);await mkdir(out,{recursive:true});
++const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--disable-gpu']});
++const report={localOnly:true,widths:[],coursesChecked:0,errors:[],externalRequestsBlocked:0};
++try{
++ for(const width of [1440,390]){
++  const context=await browser.newContext({viewport:{width,height:1000}});await context.route('**/*',r=>{if(new URL(r.request().url()).origin!==new URL(base).origin){report.externalRequestsBlocked++;return r.abort();}return r.continue();});
++  const page=await context.newPage();page.on('pageerror',e=>report.errors.push(e.message));
++  await page.goto(base);await page.locator('[data-cmw=open-existing]').waitFor();await page.screenshot({path:out+'/'+width+'-course-collections.png',fullPage:true});
++  await page.locator('[data-cmw=open-existing]').click();await page.locator('.existing-media-recording').first().waitFor();assert.equal(await page.locator('.existing-media-recording').count(),2);assert(await page.getByRole('link',{name:'Read website',exact:true}).count());assert.equal(await page.locator('.existing-media-materials a[href*="/api/media/"]').count(),1);
++  await page.screenshot({path:out+'/'+width+'-kahf-material.png',fullPage:true});
++  await page.locator('#pick').selectOption({label:'MOU'});await page.locator('.monthly-existing tbody tr').first().waitFor();assert.equal(await page.locator('.monthly-existing tbody tr').count(),2);await page.screenshot({path:out+'/'+width+'-mou-collections.png',fullPage:true});
++  const privateRow=page.locator('.monthly-existing tbody tr').filter({hasText:'Kitabul Adhkar'});await privateRow.getByRole('button',{name:'Open',exact:true}).click();await page.locator('.monthly-recording').first().waitFor();assert.match(await page.locator('[data-monthly-content]').innerText(),/Private draft/);assert.equal(await page.getByRole('link',{name:'Read website',exact:true}).count(),0);await page.screenshot({path:out+'/'+width+'-private-mou.png',fullPage:true});
++  await page.locator('#pick').selectOption({label:'Tafseer'});await page.locator('.monthly-existing tbody tr').first().waitFor();assert.equal(await page.locator('.monthly-existing tbody tr').count(),8);assert.match(await page.locator('.monthly-unassigned').innerText(),/6 recordings/);await page.screenshot({path:out+'/'+width+'-tafseer-collections.png',fullPage:true});
++  await page.locator('[data-monthly=unassigned]').click();await page.locator('.monthly-recording').first().waitFor();assert.equal(await page.locator('.monthly-recording').count(),6);assert.equal(await page.locator('[data-monthly=settings]').count(),0);assert.equal(await page.getByRole('link',{name:'Edit website',exact:true}).count(),0);await page.screenshot({path:out+'/'+width+'-unassigned.png',fullPage:true});
++  assert(!await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1));report.widths.push(width);
++  if(width===1440){const config=await (await context.request.get(base+'review/config')).json();for(const offer of config.offers.filter(o=>o.kind==='COURSE')){await page.locator('#pick').selectOption(offer.id);await page.locator('[data-cmw=open-existing]').waitFor();const count=await page.locator('tbody tr').count();assert.equal(count,1);assert(!await page.locator('#media').innerText().then(t=>t.includes('No playlists')));report.coursesChecked++;}const projectLinks=Object.values(config.projects).flat();assert(projectLinks.length>=5);for(const file of projectLinks){const r=await context.request.get(base.slice(0,-1)+file.href);assert(r.ok());assert.equal(r.headers()['content-type'],'application/pdf');assert((await r.body()).subarray(0,4).toString()==='%PDF');}report.projectPdfsOpened=projectLinks.length;}
++  await context.close();
++ }
++ assert.deepEqual(report.errors,[]);report.passed=true;await writeFile(out+'/browser-evidence.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report));
++}finally{await browser.close();}
+diff --git a/tools/serve-existing-media-review.mjs b/tools/serve-existing-media-review.mjs
+new file mode 100644
+index 0000000..f61db17
+--- /dev/null
++++ b/tools/serve-existing-media-review.mjs
+@@ -0,0 +1,49 @@
++// Loopback-only, read-only inventory preview. No live authentication or writes.
++import './preserve-local-files.mjs';
++import {createServer} from 'node:http';
++import {createReadStream} from 'node:fs';
++import {readFile} from 'node:fs/promises';
++import {resolve,extname} from 'node:path';
++if(!process.env.MEDIA_REVIEW_INVENTORY||!process.env.MEDIA_REVIEW_PDFS)throw Error('Provide private local inventory and verified PDF manifests.');
++const inventory=JSON.parse(await readFile(process.env.MEDIA_REVIEW_INVENTORY)),pdfs=JSON.parse(await readFile(process.env.MEDIA_REVIEW_PDFS)),rows=inventory.attachments;
++const files=new Map(pdfs.filter(p=>p.verified).map(p=>[p.expectedSha256,p]));
++const mothers=rows.find(r=>r.website_id==='mou-kitabul-adhkar')?.offering_id;
++const tafseer=rows.find(r=>r.website_id==='8ba50d57-ae3c-47db-9b2c-e658c95d355c')?.offering_id;
++const site=id=>inventory.websites.find(w=>w.id===id);
++const offers=[...new Set(rows.map(r=>r.offering_id))].map(id=>({id,kind:id===mothers||id===tafseer?'TAFSEER':'COURSE',name:id===mothers?'MOU':id===tafseer?'Tafseer':site(rows.find(r=>r.offering_id===id).website_id)?.name}));
++const counts=rs=>({recordings:rs.filter(r=>r.mime_type!=='application/pdf').length,privateRecordings:rs.filter(r=>r.mime_type!=='application/pdf'&&!r.published).length,pdfs:new Set(rs.filter(r=>r.mime_type==='application/pdf').map(r=>r.asset_id)).size});
++const groups=offer=>inventory.websites.filter(w=>rows.some(r=>r.offering_id===offer&&r.website_id===w.id)).map(w=>({...w,websiteId:w.id,title:w.name,enabled:Number(!w.private),hasPublishedWebsite:Number(!w.private),websitePublished:!w.private,legacy:true,...counts(rows.filter(r=>r.offering_id===offer&&r.website_id===w.id))}));
++const groupRows=(offer,id)=>rows.filter(r=>r.offering_id===offer&&(id==='unassigned'?r.website_id===null:r.website_id===id));
++const clean=r=>({attachment_id:r.attachment_id,asset_id:r.asset_id,lesson_id:r.lesson_id,lesson_date:r.lesson_date,website_id:r.website_id,title:r.title,published:r.published,mime_type:r.mime_type,type:r.mime_type,summary:r.index_json?JSON.parse(r.index_json).summary:'Open the existing Studio reading for the recording summary and follow-along. This inventory preview does not include the full website content.'});
++const detail=(offer,id)=>{const rs=groupRows(offer,id).map(clean),w=site(id);return {id,name:w?.name||'Unassigned recordings and material',websiteId:w?.id||null,unassigned:id==='unassigned',websitePublished:w&&!w.private,recordings:rs.filter(r=>r.type!=='application/pdf').map(r=>({...r,attachmentId:r.attachment_id,recordedDate:r.lesson_date})),pdfs:rs.filter(r=>r.type==='application/pdf').map(r=>({...r,attachmentId:r.attachment_id,assetId:r.asset_id})),more:false};};
++const projects=Object.fromEntries(inventory.websites.map(w=>[w.id,pdfs.filter(p=>p.verified&&p.websiteId===w.id&&!rows.some(r=>r.website_id===w.id&&r.sha256===p.expectedSha256)).map(p=>({title:p.course+' — original PDF',href:'/review-files/'+p.expectedSha256+'.pdf'}))]));
++const json=(res,value)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify(value));};
++const html=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Media collections · local review</title><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/shared/course-media-workflow.css"><link rel="stylesheet" href="/shared/monthly-media-page.css"><style>body{background:#f8f5ef;padding:28px}main{max-width:1180px;margin:auto}.review-note{background:#eee7e3;padding:14px 20px;border-radius:10px;font-size:14px}#pick{max-width:100%;padding:10px;font:inherit;margin:20px 0}h1{font:400 38px Georgia;color:#584753}.review-label{font-size:13px;color:#7f777d}@media(max-width:600px){body{padding:12px}}</style><main><p class="review-note">Local review · Existing material inventory. Nothing here saves or publishes to Studio. Website and existing attachment links open the protected Studio site. Original project PDFs open locally.</p><h1>Recordings, PDFs and reading websites</h1><label for="pick">Review a Course or programme</label><br><select id="pick"></select><p class="review-label">This preview checks the collection layout. Full reading and follow-along remain available through the existing Studio links.</p><div id="media"></div></main><script type="module">
++import {mountCourseMedia} from '/shared/course-media-workflow.mjs';import {mountMonthlyMedia} from '/shared/monthly-media-page.mjs';import * as cardTools from '/shared/playlist-card.mjs';
++const data=await (await fetch('/review/config')).json(),pick=document.querySelector('#pick'),root=document.querySelector('#media');let dispose;
++for(const o of data.offers){const option=document.createElement('option');option.value=o.id;option.textContent=o.name;pick.append(option);}
++const q=new URLSearchParams(location.search);pick.value=q.get('offering')||data.offers.find(o=>o.name==='Surah Al Kahf').id;
++const read=async(kind,input={})=>{const r=await fetch('/review/data?'+new URLSearchParams({kind,offering:pick.value,...input}));if(!r.ok)throw Error('This local preview is read-only.');return r.json();};
++async function show(){dispose?.();const o=data.offers.find(o=>o.id===pick.value);if(o.kind==='COURSE'){dispose=mountCourseMedia(root,{cardTools,projectMaterials:data.projects,websiteOrigin:'https://maktab4life.org',request:async(action,input)=>{if(action==='course-playlists')return read('list');if(action==='course-playlist-detail')return read('detail',input);if(action==='course-playlist-recording')return read('recording',input);throw Error('Creation, editing and publication are disconnected in this local review.');}});await dispose.ready;}else{dispose=mountMonthlyMedia(root,{projectMaterials:data.projects,offering:{offering_id:o.id,programme_key:o.name==='MOU'?'mothers':null},identity:{account:{accountId:'local-review'},generation:1},current:()=>true,initialRecord:{canManageContent:true,mediaRevision:1},api:async(path,options)=>{if(options?.body)throw Error('This preview is read-only.');return read('monthly',{path});}});}window.reviewReady=true;}
++pick.addEventListener('change',show);await show();
++</script></html>`;
++const server=createServer(async(req,res)=>{try{
++ if(!/^127\.0\.0\.1:\d+$/.test(req.headers.host||'')){res.writeHead(403);return res.end();}
++ res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');
++ if(req.method!=='GET'){res.writeHead(405);return res.end('Read-only local review');}
++ const u=new URL(req.url,'http://localhost'),offer=u.searchParams.get('offering'),kind=u.searchParams.get('kind');
++ if(u.pathname==='/'){res.setHeader('Content-Type','text/html; charset=utf-8');return res.end(html);}
++ if(u.pathname==='/review/config')return json(res,{offers,projects});
++ if(u.pathname==='/review/data'){
++  if(!offers.some(o=>o.id===offer))throw Error('Choose a known collection');
++  if(kind==='list')return json(res,{revision:1,playlists:[],legacy:[],websites:groups(offer),unassigned:counts(groupRows(offer,'unassigned'))});
++  if(kind==='detail')return json(res,{revision:1,collection:detail(offer,u.searchParams.get('unassigned')==='1'?'unassigned':u.searchParams.get('websiteId'))});
++  if(kind==='recording'){const r=rows.find(r=>r.offering_id===offer&&r.attachment_id===u.searchParams.get('attachmentId'));if(!r)throw Error('Unknown recording');return json(res,{title:r.title,source:{url:'https://maktab4life.org/api/media/'+encodeURIComponent(r.attachment_id)+'?draft=1'},companion:r.index_json?JSON.parse(r.index_json):null});}
++  if(kind==='monthly'){const p=new URL(u.searchParams.get('path'),'http://localhost');if(p.pathname.endsWith('/playlists'))return json(res,{revision:1,playlists:groups(offer),unassigned:counts(groupRows(offer,'unassigned'))});if(p.pathname.endsWith('/media-review'))return json(res,{media:groupRows(offer,p.searchParams.get('unassigned')==='1'?'unassigned':p.searchParams.get('website')).map(clean)});if(p.pathname.startsWith('/api/websites/'))return json(res,{document:{lessons:[]},assets:[]});if(p.pathname.endsWith('/media'))return json(res,{media:groupRows(offer,p.searchParams.get('website')).filter(r=>r.published).map(clean),companions:[],mediaBindings:[]});if(p.pathname.endsWith('/media-detail')){const r=rows.find(r=>r.attachment_id===p.searchParams.get('attachment'));return json(res,{title:r.title,published:r.published,recordedDate:r.lesson_date,source:{url:'https://maktab4life.org/api/media/'+encodeURIComponent(r.attachment_id)+'?draft=1'},supportingFiles:[]});}}
++  throw Error('Unsupported local review action');
++ }
++ const pdf=u.pathname.match(/^\/review-files\/([a-f0-9]{64})\.pdf$/);if(pdf){const file=files.get(pdf[1]);if(!file)throw Error('Unverified PDF');res.setHeader('Content-Type','application/pdf');createReadStream(file.localCopy).pipe(res);return;}
++ const file=resolve('public','.'+u.pathname);if(!file.startsWith(resolve('public')+'/'))throw Error('Unknown asset');
++ res.setHeader('Content-Type',({'.mjs':'text/javascript','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.woff2':'font/woff2','.ttf':'font/ttf'})[extname(file)]||'application/octet-stream');return res.end(await readFile(file));
++ }catch(error){res.writeHead(404);res.end(error.message);}});
++await new Promise(done=>server.listen(Number(process.env.MEDIA_REVIEW_PORT||0),'127.0.0.1',done));console.log(JSON.stringify({url:'http://127.0.0.1:'+server.address().port+'/',localOnly:true,readOnly:true,projectPdfs:files.size}));

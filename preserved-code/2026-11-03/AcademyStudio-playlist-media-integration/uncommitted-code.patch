@@ -1,0 +1,521 @@
+diff --git a/src/access-tables.mjs b/src/access-tables.mjs
+index 0b1ef3b..bb5b1d0 100644
+--- a/src/access-tables.mjs
++++ b/src/access-tables.mjs
+@@ -54,7 +54,7 @@ export async function saveMonthlyGrid(env,store,actor,offer,input){
+ export async function accessTable(store,actor,offer){
+  const scope=await monthlyScope(store,actor,offer,{readOnly:true});if(scope.programme_key==='mothers')throw fail('MOU subject date editing is not available yet.',409,'MOU_TABLE_HELD');
+  const current=await revision(store,offer);
+- const rows=await store.all('SELECT website_id,title,completion_date,completion_month,revision,enabled,published_key FROM websites WHERE offering_id=? ORDER BY website_id LIMIT 201',[offer]);
++ const rows=await store.all('SELECT website_id,title,completion_date,completion_month,revision,enabled,published_key FROM websites WHERE offering_id=? AND NOT EXISTS(SELECT 1 FROM mou_playlists p WHERE p.website_id=websites.website_id) ORDER BY website_id LIMIT 201',[offer]);
+  if(rows.length>200)throw fail('This table needs a narrower website selector.',409);
+  if(current!==await revision(store,offer))throw fail('The Surah table changed. Refresh before editing.',409,'CHANGE_CONFLICT');
+  return {available:true,prepared:true,policyRevision:current,surahs:rows.map(r=>({id:r.website_id,name:r.title,completionDate:r.completion_date||'',completionMonth:r.completion_month,revision:r.revision,active:Boolean(r.enabled),eligibleStudents:null,hasDraft:true}))};
+diff --git a/src/access.mjs b/src/access.mjs
+index 9c95b67..cc4354d 100644
+--- a/src/access.mjs
++++ b/src/access.mjs
+@@ -36,7 +36,7 @@ export async function sourceWebsiteGate(store,actor,website,{readOnly=true}={}){
+  const scope=await accessGate(store,actor,website.offering_id,{admin:Boolean(website.role),readOnly});
+  if(scope&&website.kind==='TAFSEER'){
+   const programme=await store.first("SELECT 1 FROM programme_offerings WHERE programme_key='mothers' AND offering_id=?",[website.offering_id]);
+-  const mapped=programme?await store.first('SELECT enabled FROM programme_subjects WHERE offering_id=? AND website_id=? UNION ALL SELECT 1 enabled FROM mou_playlists WHERE offering_id=? AND website_id=? LIMIT 1',[website.offering_id,website.website_id,website.offering_id,website.website_id]):await store.first('SELECT enabled FROM source_access_websites WHERE offering_id=? AND website_id=?',[website.offering_id,website.website_id]);
++  const mapped=programme?await store.first('SELECT enabled FROM programme_subjects WHERE offering_id=? AND website_id=? UNION ALL SELECT 1 enabled FROM mou_playlists WHERE offering_id=? AND website_id=? LIMIT 1',[website.offering_id,website.website_id,website.offering_id,website.website_id]):await store.first('SELECT enabled FROM source_access_websites WHERE offering_id=? AND website_id=? UNION ALL SELECT 1 enabled FROM mou_playlists WHERE offering_id=? AND website_id=? LIMIT 1',[website.offering_id,website.website_id,website.offering_id,website.website_id]);
+   if(!mapped?.enabled)throw fail('This programme subject is unavailable.',403);
+  }return scope;
+ }
+diff --git a/src/admin.mjs b/src/admin.mjs
+index 8fde908..a7b38ab 100644
+--- a/src/admin.mjs
++++ b/src/admin.mjs
+@@ -74,6 +74,7 @@ export async function change(env,store,actor,offeringId,input,guardOptions={}){
+   s(`INSERT INTO cards VALUES(?,?,?,?,?,0) ON CONFLICT(offering_id) DO UPDATE SET title=excluded.title,description=excluded.description,display_label=excluded.display_label,visible=excluded.visible,revision=cards.revision+1`,[offeringId,text(input.title),text(input.description||'',2000),text(input.displayLabel||''),flag(input.visible)]);
+  }else if(input.action==='attachment'){
+   if(scope?.programme_key==='mothers'&&input.audience==='RECORDING'&&!guardOptions.playlistChecked)throw fail('Use the checked media form and choose a MOU playlist.',409,'PLAYLIST_REQUIRED');
++  if(input.websiteId&&!guardOptions.playlistChecked&&await store.first('SELECT 1 FROM mou_playlists WHERE website_id=? AND offering_id=?',[id(input.websiteId),offeringId]))throw fail('Use the checked media form and choose this playlist.',409,'PLAYLIST_REQUIRED');
+   const assetId=id(input.assetId),asset=guardOptions.batchFacts?guardOptions.batchFacts.assets.get(assetId):await store.first('SELECT o.mime_type FROM objects o JOIN asset_owners x USING(asset_id) WHERE o.asset_id=? AND x.offering_id=?',[assetId,offeringId]);if(!asset)throw fail('Choose a file owned by this offering.',403);
+   const websiteId=input.websiteId?id(input.websiteId):null;if(websiteId&&!(guardOptions.batchFacts?guardOptions.batchFacts.websites.has(websiteId):await store.first('SELECT website_id FROM websites WHERE website_id=? AND offering_id=?',[websiteId,offeringId])))throw fail('Choose a website in this offering.');
+   if(!['WEBSITE','RECORDING'].includes(input.audience)||input.audience==='WEBSITE'&&(!websiteId||!['application/pdf','image/png','image/jpeg','image/webp'].includes(asset.mime_type)))throw fail('Website-only rights cannot grant recordings.');
+diff --git a/src/circles.mjs b/src/circles.mjs
+index 0e5d48a..ec532bf 100644
+--- a/src/circles.mjs
++++ b/src/circles.mjs
+@@ -1,3 +1,4 @@
++import {cataloguePlaylistRights} from './mou-playlists.mjs';
+ import {academyAuthority} from './access.mjs';
+ import {bodyJSON,boundedAge,fail,id} from './protocol.mjs';
+ import {contentVersion} from './content-package.mjs';
+@@ -46,7 +47,7 @@ export async function catalogueAccess(store,actor,websiteIds,{navigationOnly=fal
+  const ids=[...new Set(websiteIds.map(id))],policyEpoch=await coursePolicyEpoch(store);if(!ids.length)return {websites:[],coursePolicyEpoch:policyEpoch};
+  const rows=await store.all(`SELECT w.website_id,w.offering_id,w.enabled,w.published_key,o.kind,o.active,cm.access_model,cr.revision policy_revision,
+   EXISTS(SELECT 1 FROM source_access_master_fences f WHERE f.account_id=? AND f.offering_id=w.offering_id) fenced,
+-  p.purchased,sf.role,sc.authority,sc.enabled source_enabled,sc.generation,
++  p.purchased,sf.role,sc.timezone,mp.playlist_id,sc.authority,sc.enabled source_enabled,sc.generation,
+   ap.ready,ap.generation person_generation,ap.verified_at,sw.enabled mapped,
+   EXISTS(SELECT 1 FROM paid_months pm WHERE pm.account_id=? AND pm.offering_id=w.offering_id AND pm.month=w.completion_month
+    UNION ALL SELECT 1 FROM website_months wm WHERE wm.account_id=? AND wm.offering_id=w.offering_id AND wm.month=w.completion_month) paid,
+@@ -55,10 +56,13 @@ export async function catalogueAccess(store,actor,websiteIds,{navigationOnly=fal
+   LEFT JOIN course_access_models cm ON cm.offering_id=w.offering_id LEFT JOIN course_policy_revisions cr ON cr.offering_id=w.offering_id
+   LEFT JOIN participation p ON p.offering_id=w.offering_id AND p.account_id=?
+   LEFT JOIN staff sf ON sf.offering_id=w.offering_id AND sf.account_id=?
++  LEFT JOIN mou_playlists mp ON mp.website_id=w.website_id
+   LEFT JOIN source_access_scopes sc ON sc.offering_id=w.offering_id
+   LEFT JOIN source_access_people ap ON ap.offering_id=w.offering_id AND ap.account_id=?
+   LEFT JOIN source_access_websites sw ON sw.website_id=w.website_id AND sw.offering_id=w.offering_id`,
+  [actor.account_id,actor.account_id,actor.account_id,actor.account_id,JSON.stringify(ids),actor.account_id,actor.account_id,actor.account_id]);
++ const playlistRights=await cataloguePlaylistRights(store,actor,rows);
++ for(const row of rows)if(playlistRights.has(row.website_id))row.paid=Number(playlistRights.get(row.website_id));
+  const found=new Map(rows.map(r=>[r.website_id,r])),now=Date.now();
+  return {websites:ids.map(websiteId=>{
+   const row=found.get(websiteId),base={websiteId,canOpen:false,subscriptionStatus:'required',accessBasis:null,needsRefresh:false,coursePolicy:row?.kind==='COURSE'&&row.access_model?{offeringId:row.offering_id,model:row.access_model,revision:row.policy_revision||0}:null};
+diff --git a/src/content.mjs b/src/content.mjs
+index cd7f9e2..d3aff5c 100644
+--- a/src/content.mjs
++++ b/src/content.mjs
+@@ -8,7 +8,7 @@ import {playlistTextAccess,playlistParentTextAccess} from './mou-playlists.mjs';
+ export async function objectJSON(bucket,key,limit=1_500_000){const object=await bucket.get(key);if(!object||object.size>limit)throw fail('The saved edition is unavailable.',503);return bodyJSON(object.body,limit);}
+ export async function saveContent(env,document,websiteId=document.id){const encoded=JSON.stringify(document);if(new TextEncoder().encode(encoded).length>1_500_000)throw fail('This website edition is too large.',413);const hash=await sha256(encoded),key='websites/'+encodeURIComponent(websiteId)+'/versions/'+hash+'.json';await env.CONTENT.put(key,encoded,{httpMetadata:{contentType:'application/json'}});return key;}
+ export async function websiteAccess(store,actor,websiteId,{admin=false,readOnly=!admin}={}){
+- const row=await store.first(`SELECT w.*,o.kind,o.active,p.purchased,s.role,h.offering_id completed_course,(SELECT programme_key FROM programme_offerings mp WHERE mp.offering_id=o.offering_id) programme_key,(SELECT access_model FROM course_access_models m WHERE m.offering_id=o.offering_id) access_model,
++ const row=await store.first(`SELECT w.*,o.kind,o.active,(SELECT playlist_id FROM mou_playlists mp WHERE mp.website_id=w.website_id) playlist_id,p.purchased,s.role,h.offering_id completed_course,(SELECT programme_key FROM programme_offerings mp WHERE mp.offering_id=o.offering_id) programme_key,(SELECT access_model FROM course_access_models m WHERE m.offering_id=o.offering_id) access_model,
+   EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=? AND m.offering_id=w.offering_id UNION ALL SELECT 1 FROM website_months m WHERE m.account_id=? AND m.offering_id=w.offering_id) retained_text,
+   EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=? AND m.offering_id=w.offering_id AND m.month=w.completion_month UNION ALL SELECT 1 FROM website_months m WHERE m.account_id=? AND m.offering_id=w.offering_id AND m.month=w.completion_month) paid,
+   EXISTS(SELECT 1 FROM surah_grants g WHERE g.account_id=? AND g.website_id=w.website_id) granted
+@@ -19,9 +19,9 @@ export async function websiteAccess(store,actor,websiteId,{admin=false,readOnly=
+  if(!row||!row.active)throw fail('This website is unavailable.',404);await sourceWebsiteGate(store,actor,row,{readOnly});
+  if(admin){await store.scope(actor,row.offering_id,{admin:true,readOnly});return row;}
+  const staff=actor.global_admin||row.role==='ADMIN'||row.role==='TEACHER';
+- const playlist=row.programme_key==='mothers'?await store.first('SELECT 1 FROM mou_playlists WHERE website_id=?',[websiteId]):null;
++ const playlist=row.playlist_id;
+  const privatePlaylistParent=row.programme_key==='mothers'&&!playlist?await store.first('SELECT 1 FROM mou_playlist_only_websites WHERE website_id=?',[websiteId]):null;
+- const monthlyText=playlist?row.granted||await playlistTextAccess(store,actor,websiteId,row.offering_id):privatePlaylistParent?await playlistParentTextAccess(store,actor,websiteId,row.offering_id):row.paid||row.granted||row.programme_key==='mothers'&&row.retained_text;
++ const monthlyText=row.kind==='COURSE'?false:playlist?row.granted||await playlistTextAccess(store,actor,websiteId,row.offering_id):privatePlaylistParent?await playlistParentTextAccess(store,actor,websiteId,row.offering_id):row.paid||row.granted||row.programme_key==='mothers'&&row.retained_text;
+  if(!staff&&!(row.kind==='COURSE'&&(row.purchased||row.access_model==='FREE')||row.kind==='TAFSEER'&&monthlyText))throw fail('Your account does not have this material.',403,'MATERIAL_ACCESS_REQUIRED');
+  if(!row.enabled||!row.published_key)throw fail('This website is not published.',404);return {...row,is_playlist:Boolean(playlist),playlist_parent:Boolean(privatePlaylistParent)};
+ }
+diff --git a/src/media-attribution.mjs b/src/media-attribution.mjs
+index 2587e25..9c1f965 100644
+--- a/src/media-attribution.mjs
++++ b/src/media-attribution.mjs
+@@ -31,12 +31,12 @@ export async function mediaTeachers(env,store,actor,offer,selected,fetcher){
+ async function contextFor(store,scope,row,teachers,classes=[]){
+  const website=row.website_id?await store.first('SELECT website_id,title FROM websites WHERE website_id=? AND offering_id=?',[row.website_id,row.offering_id]):null;
+  let subject=null,playlist=null;
++ if(row.playlist_id){const selected=await checkedPlaylist(store,row.offering_id,row.playlist_id);if(scope.programme_key!=='mothers'&&!row.published&&row.website_id!==selected.website_id)throw fail('Use the selected playlist’s native website.',409);playlist={id:selected.playlist_id,websiteId:selected.website_id,name:selected.title};row.playlist_revision=selected.revision;}
+  if(scope.kind!=='COURSE'){
+   if(!website)throw fail('Choose the native Surah or MOU subject for this recording.');
+   if(scope.programme_key==='mothers'){
+-   if(row.playlist_id){const selected=await checkedPlaylist(store,row.offering_id,row.playlist_id);playlist={id:selected.playlist_id,websiteId:selected.website_id,name:selected.title};row.playlist_revision=selected.revision;}
+-   else {if(!row.published)throw fail('Choose a MOU playlist for this recording.',409,'PLAYLIST_REQUIRED');const binding=await store.first('SELECT display_key FROM programme_subjects WHERE offering_id=? AND website_id=? AND enabled=1',[row.offering_id,row.website_id]);if(!binding)throw fail('Preserve the registered legacy MOU subject.');subject={key:binding.display_key,websiteId:website.website_id,name:website.title};}
+-  }else subject={key:website.website_id,websiteId:website.website_id,name:website.title};
++   if(!playlist) {if(!row.published)throw fail('Choose a MOU playlist for this recording.',409,'PLAYLIST_REQUIRED');const binding=await store.first('SELECT display_key FROM programme_subjects WHERE offering_id=? AND website_id=? AND enabled=1',[row.offering_id,row.website_id]);if(!binding)throw fail('Preserve the registered legacy MOU subject.');subject={key:binding.display_key,websiteId:website.website_id,name:website.title};}
++  }else if(!playlist)subject={key:website.website_id,websiteId:website.website_id,name:website.title};
+   date(row.lesson_date);const source=await store.first('SELECT classes_json FROM source_access_scopes WHERE offering_id=?',[row.offering_id]);if(!source||!JSON.parse(source.classes_json).includes(row.cohort))throw fail('Preserve the exact native recording class/cohort.',409);
+  }
+  return {schema:'RECORDED_MEDIA_CONTEXT_V2',mediaIdentity:{assetId:row.asset_id,websiteId:row.website_id,lessonId:row.lesson_id,recordedDate:row.lesson_date,cohort:row.cohort},offeringId:row.offering_id,kind:scope.kind,programmeKey:scope.programme_key||null,classIds:scope.kind==='COURSE'?[]:[row.cohort],classNames:scope.kind==='COURSE'?[]:classes.filter(c=>c.id===row.cohort).map(c=>c.name),subject,...(playlist?{playlist}:{}),teacherIds:teachers.map(t=>t.id),teacherName:teachers.map(t=>t.name).join(', '),attributionSource:'NATIVE_TEACHER_ACCOUNT'};
+@@ -47,22 +47,22 @@ export async function attributionFacts(store,ids){
+ }
+ export async function addPublishedAttribution(store,media){
+  const rows=await attributionFacts(store,media.map(r=>r.attachment_id));
+- return media.map(row=>{const saved=rows.find(r=>r.attachment_id===row.attachment_id),context=saved?.published_json?JSON.parse(saved.published_json):null,identity=context?.mediaIdentity;return identity&&identity.assetId===row.asset_id&&identity.websiteId===row.website_id&&identity.lessonId===row.lesson_id&&identity.recordedDate===row.lesson_date&&identity.cohort===row.cohort?{...row,recordedContext:context}:row;});
++ return media.map(row=>{const saved=rows.find(r=>r.attachment_id===row.attachment_id),context=saved?.published_json?JSON.parse(saved.published_json):null,identity=context?.mediaIdentity;return identity&&identity.assetId===row.asset_id&&identity.websiteId===row.website_id&&identity.lessonId===row.lesson_id&&identity.recordedDate===row.lesson_date&&identity.cohort===row.cohort?{...row,recordedContext:context,...(context.playlist?{playlistId:context.playlist.id,playlist:{id:context.playlist.id,name:context.playlist.name}}:{})}:row;});
+ }
+ function parentGuard(scope,row,{requireMembership=false}={}){
+  const sql="EXISTS(SELECT 1 FROM offerings WHERE offering_id=? AND kind=?) AND EXISTS(SELECT 1 FROM asset_owners WHERE asset_id=? AND offering_id=?)";
+  const args=[row.offering_id,scope.kind,row.asset_id,row.offering_id];
+- if(scope.kind==='COURSE')return {sql,args};
+- let extra=" AND EXISTS(SELECT 1 FROM source_access_scopes s,json_each(s.classes_json) c WHERE s.offering_id=? AND s.enabled=1 AND c.value=?) AND EXISTS(SELECT 1 FROM websites WHERE website_id=? AND offering_id=?)";
+- args.push(row.offering_id,row.cohort,row.website_id,row.offering_id);
+- if(scope.programme_key==='mothers'){if(row.playlist_id){extra+=" AND EXISTS(SELECT 1 FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.offering_id=? AND p.playlist_id=? AND p.revision=?)";args.push(row.offering_id,row.playlist_id,row.playlist_revision);if(requireMembership){extra+=' AND EXISTS(SELECT 1 FROM mou_playlist_items WHERE playlist_id=? AND attachment_id=?)';args.push(row.playlist_id,row.attachment_id);}}else {extra+=" AND EXISTS(SELECT 1 FROM programme_subjects WHERE offering_id=? AND website_id=? AND enabled=1)";args.push(row.offering_id,row.website_id);}}
++ let extra='';
++ if(scope.kind!=='COURSE'){extra=" AND EXISTS(SELECT 1 FROM source_access_scopes s,json_each(s.classes_json) c WHERE s.offering_id=? AND s.enabled=1 AND c.value=?) AND EXISTS(SELECT 1 FROM websites WHERE website_id=? AND offering_id=?)";
++ args.push(row.offering_id,row.cohort,row.website_id,row.offering_id);}
++ if(row.playlist_id){extra+=" AND EXISTS(SELECT 1 FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.offering_id=? AND p.playlist_id=? AND p.revision=?)";args.push(row.offering_id,row.playlist_id,row.playlist_revision);if(requireMembership){extra+=' AND EXISTS(SELECT 1 FROM mou_playlist_items WHERE playlist_id=? AND attachment_id=?)';args.push(row.playlist_id,row.attachment_id);}}else if(scope.programme_key==='mothers'){extra+=" AND EXISTS(SELECT 1 FROM programme_subjects WHERE offering_id=? AND website_id=? AND enabled=1)";args.push(row.offering_id,row.website_id);}
+  return {sql:sql+extra,args};
+ }
+ export async function attributionChange(env,store,actor,offer,input,fetcher){
+  const scope=await mediaAdmin(store,actor,offer),attachment=id(input.attachmentId),row=await mediaGate(store,actor,attachment,{admin:true});
+  if(row.offering_id!==offer||row.audience!=='RECORDING')throw fail('Choose this programme’s recording.',403);
+  const saved=await store.first('SELECT * FROM media_attributions WHERE attachment_id=?',[attachment]);
+- if(scope.programme_key==='mothers'){const previous=saved?JSON.parse(saved.draft_json).playlist?.id:null;if(previous&&input.playlistId&&previous!==input.playlistId)throw fail('Preserve the saved playlist selection. Add other memberships through playlist management.',409);row.playlist_id=previous||input.playlistId||null;if(row.playlist_id)row.playlist_revision=(await checkedPlaylist(store,offer,row.playlist_id)).revision;}
++ {const previous=saved?JSON.parse(saved.draft_json).playlist?.id:null;if(previous&&input.playlistId&&previous!==input.playlistId)throw fail('Preserve the saved playlist selection. Add other memberships through playlist management.',409);row.playlist_id=previous||input.playlistId||null;if(row.playlist_id)row.playlist_revision=(await checkedPlaylist(store,offer,row.playlist_id)).revision;}
+  const parent=parentGuard(scope,row,{requireMembership:input.action==='media-publication'});
+  if(input.action==='media-attribution-save'){
+   const selected=teacherIds(input.teacherIds);
+@@ -81,7 +81,7 @@ export async function attributionChange(env,store,actor,offer,input,fetcher){
+  const replay=await store.replay(actor.account_id,input.operationId,await store.requestHash(offer,input));if(replay)return replay;
+  if(input.revision!==saved.revision||input.draftContext!==saved.draft_json)throw fail('Review the exact saved Teacher attribution before publishing.',409);
+  let expected='1',args=[],companionStatements=[];
+- if(input.sourceRevision||input.companionKey||scope.programme_key==='mothers'&&!row.published){
++ if(input.sourceRevision||input.companionKey||context.playlist&&!row.published){
+   const companion=await store.first('SELECT revision,source_revision,draft_key,published_key,duration_seconds FROM recording_companions WHERE attachment_id=?',[attachment]);
+   if(!companion||input.sourceRevision&&input.sourceRevision!==companion.source_revision||input.companionKey&&input.companionKey!==companion.draft_key)throw fail('Review the exact saved companion before this recording.',409);
+   if(input.companionRevision!==undefined){
+@@ -96,27 +96,32 @@ export async function attributionChange(env,store,actor,offer,input,fetcher){
+ export async function mediaOptions(env,store,actor,offer,fetcher){
+  const scope=await mediaAdmin(store,actor,offer),choices=await mediaTeachers(env,store,actor,offer,undefined,fetcher);
+  const subjects=scope.kind==='COURSE'||scope.programme_key==='mothers'?[]:await store.all('SELECT website_id id,title name FROM websites WHERE offering_id=? ORDER BY website_id LIMIT 101',[offer]);
+- const playlists=scope.programme_key==='mothers'?await store.all('SELECT p.playlist_id id,w.title name,w.completion_date closeDate,w.enabled FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.offering_id=? ORDER BY p.playlist_id LIMIT 101',[offer]):[];if(playlists.length>100)throw fail('Choose a smaller playlist catalogue.',409);
++ const playlists=await store.all('SELECT p.playlist_id id,w.title name,w.completion_date closeDate,w.enabled,p.website_id websiteId,p.revision FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.offering_id=? ORDER BY p.playlist_id LIMIT 101',[offer]);if(playlists.length>100)throw fail('Choose a smaller playlist catalogue.',409);
+  if(subjects.length>100)throw fail('Choose a smaller native subject catalogue.',409);
+  const source=scope.kind==='COURSE'?null:await store.first('SELECT classes_json FROM source_access_scopes WHERE offering_id=?',[offer]);
+  const ids=source?JSON.parse(source.classes_json):[];
+- return {...choices,kind:scope.kind,programmeKey:scope.programme_key||null,subjects,playlists,classIds:ids,classes:choices.classes.filter(c=>ids.includes(c.id))};
++ return {...choices,kind:scope.kind,programmeKey:scope.programme_key||null,accessModel:scope.kind==='COURSE'?'COURSE':'MONTHLY',subjects,playlists,classIds:ids,classes:choices.classes.filter(c=>ids.includes(c.id))};
+ }
+ export async function attachMedia(env,store,actor,offer,input,fetcher,planner){
+  const selected=teacherIds(input.teacherIds);
+  const scope=await mediaAdmin(store,actor,offer),checked=await mediaTeachers(env,store,actor,offer,selected,fetcher);
+  const replay=await store.replay(actor.account_id,input.operationId,await store.requestHash(offer,input));if(replay)return replay;
+- const attachment=id(input.attachmentId),website=scope.kind==='COURSE'?null:scope.programme_key==='mothers'&&!input.websiteId?(await checkedPlaylist(store,offer,input.playlistId)).website_id:id(input.websiteId),row={asset_id:id(input.assetId),lesson_id:input.lessonId?id(input.lessonId):attachment,offering_id:offer,website_id:website,lesson_date:scope.kind==='COURSE'?(input.lessonDate?date(input.lessonDate):''):date(input.lessonDate),cohort:scope.kind==='COURSE'?'':text(input.cohort,180),...(scope.programme_key==='mothers'?{playlist_id:id(input.playlistId)}:{})};
++ const attachment=id(input.attachmentId),playlist=input.playlistId?await checkedPlaylist(store,offer,input.playlistId):null;
++ const website=input.websiteId?id(input.websiteId):playlist?.website_id||(scope.kind==='COURSE'?null:id(input.websiteId));
++ // New monthly Surahs and Course playlist media use their exact native wrapper.
++ // MOU keeps the reviewed cross-parent support/legacy binding path.
++ if(playlist&&scope.programme_key!=='mothers'&&website!==playlist.website_id)throw fail('Use the selected playlist’s native website.',409);
++ const row={asset_id:id(input.assetId),lesson_id:input.lessonId?id(input.lessonId):attachment,offering_id:offer,website_id:website,lesson_date:scope.kind==='COURSE'?(input.lessonDate?date(input.lessonDate):''):date(input.lessonDate),cohort:scope.kind==='COURSE'?'':text(input.cohort,180),...(playlist?{playlist_id:playlist.playlist_id}:scope.programme_key==='mothers'?{playlist_id:id(input.playlistId)}:{})};
+  const context=await contextFor(store,scope,row,checked.teachers.filter(t=>checked.selectedTeacherIds.includes(t.id)),checked.classes);
+  const native={...input,action:'attachment',websiteId:website,lessonId:row.lesson_id,lessonDate:row.lesson_date,cohort:row.cohort,audience:'RECORDING',published:false,createOnly:true};
+  const source=await store.first('SELECT mime_type FROM objects WHERE asset_id=?',[row.asset_id]);if(!source||!['video/mp4','video/youtube'].includes(source.mime_type))throw fail('Choose one recording source, and keep PDFs/images as supporting files.');
+  const parent=parentGuard(scope,row);
+- const statements=await planner(env,store,actor,offer,native,{collect:true,scope,playlistChecked:scope.programme_key==='mothers'});
++ const statements=await planner(env,store,actor,offer,native,{collect:true,scope,playlistChecked:Boolean(playlist)||scope.programme_key==='mothers'});
+  const attachmentIds=[attachment,...(Array.isArray(input.supportingFiles)?input.supportingFiles.map(f=>id(f.attachmentId)):[])];if(new Set(attachmentIds).size!==attachmentIds.length)throw fail('Choose distinct recording and supporting-file identities.');
+  if(input.supportingFiles!==undefined){
+   if(!Array.isArray(input.supportingFiles)||input.supportingFiles.length>10||new Set(input.supportingFiles.map(v=>v.assetId)).size!==input.supportingFiles.length)throw fail('Choose up to ten distinct supporting files.');
+   for(const file of input.supportingFiles){const asset=await store.first('SELECT o.mime_type,o.filename FROM objects o JOIN asset_owners a USING(asset_id) WHERE o.asset_id=? AND a.offering_id=?',[id(file.assetId),offer]);if(!asset||!['application/pdf','image/png','image/jpeg','image/webp'].includes(asset.mime_type))throw fail('Choose a private PDF or image owned by this programme.');
+-   const support=id(file.attachmentId);statements.push(...await planner(env,store,actor,offer,{action:'attachment',createOnly:true,assetId:file.assetId,attachmentId:support,websiteId:website,lessonId:row.lesson_id,lessonDate:row.lesson_date,cohort:row.cohort,title:asset.filename,audience:'RECORDING',published:false},{collect:true,scope,playlistChecked:scope.programme_key==='mothers'}));statements.push(store.statement('INSERT INTO media_supporting_files VALUES(?,?)',[attachment,support]));
++   const support=id(file.attachmentId);statements.push(...await planner(env,store,actor,offer,{action:'attachment',createOnly:true,assetId:file.assetId,attachmentId:support,websiteId:website,lessonId:row.lesson_id,lessonDate:row.lesson_date,cohort:row.cohort,title:asset.filename,audience:'RECORDING',published:false},{collect:true,scope,playlistChecked:Boolean(playlist)||scope.programme_key==='mothers'}));statements.push(store.statement('INSERT INTO media_supporting_files VALUES(?,?)',[attachment,support]));
+   }
+  }
+  if(context.playlist)statements.push(...assignPlaylist(store,{playlist_id:context.playlist.id},{...row,attachment_id:attachment},{exclusive:true,supportIds:attachmentIds.slice(1),protectPrivateParent:true}));
+diff --git a/src/media.mjs b/src/media.mjs
+index c300e31..87a9511 100644
+--- a/src/media.mjs
++++ b/src/media.mjs
+@@ -4,7 +4,7 @@ import {websiteAccess} from './content.mjs';
+ import {recordedAssetAccess} from './recorded-support.mjs';
+ import {playlistMediaAccess} from './mou-playlists.mjs';
+ export async function mediaGate(store,actor,attachmentId,{admin=false,readOnly=!admin}={}){
+- const row=await store.first(`SELECT x.*,o.object_key,o.mime_type,o.filename,o.byte_size,o.youtube_id,f.kind,f.active,p.purchased,s.role,(SELECT programme_key FROM programme_offerings WHERE offering_id=x.offering_id) programme_key,EXISTS(SELECT 1 FROM mou_playlist_only_media WHERE attachment_id=x.attachment_id) playlist_only,(SELECT access_model FROM course_access_models m WHERE m.offering_id=f.offering_id) access_model,
++ const row=await store.first(`SELECT x.*,o.object_key,o.mime_type,o.filename,o.byte_size,o.youtube_id,f.kind,f.active,p.purchased,s.role,(SELECT programme_key FROM programme_offerings WHERE offering_id=x.offering_id) programme_key,EXISTS(SELECT 1 FROM mou_playlist_only_media WHERE attachment_id=x.attachment_id) playlist_only,EXISTS(SELECT 1 FROM mou_playlist_items WHERE attachment_id=x.attachment_id UNION ALL SELECT 1 FROM media_supporting_files sf JOIN mou_playlist_items i ON i.attachment_id=sf.recording_attachment_id WHERE sf.support_attachment_id=x.attachment_id) playlist_member,(SELECT access_model FROM course_access_models m WHERE m.offering_id=f.offering_id) access_model,
+   EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=? AND m.offering_id=x.offering_id AND m.month=substr(x.lesson_date,1,7) AND m.cohort=x.cohort) paid
+   FROM attachments x JOIN objects o USING(asset_id) JOIN offerings f USING(offering_id)
+   LEFT JOIN participation p ON p.account_id=? AND p.offering_id=x.offering_id
+@@ -14,7 +14,7 @@ export async function mediaGate(store,actor,attachmentId,{admin=false,readOnly=!
+  if(!row.published)throw fail('This attachment is not published.',404);
+  const staff=actor.global_admin||row.role==='ADMIN'||row.role==='TEACHER';
+  if(row.audience==='WEBSITE'){const website=await websiteAccess(store,actor,row.website_id);if(!await store.first('SELECT asset_id FROM published_assets WHERE website_id=? AND asset_id=?',[row.website_id,row.asset_id]))throw fail('This file is not in the published website.',404);await recordedAssetAccess(store.env,store,actor,website,row.asset_id);}
+- else if(!staff&&!(row.kind==='COURSE'&&(row.purchased||row.access_model==='FREE')||row.kind==='TAFSEER'&&(!row.playlist_only&&row.paid||row.programme_key==='mothers'&&await playlistMediaAccess(store,actor,row))))throw fail('This lesson requires its own material rights.',403);
++ else if(!staff&&!(row.kind==='COURSE'&&(row.purchased||row.access_model==='FREE')&&(!row.playlist_only||await playlistMediaAccess(store,actor,row))||row.kind==='TAFSEER'&&(!row.playlist_only&&row.paid||row.playlist_member&&await playlistMediaAccess(store,actor,row))))throw fail('This lesson requires its own material rights.',403);
+  return row;
+ }
+ export async function streamMedia(env,row,request){
+diff --git a/src/mou-playlists.mjs b/src/mou-playlists.mjs
+index 16a4a15..90ffad3 100644
+--- a/src/mou-playlists.mjs
++++ b/src/mou-playlists.mjs
+@@ -2,7 +2,7 @@ import {fail,id,text,integer,date} from './protocol.mjs';
+ import {rejectAuthorityWrite} from './access.mjs';
+ import {newCourse} from '../public/shared/model.mjs';
+ import {saveContent} from './content.mjs';
+-import {mouDefinition} from './programme-policy.mjs';
++
+ 
+ // Recomputed from the server clock for every request, independently of the
+ // twelve-hour account proof. The programme's native timezone owns month rollover.
+@@ -10,31 +10,42 @@ export function programmeMonth(now,timezone){
+  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit'}).formatToParts(new Date(now)).map(p=>[p.type,p.value]));
+  return parts.year+'-'+parts.month;
+ }
++export async function playlistDefinition(store,offer){
++ store.playlistDefinitions??=new Map();if(store.playlistDefinitions.has(offer))return store.playlistDefinitions.get(offer);
++ const row=await store.first("SELECT o.kind,p.programme_key,s.timezone FROM offerings o LEFT JOIN programme_offerings p USING(offering_id) LEFT JOIN source_access_scopes s USING(offering_id) WHERE o.offering_id=?",[offer]);
++ if(!row||!['COURSE','TAFSEER'].includes(row.kind))throw fail('Choose a Studio Course, Tafseer or MOU programme.',403);
++ if(row.kind==='TAFSEER'&&!row.timezone)throw fail('Refresh the native programme timezone.',409);
++ const definition={...row,accessModel:row.kind==='COURSE'?'COURSE':'MONTHLY',label:row.kind==='COURSE'?'Course playlists':row.programme_key==='mothers'?'MOU playlists':'Surah playlists',currentMonth:row.timezone?programmeMonth(Date.now(),row.timezone):null};
++ store.playlistDefinitions.set(offer,definition);return definition;
++}
+ async function effectiveMonth(store,offer){
+- const definition=await mouDefinition(store);
+- if(definition?.offering_id!==offer||!definition.timezone)throw fail('Refresh the native MOU programme settings.',409);
+- const month=programmeMonth(Date.now(),definition.timezone);
+- return `COALESCE(w.completion_month,'${month}')`;
++ const definition=await playlistDefinition(store,offer);
++ if(definition.accessModel!=='MONTHLY')throw fail('Courses retain whole-course access.',409);
++ return `COALESCE(w.completion_month,'${definition.currentMonth}')`;
+ }
+ 
+ const currentRevision=async(store,offer)=>(await store.first('SELECT revision FROM access_revisions WHERE offering_id=?',[offer]))?.revision||0;
+ export async function playlistScope(store,actor,offer,{readOnly=false}={}){
+  const scope=await store.scope(actor,offer,{admin:true,readOnly});
+- if(scope.programme_key!=='mothers')throw fail('Playlists belong to the independent MOU programme.',403);
++ if(!['COURSE','TAFSEER'].includes(scope.kind))throw fail('Choose a Studio Course, Tafseer or MOU programme.',403);
+  await rejectAuthorityWrite(store,offer);return scope;
+ }
+ const playlistRow=(store,offer,key)=>store.first(`SELECT p.*,w.title,w.completion_date,w.completion_month,w.revision website_revision,w.enabled,w.published_key FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.playlist_id=? AND p.offering_id=?`,[id(key),offer]);
+ export async function playlistTable(store,actor,offer,input={}){
+  await playlistScope(store,actor,offer,{readOnly:true});const revision=await currentRevision(store,offer);
+  const rows=await store.all(`SELECT p.playlist_id id,p.revision,w.title name,w.completion_date closeDate,w.completion_month closeMonth,w.revision websiteRevision,w.enabled,
+- p.recording_count recordings
++ p.website_id websiteId,p.recording_count recordings
+  FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.offering_id=? ORDER BY p.playlist_id LIMIT 101`,[offer]);
+  if(rows.length>100)throw fail('This programme needs a narrower playlist selector.',409);
+  let memberOf;
+  if(input.attachmentId){const attachment=id(input.attachmentId);if(!await store.first('SELECT 1 FROM attachments WHERE attachment_id=? AND offering_id=?',[attachment,offer]))throw fail('Choose a recording in this programme.',403);memberOf=(await store.all('SELECT playlist_id FROM mou_playlist_items WHERE attachment_id=? ORDER BY playlist_id LIMIT 101',[attachment])).map(r=>r.playlist_id);if(memberOf.length>100)throw fail('Review this recording’s playlist memberships.',409);}
+  if(revision!==await currentRevision(store,offer))throw fail('The playlist register changed. Refresh it.',409,'CHANGE_CONFLICT');
+- const definition=await mouDefinition(store);
+- return {schema:'MOU_PLAYLISTS_V1',revision,currentMonth:programmeMonth(Date.now(),definition.timezone),playlists:rows.map(row=>({...row,state:row.closeDate?'CLOSED':'OPEN'})),...(memberOf?{memberOf}:{})};
++ let items;
++ if(input.playlistId){const selected=rows.find(r=>r.id===id(input.playlistId));if(!selected)throw fail('Choose a saved playlist.',404);items=await store.all('SELECT i.attachment_id attachmentId,a.title,a.published,r.position FROM recording_playlist_positions r JOIN mou_playlist_items i USING(playlist_id,attachment_id) JOIN attachments a USING(attachment_id) WHERE r.playlist_id=? ORDER BY r.position,r.attachment_id LIMIT 401',[selected.id]);if(items.length>400)throw fail('Choose a narrower recording order.',409);}
++ const legacy=await store.all('SELECT w.website_id id,w.website_id websiteId,w.title name,w.completion_date closeDate,w.completion_month closeMonth,w.revision websiteRevision,w.enabled FROM websites w WHERE w.offering_id=? AND NOT EXISTS(SELECT 1 FROM mou_playlists p WHERE p.website_id=w.website_id) ORDER BY w.website_id LIMIT 201',[offer]);if(legacy.length>200)throw fail('Choose a narrower historical website selector.',409);
++ if(revision!==await currentRevision(store,offer))throw fail('The playlist register changed. Refresh it.',409,'CHANGE_CONFLICT');
++ const definition=await playlistDefinition(store,offer);
++ return {schema:'MOU_PLAYLISTS_V1',revision,accessModel:definition.accessModel,label:definition.label,timezone:definition.timezone,currentMonth:definition.currentMonth,playlists:[...rows.map(row=>({...row,accessModel:definition.accessModel,state:row.closeDate?'CLOSED':'OPEN'})),...legacy.map(row=>({...row,accessModel:definition.accessModel,legacy:true,readOnly:true,state:'LEGACY'}))],legacy:legacy.map(row=>({...row,legacy:true,readOnly:true,state:'LEGACY'})),...(items?{items}:{}),...(memberOf?{memberOf}:{})};
+ }
+ async function priorHolders(store,offer,month){
+  if(!month)return [];
+@@ -46,8 +57,8 @@ async function priorHolders(store,offer,month){
+  return [...new Set(paid.map(r=>r.account_id))].map(accountId=>({accountId,kind:'PAID'})).concat(website.map(r=>({accountId:r.account_id,kind:'WEBSITE'})));
+ }
+ export async function playlistCorrection(store,actor,offer,input){
+- await playlistScope(store,actor,offer);const row=await playlistRow(store,offer,input.playlistId);if(!row)throw fail('Choose a saved playlist.',404);
+- const revision=await currentRevision(store,offer),holders=await priorHolders(store,offer,row.completion_month);
++ await playlistScope(store,actor,offer);const definition=await playlistDefinition(store,offer),row=await playlistRow(store,offer,input.playlistId);if(!row)throw fail('Choose a saved playlist.',404);
++ const revision=await currentRevision(store,offer),holders=definition.accessModel==='MONTHLY'?await priorHolders(store,offer,row.completion_month):[];
+  if(revision!==await currentRevision(store,offer))throw fail('The monthly register changed. Review the correction again.',409);
+  return {revision,playlistRevision:row.revision,websiteRevision:row.website_revision,sourceMonth:row.completion_month,paidHolders:holders.filter(r=>r.kind==='PAID').length,websiteHolders:holders.filter(r=>r.kind==='WEBSITE').length};
+ }
+@@ -59,23 +70,24 @@ export async function playlistPublication(store,actor,offer,input){
+ }
+ export async function playlistAddRecording(store,actor,offer,input){
+  await playlistScope(store,actor,offer);const replay=await store.replay(actor.account_id,input.operationId,await store.requestHash(offer,input));if(replay)return replay;const playlist=await checkedPlaylist(store,offer,input.playlistId),attachment=id(input.attachmentId);
+- const row=await store.first("SELECT attachment_id,website_id,published FROM attachments a JOIN objects o USING(asset_id) WHERE a.attachment_id=? AND a.offering_id=? AND a.audience='RECORDING' AND o.mime_type IN('video/mp4','video/youtube')",[attachment,offer]);if(!row)throw fail('Choose a saved recording in this MOU programme.',403);
++ const row=await store.first("SELECT attachment_id,website_id,published FROM attachments a JOIN objects o USING(asset_id) WHERE a.attachment_id=? AND a.offering_id=? AND a.audience='RECORDING' AND o.mime_type IN('video/mp4','video/youtube')",[attachment,offer]);if(!row)throw fail('Choose a saved recording in this programme.',403);
+  // Adding an existing recording is a reference. Its legacy access, source and
+  // publication state stay unchanged; new private media uses the checked form.
+  return store.mutate(actor,offer,input,assignPlaylist(store,playlist,row),{saved:true},{studio:true,expectedSQL:"COALESCE((SELECT revision FROM access_revisions WHERE offering_id=?),0)=? AND EXISTS(SELECT 1 FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.playlist_id=? AND p.revision=? AND (?=0 OR w.enabled=0)) AND EXISTS(SELECT 1 FROM attachments a JOIN objects o USING(asset_id) WHERE a.attachment_id=? AND a.offering_id=? AND a.website_id IS ? AND a.published=? AND a.audience='RECORDING' AND o.mime_type IN('video/mp4','video/youtube'))",expectedArgs:[offer,integer(input.revision),playlist.playlist_id,integer(input.playlistRevision),Number(input.requirePrivate===true),attachment,offer,row.website_id,row.published]});
+ }
+ export async function savePlaylist(env,store,actor,offer,input){
+- await playlistScope(store,actor,offer);
++ await playlistScope(store,actor,offer);const definition=await playlistDefinition(store,offer);
+  const canonical={action:'mou-playlist-save',operationId:id(input.operationId),playlistId:id(input.playlistId),name:text(input.name,160).trim(),closeDate:input.closeDate?date(input.closeDate):null,revision:integer(input.revision),playlistRevision:integer(input.playlistRevision),websiteRevision:integer(input.websiteRevision),reviewCorrection:input.reviewCorrection===true};
+  if(Object.hasOwn(input,'accessDate'))throw fail('Use the explicitly chosen close date. Open playlists follow the current paid month.');
+  const replay=await store.replay(actor.account_id,canonical.operationId,await store.requestHash(offer,canonical));if(replay)return replay;
+  if(!canonical.name)throw fail('Enter a playlist name.');
++ if(input.accessModel&&input.accessModel!==definition.accessModel)throw fail('Preserve this programme’s native access model.',409);
+  const row=await playlistRow(store,offer,canonical.playlistId),statements=[];
+  if(!row){
+   if(canonical.playlistRevision||canonical.websiteRevision)throw fail('The playlist changed. Refresh before saving.',409);
+   const count=await store.first('SELECT count(*) n FROM mou_playlists WHERE offering_id=?',[offer]);if(count.n>=100)throw fail('Keep up to 100 playlists in this programme.');
+   if(await store.first('SELECT 1 FROM websites WHERE website_id=?',[canonical.playlistId]))throw fail('Choose a new private playlist identity.',409);
+-  const document=newCourse();document.id=canonical.playlistId;document.name=canonical.name;document.tag='MOTHERS OF THE UMMAH';document.lessons=[];
++  const document=newCourse();document.id=canonical.playlistId;document.name=canonical.name;document.tag=definition.kind==='COURSE'?'COURSE':definition.programme_key==='mothers'?'MOTHERS OF THE UMMAH':'TAFSEER AND TADABBUR';document.lessons=[];
+   document.home={...document.home,headline:canonical.name,subtitle:'',description:'',imageId:'',imageAlt:'',caption:'',journeyTitle:'',themes:[],recordingLayout:'podcast'};
+   document.pages={sessions:false,materials:false,assessments:false};document.materials={intro:'',files:[]};
+   const key=await saveContent(env,document,canonical.playlistId);
+@@ -83,7 +95,7 @@ export async function savePlaylist(env,store,actor,offer,input){
+  }else{
+   if(row.revision!==canonical.playlistRevision||row.website_revision!==canonical.websiteRevision)throw fail('The playlist changed. Refresh before saving.',409,'CHANGE_CONFLICT');
+   const correcting=row.completion_month!==(canonical.closeDate?.slice(0,7)||null);
+-  if(correcting&&row.completion_month){
++  if(definition.accessModel==='MONTHLY'&&correcting&&row.completion_month){
+    const holders=await priorHolders(store,offer,row.completion_month);
+    if(holders.length&&!canonical.reviewCorrection)throw fail('Review how the date correction preserves existing access before saving.',409,'PLAYLIST_CORRECTION_REVIEW');
+    if(holders.length)statements.push(store.statement("INSERT INTO mou_playlist_retained SELECT ?,?,json_extract(value,'$.accountId'),?,json_extract(value,'$.kind') FROM json_each(?) WHERE 1 ON CONFLICT DO NOTHING",[row.playlist_id,offer,row.completion_month,JSON.stringify(holders)]));
+@@ -103,6 +115,7 @@ export function playlistEntitlementSQL({paidOnly=false,playlist='p',month}={}){
+  OR EXISTS(SELECT 1 FROM mou_playlist_retained r WHERE r.playlist_id=${playlist}.playlist_id AND r.account_id=? AND (r.kind='PAID' AND EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=r.account_id AND m.offering_id=r.offering_id AND m.month=r.source_month)${paidOnly?'':" OR r.kind='WEBSITE' AND EXISTS(SELECT 1 FROM website_months m WHERE m.account_id=r.account_id AND m.offering_id=r.offering_id AND m.month=r.source_month)"})))`;
+ }
+ export async function playlistMediaAccess(store,actor,row){
++ if((await playlistDefinition(store,row.offering_id)).accessModel==='COURSE')return Boolean(await store.first(`SELECT 1 FROM mou_playlist_items i JOIN mou_playlists p USING(playlist_id) JOIN websites w ON w.website_id=p.website_id WHERE (i.attachment_id=? OR i.attachment_id=(SELECT recording_attachment_id FROM media_supporting_files WHERE support_attachment_id=?)) AND p.offering_id=? AND w.enabled=1 AND w.published_key IS NOT NULL AND (EXISTS(SELECT 1 FROM participation r WHERE r.account_id=? AND r.offering_id=p.offering_id AND r.purchased=1) OR EXISTS(SELECT 1 FROM course_access_models c WHERE c.offering_id=p.offering_id AND c.access_model='FREE')) LIMIT 1`,[row.attachment_id,row.attachment_id,row.offering_id,actor.account_id]));
+  const month=await effectiveMonth(store,row.offering_id);
+  const found=await store.first(`SELECT 1 FROM mou_playlist_items i JOIN mou_playlists p USING(playlist_id) JOIN websites w ON w.website_id=p.website_id
+  WHERE (i.attachment_id=? OR i.attachment_id=(SELECT recording_attachment_id FROM media_supporting_files WHERE support_attachment_id=?))
+@@ -117,18 +130,22 @@ export async function playlistParentTextAccess(store,actor,websiteId,offer){
+  return Boolean(await store.first(`SELECT 1 FROM attachments a JOIN mou_playlist_items i USING(attachment_id) JOIN mou_playlists p USING(playlist_id) JOIN websites w ON w.website_id=p.website_id WHERE a.website_id=? AND w.enabled=1 AND w.published_key IS NOT NULL AND ${playlistEntitlementSQL({month})} LIMIT 1`,[websiteId,actor.account_id,actor.account_id,actor.account_id]));
+ }
+ export async function checkedPlaylist(store,offer,playlistId){
+- const row=await playlistRow(store,offer,id(playlistId));if(!row)throw fail('Choose a registered MOU playlist.',409,'PLAYLIST_REQUIRED');return row;
++ const row=await playlistRow(store,offer,id(playlistId));if(!row)throw fail('Choose a registered playlist.',409,'PLAYLIST_REQUIRED');return row;
+ }
+ export async function playlistRecordingAccess(store,actor,playlistId,offer){
++ if((await playlistDefinition(store,offer)).accessModel==='COURSE')return Boolean(await store.first("SELECT 1 FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.playlist_id=? AND p.offering_id=? AND w.enabled=1 AND w.published_key IS NOT NULL AND (EXISTS(SELECT 1 FROM participation r WHERE r.account_id=? AND r.offering_id=p.offering_id AND r.purchased=1) OR EXISTS(SELECT 1 FROM course_access_models c WHERE c.offering_id=p.offering_id AND c.access_model='FREE'))",[playlistId,offer,actor.account_id]));
+  const month=await effectiveMonth(store,offer);
+  return Boolean(await store.first(`SELECT 1 FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.playlist_id=? AND w.enabled=1 AND w.published_key IS NOT NULL AND ${playlistEntitlementSQL({paidOnly:true,month})}`,[playlistId,actor.account_id,actor.account_id]));
+ }
+ export async function learnerPlaylists(store,actor,offer,{staff=false}={}){
+- const month=await effectiveMonth(store,offer);
+- const rows=await store.all(`SELECT p.playlist_id,p.published_count,w.website_id,w.title,w.completion_date,${playlistEntitlementSQL({paidOnly:true,month})} recordings_access,${playlistEntitlementSQL({month})} text_access FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.offering_id=? AND w.enabled=1 AND w.published_key IS NOT NULL ORDER BY p.playlist_id LIMIT 101`,[actor.account_id,actor.account_id,actor.account_id,actor.account_id,actor.account_id,offer]);
+- if(rows.length>100)throw fail('Review the MOU playlist catalogue.',409);
++ const definition=await playlistDefinition(store,offer),course=definition.accessModel==='COURSE',month=course?null:await effectiveMonth(store,offer);
++ const paid=course?"EXISTS(SELECT 1 FROM participation r WHERE r.account_id=? AND r.offering_id=p.offering_id AND r.purchased=1) OR EXISTS(SELECT 1 FROM course_access_models c WHERE c.offering_id=p.offering_id AND c.access_model='FREE')":playlistEntitlementSQL({paidOnly:true,month});
++ const read=course?paid:`(${playlistEntitlementSQL({month})} OR EXISTS(SELECT 1 FROM surah_grants g WHERE g.account_id=? AND g.website_id=p.website_id))`;
++ const rows=await store.all(`SELECT p.playlist_id,p.published_count,w.website_id,w.title,w.completion_date,(${paid}) recordings_access,(${read}) text_access FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.offering_id=? AND w.enabled=1 AND w.published_key IS NOT NULL ORDER BY p.playlist_id LIMIT 101`,[...Array(course?2:6).fill(actor.account_id),offer]);
++ if(rows.length>100)throw fail('Review the playlist catalogue.',409);
+  return rows.filter(r=>staff||r.recordings_access||r.text_access).map(r=>({id:r.playlist_id,websiteId:r.website_id,title:r.title,closeDate:r.completion_date,state:r.completion_date?'CLOSED':'OPEN',recordings:r.published_count,canListen:Boolean(staff||r.recordings_access),canRead:Boolean(staff||r.text_access),href:'/studio/?website='+encodeURIComponent(r.website_id)}));
+ }
++
+ export async function playlistReadingLessons(store,actor,website){
+  const month=await effectiveMonth(store,website.offering_id);
+  // Seek this exact native parent first, including when other entitled playlists
+@@ -149,3 +166,33 @@ export function assignPlaylist(store,playlist,row,{exclusive=false,supportIds=[]
+  if(protectPrivateParent)statements.push(store.statement('INSERT INTO mou_playlist_only_websites SELECT w.website_id FROM websites w WHERE w.website_id=? AND (w.enabled=0 OR w.published_key IS NULL) AND NOT EXISTS(SELECT 1 FROM attachments a WHERE a.website_id=w.website_id AND a.published=1) ON CONFLICT DO NOTHING',[row.website_id]));
+  return statements;
+ }
++
++// Seek only this account's monthly offerings; timezone is a signed native fact.
++// No global account, website or media scan and no per-card authority round-trip.
++export async function playlistWebsiteCandidates(store,actor,after=''){
++ const scopes=await store.all(`SELECT s.offering_id,s.timezone FROM source_access_scopes s JOIN offerings o USING(offering_id)
++ WHERE s.offering_id IN(SELECT offering_id FROM paid_months WHERE account_id=? UNION SELECT offering_id FROM website_months WHERE account_id=?)
++ AND o.kind='TAFSEER' AND EXISTS(SELECT 1 FROM mou_playlists p WHERE p.offering_id=s.offering_id) LIMIT 33`,[actor.account_id,actor.account_id]);
++ if(scopes.length>32)throw fail('Choose a narrower programme catalogue.',409);
++ if(!scopes.length)return [];
++ const months=scopes.map(s=>({offeringId:s.offering_id,month:programmeMonth(Date.now(),s.timezone)}));
++ const rows=await store.all(`SELECT w.website_id FROM json_each(?) j CROSS JOIN mou_playlists p ON p.offering_id=json_extract(j.value,'$.offeringId') CROSS JOIN websites w ON w.website_id=p.website_id
++ WHERE w.website_id>? AND w.enabled=1 AND w.published_key IS NOT NULL AND ${playlistEntitlementSQL({month:"COALESCE(w.completion_month,json_extract(j.value,'$.month'))"})} ORDER BY w.website_id LIMIT 51`,[JSON.stringify(months),after,actor.account_id,actor.account_id,actor.account_id]);
++ return rows.map(r=>r.website_id);
++}
++export async function cataloguePlaylistRights(store,actor,rows){
++ const selected=rows.filter(r=>r.playlist_id&&r.kind==='TAFSEER').map(r=>({id:r.playlist_id,month:programmeMonth(Date.now(),r.timezone)}));
++ if(!selected.length)return new Map();
++ const rights=await store.all(`SELECT p.website_id,${playlistEntitlementSQL({month:"COALESCE(w.completion_month,json_extract(j.value,'$.month'))"})} allowed FROM json_each(?) j JOIN mou_playlists p ON p.playlist_id=json_extract(j.value,'$.id') JOIN websites w USING(website_id)`,[actor.account_id,actor.account_id,actor.account_id,JSON.stringify(selected)]);
++ return new Map(rights.map(r=>[r.website_id,Boolean(r.allowed)]));
++}
++
++export async function savePlaylistOrder(store,actor,offer,input){
++ await playlistScope(store,actor,offer);const replay=await store.replay(actor.account_id,input.operationId,await store.requestHash(offer,input));if(replay)return replay;
++ const playlist=await checkedPlaylist(store,offer,input.playlistId);
++ if(!Array.isArray(input.entries)||!input.entries.length||input.entries.length>400)throw fail('Order one to 400 saved recordings.');
++ const entries=input.entries.map(e=>({attachmentId:id(e.attachmentId),position:integer(e.position,1)}));
++ if(new Set(entries.map(e=>e.attachmentId)).size!==entries.length||new Set(entries.map(e=>e.position)).size!==entries.length||entries.some(e=>e.position>entries.length)||playlist.recording_count!==entries.length)throw fail('Order every playlist recording once.');
++ const encoded=JSON.stringify(entries);
++ return store.mutate(actor,offer,input,[store.statement("UPDATE recording_playlist_positions AS r SET position=json_extract(j.value,'$.position') FROM json_each(?) j WHERE r.playlist_id=? AND r.attachment_id=json_extract(j.value,'$.attachmentId')",[encoded,playlist.playlist_id])],{saved:true,playlistId:playlist.playlist_id},{studio:true,expectedSQL:"COALESCE((SELECT revision FROM access_revisions WHERE offering_id=?),0)=? AND EXISTS(SELECT 1 FROM mou_playlists p WHERE p.playlist_id=? AND p.offering_id=? AND p.revision=? AND p.recording_count=?) AND NOT EXISTS(SELECT 1 FROM json_each(?) j WHERE NOT EXISTS(SELECT 1 FROM mou_playlist_items i WHERE i.playlist_id=? AND i.attachment_id=json_extract(j.value,'$.attachmentId')))",expectedArgs:[offer,integer(input.revision),playlist.playlist_id,offer,integer(input.playlistRevision),entries.length,encoded,playlist.playlist_id]});
++}
+diff --git a/src/recording-companions.mjs b/src/recording-companions.mjs
+index c9b9682..c64dd46 100644
+--- a/src/recording-companions.mjs
++++ b/src/recording-companions.mjs
+@@ -48,7 +48,7 @@ export async function recordingAttachmentPreflight(store,offer,videoIds){
+ export async function publishRecordingAttachment(store,actor,offer,input){
+  const row=await mediaGate(store,actor,id(input.attachmentId),{admin:true});if(row.offering_id!==offer)throw fail('Choose this programme’s recording.',403);
+  const replay=await store.replay(actor.account_id,input.operationId,await store.requestHash(offer,input));if(replay)return replay;
+- if(row.programme_key==='mothers')throw fail('Review the recorded Teacher and explicit playlist in the checked media form before publishing.',409,'PLAYLIST_REQUIRED');
++ if(row.programme_key==='mothers'||await store.first('SELECT 1 FROM mou_playlist_items WHERE attachment_id=? LIMIT 1',[row.attachment_id]))throw fail('Review the recorded Teacher and explicit playlist in the checked media form before publishing.',409,'PLAYLIST_REQUIRED');
+  for(const [field,key] of [['asset_id','assetId'],['website_id','websiteId'],['lesson_id','lessonId'],['lesson_date','lessonDate'],['cohort','cohort']])if(row[field]!==input[key])throw fail('The recording association changed; preserve the current saved entry.',409);
+  if(row.audience!=='RECORDING'||row.published)throw fail('Review the current recording publication.',409);
+  const companion=await store.first('SELECT published_key,source_revision FROM recording_companions WHERE attachment_id=?',[row.attachment_id]);
+diff --git a/src/studio-access.mjs b/src/studio-access.mjs
+index 946da7e..ee01888 100644
+--- a/src/studio-access.mjs
++++ b/src/studio-access.mjs
+@@ -4,7 +4,7 @@ import {fail,id,integer,sha256,boundedAge} from './protocol.mjs';
+ import {change} from './admin.mjs';
+ import {coursePolicy} from './course-policy.mjs';
+ import {beginProvision,resumeProvision} from './enrolment.mjs';
+-import {playlistTable,playlistCorrection,savePlaylist,playlistPublication,playlistAddRecording} from './mou-playlists.mjs';
++import {playlistTable,playlistCorrection,savePlaylist,playlistPublication,playlistAddRecording,savePlaylistOrder} from './mou-playlists.mjs';
+ import {monthlyGrid,saveMonthlyGrid,accessTable,saveAccessTable} from './access-tables.mjs';
+ 
+ // Read views retain scoped Admin authority but use the ordinary verification age.
+@@ -30,6 +30,7 @@ export async function studioAccess(request,env,store,fetcher){
+  else if(command.action==='mou-playlist-correction')result=await playlistCorrection(store,actor,offer,command);
+  else if(command.action==='mou-playlist-save')result=await savePlaylist(env,store,actor,offer,command);
+  else if(command.action==='mou-playlist-publication')result=await playlistPublication(store,actor,offer,command);
++ else if(command.action==='mou-playlist-order')result=await savePlaylistOrder(store,actor,offer,command);
+  else if(command.action==='mou-playlist-add')result=await playlistAddRecording(store,actor,offer,command);
+  else if(command.action==='monthly-grid')result=await monthlyGrid(store,actor,offer,command);
+  else if(command.action==='monthly-grid-save')result=await saveMonthlyGrid(env,store,actor,offer,command);
+diff --git a/src/worker.mjs b/src/worker.mjs
+index 8bb93d6..08e8f44 100644
+--- a/src/worker.mjs
++++ b/src/worker.mjs
+@@ -1,5 +1,5 @@
+ import {mediaOptions,attributionChange,attachMedia,addPublishedAttribution,mediaCompanionSave,mediaDetail,addSupportingFiles} from './media-attribution.mjs';
+-import {playlistRecordingAccess,playlistTable,playlistCorrection,savePlaylist,playlistPublication,playlistAddRecording} from './mou-playlists.mjs';
++import {playlistRecordingAccess,playlistTable,playlistCorrection,savePlaylist,playlistPublication,playlistAddRecording,learnerPlaylists,playlistWebsiteCandidates,savePlaylistOrder} from './mou-playlists.mjs';
+ import {permittedCompanionIndexes,readCompanion,recordingAttachmentPreflight} from './recording-companions.mjs';
+ import {mouClassroom} from './mou-classroom.mjs';
+ import {coursePublication} from './course-publication.mjs';
+@@ -73,15 +73,15 @@ async function route(request,env,store,fetcher){
+  if(path==='/api/websites'&&method==='GET'){
+   // Start with this account's indexed rights, rather than scanning all sites for an OR condition.
+   if(academyAuthority(env)){const stale=await store.first("SELECT p.offering_id FROM source_access_people p JOIN source_access_scopes s USING(offering_id) WHERE p.account_id=? AND s.authority='ACADEMY' AND s.enabled=1 AND (p.ready=0 OR p.generation<>s.generation OR p.verified_at<?) LIMIT 1",[actor.account_id,Date.now()-boundedAge(env)]);if(stale)throw Object.assign(fail('Academy access needs to be confirmed.',409,'ACCESS_REFRESH_REQUIRED'),{offeringId:stale.offering_id});}
+-  const after=url.searchParams.get('after')||'',parallel=academyAuthority(env),sourceFilter=parallel?` AND EXISTS(SELECT 1 FROM source_access_scopes x WHERE x.offering_id=w.offering_id AND (x.authority='WEBSITE' OR x.enabled=1 AND EXISTS(SELECT 1 FROM source_access_people ap WHERE ap.offering_id=x.offering_id AND ap.account_id=? AND ap.ready=1 AND ap.generation=x.generation AND ap.verified_at>=?) AND (o.kind<>'TAFSEER' OR EXISTS(SELECT 1 FROM source_access_websites sw WHERE sw.website_id=w.website_id AND sw.enabled=1))))`:'',sourceArgs=parallel?[actor.account_id,Date.now()-boundedAge(env)]:[],rows=actor.global_admin?
++  const after=url.searchParams.get('after')||'',playlistIds=actor.global_admin?[]:await playlistWebsiteCandidates(store,actor,after),parallel=academyAuthority(env),sourceFilter=parallel?` AND EXISTS(SELECT 1 FROM source_access_scopes x WHERE x.offering_id=w.offering_id AND (x.authority='WEBSITE' OR x.enabled=1 AND EXISTS(SELECT 1 FROM source_access_people ap WHERE ap.offering_id=x.offering_id AND ap.account_id=? AND ap.ready=1 AND ap.generation=x.generation AND ap.verified_at>=?) AND (o.kind<>'TAFSEER' OR EXISTS(SELECT 1 FROM source_access_websites sw WHERE sw.website_id=w.website_id AND sw.enabled=1))))`:'',sourceArgs=parallel?[actor.account_id,Date.now()-boundedAge(env)]:[],rows=actor.global_admin?
+    await store.all(`SELECT w.website_id,w.title,w.offering_id,w.completion_month,w.enabled FROM websites w JOIN offerings o USING(offering_id) WHERE w.website_id>? AND o.active=1${sourceFilter} ORDER BY w.website_id LIMIT 51`,[after,...sourceArgs]):
+    await store.all(`WITH mine AS (
+     SELECT w.website_id FROM participation p JOIN offerings o USING(offering_id) JOIN websites w USING(offering_id) WHERE p.account_id=? AND p.purchased=1 AND o.kind='COURSE' AND COALESCE((SELECT access_model FROM course_access_models m WHERE m.offering_id=p.offering_id),'PAID')='PAID'
+     UNION SELECT w.website_id FROM paid_months p JOIN offerings o USING(offering_id) JOIN websites w ON w.offering_id=p.offering_id AND w.completion_month=p.month WHERE p.account_id=? AND o.kind='TAFSEER'
+     UNION SELECT w.website_id FROM website_months m JOIN websites w ON w.offering_id=m.offering_id AND w.completion_month=m.month WHERE m.account_id=?
+     UNION SELECT w.website_id FROM staff s JOIN websites w USING(offering_id) WHERE s.account_id=?
+-    UNION SELECT website_id FROM surah_grants WHERE account_id=?
+-   ) SELECT w.website_id,w.title,w.offering_id,w.completion_month,w.enabled FROM mine JOIN websites w USING(website_id) JOIN offerings o USING(offering_id) WHERE w.website_id>? AND o.active=1 AND (w.enabled=1 AND w.published_key IS NOT NULL OR EXISTS(SELECT 1 FROM staff s WHERE s.account_id=? AND s.offering_id=w.offering_id AND s.role='ADMIN'))${sourceFilter} ORDER BY w.website_id LIMIT 51`,[actor.account_id,actor.account_id,actor.account_id,actor.account_id,actor.account_id,after,actor.account_id,...sourceArgs]);return json({websites:rows.slice(0,50),more:rows.length>50});
++    UNION SELECT website_id FROM (SELECT website_id FROM surah_grants WHERE account_id=? UNION SELECT value website_id FROM json_each(?))
++   ) SELECT w.website_id,w.title,w.offering_id,w.completion_month,w.enabled FROM mine JOIN websites w USING(website_id) JOIN offerings o USING(offering_id) WHERE w.website_id>? AND o.active=1 AND (w.enabled=1 AND w.published_key IS NOT NULL OR EXISTS(SELECT 1 FROM staff s WHERE s.account_id=? AND s.offering_id=w.offering_id AND s.role='ADMIN'))${sourceFilter} ORDER BY w.website_id LIMIT 51`,[actor.account_id,actor.account_id,actor.account_id,actor.account_id,actor.account_id,JSON.stringify(playlistIds),after,actor.account_id,...sourceArgs]);return json({websites:rows.slice(0,50),more:rows.length>50});
+  }
+  let match=path.match(/^\/api\/websites\/([-A-Za-z0-9_:]+)(?:\/(edit|export|history|assets))?$/);
+  if(match){const websiteId=id(match[1]),action=match[2];if(method==='POST'&&action==='edit')return json(await editWebsite(env,store,actor,websiteId,await bodyJSON(request.body)));
+@@ -95,21 +95,26 @@ async function route(request,env,store,fetcher){
+  }
+  match=path.match(/^\/api\/media\/([-A-Za-z0-9_:]+)\/companion$/);if(match&&method==='GET')return json(await readCompanion(env,store,actor,match[1]));
+  match=path.match(/^\/api\/media\/([-A-Za-z0-9_:]+)$/);if(match&&['GET','HEAD'].includes(method)){const row=await mediaGate(store,actor,match[1],{admin:url.searchParams.get('draft')==='1'});return streamMedia(env,row,request);}
+- match=path.match(/^\/api\/offerings\/([-A-Za-z0-9_:]+)\/(sessions|media|join|enrol|provision|resume)$/);
++ match=path.match(/^\/api\/offerings\/([-A-Za-z0-9_:]+)\/(sessions|media|playlists|join|enrol|provision|resume)$/);
+  if(match){const offeringId=id(match[1]),action=match[2],scope=await store.scope(actor,offeringId);
++  if(action==='playlists'&&method==='GET')return json({playlists:await learnerPlaylists(store,actor,offeringId,{staff:Boolean(actor.global_admin||scope.role)})});
+   if(action==='sessions'&&method==='GET'){if(scope.completed_course)return json({sessions:[],serverTime:Date.now()});if(!actor.global_admin&&!scope.live&&!scope.role)throw fail('Live-session access is required.',403);return json({sessions:await store.all('SELECT session_id,title,starts_at,ends_at,cancelled FROM timetable INDEXED BY timetable_public_offering WHERE offering_id=? AND cancelled=0 AND starts_at>=? ORDER BY starts_at,session_id LIMIT 200',[offeringId,Date.now()-86400_000]),serverTime:Date.now()});}
+   if(action==='media'&&method==='GET'){
+    const after=url.searchParams.get('after')||'',websiteId=url.searchParams.get('website');
+    let mediaWebsite=null;if(websiteId){const site=await websiteAccess(store,actor,id(websiteId));if(site.offering_id!==offeringId)throw fail('Choose a website in this offering.',400);mediaWebsite=site;}
+    const filter=websiteId?' AND x.website_id=?':'',tail=websiteId?[websiteId]:[],select='SELECT x.attachment_id,x.asset_id,x.website_id,x.title,x.lesson_id,x.lesson_date,x.cohort,x.audience,o.mime_type type',staff=actor.global_admin||scope.role;
+    let rows=[];
+-   const playlist=websiteId&&scope.programme_key==='mothers'?await store.first('SELECT playlist_id FROM mou_playlists WHERE offering_id=? AND website_id=?',[offeringId,websiteId]):null;
+-   if(playlist){if(staff||await playlistRecordingAccess(store,actor,playlist.playlist_id,offeringId))rows=await store.all(`${select} FROM mou_playlist_items i JOIN attachments x USING(attachment_id) JOIN objects o USING(asset_id) WHERE i.playlist_id=? AND x.offering_id=? AND x.audience='RECORDING' AND x.published=1 AND x.attachment_id>? ORDER BY x.attachment_id LIMIT 51`,[playlist.playlist_id,offeringId,after]);}
+-   else if(staff||scope.kind==='COURSE'&&(scope.purchased||scope.access_model==='FREE'))rows=await store.all(`${select} FROM attachments x JOIN objects o USING(asset_id) WHERE x.offering_id=? AND x.audience='RECORDING' AND x.published=1 AND x.attachment_id>?${filter} ORDER BY x.attachment_id LIMIT 51`,[offeringId,after,...tail]);
++   const playlist=websiteId?await store.first('SELECT p.playlist_id,p.revision,w.title FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.offering_id=? AND p.website_id=?',[offeringId,websiteId]):null;
++   if(playlist){
++    if(url.searchParams.has('playlistRevision')&&Number(url.searchParams.get('playlistRevision'))!==playlist.revision)throw fail('This playlist changed. Reopen it.',409,'CHANGE_CONFLICT');
++    const cursor=after?await store.first('SELECT position FROM recording_playlist_positions WHERE playlist_id=? AND attachment_id=?',[playlist.playlist_id,id(after)]):{position:0};if(!cursor)throw fail('Reopen the saved playlist order.',409,'CHANGE_CONFLICT');
++    if(staff||await playlistRecordingAccess(store,actor,playlist.playlist_id,offeringId))rows=await store.all(`${select},r.position playlistPosition FROM recording_playlist_positions r CROSS JOIN mou_playlist_items i ON i.playlist_id=r.playlist_id AND i.attachment_id=r.attachment_id CROSS JOIN attachments x ON x.attachment_id=i.attachment_id JOIN objects o USING(asset_id) WHERE r.playlist_id=? AND (r.position,r.attachment_id)>(?,?) AND x.offering_id=? AND x.audience='RECORDING' AND x.published=1 ORDER BY r.position,r.attachment_id LIMIT 51`,[playlist.playlist_id,cursor.position,after,offeringId]);
++   }
++   else if(staff||scope.kind==='COURSE'&&(scope.purchased||scope.access_model==='FREE'))rows=await store.all(`${select} FROM attachments x JOIN objects o USING(asset_id) WHERE x.offering_id=? AND x.audience='RECORDING' AND x.published=1 AND (NOT EXISTS(SELECT 1 FROM mou_playlist_only_media pm WHERE pm.attachment_id=x.attachment_id) OR EXISTS(SELECT 1 FROM mou_playlist_items i JOIN mou_playlists p USING(playlist_id) JOIN websites w ON w.website_id=p.website_id WHERE i.attachment_id=x.attachment_id AND p.offering_id=x.offering_id AND w.enabled=1 AND w.published_key IS NOT NULL)) AND x.attachment_id>?${filter} ORDER BY x.attachment_id LIMIT 51`,[offeringId,after,...tail]);
+    // Unary + preserves the month value while removing column affinity: SQLite can
+    // then use the substr expression index for each paid month, not scan the offer.
+    else if(scope.kind==='TAFSEER')rows=await store.all(`${select} FROM paid_months m CROSS JOIN attachments x INDEXED BY attachments_month JOIN objects o USING(asset_id) WHERE m.account_id=? AND m.offering_id=? AND x.offering_id=m.offering_id AND substr(x.lesson_date,1,7)=+m.month AND x.cohort=m.cohort AND x.audience='RECORDING' AND x.published=1 AND NOT EXISTS(SELECT 1 FROM mou_playlist_only_media pm WHERE pm.attachment_id=x.attachment_id) AND x.attachment_id>?${filter} ORDER BY x.attachment_id LIMIT 51`,[actor.account_id,offeringId,after,...tail]);
+-   const media=await addSupportingFiles(store,await addPublishedAttribution(store,rows.slice(0,50)));return json({media,more:rows.length>50,companions:await permittedCompanionIndexes(store,media),mediaBindings:mediaWebsite?await permittedGuideBindings(env,mediaWebsite,media,store):[]});
++   const media=await addSupportingFiles(store,await addPublishedAttribution(store,rows.slice(0,50)));return json({media,more:rows.length>50,...(playlist?{playlist:{id:playlist.playlist_id,name:playlist.title,revision:playlist.revision}}:{}),companions:await permittedCompanionIndexes(store,media),mediaBindings:mediaWebsite?await permittedGuideBindings(env,mediaWebsite,media,store):[]});
+   }
+   if(method!=='POST')throw fail('This action needs a POST request.',405);const input=await bodyJSON(request.body,16384);
+   if(action==='join'){if(scope.completed_course)throw fail('This completed Course has no live sessions.',403,'JOIN_CLOSED');await accessGate(store,actor,offeringId,{live:true});if(!actor.global_admin&&!scope.live&&!scope.role)throw fail('Current live-session access is required.',403);const session=await store.first('SELECT session_id,starts_at,ends_at,zoom_url,cancelled FROM timetable WHERE session_id=? AND offering_id=?',[id(input.sessionId),offeringId]),now=Date.now();if(!session||session.cancelled||now<session.starts_at-300_000||now>=session.ends_at||!session.zoom_url)throw fail('Joining is available from five minutes before the lesson until it ends.',403,'JOIN_CLOSED');await joinAudience(store,actor,offeringId,session,scope);return json({destination:session.zoom_url});}
+@@ -122,7 +127,7 @@ async function route(request,env,store,fetcher){
+  }
+  match=path.match(/^\/api\/admin\/([-A-Za-z0-9_:]+)(?:\/(files|recording|recording-attachments|prepared-recordings|media-options|media-review|media-detail|playlists))?$/);
+  if(match){const offeringId=id(match[1]),sub=match[2],adminScope=await store.scope(actor,offeringId,{admin:true,readOnly:method==='GET'});
+-  if(sub==='playlists'){if(method!=='GET')throw fail('Use GET for the playlist table.',405);return json(await playlistTable(store,actor,offeringId,{attachmentId:url.searchParams.get('attachment')}));}
++  if(sub==='playlists'){if(method!=='GET')throw fail('Use GET for the playlist table.',405);return json(await playlistTable(store,actor,offeringId,{attachmentId:url.searchParams.get('attachment'),playlistId:url.searchParams.get('playlist')}));}
+   if(sub==='media-detail'){if(method!=='GET')throw fail('Use GET to review saved recording content.',405);return json(await mediaDetail(env,store,actor,offeringId,url.searchParams.get('attachment')));}
+   if(sub==='media-review'){if(method!=='GET')throw fail('Use GET for the saved media review.',405);return json({canManageContent:!academyAuthority(env)||Boolean(adminScope.studioAuthority),websites:await store.all('SELECT website_id,title,completion_month,revision,enabled FROM websites WHERE offering_id=? ORDER BY website_id LIMIT 100',[offeringId]),media:await store.all('SELECT x.*,o.filename,o.mime_type,t.revision attribution_revision,t.draft_json attribution_draft,t.published_json attribution_published FROM attachments x JOIN objects o USING(asset_id) LEFT JOIN media_attributions t USING(attachment_id) WHERE x.offering_id=? AND x.attachment_id>? ORDER BY x.attachment_id LIMIT 51',[offeringId,url.searchParams.get('after')||''])});}
+   if(sub==='media-options'){if(method!=='GET')throw fail('Use GET for checked media choices.',405);return json(await mediaOptions(env,store,actor,offeringId,fetcher));}
+@@ -132,7 +137,7 @@ async function route(request,env,store,fetcher){
+   if(method==='PUT'&&sub==='files')return json(await upload(env,store,actor,offeringId,request));
+   if(sub==='recording'&&method==='PUT')return json(await recording(env,store,actor,offeringId,{action:'part',assetId:url.searchParams.get('assetId'),partNumber:Number(url.searchParams.get('partNumber'))},request));
+   if(sub==='recording'&&method==='POST')return json(await recording(env,store,actor,offeringId,await bodyJSON(request.body,1_000_000),request));
+-  if(method==='POST'){const input=await bodyJSON(request.body);if(input.action==='mou-playlist-save')return json(await savePlaylist(env,store,actor,offeringId,input));if(input.action==='mou-playlist-correction')return json(await playlistCorrection(store,actor,offeringId,input));if(input.action==='mou-playlist-publication')return json(await playlistPublication(store,actor,offeringId,input));if(input.action==='mou-playlist-add')return json(await playlistAddRecording(store,actor,offeringId,input));if(input.action==='media-companion-save')return json(await mediaCompanionSave(env,store,actor,offeringId,input,fetcher));if(input.action==='media-attach')return json(await attachMedia(env,store,actor,offeringId,input,fetcher,change));if(['media-attribution-save','media-publication'].includes(input.action))return json(await attributionChange(env,store,actor,offeringId,input,fetcher));return json(await change(env,store,actor,offeringId,input));}
++  if(method==='POST'){const input=await bodyJSON(request.body);if(input.action==='mou-playlist-save')return json(await savePlaylist(env,store,actor,offeringId,input));if(input.action==='mou-playlist-correction')return json(await playlistCorrection(store,actor,offeringId,input));if(input.action==='mou-playlist-publication')return json(await playlistPublication(store,actor,offeringId,input));if(input.action==='mou-playlist-order')return json(await savePlaylistOrder(store,actor,offeringId,input));if(input.action==='mou-playlist-add')return json(await playlistAddRecording(store,actor,offeringId,input));if(input.action==='media-companion-save')return json(await mediaCompanionSave(env,store,actor,offeringId,input,fetcher));if(input.action==='media-attach')return json(await attachMedia(env,store,actor,offeringId,input,fetcher,change));if(['media-attribution-save','media-publication'].includes(input.action))return json(await attributionChange(env,store,actor,offeringId,input,fetcher));return json(await change(env,store,actor,offeringId,input));}
+   if(method==='GET'){const after=url.searchParams.get('after')||'';return json({coursePolicy:await coursePolicy(store,offeringId),
+    canManageContent:!academyAuthority(env)||Boolean(adminScope.studioAuthority),
+    participants:await store.all('SELECT p.*,a.display_name FROM participation p JOIN accounts a USING(account_id) WHERE p.offering_id=? AND p.account_id>? ORDER BY p.account_id LIMIT 51',[offeringId,after]),
+diff --git a/tests/media-workflow.test.mjs b/tests/media-workflow.test.mjs
+index 3fd4c94..dc00c96 100644
+--- a/tests/media-workflow.test.mjs
++++ b/tests/media-workflow.test.mjs
+@@ -8,7 +8,7 @@ function pending(playlistId){const durationSeconds=60,companion=reviewedCompanio
+ test('MP4 source once with companion and supporting PDF resumes exact saves and atomically publishes one lesson without resetting upload clocks',async t=>{
+  const f=await setup();t.after(()=>f.close());const p=pending(f.playlistId);let lose=true;const unreliable=async(path,options)=>{const value=await f.api(path,options);if(options?.body?.action==='media-companion-save'&&lose){lose=false;throw Error('Lost save acknowledgement');}return value;};await assert.rejects(saveMediaDraft({pending:p,api:unreliable,path:f.path}),/Lost save/);const uploaded=(await f.db.prepare('SELECT created_at FROM uploads WHERE asset_id=?').bind(p.assetId).first()).created_at;await saveMediaDraft({pending:p,api:f.api,path:f.path});assert.equal((await f.db.prepare('SELECT created_at FROM uploads WHERE asset_id=?').bind(p.assetId).first()).created_at,uploaded);assert.equal((await f.db.prepare('SELECT count(*) n FROM attachments').first()).n,2);assert.equal((await f.db.prepare('SELECT count(*) n FROM recording_companions').first()).n,1);
+  const learner=(await f.login('learner')).cookie;for(const id of [p.attachmentId,p.supports[0].attachmentId])assert.equal((await f.request('/api/media/'+id,{cookie:learner})).status,404);
+- const detail=await f.api(f.path+'/media-detail?attachment='+p.attachmentId),operations={recording:crypto.randomUUID()};assert.equal(detail.companion.summary,p.input.companion.summary);assert.equal(detail.supportingFiles.length,1);let losePublication=true;const uncertain=async(path,options)=>{const value=await f.api(path,options);if(options?.body?.action==='media-publication'&&losePublication){losePublication=false;throw Error('Lost publication acknowledgement');}return value;};await assert.rejects(publishMediaDraft({detail,operations,api:uncertain,path:f.path}),/Lost publication/);await publishMediaDraft({detail,operations,api:f.api,path:f.path});await f.publishPlaylist();
++ const detail=await f.api(f.path+'/media-detail?attachment='+p.attachmentId),operations={recording:crypto.randomUUID()};assert.equal(detail.companion.summary,p.input.companion.summary);assert.equal(detail.supportingFiles.length,1);let losePublication=true;const uncertain=async(path,options)=>{const value=await f.api(path,options);if(options?.body?.action==='media-publication'&&losePublication){losePublication=false;throw Error('Lost publication acknowledgement');}return value;};await assert.rejects(publishMediaDraft({detail,operations,api:uncertain,path:f.path}),/Lost publication/);await publishMediaDraft({detail,operations,api:f.api,path:f.path});assert.equal((await f.request('/api/media/'+p.attachmentId,{cookie:learner})).status,403,'The recording remains behind its private playlist wrapper');assert.equal(ok(await f.request('/api/offerings/course/media',{cookie:learner})).media.length,0,'Recording publication does not publish the playlist');await f.publishPlaylist();
+  const feed=ok(await f.request('/api/offerings/course/media',{cookie:learner}));const video=feed.media.find(m=>m.attachment_id===p.attachmentId);assert.deepEqual(video.recordedContext.teacherIds,['outsider']);assert.equal(video.supportingFiles[0].attachmentId,p.supports[0].attachmentId);assert.equal((await f.request('/api/media/'+p.supports[0].attachmentId,{cookie:learner})).status,200);const outsider=(await f.login('outsider')).cookie;assert.equal((await f.request('/api/media/'+p.supports[0].attachmentId,{cookie:outsider})).status,403);assert.equal((await f.db.prepare('SELECT revision FROM recording_companions WHERE attachment_id=?').bind(p.attachmentId).first()).revision,2);console.log('LOCAL_STUDIO_MP4_WORKFLOW '+JSON.stringify({costs:f.costs,oneVideo:true,oneCompanion:true,oneSupportingPdf:true,originalSuccessfulUploadUnchanged:true,sourceCallsAreSyntheticTeacherDTO:true}));
+ });
+ test('another Admin companion draft and reused support identities stop publication/attachment without changing any saved record',async t=>{

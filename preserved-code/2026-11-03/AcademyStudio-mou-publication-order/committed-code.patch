@@ -1,0 +1,108 @@
+diff --git a/public/shared/native-mou-import.mjs b/public/shared/native-mou-import.mjs
+index dd7f75c..659aab4 100644
+--- a/public/shared/native-mou-import.mjs
++++ b/public/shared/native-mou-import.mjs
+@@ -59,11 +59,15 @@ export function nativeMouReviewHTML(review){return '<h2>Four reviewed MOU lesson
+ export async function assertMouPreflight(plan,fresh){
+  check(fresh.schema==='RECORDING_ATTACHMENT_PREFLIGHT_V1'&&fresh.offeringId===mouOffering&&JSON.stringify(fresh.scope)===JSON.stringify(plan.preflight.scope),'Native MOU ownership/cohort changed. Export a fresh preflight and reconcile it.');
+  for(const old of plan.preflight.subjects){const now=fresh.subjects.find(s=>s.display_key===old.display_key);check(now&&JSON.stringify(now)===JSON.stringify(old),'An existing subject draft/publication changed. Preserve the saved Admin edits.');}
+- for(const current of fresh.subjects){if(plan.preflight.subjects.some(s=>s.display_key===current.display_key))continue;const item=plan.items.find(i=>i.subject===current.display_key),created=plan.requests.find(r=>r.body.action==='website-create'&&r.body.websiteId===item?.websiteId);check(item&&created&&current.website_id===item.websiteId&&current.revision===1&&current.enabled,'A new subject changed outside this exact import.');const expected='websites/'+item.websiteId+'/versions/'+await hash(created.body.document)+'.json';check(current.draft_key===expected&&current.published_key===expected,'Preserve the current subject draft and publication.');}
++ for(const current of fresh.subjects){if(plan.preflight.subjects.some(s=>s.display_key===current.display_key))continue;const item=plan.items.find(i=>i.subject===current.display_key),created=plan.requests.find(r=>r.body.action==='website-create'&&r.body.websiteId===item?.websiteId);check(item&&created&&current.website_id===item.websiteId,'A new subject changed outside this exact import.');const expected='websites/'+item.websiteId+'/versions/'+await hash(created.body.document)+'.json';const privateShell=current.revision===0&&current.enabled===0&&current.published_key===null,publishedShell=current.revision===1&&current.enabled===1&&current.published_key===expected;check(current.draft_key===expected&&(privateShell||publishedShell),'Preserve the current subject draft and publication.');}
+  for(const a of fresh.assets){const item=plan.items.find(i=>i.videoId===a.youtube_id);check(item&&a.asset_id===item.assetId,'A source asset changed or has duplicate native identities.');if(a.attachment_id)check(a.attachment_id===item.attachmentId&&a.website_id===item.websiteId&&a.lesson_id===item.lessonId&&a.lesson_date===item.recordedDate&&a.cohort===item.cohort,'Preserve the existing native recording association.');const key=`websites/${item.websiteId}/recordings/${item.assetId}/companions/${item.learnerSha256}.json`;if(a.companion_draft_key)check(a.companion_draft_key===key&&a.source_revision===item.sourceRevision,'Preserve the saved companion edit.');if(a.companion_published_key)check(a.companion_published_key===key,'Preserve the current companion publication.');}
+ }
+ export async function executeNativeMouPlan(plan,{api,current=()=>{},report=()=>{}}){
+  const review=await reviewNativeMouPlan(plan);check(review.canExecute,'Export the current native preflight and rebuild this template before importing.');current();const fresh=await api(mouPreflightPath(plan));current();await assertMouPreflight(plan,fresh);current();
+- for(const [index,step]of plan.requests.entries()){current();report('Attaching reviewed MOU lessons · step '+(index+1)+' of '+plan.requests.length);current();await api(step.path,{body:step.body});current();}
++ // Register the exact new subject while its website and recording are private.
++ // Production source admission requires this binding before shell publication.
++ // Keep the reviewed package, bodies and retry identifiers unchanged.
++ const steps=plan.requests.flatMap(step=>step.body.action==='mou-subject'?[]:step.body.action==='publish'?[plan.requests.find(r=>r.body.action==='mou-subject'&&r.body.websiteId===step.path.split('/')[3]),step].filter(Boolean):[step]);
++ for(const [index,step]of steps.entries()){current();report('Attaching reviewed MOU lessons · step '+(index+1)+' of '+plan.requests.length);current();await api(step.path,{body:step.body});current();}
+  report('The four reviewed MOU lessons are attached and published. Academic sessions remain held.');return {completed:4,steps:plan.requests.length};
+ }
+diff --git a/tests/mou-publication-order.test.mjs b/tests/mou-publication-order.test.mjs
+new file mode 100644
+index 0000000..79b398e
+--- /dev/null
++++ b/tests/mou-publication-order.test.mjs
+@@ -0,0 +1,57 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {recordingAttachmentFixture} from './recording-attachment-fixture.mjs';
++import {buildNativeMouPackage} from '../tools/native-mou-attachment-package.mjs';
++import {executeNativeMouPlan,mouPreflightPath,mouOffering} from '../public/shared/native-mou-import.mjs';
++const ok=r=>{assert.equal(r.status,200,JSON.stringify(r.body));return r.body;};
++async function setup(){
++ const f=await recordingAttachmentFixture({attach:false,authorityMode:'ACADEMY',offeringId:mouOffering,cohort:'CLS-39751608-d213-4c66-a4d5-dccfbbeb1c57'});
++ const query=new URLSearchParams();for(const lesson of f.packages.lessons.filter(l=>l.kind==='studio'))query.append('source',new URL(lesson.sourceURL).searchParams.get('v'));
++ const preflight=ok(await f.request('/api/admin/'+f.offer+'/recording-attachments?'+query,{cookie:f.admin}));
++ return {f,plan:buildNativeMouPackage({preflight,...f.packages})};
++}
++test('production authority reproduces the old step4 denial, then resumes exact receipts without granting early publication',async t=>{
++ const {f,plan}=await setup();t.after(()=>f.close());
++ const original=JSON.stringify(plan),first=plan.items[0];
++ for(const step of plan.requests.slice(0,3))ok(await f.request(step.path,{cookie:f.admin,method:'POST',body:step.body}));
++ const failed=await f.request(plan.requests[3].path,{cookie:f.admin,method:'POST',body:plan.requests[3].body});
++ assert.equal(failed.status,403);assert.equal(failed.body.error,'This programme subject is unavailable.');
++ let paused=false;const actions=[];
++ const api=async(path,options={})=>{
++  const action=options.body?.action;
++  if(!paused&&action==='publish'){paused=true;throw Error('Interrupted after private registration');}
++  const response=await f.request(path,{cookie:f.admin,method:options.body?'POST':'GET',body:options.body});
++  const body=ok(response);if(action)actions.push(action);return body;
++ };
++ await assert.rejects(executeNativeMouPlan(plan,{api}),/Interrupted after private/);
++ assert.deepEqual(actions,['website-create','youtube','attachment','mou-subject']);
++ const site=await f.db.prepare('SELECT revision,enabled,published_key FROM websites WHERE website_id=?').bind(first.websiteId).first();
++ assert.deepEqual(site,{revision:0,enabled:0,published_key:null});
++ assert.equal((await f.request('/api/websites/'+first.websiteId,{cookie:f.learner})).status,404);
++ assert.equal((await f.request('/api/media/'+first.attachmentId,{cookie:f.learner})).status,404);
++ assert.equal((await f.request('/api/media/'+first.attachmentId+'/companion',{cookie:f.learner})).status,404);
++ const result=await executeNativeMouPlan(plan,{api});assert.equal(result.completed,4);
++ assert.equal((await executeNativeMouPlan(plan,{api})).completed,4,'Exact completed retries remain safe');
++ assert.equal(JSON.stringify(plan),original,'Do not change the approved package or request bodies/identifiers');
++ assert.equal((await f.db.prepare('SELECT count(*) n FROM programme_subjects WHERE offering_id=?').bind(f.offer).first()).n,5);
++ assert.equal((await f.db.prepare('SELECT count(*) n FROM attachments WHERE website_id=?').bind(f.baqarah.websiteId).first()).n,26);
++ for(const item of plan.items){
++  const feed=ok(await f.request('/api/offerings/'+f.offer+'/media?website='+item.websiteId,{cookie:f.learner}));assert.equal(feed.media.length,1);
++  const companion=ok(await f.request('/api/media/'+item.attachmentId+'/companion',{cookie:f.learner}));assert.equal(companion.quotations.length,0);
++  const textOnly=(await f.login('grant-only')).cookie;await f.run("INSERT INTO website_months VALUES('grant-only',?,'2026-10') ON CONFLICT DO NOTHING",f.offer);
++  assert.equal((await f.request('/api/media/'+item.attachmentId+'/companion',{cookie:textOnly})).status,403);
++ }
++ t.diagnostic(JSON.stringify({authorityMode:'ACADEMY',oldFailureReproduced:true,privateShellDenied:true,completed:4,retryPreserved:true,hostedCalls:0}));
++});
++test('a changed private subject draft blocks the resumed import before any write',async t=>{
++ const {f,plan}=await setup();t.after(()=>f.close());
++ const first=plan.items[0];
++ for(const action of ['website-create','youtube','attachment','mou-subject']){
++  const step=plan.requests.find(r=>r.name.startsWith(first.editorialLessonId+':')&&r.body.action===action);
++  ok(await f.request(step.path,{cookie:f.admin,method:'POST',body:step.body}));
++ }
++ await f.run('UPDATE websites SET revision=1 WHERE website_id=?',first.websiteId);
++ let reads=0,writes=0;const api=async(path,options={})=>{if(options.body)writes++;else reads++;return ok(await f.request(path,{cookie:f.admin,method:options.body?'POST':'GET',body:options.body}));};
++ await assert.rejects(executeNativeMouPlan(plan,{api}),/Preserve the current subject draft/);
++ assert.equal(reads,1);assert.equal(writes,0);assert.equal(mouPreflightPath(plan).startsWith('/api/admin/'+mouOffering+'/recording-attachments?'),true);
++});
+diff --git a/tests/recording-attachment-fixture.mjs b/tests/recording-attachment-fixture.mjs
+index 460fb15..723f690 100644
+--- a/tests/recording-attachment-fixture.mjs
++++ b/tests/recording-attachment-fixture.mjs
+@@ -5,8 +5,8 @@ import {newCourse} from '../public/shared/model.mjs';
+ import {prepareAttachments} from '../tools/prepare-recording-attachments.mjs';
+ import {mouSubjects} from '../public/shared/mou-subjects.mjs';
+ import {learnerCompanion} from '../public/shared/learner-companion.mjs';
+-export async function recordingAttachmentFixture({attach=true,offeringId='mou-local-recording-review',cohort='local-review'}={}){
+- const root=resolve('../..'),f=await fixture({verification:{accountSeconds:43200,adminSeconds:60,liveSeconds:43200}}),offer=offeringId,packages=await prepareAttachments(root,resolve('local-content/recording-attachments'));
++export async function recordingAttachmentFixture({attach=true,offeringId='mou-local-recording-review',cohort='local-review',authorityMode='WEBSITE'}={}){
++ const root=resolve('../..'),f=await fixture({authorityMode,verification:{accountSeconds:43200,adminSeconds:60,liveSeconds:43200}}),offer=offeringId,packages=await prepareAttachments(root,resolve('local-content/recording-attachments'));
+  try{
+  await f.run("INSERT INTO offerings(offering_id,kind,title,active) VALUES(?,'TAFSEER','Mothers of the Ummah',1)",offer);
+  await f.run("INSERT INTO source_access_scopes VALUES(?,'WEBSITE',1,1,1,0,'Africa/Johannesburg',?)",offer,JSON.stringify([cohort]));
+@@ -16,6 +16,7 @@ export async function recordingAttachmentFixture({attach=true,offeringId='mou-lo
+  await f.run("INSERT INTO participation VALUES('learner',?,1,0,0,?)",offer,cohort);
+  await f.run("INSERT INTO paid_months VALUES('learner',?,'2026-10',?,'Synthetic local review rights')",offer,cohort);
+  const admin=(await f.login('admin')).cookie,learner=(await f.login('learner')).cookie,receipts=[];
++ if(authorityMode==='ACADEMY'){for(const who of ['admin','learner','former','grant-only','outsider']){await f.run("INSERT INTO source_access_people VALUES(?,?,1,1,?,1,'[]',0,0)",who,offer,Date.now());await f.run('UPDATE sessions SET source_ref=? WHERE account_id=?','synthetic-source-'+who,who);}}
+  const native=async(path,input)=>{const response=await f.request(path,{cookie:admin,method:'POST',body:{operationId:crypto.randomUUID(),...input}});if(response.status!==200)throw Error(JSON.stringify({path,response:response.body}));return response;};
+  const baqarah=JSON.parse(await readFile(resolve(root,'outputs/academy-release-1088-20261031/imports/mou-baqarah.json'),'utf8')),baqSite=baqarah.websiteId,key='websites/'+baqSite+'/versions/local-unchanged-baqarah.json';
+  await f.content.put(key,JSON.stringify(baqarah.document));await f.run('INSERT INTO websites VALUES(?,?,?,NULL,?,?,0,1,NULL)',baqSite,offer,'Surah Al-Baqarah',key,key);

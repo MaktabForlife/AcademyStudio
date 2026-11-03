@@ -1,0 +1,268 @@
+diff --git a/public/app.mjs b/public/app.mjs
+index 1210612..bd2b269 100644
+--- a/public/app.mjs
++++ b/public/app.mjs
+@@ -1,6 +1,7 @@
+ import {pinEntry} from './shared/pin-entry.mjs';
+ import {headerIcon} from './shared/header-icons.mjs';
+ import {installHeaderDates} from './shared/header-dates.mjs';
++import {installProgrammeShell} from './shared/programme-shell.mjs';
+ import {startReaderView,readerHasLiveSessions} from './shared/reader-startup.mjs';
+ import {protectAccountHistory} from './shared/account-history.mjs';
+ import {createMouClassroom,renderMouClassroom} from './shared/mou-classroom.mjs';
+@@ -28,7 +29,7 @@ const currentSeriesRecordings=()=>seriesRecordings({companions:delivery?.compani
+ const freshDelivery=()=>({companions:[],details:new Map(),bindings:[],media:[],sessions:[],loaded:false,more:false,request:null,sessionRequest:null,serverOffset:0});
+ const textEditor=readerEditing({root:$('course-reader'),identity,api,current:()=>current,route:()=>ui,showDraft(record){document.querySelectorAll('[data-reader-toolbar]').forEach(node=>node.hidden=true);beforeEditing={record:current,ui:structuredClone(ui),assets};current={...record,canEdit:true};assets=new Map(record.assets.map(a=>[a.asset_id,{...a,id:a.asset_id,url:a.url+'?draft=1'}]));ui={...ui,route:['recording','about'].includes(ui.route)?'home':ui.route,isPreview:true,completed:[],reflections:{}};draw();},showPublished(){document.querySelectorAll('[data-reader-toolbar]').forEach(node=>node.hidden=false);if(beforeEditing){current=beforeEditing.record;ui=beforeEditing.ui;assets=beforeEditing.assets;beforeEditing=null;draw();}},async refresh(){const id=current.websiteId;beforeEditing=null;await openWebsite(id);}});
+ const pins=pinEntry($('sign-in-form'));
+-installHeaderDates();
++installHeaderDates({programme:true});
+ function openSignIn(){pins.clear();$('sign-in-dialog').showModal();}
+ $('sign-in-dialog').addEventListener('close',()=>{pins.clear();$('sign-in-status').textContent='';});
+ const removeReaderToolbars=()=>document.querySelectorAll('[data-reader-toolbar]').forEach(node=>node.remove());
+@@ -36,11 +37,11 @@ const show=name=>{if(name!=='my-learning')mouClassroomView?.clear();if(name!=='c
+ const status=message=>$('status').textContent=message;
+ const time=value=>new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short'}).format(new Date(value));
+ function closeMedia(){mediaEpoch++;activeRecording=null;recordingPlayer.close();for(const video of $('media-body').querySelectorAll('video'))video.pause();$('media-body').replaceChildren();$('media-dialog').close();}
+-function clear(){mouClassroomView?.clear();managementHandoff?.close();pins.clear();clearTimeout(joinTimer);closeMedia();removeReaderToolbars();textEditor.clear();beforeEditing=null;generation++;delivery=null;current=null;ui=null;for(const url of urls)URL.revokeObjectURL(url);urls.clear();assets.clear();$('course-reader').replaceChildren();$('learning-cards').replaceChildren();$('administration').replaceChildren();$('account-name').textContent='';$('account-menu').open=false;$('account-menu').hidden=true;$('sign-in-button').hidden=false;$('sign-out-button').hidden=true;$('manage-button').hidden=true;$('academy-button').hidden=true;show(appPath==='/studio/'?'my-learning':'homepage');}
++function clear(){programmeShell.update(null);mouClassroomView?.clear();managementHandoff?.close();pins.clear();clearTimeout(joinTimer);closeMedia();removeReaderToolbars();textEditor.clear();beforeEditing=null;generation++;delivery=null;current=null;ui=null;for(const url of urls)URL.revokeObjectURL(url);urls.clear();assets.clear();$('course-reader').replaceChildren();$('learning-cards').replaceChildren();$('administration').replaceChildren();$('account-name').textContent='';$('account-menu').open=false;$('account-menu').hidden=true;$('sign-in-button').hidden=false;$('sign-out-button').hidden=true;$('manage-button').hidden=true;$('academy-button').hidden=true;show(appPath==='/studio/'?'my-learning':'homepage');}
+ protectAccountHistory({window,identity,clear});
+ window.addEventListener('website-account-changed',()=>{mouClassroomView?.clear();if(new URLSearchParams(location.search).get('classroom')==='mothers')$('learning-cards').replaceChildren();managementHandoff?.close();textEditor.clear();beforeEditing=null;});
+ window.addEventListener('website-session-ended',event=>{clear();if(event.detail?.externalAccountChange){location.reload();return;}status('Your session changed. Sign in to Academy to continue.');});
+-async function profile(){try{const me=await api('/api/me',{optionalSession:!identity.account});identity.account=me;$('account-name').textContent=me.displayName;$('account-menu').hidden=false;$('sign-in-button').hidden=true;$('sign-out-button').hidden=false;$('manage-button').hidden=false;$('academy-button').hidden=false;return me;}catch{return null;}}
++async function profile(){try{const me=await api('/api/me',{optionalSession:!identity.account});identity.account=me;programmeShell.update(me);$('account-name').textContent=me.displayName;$('account-menu').hidden=false;$('sign-in-button').hidden=true;$('sign-out-button').hidden=false;$('manage-button').hidden=false;$('academy-button').hidden=false;return me;}catch{return null;}}
+ function renderPublicCircle(){const branch=homeBranch(new URLSearchParams(location.search).get('branch'));let host=$('public-circle-home')||$('homepage').querySelector('.hero');host.id='public-circle-home';host.className='circles-home-host';host.innerHTML=circlesHome(branch);$('learning-branches').innerHTML=learningBranches(branch);}
+ async function publicHome(){const data=await api('/api/public/home');$('announcements').innerHTML=data.announcements.map(a=>`<p class="announcement">${esc(a.text)}</p>`).join('');if(config?.isolatedPreview){const {renderPreviewHome}=await import('./preview/homepage.mjs');renderPreviewHome(data);}else $('public-cards').innerHTML=data.cards.map(c=>`<article class="card"><p class="eyebrow">${esc(c.kind||'COURSE')}</p><h3>${esc(tafseerDisplayCourse({name:c.title}).name)}</h3><p>${esc(c.description||'')}</p>${c.display_label?`<small>${esc(c.display_label)}</small>`:''}<button data-enrol="${esc(c.offering_id)}">Enquire / enrol →</button></article>`).join('')||'<p class="empty">Course information will appear here when published.</p>';$('public-sessions').innerHTML=data.sessions.map(s=>`<article class="card"><p class="eyebrow">UPCOMING LESSON</p><h3>${esc(s.title)}</h3><p>${esc(time(s.starts_at))}</p><small>Times shown in your device’s timezone.</small></article>`).join('')||'<p>No upcoming sessions have been published.</p>';renderPublicCircle();}
+ let catalogueItems=[];
+@@ -49,7 +50,7 @@ mouClassroomView=createMouClassroom({request:api,identity,isCurrent:isMouRoute,o
+ async function catalogue(root,isCurrent=()=>true){
+  const data=await api('/api/public/circles');if(!isCurrent())return false;catalogueItems=data.items;if(!catalogueItems.length)return false;
+  let rights=[];if(identity.account){const ids=[...new Set(catalogueItems.map(i=>i.websiteId).filter(Boolean))];for(let i=0;i<ids.length;i+=50){const params=new URLSearchParams();for(const id of ids.slice(i,i+50))params.append('website',id);rights.push(...(await api('/api/circles/access?'+params)).websites);if(!isCurrent())return false;}}
+- document.title=(new URLSearchParams(location.search).get('collection')==='courses'?'Courses':'Tafseer')+' · Umm Abbad Academy';root.className='connected-circles collection-card-only';root.innerHTML=circlesCatalogue(catalogueItems,rights,{applicationPath:appPath,kind:collectionKind(new URLSearchParams(location.search).get('collection'))});document.body.classList.add('has-circles-catalogue');return true;
++ $('my-learning').querySelector('h1').textContent=new URLSearchParams(location.search).get('collection')==='courses'?'Courses':'Tafseer and Tadabbur';document.title=(new URLSearchParams(location.search).get('collection')==='courses'?'Courses':'Tafseer')+' · Umm Abbad Academy';root.className='connected-circles collection-card-only';root.innerHTML=circlesCatalogue(catalogueItems,rights,{applicationPath:appPath,kind:collectionKind(new URLSearchParams(location.search).get('collection'))});document.body.classList.add('has-circles-catalogue');return true;
+ }
+ async function library(){
+  if(!textEditor.canLeave())return;
+@@ -143,6 +144,7 @@ $('sign-out-button').onclick=async()=>{try{await api('/auth/logout',{body:{}});}
+ $('header-home-button').onclick=()=>$('home-button').click();
+ $('header-refresh-button').onclick=()=>{if(textEditor.canLeave())location.reload();};
+ for(const [id,icon,label]of [['header-home-button','home','Home · Return to your dashboard'],['header-refresh-button','refresh','Refresh this page']]){$(id).innerHTML=headerIcon(icon);$(id).setAttribute('aria-label',label);}
++const programmeShell=installProgrammeShell();
+ function openAcademy(libraryContext){
+  if(config?.isolatedPreview){status('Academy Library is disconnected in this preview. The live Academy is unchanged.');return;}
+  const child=window.open(config.academyOrigin+'/academy/website-platform/connect/','_blank');if(!child){status('Allow this window to open, then select Academy again.');return;}
+@@ -162,6 +164,7 @@ $('manage-button').onclick=async()=>{if(!textEditor.canLeave())return;textEditor
+ $('close-media').onclick=closeMedia;
+ $('media-dialog').addEventListener('cancel',closeMedia);
+ document.addEventListener('click',event=>{
++ if(event.target.closest('.site-header a,.programme-dashboard-bar a')&&!textEditor.canLeave()){event.preventDefault();return;}
+  if(event.target.closest('[data-mou-refresh]')){event.preventDefault();void mouClassroomView.load({refresh:true});return;}
+  const mouJoin=event.target.closest('[data-mou-join]');if(mouJoin){event.preventDefault();void mouClassroomView.join(mouJoin.dataset.mouJoin);return;}
+  if(event.target.closest('[data-academy-management]')){event.preventDefault();if(!textEditor.canLeave())return;if(!identity.account){openSignIn();return;}if(config?.isolatedPreview){status('Academy management is disconnected in this preview.');return;}managementHandoff?.close();managementHandoff=openAcademyFromCircles({academyOrigin:config.academyOrigin,request:api,dashboard:{mode:'admin',tool:'home'},onError:status});return;}
+@@ -169,7 +172,7 @@ document.addEventListener('click',event=>{
+  const collections=event.target.closest('[data-home-collections]');if(collections&&!event.metaKey&&!event.ctrlKey){event.preventDefault();void library().catch(e=>status(e.message));return;}
+  if(event.target.closest('[data-home-replay]')){renderPublicCircle();return;}
+  if(event.target.closest('[data-home-academy]')){if(identity.account)openAcademy();else {const params=new URLSearchParams(location.search);params.set('destination','academy');history.replaceState(null,'','/?'+params);openSignIn();}return;}
+- const tab=event.target.closest('[data-circles-tab]');if(tab){document.title=(tab.dataset.circlesTab==='COURSE'?'Courses':'Tafseer')+' · Umm Abbad Academy';const params=new URLSearchParams(location.search);params.set('view','collections');params.set('collection',tab.dataset.circlesTab==='COURSE'?'courses':'tafseer');history.pushState(null,'',appPath+'?'+params);const root=tab.closest('.connected-circles');for(const node of root.querySelectorAll('[data-circles-section]'))node.hidden=node.dataset.circlesSection!==tab.dataset.circlesTab;for(const node of root.querySelectorAll('[data-circles-tab]'))node.setAttribute('aria-current',node===tab?'page':'false');}
++ const tab=event.target.closest('[data-circles-tab]');if(tab){$('my-learning').querySelector('h1').textContent=tab.dataset.circlesTab==='COURSE'?'Courses':'Tafseer and Tadabbur';document.title=(tab.dataset.circlesTab==='COURSE'?'Courses':'Tafseer')+' · Umm Abbad Academy';const params=new URLSearchParams(location.search);params.set('view','collections');params.set('collection',tab.dataset.circlesTab==='COURSE'?'courses':'tafseer');history.pushState(null,'',appPath+'?'+params);const root=tab.closest('.connected-circles');for(const node of root.querySelectorAll('[data-circles-section]'))node.hidden=node.dataset.circlesSection!==tab.dataset.circlesTab;for(const node of root.querySelectorAll('[data-circles-tab]'))node.setAttribute('aria-current',node===tab?'page':'false');}
+  const link=event.target.closest('a[data-circles-website]');if(link&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey&&event.button===0){event.preventDefault();void openWebsite(link.dataset.circlesWebsite).catch(e=>status(e.message));}
+ });
+ document.addEventListener('input',event=>{if(!textEditor.editing&&current&&event.target.hasAttribute('data-sp-note')){ui.reflections[event.target.dataset.spNote]=event.target.value;remember();}});
+diff --git a/public/circles-login.mjs b/public/circles-login.mjs
+index 281047b..0677d99 100644
+--- a/public/circles-login.mjs
++++ b/public/circles-login.mjs
+@@ -111,4 +111,4 @@ function clearAccountNavigation(){handoff?.close();navigation=null;navRequest=nu
+ window.addEventListener('website-session-ended',event=>{clearAccountNavigation();if(event.detail?.externalAccountChange)location.reload();});
+ window.addEventListener('storage',event=>{if(event.key?.startsWith('m4l_circles_remembered_ids_v1:')&&dialog.open)renderRemembered();});window.addEventListener('website-account-changed',clearAccountNavigation);
+ protectAccountHistory({window,identity,clear(){observer.disconnect();handoff?.close();attempt++;form.reset();pins.clear();if(dialog.open)dialog.close();navigation=null;navRequest=null;homeMessage='';dashboard.clear();refreshHeader();}});
+-const entry=window.AcademyCirclesEntry;if(entry?.login)void begin(entry.area);
++const entry=window.AcademyCirclesEntry;if(entry?.login)void begin(entry.area,{switchUser:new URLSearchParams(location.search).get('switch')==='1'});
+diff --git a/public/index.html b/public/index.html
+index 825acc0..eca0c8f 100644
+--- a/public/index.html
++++ b/public/index.html
+@@ -1,6 +1,6 @@
+ <!doctype html>
+-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#fcf9f5"><title>Umm Abbad Academy</title><link rel="icon" href="/shared/assets/favicon.svg"><link rel="stylesheet" href="/shared/assets/fonts.css"><link rel="stylesheet" href="/shared/assets/arabic-font.css"><link rel="stylesheet" href="/shared/student.css"><link rel="stylesheet" href="/shared/portal.css"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/circles-review.css"><link rel="stylesheet" href="/shared/circles-catalogue.css"><link rel="stylesheet" href="/shared/circles-home.css"><link rel="stylesheet" href="/shared/recording-companion.css"><link rel="stylesheet" href="/shared/course-appearance.css"><link rel="stylesheet" href="/shared/inline-editor.css"><link rel="stylesheet" href="/shared/reading-focus.css"><link rel="stylesheet" href="/shared/circles-theme.css"><link rel="stylesheet" href="/shared/recording-website.css"></head>
+-<body class="website-reader academy-course-reader circles-theme"><a class="skip-link" href="#main">Skip to content</a><header class="site-header"><a class="brand" href="/"><img src="/academy-logo.png" alt=""><span>Umm Abbad<br><strong>Academy</strong></span></a><div class="account-controls"><button id="header-home-button" class="header-nav-button" title="Return to your dashboard">Home</button><button id="header-refresh-button" class="header-nav-button" title="Refresh this page">Refresh</button><button id="sign-in-button" class="primary">Sign in to Academy</button><details id="account-menu" class="account-menu" hidden><summary aria-label="Account menu"><span id="account-name" class="account-label"></span><span aria-hidden="true">⌄</span></summary><div id="account-panel" class="account-panel"><nav aria-label="Main"><button id="home-button">Home</button><button id="my-websites">My learning</button><button id="manage-button" hidden>Manage</button><button id="academy-button" hidden>Academy ↗</button><button id="sign-out-button" hidden>Sign out</button></nav></div></details></div></header><nav id="learning-branches" class="connected-learning-branches" aria-label="Learning areas"></nav>
++<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#fcf9f5"><title>Umm Abbad Academy</title><link rel="icon" href="/shared/assets/favicon.svg"><link rel="stylesheet" href="/shared/assets/fonts.css"><link rel="stylesheet" href="/shared/assets/arabic-font.css"><link rel="stylesheet" href="/shared/student.css"><link rel="stylesheet" href="/shared/portal.css"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/circles-review.css"><link rel="stylesheet" href="/shared/circles-catalogue.css"><link rel="stylesheet" href="/shared/circles-home.css"><link rel="stylesheet" href="/shared/recording-companion.css"><link rel="stylesheet" href="/shared/course-appearance.css"><link rel="stylesheet" href="/shared/inline-editor.css"><link rel="stylesheet" href="/shared/reading-focus.css"><link rel="stylesheet" href="/shared/circles-theme.css"><link rel="stylesheet" href="/shared/recording-website.css"><link rel="stylesheet" href="/shared/programme-shell.css"></head>
++<body class="circles-programme-page website-reader academy-course-reader circles-theme"><a class="skip-link" href="#main">Skip to content</a><header class="site-header"><a class="brand" href="/"><img src="/academy-logo.png" alt=""><span>Umm Abbad<br><strong>Academy</strong></span></a><div class="account-controls"><button id="header-home-button" class="header-nav-button" title="Return to your dashboard">Home</button><button id="header-refresh-button" class="header-nav-button" title="Refresh this page">Refresh</button><button id="sign-in-button" class="primary">Sign in to Academy</button><details id="account-menu" class="account-menu" hidden><summary aria-label="Account menu"><span id="account-name" class="account-label"></span><span aria-hidden="true">⌄</span></summary><div id="account-panel" class="account-panel"><nav aria-label="Main"><button id="home-button">Home</button><button id="my-websites">My learning</button><button id="manage-button" hidden>Manage</button><button id="academy-button" hidden>Academy ↗</button><button id="sign-out-button" hidden>Sign out</button></nav></div></details></div></header><nav id="learning-branches" class="connected-learning-branches" aria-label="Learning areas"></nav>
+ <p id="status" class="status" role="status" aria-live="polite">Loading your learning…</p><main id="main" tabindex="-1" aria-busy="true" hidden><section id="homepage" hidden><div class="hero"><div><p class="eyebrow">KNOWLEDGE TO CARRY. REFLECTIONS TO KEEP.</p><h1>Learn with purpose.<br><em>Return often.</em></h1><p>Explore Tafseer and courses, keep your learning materials together, and find your next lesson.</p><button id="explore-button" class="primary">Explore courses ↓</button></div><aside><span lang="ar" dir="rtl">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</span><p>Your learning journey,<br>at your own pace.</p><small>Umm Abbad Academy</small></aside></div><section id="announcements" aria-label="Public announcements"></section><div class="section-title"><div><p class="eyebrow">LEARN TOGETHER</p><h2>Courses & programmes</h2></div></div><div id="public-cards" class="card-grid"></div><section class="public-schedule"><h2>Upcoming sessions</h2><div id="public-sessions" class="card-grid"></div></section></section><section id="my-learning" hidden><p class="eyebrow">YOUR LEARNING LIBRARY</p><h1>Return to your lessons.</h1><p>Your acquired materials remain available when live participation ends.</p><div id="learning-cards" class="card-grid"></div></section><div id="reader-workspace" class="reader-workspace" hidden><section id="course-reader" class="student-course" hidden></section><aside id="companion-player" class="sp-companion-player" hidden></aside></div><section id="administration" hidden></section></main>
+ <footer class="site-footer">Umm Abbad Academy <span>Learn · Reflect · Carry it into your life</span></footer>
+ <dialog id="sign-in-dialog" aria-labelledby="sign-in-title"><button type="button" class="dialog-close" id="close-sign-in" aria-label="Close">×</button><p class="eyebrow">YOUR ACADEMY ACCOUNT</p><h2 id="sign-in-title">Ahlan wa Sahlan</h2><p>Sign in once with your existing Academy account.</p><form id="sign-in-form"><label>Academy account ID<input name="uniqueid" autocomplete="username" required maxlength="160"></label><label>PIN<input name="pin" type="password" inputmode="numeric" autocomplete="off" readonly pattern="[0-9]{4}" maxlength="4" required></label><label id="pin-confirm-label" hidden>Confirm your Academy PIN<input name="pinConfirmation" type="password" inputmode="numeric" autocomplete="off" readonly pattern="[0-9]{4}" maxlength="4"></label><button type="submit" class="primary">Sign in to Academy</button><p id="sign-in-status" role="status"></p></form></dialog>
+diff --git a/public/shared/header-dates.mjs b/public/shared/header-dates.mjs
+index 8262c91..f859fbe 100644
+--- a/public/shared/header-dates.mjs
++++ b/public/shared/header-dates.mjs
+@@ -1,13 +1,13 @@
+ const zone='Africa/Johannesburg',cacheKey='m4l_circles_header_dates_v1',retryMs=60_000,refreshMs=900_000;
+ export const academyDay=now=>new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(now));
+ export function validHeaderDate(value,now){return value?.gregorian===academyDay(now)&&value.timezone===zone&&value.source==='https://jamiat.org.za/'&&(value.hijri===null||typeof value.hijri==='string'&&value.hijri.length<=100&&/^\d{1,2} [A-Za-z ’'\-]+ \d{4}$/.test(value.hijri));}
+-export function installHeaderDates({document=globalThis.document,window=globalThis.window,fetcher=globalThis.fetch,now=()=>Date.now()}={}){
++export function installHeaderDates({document=globalThis.document,window=globalThis.window,fetcher=globalThis.fetch,now=()=>Date.now(),programme=false}={}){
+  const header=document.querySelector('.public-home-header,.site-header');if(!header)return;
+  let host=header.querySelector('.circles-header-dates');if(!host){host=document.createElement('div');host.className='circles-header-dates';header.append(host);}
+  let value=null,pending=false,nextAttempt=0,timer,day=academyDay(now());
+  const storage=()=>{try{return window.localStorage;}catch{return null;}};
+  function resetDay(){const today=academyDay(now());if(today!==day){day=today;value=null;nextAttempt=0;}}
+- function draw(){const today=academyDay(now()),valid=validHeaderDate(value,now());const stamp=JSON.stringify([today,valid?value.hijri:null]);if(host.dataset.dateStamp===stamp)return;host.dataset.dateStamp=stamp;host.replaceChildren();const date=document.createElement('time');date.dateTime=today;date.textContent=new Intl.DateTimeFormat('en-GB',{timeZone:zone,weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date(now()));const hijri=document.createElement('span');hijri.textContent=valid&&value.hijri?value.hijri:'Hijri date unavailable';host.append(date,document.createTextNode(' · '),hijri);host.title='Academy dates · '+zone.replace('_',' ');}
++ function draw(){const today=academyDay(now()),valid=validHeaderDate(value,now());const stamp=JSON.stringify([today,valid?value.hijri:null]);if(host.dataset.dateStamp===stamp)return;host.dataset.dateStamp=stamp;host.replaceChildren();const date=document.createElement('time');date.dateTime=today;date.textContent=new Intl.DateTimeFormat('en-GB',{timeZone:zone,...(programme?{}:{weekday:'long'}),day:'numeric',month:'long',year:'numeric'}).format(new Date(now()));const hijri=document.createElement('span');hijri.textContent=valid&&value.hijri?value.hijri:'Hijri date unavailable';if(programme)host.append(hijri,date);else host.append(date,document.createTextNode(' · '),hijri);host.title='Academy dates · '+zone.replace('_',' ');}
+  function readCache(){
+   let saved;try{saved=JSON.parse(storage()?.getItem(cacheKey)||'null');}catch{}
+   if(!validHeaderDate(saved,now())||!Number.isFinite(saved.savedAt)||saved.savedAt>now())return;
+diff --git a/public/shared/mou-classroom.mjs b/public/shared/mou-classroom.mjs
+index 40bf41b..4908a23 100644
+--- a/public/shared/mou-classroom.mjs
++++ b/public/shared/mou-classroom.mjs
+@@ -83,7 +83,7 @@ export function renderMouClassroom({phase='loading',classroom=null,now=Date.now(
+   const message=now>=session.endsAt?'This class has ended.':!session.eligibleToJoin?'Live class access is unavailable.':now>=session.eligibilityExpiresAt?'Refresh to check your class access.':now<session.joinOpensAt?'Join opens five minutes before class.':'Join is unavailable.';
+   return `<article class="card"><h3>${esc(session.title)}</h3><p><time datetime="${new Date(session.startsAt).toISOString()}">${esc(dateLabel(session.startsAt,session.timezone))}</time> – <time datetime="${new Date(session.endsAt).toISOString()}">${esc(dateLabel(session.endsAt,session.timezone))}</time><br><small>${esc(session.timezone)}</small></p>${details.length?`<p>${details.map(esc).join(' · ')}</p>`:''}${open?`<button type="button" class="primary" data-mou-join="${esc(session.id)}"${joiningId?' disabled':''}>${joiningId===session.id?'Opening class…':'Join class'}</button>`:`<p>${message}</p>`}</article>`;
+  }).join('');
+- return `<section class="mou-programme">${heading}${error?`<p role="status">${esc(error)}</p>`:''}<section class="card" aria-labelledby="mou-monthly-title"><h2 id="mou-monthly-title">Monthly access</h2><p>${esc(monthlyText)}</p>${monthly.hasRetainedMonths?'<p>Access for your recorded months is retained.</p>':''}${management.canManage?'<button type="button" data-academy-management>Manage programme in Academy →</button>':''}</section>${subjectsHTML(classroom.subjects)}<section aria-labelledby="mou-timetable-title"><h2 id="mou-timetable-title">Published classes</h2>${sessions?`<div class="card-grid">${sessions}</div>`:`<p>${timetableMessages[timetable.state]}</p>`}</section><p><a href="/">Return to Circles</a></p></section>`;
++ return `<section class="mou-programme">${heading}${error?`<p role="status">${esc(error)}</p>`:''}<section class="card" aria-labelledby="mou-monthly-title"><h2 id="mou-monthly-title">Monthly access</h2><p>${esc(monthlyText)}</p>${monthly.hasRetainedMonths?'<p>Access for your recorded months is retained.</p>':''}${management.canManage?'<button type="button" data-academy-management>Manage programme →</button>':''}</section>${subjectsHTML(classroom.subjects)}<section aria-labelledby="mou-timetable-title"><h2 id="mou-timetable-title">Published classes</h2>${sessions?`<div class="card-grid">${sessions}</div>`:`<p>${timetableMessages[timetable.state]}</p>`}</section><p><a href="/">Return to Circles</a></p></section>`;
+ }
+ 
+ // A single account-bound request supplies the entire classroom. Timers only
+diff --git a/public/shared/programme-shell.css b/public/shared/programme-shell.css
+new file mode 100644
+index 0000000..b2a1819
+--- /dev/null
++++ b/public/shared/programme-shell.css
+@@ -0,0 +1,91 @@
++/* Match the native programme shell (m4l-academy-shell/workspace-theme).
++   Course artwork and teaching blocks retain their own content typography. */
++body.circles-programme-page{
++ --bg:#f8f5ef;--paper:#fffdf8;--panel:#fffdf8;--ink:#44363f;--muted:#796e73;
++ --rose:#67515f;--rose-dark:#51404c;--rose-soft:#eee5e8;--line:#e1d7ce;
++ --circle-paper:var(--bg);--circle-surface:var(--paper);--circle-ink:var(--ink);--circle-muted:var(--muted);--circle-accent:var(--rose);--circle-line:var(--line);
++ --accent:var(--rose);--soft:var(--rose-soft);--programme-gutter:clamp(16px,3vw,38px);
++ background:var(--bg);color:var(--ink);font:14px/1.5 'DM Sans',Arial,sans-serif;
++}
++.circles-programme-page [hidden]{display:none!important}
++.circles-programme-page .programme-banners{position:sticky;top:0;z-index:60;background:var(--paper)}
++.circles-programme-page .site-header{
++ display:flex;align-items:center;justify-content:space-between;flex-wrap:nowrap;gap:24px;
++ min-height:76px;padding:10px var(--programme-gutter);background:var(--paper);border-bottom:1px solid var(--line);
++}
++.circles-programme-page .programme-brand-details{display:flex;align-items:center;gap:28px;min-width:0;flex:1}
++.circles-programme-page .brand{display:flex;align-items:center;gap:10px;padding:0;text-decoration:none;color:var(--ink);flex:none}
++.circles-programme-page .brand img{width:40px;height:40px;object-fit:contain}
++.circles-programme-page .brand strong{font:400 19px/1.06 'Libre Caslon Display',Georgia,serif}
++.circles-programme-page .circles-header-dates{font-size:0;margin:0;padding:0;max-width:210px;flex:0 1 auto;color:var(--muted);text-align:left}
++.circles-programme-page .circles-header-dates :is(time,span){display:block;font:400 11px/1.5 'DM Sans',Arial,sans-serif}
++.circles-programme-page .circles-header-dates>span{font-style:italic}
++.circles-programme-page .programme-header-account{display:flex;align-items:center;justify-content:flex-end;gap:24px;min-width:0}
++.circles-programme-page .account-menu{position:relative;min-width:0}
++.circles-programme-page .account-menu>summary{display:flex;align-items:center;min-height:44px;padding:0;border:0;border-radius:0;text-align:left;background:transparent}
++.circles-programme-page .programme-profile{display:grid;gap:2px;min-width:0;max-width:210px}
++.circles-programme-page .programme-welcome{font-size:10px;color:var(--muted)}
++.circles-programme-page #account-name{font:600 13px/1.25 'DM Sans',Arial,sans-serif;color:var(--rose-dark);white-space:normal;overflow-wrap:anywhere}
++.circles-programme-page #account-name[data-account-role="Global Admin"]{padding:4px 9px;border-radius:999px;background:#e9d9bf;color:#593e08}
++.circles-programme-page .programme-page-actions{display:flex;align-items:center;gap:8px;flex:none}
++.circles-programme-page .programme-page-actions .header-nav-button{display:flex;align-items:center;justify-content:center;min-width:44px;width:44px;height:44px;min-height:44px;padding:0;border:0;border-radius:0;background:transparent;color:var(--rose-dark)}
++.circles-programme-page .programme-action-icon{display:grid;place-items:center;width:44px;height:44px;border:1px solid var(--line);border-radius:50%;background:transparent}
++.circles-programme-page .programme-action-icon svg{width:22px;height:22px}
++.circles-programme-page .programme-action-label{display:none}
++.circles-programme-page .programme-signout,.circles-programme-page .programme-switch{display:grid;place-items:center;width:44px;min-width:44px;height:44px;min-height:44px;padding:10px;border:0;border-radius:50%;background:transparent;color:var(--rose-dark)}
++.circles-programme-page .programme-switch{border:1px solid var(--line)}
++.circles-programme-page :is(.programme-signout,.programme-switch) svg{width:22px;height:22px}
++.circles-programme-page #sign-in-button{min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--rose-dark);font-size:12px}
++.circles-programme-page .account-panel{position:absolute;right:0;top:calc(100% + 12px);width:260px;max-width:calc(100vw - 32px);padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--paper);box-shadow:0 8px 30px #44363f1a;z-index:65}
++.circles-programme-page .account-panel nav{display:grid;gap:4px;max-width:none}
++.circles-programme-page .account-panel nav :is(a,button){display:flex;align-items:center;min-height:44px;padding:8px 10px;background:transparent;border:0;text-decoration:none;text-align:left;color:var(--rose-dark);font:500 13px/1.4 'DM Sans',Arial,sans-serif}
++.circles-programme-page .account-panel nav :is(#home-button,#my-websites,#manage-button,#academy-button){display:none}
++.circles-programme-page .programme-dashboard-bar{display:flex;justify-content:flex-end;min-height:54px;padding:5px var(--programme-gutter);border-bottom:1px solid var(--line);background:var(--paper)}
++.circles-programme-page .programme-dashboard-link{display:flex;align-items:center;justify-content:center;min-width:130px;min-height:38px;padding:9px 20px;border:1px solid var(--line);border-radius:9px;background:#f0ebe5;color:var(--rose-dark);text-decoration:none;font:600 12px/1.4 'DM Sans',Arial,sans-serif}
++.circles-programme-page :is(a,button,summary,input,select,textarea):focus-visible{outline:3px solid #a07a89;outline-offset:3px}
++.circles-programme-page main{width:100%;max-width:1500px;margin:auto;padding:20px var(--programme-gutter) 36px}
++.circles-programme-page :is(h1,h2){font-family:'Libre Caslon Display',Georgia,serif;font-weight:400;letter-spacing:-.015em}
++.circles-programme-page :is(.card,.rs-episode-card,.rs-reading-card){background:var(--paper);border:1px solid var(--line);border-radius:12px;box-shadow:0 5px 20px #49394306}
++.circles-programme-page .card :is(h2,h3){color:var(--ink)}
++.circles-programme-page .card h2{font-size:26px}
++.circles-programme-page .card h3{font:600 16px/1.4 'DM Sans',Arial,sans-serif}
++.circles-programme-page .card :is(p,small){color:var(--muted)}
++.circles-programme-page #my-learning>h1{font-size:36px;line-height:1.15;margin:0 0 18px}
++.circles-programme-page.has-circles-catalogue #main #my-learning>h1{display:block}
++.circles-programme-page .circles-collection-nav{margin-bottom:20px;justify-content:flex-start}
++.circles-programme-page :is(.rs-tabs,.circles-collection-nav){display:flex;gap:4px;flex-wrap:wrap;overflow:visible;border:0;border-bottom:1px solid var(--line);padding:0 0 10px}
++.circles-programme-page :is(.rs-tabs,.circles-collection-nav) button,.circles-programme-page .student-course .rs-tabs button{min-height:40px;padding:9px 15px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--rose-dark);font:500 13px/1.4 'DM Sans',Arial,sans-serif}
++.circles-programme-page :is(.rs-tabs,.circles-collection-nav) button[aria-current=page],.circles-programme-page .student-course .rs-tabs button[aria-current=page]{background:var(--rose);border-color:var(--rose);color:var(--paper)}
++.circles-programme-page .student-course .sp-inner{max-width:none;margin:0;padding:0;background:transparent;border:0;--sp-accent:var(--rose);--circle-rule:var(--line);--circle-tint:var(--rose-soft)}
++.circles-programme-page .rs-series-header,.circles-programme-page .rs-series-header.rs-compact,.circles-programme-page .rs-tafseer.rs-shell .rs-series-header,.circles-programme-page .rs-tafseer.rs-shell .rs-series-header.rs-compact{grid-template-columns:74px minmax(0,1fr);gap:20px;padding:12px 0 22px}
++.circles-programme-page .student-course .rs-series-name{font:400 36px/1.15 'Libre Caslon Display',Georgia,serif;color:var(--ink);min-height:0}
++.circles-programme-page .rs-series-title{margin:0}
++.circles-programme-page .rs-series-cover img{max-height:86px}
++.circles-programme-page .rs-series-description{margin-top:8px}
++.circles-programme-page .student-course .rs-series-tools button{border-radius:8px}
++.circles-programme-page .rs-list-heading :is(h1,h2){font-size:26px}
++.circles-programme-page .student-course .rs-episode-card h3 button{font:600 16px/1.4 'DM Sans',Arial,sans-serif}
++.circles-programme-page .mou-programme>header.card{padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
++.circles-programme-page .mou-programme>header h1{font-size:36px;line-height:1.15;margin:0}
++.circles-programme-page .mou-programme>header .eyebrow{font-size:10px;letter-spacing:.14em;color:#97727d;margin:0 0 8px}
++.circles-programme-page [data-mou-refresh]{display:none}
++.circles-programme-page .mou-programme{gap:20px}
++.circles-programme-page .mou-programme h2{font-size:26px}
++.circles-programme-page .site-footer{border-color:var(--line);color:var(--muted)}
++.circles-programme-page #learning-branches:empty,.circles-programme-page #status:empty{display:none}
++@media(max-width:800px){
++ .circles-programme-page{font-size:16px}
++ .circles-programme-page .site-header{flex-wrap:wrap;gap:12px;padding:12px var(--programme-gutter)}
++ .circles-programme-page .programme-brand-details{flex-basis:100%;justify-content:space-between;gap:12px}
++ .circles-programme-page .circles-header-dates{max-width:52%;text-align:right}
++ .circles-programme-page .programme-header-account{width:100%;justify-content:space-between;gap:12px}
++ .circles-programme-page .programme-profile{max-width:180px}
++ .circles-programme-page .programme-page-actions{gap:6px}
++ .circles-programme-page .account-panel{left:0;right:auto}
++ .circles-programme-page .programme-dashboard-bar{justify-content:stretch}
++ .circles-programme-page .programme-dashboard-link{width:100%}
++ .circles-programme-page main{padding-top:16px}
++ .circles-programme-page :is(.rs-tabs,.circles-collection-nav) button,.circles-programme-page .student-course .rs-tabs button{min-height:44px}
++ .circles-programme-page #my-learning>h1,.circles-programme-page .mou-programme>header h1,.circles-programme-page .student-course .rs-series-name{font-size:30px}
++ .circles-programme-page .rs-series-header,.circles-programme-page .rs-series-header.rs-compact,.circles-programme-page .rs-tafseer.rs-shell .rs-series-header,.circles-programme-page .rs-tafseer.rs-shell .rs-series-header.rs-compact{grid-template-columns:64px minmax(0,1fr)}
++}
+diff --git a/public/shared/programme-shell.mjs b/public/shared/programme-shell.mjs
+new file mode 100644
+index 0000000..f290fcc
+--- /dev/null
++++ b/public/shared/programme-shell.mjs
+@@ -0,0 +1,40 @@
++import {headerIcon} from './header-icons.mjs';
++
++// One presentation shell for the existing learning pages. Move the native
++// controls rather than replacing their sign-in, refresh, Home or sign-out code.
++export function installProgrammeShell({document=globalThis.document}={}){
++ const header=document.querySelector('.site-header');
++ if(!header)return {update(){}};
++ document.body.classList.add('circles-programme-page');
++ if(!document.querySelector('link[href="/shared/programme-shell.css"]')){const style=document.createElement('link');style.rel='stylesheet';style.href='/shared/programme-shell.css';document.head.append(style);}
++ const node=(tag,className)=>{const value=document.createElement(tag);value.className=className;return value;};
++ const brand=header.querySelector('.brand'),dates=header.querySelector('.circles-header-dates'),controls=header.querySelector('.account-controls');
++ const branding=node('div','programme-brand-details');branding.append(brand);if(dates)branding.append(dates);
++ const copy=brand.querySelector('span');copy.innerHTML='<strong>Umm Abbad<br>Academy</strong>';
++ const welcome=node('span','programme-welcome');welcome.textContent='Ahlan wa Sahlan';
++ const menu=document.getElementById('account-menu'),summary=menu.querySelector('summary'),name=document.getElementById('account-name');
++ const profile=node('span','programme-profile');profile.append(welcome,name);summary.replaceChildren(profile);
++ summary.setAttribute('title','Account menu');
++ const actions=node('div','programme-page-actions');actions.setAttribute('role','group');actions.setAttribute('aria-label','Page actions');
++ for(const [id,icon,label] of [['header-home-button','home','Home'],['header-refresh-button','refresh','Refresh']]){
++  const button=document.getElementById(id);button.innerHTML=`<span class="programme-action-icon">${headerIcon(icon)}</span><span class="programme-action-label">${label}</span>`;actions.append(button);
++ }
++ const switcherButton=node('button','programme-switch');switcherButton.type='button';switcherButton.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16m-4-4 4 4-4 4M20 16H4m4-4-4 4 4 4"/></svg>';switcherButton.setAttribute('aria-label','Account menu');switcherButton.title='Account menu';switcherButton.onclick=event=>{event.stopPropagation();menu.open=!menu.open;};
++ const signout=document.getElementById('sign-out-button');signout.classList.add('programme-signout');signout.innerHTML=headerIcon('signout');signout.setAttribute('aria-label','Sign out');signout.title='Sign out';actions.append(document.getElementById('sign-in-button'),switcherButton,signout);
++ const account=node('div','programme-header-account');account.append(menu,actions);controls.remove();header.replaceChildren(branding,account);
++ const banners=node('div','programme-banners');header.before(banners);banners.append(header);
++ const navigation=node('nav','programme-dashboard-bar');navigation.setAttribute('aria-label','Your workspace');
++ const home=node('a','programme-dashboard-link');home.href='/';home.textContent='Dashboard';navigation.append(home);banners.append(navigation);
++ const panel=document.getElementById('account-panel'),nav=panel.querySelector('nav');
++ document.getElementById('home-button').textContent='Dashboard';
++ document.getElementById('my-websites').textContent='All learning';
++ document.getElementById('manage-button').textContent='Manage content';
++ document.getElementById('academy-button').textContent='Programme pages';
++ const switcher=document.createElement('a');switcher.href='/?login=1&switch=1';switcher.textContent='Switch user';switcher.setAttribute('aria-label','Switch user');
++ const website=document.createElement('a');website.href='/?public=1';website.textContent='Visit website';website.setAttribute('aria-label','Visit website');nav.prepend(switcher,website);
++ function update(account){
++  navigation.hidden=!account;switcherButton.hidden=!account;name.dataset.accountRole=account?.globalAdmin?'Global Admin':'';
++  summary.setAttribute('aria-label',account?account.displayName+(account.globalAdmin?' · Global Admin':'')+' · Account menu':'Account menu');
++ }
++ update(null);return {update};
++}

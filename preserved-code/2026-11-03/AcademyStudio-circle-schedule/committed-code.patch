@@ -1,0 +1,34 @@
+diff --git a/tests/circle-schedule-review.test.mjs b/tests/circle-schedule-review.test.mjs
+new file mode 100644
+index 0000000..4692ea2
+--- /dev/null
++++ b/tests/circle-schedule-review.test.mjs
+@@ -0,0 +1,28 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {circleSchedule,sectorPath,segmentPosition} from '../tools/circle-schedule-review/model.mjs';
++const session=(id,start,end,extra={})=>({id,startsAt:start,endsAt:end,status:'SCHEDULED',...extra});
++test('circle begins with live sessions, then chronological upcoming sessions, and recent finished sessions',()=>{
++ const rows=[session('early',1,2),session('recent',3,4),session('live',5,15),session('next',20,30),session('later',40,50)],before=JSON.stringify(rows),view=circleSchedule(rows,{now:10});
++ assert.deepEqual(view.segments.map(s=>[s.id,s.state]),[['live','active'],['next','next'],['later','later'],['early','finished'],['recent','finished']]);
++ assert.equal(view.activeCount,1);assert.equal(view.phase,'active');assert.equal(JSON.stringify(rows),before);
++});
++test('active colour cannot create Join authority; completed sessions never show Join',()=>{
++ const view=circleSchedule([session('live-denied',5,15),session('live-allowed',5,15,{canJoin:true}),session('early-allowed',20,30,{canJoin:true}),session('past',1,2,{canJoin:true})],{now:10});
++ assert.deepEqual(view.segments.map(s=>[s.id,s.joinAvailable]),[['live-allowed',true],['live-denied',false],['early-allowed',true],['past',false]]);
++ assert.equal(view.activeCount,2);
++});
++test('boundary, empty, completed and cancelled/invalid cases keep their proper state',()=>{
++ assert.equal(circleSchedule([session('a',10,20)],{now:10}).phase,'active');assert.equal(circleSchedule([session('a',10,20)],{now:20}).phase,'finished');
++ assert.equal(circleSchedule([session('a',10,20)],{now:5}).phase,'next');
++ assert.equal(circleSchedule([session('x',1,2,{status:'CANCELLED'}),session('invalid',NaN,30),session('reverse',9,3)],{now:10}).phase,'empty');
++ assert.equal(circleSchedule([],{now:10}).segments.length,0);
++});
++test('busy timetables stay bounded, retain all simultaneous sessions within the visible limit and report the rest',()=>{
++ const view=circleSchedule(Array.from({length:12},(_,i)=>session(String(i),i*10,i*10+8)),{now:13,limit:6});
++ assert.equal(view.segments.length,6);assert.equal(view.total,12);assert.equal(view.remaining,6);assert.equal(view.segments[0].id,'1');
++});
++test('wedge and label geometry preserve an exactly round wheel with the first segment at twelve o’clock',()=>{
++ assert.match(sectorPath(0,6),/^M 350 350 L /);assert(!sectorPath(0,6).includes('NaN'));
++ assert.deepEqual(segmentPosition(0,6),{left:50,top:17.799999999999997});assert(segmentPosition(1,6).left>50);assert(segmentPosition(5,6).left<50);
++});

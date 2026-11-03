@@ -1,0 +1,344 @@
+diff --git a/public/circles-login.css b/public/circles-login.css
+index 40405ee..a9ade27 100644
+--- a/public/circles-login.css
++++ b/public/circles-login.css
+@@ -34,3 +34,13 @@
+ .circles-free-inactive{opacity:.55;cursor:default;filter:saturate(.45)}.circles-free-inactive:hover{transform:none!important;box-shadow:none!important}.circles-free-placeholders{margin-top:42px}.circles-free-placeholders>h3{margin:0;font:400 28px/1.3 var(--serif,Georgia,serif)}.circles-free-placeholders>p{font:400 13px/1.5 var(--sans,Arial,sans-serif);color:#7b6c74;margin:8px 0 20px}.circles-purchased-course-row{display:flex;gap:18px;overflow-x:auto}.circles-purchased-course{box-sizing:border-box;display:flex;align-items:center;gap:20px;flex:0 0 290px;min-height:170px;padding:24px;background:#eee3dd;border:1px solid #d8c7ce;border-radius:5px;color:#493640;text-decoration:none}.circles-purchased-course>span:last-child{margin-left:auto}.circles-purchased-course img{width:64px;height:90px;object-fit:cover}.circles-purchased-course h3{font:400 25px/1.25 var(--serif,Georgia,serif);margin:10px 0}.circles-purchased-course small{font:500 11px/1.4 var(--sans,Arial,sans-serif)}.circles-purchased-course:focus-visible{outline:3px solid #7d4c68;outline-offset:4px}.circles-purchased-course:hover{background:#e9d9df}
+ 
+ @media(min-width:821px){.circle .public-home-header{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:20px}.circle .public-home-header .academy-brand{grid-column:1;grid-row:1;justify-self:start}.circle .public-home-header .site-nav[aria-label="Your workspaces"]{grid-column:2;grid-row:1;justify-self:center;justify-content:center;margin:0}.circle .public-home-header .visitor-entry-actions{grid-column:3;grid-row:1;justify-self:end}.circle .public-home-header .circles-header-dates{grid-row:2;grid-column:1/-1}}
++
++@media(min-width:821px){.circle .public-home-header .public-login:is([data-circles-account-role="Global Admin"],[data-circles-account-role="Admin"]){padding:12px 22px;min-height:48px;border-radius:12px;font-weight:600;box-shadow:0 3px 12px #654e5e14}}
++@media(max-width:820px){
++ .circle .public-home-header:has(.site-nav[aria-label="Your workspaces"]){display:grid;grid-template-columns:minmax(120px,1fr) auto;gap:10px 8px;align-items:center;height:auto;padding-top:12px;padding-bottom:12px}
++ .circle .public-home-header .academy-brand{grid-column:1;grid-row:1;min-width:0}
++ .circle .public-home-header .site-nav[aria-label="Your workspaces"]{grid-column:2;grid-row:1;justify-self:end;width:auto;gap:3px;flex-wrap:nowrap;order:initial}
++ .circle .public-home-header .site-nav [data-circles-workspace]{min-width:43px;min-height:38px;padding:7px;font-size:10px;white-space:nowrap}
++ .circle .public-home-header .visitor-entry-actions{grid-column:1/-1;grid-row:2;justify-self:end;max-width:100%;gap:3px}
++ .circle .public-home-header .circles-header-dates{grid-column:1/-1;grid-row:3}
++}
+diff --git a/public/shared/announcement-feed.mjs b/public/shared/announcement-feed.mjs
+new file mode 100644
+index 0000000..0937faf
+--- /dev/null
++++ b/public/shared/announcement-feed.mjs
+@@ -0,0 +1,6 @@
++const entries=new Map(),age=60_000,key=url=>'academy.public.announcements.v2:'+url;
++const id=value=>/^[a-f0-9-]{36}$/i.test(value||'');
++export function normaliseAnnouncementFeed(value,base,assetPath='/api/academy/announcements/'){if(value?.schema!=='ACADEMY_ANNOUNCEMENTS_PUBLIC_V2'||value.success!==true||!Number.isSafeInteger(value.generation)||value.generation<1||!Array.isArray(value.announcements)||value.announcements.length>200)throw Error('Announcements could not be verified.');const seen=new Set(),text=(v,n)=>{if(typeof v!=='string'||v.length>n)throw Error('Announcements could not be verified.');return v;},asset=(v,kind)=>{if(!v)return '';const u=new URL(text(v,2048),base);if(u.origin!==new URL(base).origin||u.pathname!==assetPath+kind||!id(u.searchParams.get('id'))||!/^[a-f0-9]{64}$/.test(u.searchParams.get('asset')||'')||u.username||u.password||u.hash)throw Error('The announcement attachment needs review.');return u.href;};return {...value,announcements:value.announcements.map(row=>{if(!id(row.id)||seen.has(row.id))throw Error('Refresh the announcements.');seen.add(row.id);const enrolmentUrl=text(row.enrolmentUrl||'',2000);if(enrolmentUrl){const u=new URL(enrolmentUrl);if(u.protocol!=='https:'||u.username||u.password)throw Error('The enrolment link needs review.');}return {id:row.id,title:text(row.title,160),summary:text(row.summary||'',500),message:text(row.message||'',6000),imageUrl:asset(row.imageUrl,'image'),imageAlt:text(row.imageAlt||'',300),pdfUrl:asset(row.pdfUrl,'pdf'),pdfName:text(row.pdfName||'',200),enrolmentUrl};})};}
++export function announcementFeed({url,assetBase=url,assetPath='/api/academy/announcements/',fetcher=fetch,storage=globalThis.sessionStorage,now=()=>Date.now()}={}){let local=entries.get(url);if(!local){local={value:null,until:0,pending:null};entries.set(url,local);try{const saved=JSON.parse(storage?.getItem(key(url))||'null');if(saved&&Number.isFinite(saved.until)&&saved.until>now()){local.value=normaliseAnnouncementFeed(saved.value,assetBase,assetPath);local.until=saved.until;}}catch{}}
++ async function load({force=false}={}){if(!force&&local.value&&local.until>now())return local.value;if(local.pending)return local.pending;local.pending=(async()=>{const response=await fetcher(url,{cache:'no-store',credentials:'omit'});let value;try{value=await response.json();}catch{throw Error('Announcements could not be loaded.');}if(!response.ok)throw Object.assign(Error(value.error||'Announcements could not be loaded.'),{status:response.status,code:value.code});const checked=normaliseAnnouncementFeed(value,assetBase,assetPath);if(local.value&&checked.generation<local.value.generation)throw Error('A newer announcement publication is already loaded.');local.value=checked;local.until=now()+age;try{storage?.setItem(key(url),JSON.stringify({value:checked,until:local.until}));}catch{}return checked;})();try{return await local.pending;}finally{local.pending=null;}}
++ return {load,get saved(){return local.value;},invalidate(){local.until=0;try{storage?.removeItem(key(url));}catch{}}};}
+diff --git a/public/shared/announcements-view.css b/public/shared/announcements-view.css
+new file mode 100644
+index 0000000..249b002
+--- /dev/null
++++ b/public/shared/announcements-view.css
+@@ -0,0 +1,5 @@
++.announcement-display{--an-ink:#44363f;--an-plum:#654e5e;--an-sage:#526747;--an-paper:#fffaf3;--an-line:#d9cbd0;container-type:inline-size;color:var(--an-ink);font:15px/1.55 'DM Sans',Arial,sans-serif;min-width:0}.announcement-display *{box-sizing:border-box}.announcement-shell{display:grid;grid-template-columns:minmax(0,1fr);height:480px;min-width:0;border-radius:14px;overflow:hidden;background:var(--an-paper);border:1px solid var(--an-line);box-shadow:0 12px 38px #2e1e2912}.announcement-shell.has-index{grid-template-columns:minmax(0,2.1fr) minmax(260px,1fr)}.announcement-stage{min-height:0;min-width:0}.announcement-feature{display:grid;grid-template-columns:minmax(0,1.03fr) minmax(0,1fr);height:100%;margin:0!important}.announcement-feature-art{display:grid;place-items:center;position:relative;min-width:0;min-height:0;width:100%;height:100%;padding:18px!important;border:0!important;border-radius:0!important;background:#eee6dc!important;cursor:zoom-in;color:var(--an-plum)}.announcement-feature-art img{display:block;width:100%;height:100%;object-fit:contain}.announcement-art-placeholder{font:400 112px Georgia;color:#b49b70}.announcement-feature-copy{display:flex;flex-direction:column;justify-content:center;gap:18px;padding:32px;min-width:0;overflow:hidden}.announcement-kicker{display:block;font:600 11px/1.5 'DM Sans',Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#896e7b}.announcement-feature-copy h3{margin:0!important;font:400 clamp(28px,3.1cqi,42px)/1.12 'Libre Caslon Display',Georgia,serif!important;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;color:var(--an-ink)!important}.announcement-summary{margin:0!important;white-space:pre-line;line-height:1.65!important;color:#776a71!important;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}.announcement-feature-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:6px}.announcement-feature-actions button,.announcement-pager button{border:1px solid #cdbbc4!important;border-radius:24px!important;padding:10px 15px!important;font:600 12px/1.35 'DM Sans',Arial,sans-serif!important;min-height:40px;background:transparent!important;color:var(--an-plum)!important;cursor:pointer}.announcement-feature-actions .announcement-enrol-button{background:var(--an-sage)!important;border-color:var(--an-sage)!important;color:#fffaf3!important}.announcement-index{display:flex;flex-direction:column;min-width:0;min-height:0;background:#f1e8ea;border-left:1px solid var(--an-line)}.announcement-index-heading{display:flex;justify-content:space-between;gap:16px;padding:19px 20px;border-bottom:1px solid var(--an-line);font:600 10px/1.5 Arial;letter-spacing:.05em;text-transform:uppercase;color:#806e78}.announcement-index-heading span:last-child{font-weight:400;letter-spacing:0;white-space:nowrap}.announcement-index nav{display:flex;flex-direction:column;flex:1;overflow:auto;min-height:0;overscroll-behavior:contain;scrollbar-width:thin}.announcement-index nav>button{position:relative;display:grid;grid-template-columns:25px minmax(0,1fr);align-items:start;gap:9px;flex:1 0 auto;min-height:105px;max-height:190px;padding:20px!important;border:0!important;border-bottom:1px solid var(--an-line)!important;border-radius:0!important;background:transparent!important;text-align:left!important;font:14px/1.4 Arial;cursor:pointer;color:#776a71!important}.announcement-index nav>button[aria-current=true]{background:#fffaf3!important;box-shadow:inset 3px 0 var(--an-plum)}.announcement-choice-number{font:500 11px/1.4 Arial;color:#a48694;padding-top:4px}.announcement-index strong{display:block;font:400 22px/1.15 'Libre Caslon Display',Georgia,serif;color:var(--an-ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.announcement-choice-summary{display:block;margin-top:8px;font:12px/1.5 Arial;color:#81717a;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.announcement-pager{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 18px;border-top:1px solid var(--an-line)}.announcement-pager span{font:500 11px Arial;color:#806c77}.announcement-pager button{width:38px;min-height:36px;padding:8px!important;font-size:17px!important}.announcement-display button:focus-visible,.announcement-reader a:focus-visible,.announcement-reader button:focus-visible{outline:3px solid #a48292!important;outline-offset:3px!important}.announcement-empty{height:200px;display:grid;place-items:center;border:1px solid var(--an-line);border-radius:14px;background:var(--an-paper);color:#80717a}.announcement-reader{width:min(1120px,calc(100vw - 32px));max-height:92dvh;padding:0;box-sizing:border-box;overflow:auto;border:1px solid #d9cbd0;border-radius:14px;background:#fffaf3;color:#44363f}.announcement-reader::backdrop{background:#382c36b3}.announcement-reader>header{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;align-items:start;gap:22px;padding:22px 28px;background:#fffaf3;border-bottom:1px solid #d9cbd0}.announcement-reader h2{margin:7px 0 0;font:400 32px/1.15 'Libre Caslon Display',Georgia,serif}.announcement-reader [data-announcement-close]{flex:none;width:40px;height:40px;padding:0;border:1px solid #d9cbd0;border-radius:50%;font:24px Arial;background:transparent;color:#654e5e;cursor:pointer}.announcement-reader-body{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:30px;padding:28px}.announcement-reader-image{width:100%;height:auto;object-fit:contain;align-self:start}.announcement-reader-copy{min-width:0;font:15px/1.7 'DM Sans',Arial,sans-serif;overflow-wrap:anywhere}.announcement-reader-summary{font-size:18px;color:#65525d;white-space:pre-line}.announcement-full-message{white-space:pre-line}.announcement-reader a{color:#654e5e;text-decoration:underline;text-underline-offset:4px}.announcement-enrol-link{display:inline-block;padding:12px 20px;border-radius:26px;background:#526747;color:#fffaf3!important;text-decoration:none!important;font-weight:600}.announcement-contact{padding-top:24px;margin-top:26px;border-top:1px solid #d9cbd0}.announcement-contact h3{font:400 27px Georgia;margin:0 0 10px}.announcement-contact a{display:block;margin:10px 0}.announcement-contact p{color:#877781;margin:0}.announcement-image-unavailable:after{content:'◇';font:400 90px Georgia;color:#a88d68}.announcement-display button:disabled{cursor:default;opacity:1}
++@container(max-width:950px){.announcement-shell.has-index{grid-template-columns:minmax(0,1fr) minmax(210px,.6fr)}.announcement-feature-copy{padding:24px;gap:15px}.announcement-feature-copy h3{font-size:30px!important}.announcement-feature{grid-template-columns:minmax(0,.95fr) minmax(0,1fr)}.announcement-summary{font-size:13px!important;-webkit-line-clamp:6}.announcement-index nav>button{padding:16px!important}.announcement-index strong{font-size:21px}.announcement-feature-actions button{padding:9px 12px!important}}
++@container(max-width:740px){.announcement-shell,.announcement-shell.has-index{height:620px;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}.announcement-shell.has-index{grid-template-rows:minmax(0,1fr) 118px}.announcement-feature{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.announcement-feature-copy{padding:20px}.announcement-feature-copy h3{font-size:29px!important}.announcement-summary{-webkit-line-clamp:5}.announcement-index{border-left:0;border-top:1px solid var(--an-line);position:relative}.announcement-index-heading{display:none}.announcement-index nav{flex-direction:row;padding-right:0;scroll-snap-type:x mandatory}.announcement-index nav>button{flex:0 0 210px;min-height:0;max-height:none;padding:16px!important;border-right:1px solid var(--an-line)!important;border-bottom:0!important;scroll-snap-align:start}.announcement-choice-summary{display:none}.announcement-index strong{font-size:21px}.announcement-pager{position:absolute;right:9px;bottom:8px;width:116px;border:0;border-radius:28px;padding:3px;background:#fffaf3f5;gap:4px}.announcement-pager button{width:30px;min-height:30px;padding:5px!important}.announcement-pager span{font-size:10px}.announcement-shell.has-index .announcement-feature-art{padding:14px!important}}
++@container(max-width:470px){.announcement-shell,.announcement-shell.has-index{height:670px}.announcement-feature{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1.15fr) minmax(0,1fr)}.announcement-feature-art{padding:14px!important}.announcement-feature-copy{padding:19px 22px;gap:11px}.announcement-feature-copy h3{font-size:29px!important;-webkit-line-clamp:2}.announcement-summary{font-size:14px!important;-webkit-line-clamp:3;line-height:1.5!important}.announcement-feature-actions{gap:8px;margin-top:0}.announcement-kicker{font-size:9px}.announcement-feature-actions button{font-size:11px!important;min-height:36px}}
++@media(max-width:700px){.announcement-reader-body{grid-template-columns:minmax(0,1fr);padding:18px;gap:18px}.announcement-reader>header{padding:18px}.announcement-reader h2{font-size:27px}.announcement-reader-image{max-height:58dvh}.announcement-reader-summary{font-size:16px}}
+diff --git a/public/shared/announcements-view.mjs b/public/shared/announcements-view.mjs
+new file mode 100644
+index 0000000..85e84b2
+--- /dev/null
++++ b/public/shared/announcements-view.mjs
+@@ -0,0 +1,20 @@
++const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
++export const announcementContact={phone:'27828478639',display:'+27 82 847 8639',email:'admin@ummabbadacademy.com'};
++export function announcementEnrolmentURL(value){if(!value)return '';try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password&&u.href.length<=2000?u.href:'';}catch{return '';}}
++export const summaryText=row=>String(row.summary||row.message||'').replace(/\[([^\]\n]+)\]\([^\s)]+\)/g,'$1').trim();
++export function announcementStageHTML(row,{preview=false}={}){return `<article class="announcement-feature" aria-label="${esc(row.title)}"><button type="button" class="announcement-feature-art" data-announcement-action="open" aria-label="Open ${esc(row.title)}"${preview?' disabled':''}>${row.imageUrl?'<img src="'+esc(row.imageUrl)+'" alt="'+esc(row.imageAlt||row.title)+'">':'<span class="announcement-art-placeholder" aria-hidden="true">◇</span>'}</button><div class="announcement-feature-copy"><span class="announcement-kicker">From the Academy</span><h3>${esc(row.title)}</h3><p class="announcement-summary">${esc(summaryText(row))}</p><div class="announcement-feature-actions"><button type="button" data-announcement-action="open"${preview?' disabled':''}>Read announcement <span aria-hidden="true">↗</span></button>${announcementEnrolmentURL(row.enrolmentUrl)?'<button type="button" class="announcement-enrol-button" data-announcement-action="enrol"'+(preview?' disabled':'')+'>Enrol now <span aria-hidden="true">↗</span></button>':''}</div></div></article>`;}
++export function announcementDisplay(host,{announcements=[],onOpen=()=>{},preview=false,onSelect=()=>{}}={}){
++ const document=host.ownerDocument;let rows=announcements.slice(0,200),selected=0,closed=false;const prefix='announcement-stage-'+crypto.randomUUID();
++ function draw(){if(closed||!host.isConnected)return;const many=rows.length>1;host.classList.add('announcement-display');host.innerHTML=rows.length?`<div class="announcement-shell${many?' has-index':''}"><div class="announcement-stage" id="${prefix}">${announcementStageHTML(rows[selected],{preview})}</div>${many?'<aside class="announcement-index"><div class="announcement-index-heading"><span>What’s happening</span><span>'+rows.length+' announcements</span></div><nav aria-label="Choose an announcement">'+rows.map((row,index)=>'<button type="button" data-announcement-choice="'+index+'" aria-controls="'+prefix+'" aria-current="'+(index===selected?'true':'false')+'"><span class="announcement-choice-number">'+String(index+1).padStart(2,'0')+'</span><span><strong>'+esc(row.title)+'</strong><span class="announcement-choice-summary">'+esc(summaryText(row))+'</span></span></button>').join('')+'</nav><div class="announcement-pager"><button type="button" data-announcement-action="previous" aria-label="Previous announcement">←</button><span role="status" aria-live="polite">'+(selected+1)+' of '+rows.length+'</span><button type="button" data-announcement-action="next" aria-label="Next announcement">→</button></div></aside>':''}</div>`:'<div class="announcement-empty"><p>No active announcements.</p></div>';
++  for(const image of host.querySelectorAll('img'))image.addEventListener('error',()=>{image.hidden=true;image.parentElement.classList.add('announcement-image-unavailable');});
++ }
++ function select(index,{focus=false}={}){if(!rows.length)return;selected=(index+rows.length)%rows.length;draw();onSelect(rows[selected],selected);if(focus)host.querySelector('[data-announcement-choice="'+selected+'"]')?.focus();}
++ const onClick=event=>{const choice=event.target.closest('[data-announcement-choice]');if(choice){select(Number(choice.dataset.announcementChoice));return;}const action=event.target.closest('[data-announcement-action]')?.dataset.announcementAction;if(action==='previous')select(selected-1);else if(action==='next')select(selected+1);else if(['open','enrol'].includes(action)&&!preview)onOpen(rows[selected],event.target.closest('button'),action);};
++ host.addEventListener('click',onClick);
++ const onKeydown=event=>{if(!event.target.closest('[data-announcement-choice]'))return;let next=selected;if(['ArrowDown','ArrowRight'].includes(event.key))next++;else if(['ArrowUp','ArrowLeft'].includes(event.key))next--;else if(event.key==='Home')next=0;else if(event.key==='End')next=rows.length-1;else return;event.preventDefault();select(next,{focus:true});};
++ host.addEventListener('keydown',onKeydown);
++ draw();return {select,update(next){const id=rows[selected]?.id;rows=next.slice(0,200);selected=Math.max(0,rows.findIndex(row=>row.id===id));draw();},destroy(){closed=true;host.removeEventListener('click',onClick);host.removeEventListener('keydown',onKeydown);host.replaceChildren();},get selected(){return rows[selected];}};
++}
++export function openAnnouncement(document,row,{opener,renderMessage=value=>'<p>'+esc(value).replace(/\n/g,'<br>')+'</p>'}={}){
++ const modal=document.createElement('dialog');modal.className='announcement-reader';const enrol=announcementEnrolmentURL(row.enrolmentUrl),contact=announcementContact;modal.setAttribute('aria-label',row.title);modal.innerHTML=`<header><div><span class="announcement-kicker">Academy announcement</span><h2>${esc(row.title)}</h2></div><button type="button" data-announcement-close aria-label="Close announcement">×</button></header><div class="announcement-reader-body">${row.imageUrl?'<img class="announcement-reader-image" src="'+esc(row.imageUrl)+'" alt="'+esc(row.imageAlt||row.title)+'">':''}<div class="announcement-reader-copy"><p class="announcement-reader-summary">${esc(summaryText(row))}</p>${row.message&&row.message!==row.summary?'<div class="announcement-full-message">'+renderMessage(row.message)+'</div>':''}${row.pdfUrl?'<p><a href="'+esc(row.pdfUrl)+'" target="_blank" rel="noopener noreferrer">Open '+esc(row.pdfName||'announcement PDF')+' ↗</a></p>':''}${enrol?'<p><a class="announcement-enrol-link" href="'+esc(enrol)+'" target="_blank" rel="noopener noreferrer">Open enrolment form ↗</a></p>':''}<aside class="announcement-contact"><h3>Speak to the Academy</h3><p>For programme information and help with enrolment.</p><a href="https://wa.me/${contact.phone}" target="_blank" rel="noopener noreferrer">WhatsApp ${contact.display} ↗</a><a href="mailto:${contact.email}">${contact.email}</a></aside></div></div>`;document.body.append(modal);modal.querySelector('[data-announcement-close]').onclick=()=>modal.close();modal.addEventListener('close',()=>{modal.remove();opener?.focus?.();});modal.addEventListener('click',event=>{if(event.target===modal){const r=modal.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)modal.close();}});modal.showModal();return modal;
++}
+diff --git a/public/shared/page-history.css b/public/shared/page-history.css
+index c04625a..00e35f0 100644
+--- a/public/shared/page-history.css
++++ b/public/shared/page-history.css
+@@ -30,3 +30,14 @@
+  body.circles-programme-page .programme-studio-modes{grid-column:1/-1;grid-row:3;justify-self:center;margin:0}
+  body.circles-programme-page .account-panel{left:auto;right:0}
+ }
++
++/* Small-screen workspace selectors share the brand row. */
++@media(max-width:800px){
++ body.circles-programme-page .site-header{grid-template-columns:minmax(118px,1fr) auto;align-items:center;gap:10px 8px}
++ body.circles-programme-page .programme-brand-details{grid-column:1;grid-row:1}
++ body.circles-programme-page .programme-studio-modes{grid-column:2;grid-row:1;justify-self:end;margin:0;max-width:100%}
++ body.circles-programme-page .programme-studio-modes button{min-width:46px;padding:8px;font-size:11px}
++ body.circles-programme-page .account-menu{grid-column:1;grid-row:2;justify-self:start}
++ body.circles-programme-page .programme-page-actions{grid-column:2;grid-row:2;justify-content:flex-end;width:auto;gap:3px;flex-wrap:nowrap}
++ .circles-page-navigation button{font-size:10px}
++}
+diff --git a/public/shared/page-history.mjs b/public/shared/page-history.mjs
+index 79c3860..be61e82 100644
+--- a/public/shared/page-history.mjs
++++ b/public/shared/page-history.mjs
+@@ -12,7 +12,7 @@ export function installPageHistory({document=globalThis.document,window=globalTh
+  const read=()=>{try{const s=JSON.parse(window.sessionStorage.getItem(key));return s&&typeof s.owner==='string'&&typeof s.trace==='string'&&Number.isSafeInteger(s.index)&&s.index>=0&&Number.isSafeInteger(s.max)&&s.max>=s.index&&s.max<10000?s:null;}catch{return null;}};
+  function save(){try{window.sessionStorage.setItem(key,JSON.stringify(state));}catch{}}
+  const marked=data=>({...((data&&typeof data==='object'&&!Array.isArray(data))?data:{}),[marker]:{trace:state.trace,index:state.index}});
+- function render(){if(!bar)return;const back=bar.querySelector('[data-page-back]'),forward=bar.querySelector('[data-page-forward]'),noBack=!state||state.index===0,noForward=!state||state.index>=state.max;if(back.disabled!==noBack)back.disabled=noBack;if(forward.disabled!==noForward)forward.disabled=noForward;}
++ function render(){if(!bar)return;const back=bar.querySelector('[data-page-back]'),noBack=!state||state.index===0;if(back.disabled!==noBack)back.disabled=noBack;}
+  function sync(){if(!state)return;dropPending();const m=history.state?.[marker],saved=read();if(saved?.owner===owner&&saved.trace===state.trace)state.max=Math.max(state.max,saved.max);if(m?.trace===state.trace&&Number.isSafeInteger(m.index)&&m.index>=0){state.index=m.index;state.max=Math.max(state.max,state.index);}else {state.index++;state.max=state.index;}replace(marked(history.state),'');save();render();}
+  history.replaceState=(data,title,url)=>{replace(state?marked(data):data,title,url);if(state){save();render();}};
+  history.pushState=(data,title,url)=>{dropPending();if(state){state.index++;state.max=state.index;}push(state?marked(data):data,title,url);if(state){save();render();}};
+@@ -27,7 +27,7 @@ export function installPageHistory({document=globalThis.document,window=globalTh
+   dropPending();replace(marked(history.state),'');save();render();
+  }
+  function mount(){
+-  if(!bar){bar=document.createElement('nav');bar.className='circles-page-navigation';bar.setAttribute('aria-label','Page navigation');bar.innerHTML='<button type="button" data-page-back aria-label="Go back" title="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 5-7 7 7 7M7 12h14"/></svg><span>Back</span></button><button type="button" data-page-forward aria-label="Go forward" title="Forward"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 5 7 7-7 7M3 12h14"/></svg><span>Forward</span></button>';bar.onclick=event=>{const direction=event.target.closest('[data-page-back],[data-page-forward]');if(!direction||direction.disabled||!state||!canLeave())return;if(direction.hasAttribute('data-page-back')&&state.index>0)history.back();else if(direction.hasAttribute('data-page-forward')&&state.index<state.max)history.forward();};}
++  if(!bar){bar=document.createElement('nav');bar.className='circles-page-navigation';bar.setAttribute('aria-label','Page navigation');bar.innerHTML='<button type="button" data-page-back aria-label="Go back" title="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 5-7 7 7 7M7 12h14"/></svg><span>Back</span></button>';bar.onclick=event=>{const direction=event.target.closest('[data-page-back]');if(!direction||direction.disabled||!state||!canLeave())return;if(direction.hasAttribute('data-page-back')&&state.index>0)history.back();};}
+   const target=(typeof requestedTarget==='function'?requestedTarget():requestedTarget)||document.querySelector('.programme-page-actions')||document.querySelector('.public-login')?.parentElement||document.querySelector('.site-header .account-controls')||document.querySelector('header')||document.querySelector('main');if(target&&bar.parentElement!==target)target.append(bar);render();
+  }
+  window.addEventListener('pageshow',event=>{if(event.persisted)window.location.reload();});window.addEventListener('popstate',sync);window.addEventListener('hashchange',sync);
+diff --git a/public/shared/programme-shell.css b/public/shared/programme-shell.css
+index 597c418..5fa6d60 100644
+--- a/public/shared/programme-shell.css
++++ b/public/shared/programme-shell.css
+@@ -112,3 +112,5 @@ body.circles-programme-page{
+ .circles-programme-page .programme-dashboard-bar{display:none}
+ @media(max-width:1100px){.circles-programme-page .programme-header-account{gap:8px}.circles-programme-page .programme-profile{max-width:140px}.circles-programme-page .programme-brand-details{gap:12px}.circles-programme-page .circles-header-dates{display:none}}
+ @media(max-width:800px){.circles-programme-page .site-header{grid-template-columns:minmax(0,1fr) auto;gap:12px}.circles-programme-page .programme-header-account{grid-column:2;grid-row:1}.circles-programme-page .programme-studio-modes{grid-column:1/-1;grid-row:2}.circles-programme-page .programme-page-actions{justify-content:flex-end}.circles-programme-page .programme-profile{display:none}}
++
++@media(min-width:801px){.circles-programme-page #account-name[data-account-role="Global Admin"]{display:inline-flex;align-items:center;min-height:42px;padding:9px 18px;border-radius:12px;font-weight:600}}
+diff --git a/public/shared/public-home.css b/public/shared/public-home.css
+index 3ca4974..6f960ab 100644
+--- a/public/shared/public-home.css
++++ b/public/shared/public-home.css
+@@ -126,3 +126,26 @@
+  .circle .academy-featured-courses .homepage-course-caption{padding:28px 12px 42px}
+  .circle .academy-featured-courses .homepage-course-caption h3{font-size:20px!important}
+ }
++
++/* Four compact pathways follow the circle on smaller screens. */
++@media(max-width:820px){
++ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;height:auto!important;align-items:stretch;isolation:isolate}
++ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website>.hub-panel{position:relative!important;inset:auto!important;width:100%!important;min-width:0;max-width:100%;height:auto!important;max-height:none;translate:none!important;transform:none!important;animation:none!important;margin:0!important;padding:16px!important;box-sizing:border-box}
++ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-orb.hub-academy-centre{position:relative!important;inset:auto!important;grid-column:1/-1;grid-row:1;justify-self:center;width:min(100%,420px)!important;height:auto!important;min-height:0!important;aspect-ratio:1;box-sizing:border-box;transform:none!important;translate:none!important;margin:0 0 12px!important;padding:38px!important;animation:none!important}
++ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-next{grid-column:1;grid-row:2;min-height:0}
++ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-image{grid-column:2;grid-row:2;padding:0!important;overflow:hidden;display:flex;flex-direction:column}
++ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-image>img{width:100%;height:105px;flex:none;object-fit:cover}
++ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-image-copy{padding:12px;min-width:0;flex:1}
++ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-progress{grid-column:1;grid-row:3}
++ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-arabic{grid-column:2;grid-row:3;display:flex;flex-direction:column;gap:10px;min-height:0}
++ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-arabic>img{width:100%;height:70px;object-fit:contain;flex:none}
++ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-panel h3{font-size:21px!important;line-height:1.2;letter-spacing:-.3px;margin:6px 0 10px!important}
++ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-panel p{font-size:11px!important;line-height:1.55;margin:8px 0!important}
++ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-panel .meta{font-size:8px;line-height:1.55;letter-spacing:.04em}
++ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .public-combined-worship>h3{font-size:10px!important;letter-spacing:.03em;line-height:1.6}
++ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .public-worship-links{gap:9px}
++ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .public-worship-links a{display:grid;gap:2px;font-size:11px;line-height:1.4;min-height:0}
++ .circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .public-worship-links [lang=ar]{font-size:22px;white-space:normal;justify-self:end;margin:0}
++}
++
++@media(max-width:820px){.circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .hub-next.public-combined-worship{display:flex!important;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:0}.circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .public-combined-worship>*{width:100%;max-width:100%;min-width:0}.circle .single-circle-home:not(.circles-button-dashboard) #animated-hub.hub-website .public-combined-worship>p{margin-top:auto!important;padding-top:12px}}
+diff --git a/public/shared/public-home.mjs b/public/shared/public-home.mjs
+index b99be37..af9b085 100644
+--- a/public/shared/public-home.mjs
++++ b/public/shared/public-home.mjs
+@@ -1,32 +1,22 @@
+-// Reuse the published announcement nodes and their existing gallery/contact
+-// actions. This presentation layer neither fetches nor publishes content.
++// Read the Academy-published snapshot. Legacy flyers remain only before the
++// explicitly reviewed first publication; an empty publication stays empty.
++import {announcementDisplay,openAnnouncement} from './announcements-view.mjs';
++import {announcementFeed} from './announcement-feed.mjs';
+ import {accessBadge} from './access-badge.mjs';
+ import {approvedCourseCover} from './approved-course-artwork.mjs';
+ export function publicHome(document){
+- const prepared=new WeakSet(),preparedTrackers=new WeakSet(),view=document.defaultView;
+- return ()=>{
+-  const trackers=document.querySelector('#memorisation-reel');
+-  if(trackers&&!preparedTrackers.has(trackers)&&view?.AcademyMemorisation?.selectSets){
+-   preparedTrackers.add(trackers);const shown=new Set([...trackers.querySelectorAll('[data-memory-set]')].map(card=>card.dataset.memorySet));
+-   const remaining=(view.AcademyMemorisationSets||[]).filter(set=>!shown.has(set.id));
+-   for(const set of view.AcademyMemorisation.selectSets(remaining,Math.max(0,6-shown.size))){
+-    const card=document.createElement('article');card.className='memory-card';card.dataset.memorySet=set.id;const top=document.createElement('div');top.className='memory-card-top';const level=document.createElement('span');level.className='memory-level';level.textContent='Level '+set.level;const title=document.createElement('h3');title.textContent=set.name;const count=document.createElement('p');count.textContent=set.tasks.length+' '+(set.subject==='SURAHS'?'surahs':'duas');top.append(level,title,count);const bottom=document.createElement('div');bottom.className='memory-card-bottom';const open=document.createElement('button');open.type='button';open.dataset.action='memorisation-set';open.dataset.id=set.id;open.textContent='View tasks';bottom.append(open);card.append(top,bottom);trackers.append(card);
+-   }
+-  }
+-  for(const card of document.querySelectorAll('a.free-course-card[data-free-course],a.free-course-card[data-paid-course]')){
+-   const key=card.dataset.freeCourse||card.dataset.paidCourse,art=card.querySelector('.free-course-art');if(!art||art.dataset.cardStandard==='green')continue;
+-   art.dataset.cardStandard='green';const title=card.querySelector('h3'),label=title?.textContent||card.getAttribute('aria-label')?.split(' · ')[0];if(!label)continue;
+-   const caption=document.createElement('span');caption.className='homepage-course-caption';const heading=document.createElement('h3');heading.textContent=label;caption.append(heading);
+-   const metadata=[...(view?.AcademyApprovedFreeCourses||[]),...(view?.AcademyPaidCourses||[])].find(c=>c.key===key);
+-   if(Number.isSafeInteger(metadata?.recordingCount)){const count=document.createElement('small');count.textContent=metadata.recordingCount+' '+(metadata.recordingCount===1?'recording':'recordings');caption.append(count);}
+-   art.querySelectorAll('.free-course-title,.free-course-badge,.course-recording-count').forEach(node=>node.remove());caption.insertAdjacentHTML('beforeend',accessBadge(card.dataset.freeCourse?'free':'required'));art.append(caption);
+-   const cover=approvedCourseCover(key);if(cover){let image=art.querySelector('img');if(!image){image=document.createElement('img');art.prepend(image);}image.src=cover;image.alt=label;}
+-  }
+-
+-  const section=document.querySelector('#academy-news'),reel=section?.querySelector('#academy-news-reel');
+-  if(!section||!reel||prepared.has(section))return;
++ const prepared=new WeakSet(),preparedTrackers=new WeakSet(),view=document.defaultView,feed=announcementFeed({url:new URL('/api/public/academy-announcements',document.baseURI||view.location?.href||'https://local.invalid/').href,assetBase:document.baseURI||view.location?.href||'https://local.invalid/',assetPath:'/api/public/academy-announcements/',fetcher:(...args)=>view.fetch(...args),storage:view.sessionStorage});
++ function mountAnnouncements(section,reel){
++  prepared.add(section);
++  const stylesheet='/shared/announcements-view.css';if(!document.querySelector('link[href="'+stylesheet+'"]')){const link=document.createElement('link');link.rel='stylesheet';link.href=stylesheet;document.head.append(link);}
++  const panel=document.createElement('div');panel.className='announcement-public-panel';panel.setAttribute('aria-live','polite');panel.innerHTML='<p role="status">Loading announcements…</p>';reel.before(panel);reel.hidden=true;
++  const oldControls=[...section.querySelectorAll('.reel-controls')];oldControls.forEach(node=>node.hidden=true);
++  let mounted=null;const show=value=>{if(!section.isConnected)return;section.hidden=!value.announcements.length;section.classList.add('announcements-v2');if(mounted)mounted.update(value.announcements);else mounted=announcementDisplay(panel,{announcements:value.announcements,onOpen:(row,opener)=>openAnnouncement(document,row,{opener})});};
++  const load=async()=>{try{show(await feed.load());}catch(error){if(!section.isConnected)return;if(feed.saved){show(feed.saved);return;}if(error.code==='ANNOUNCEMENTS_NOT_ACTIVATED'){panel.remove();reel.hidden=false;oldControls.forEach(node=>node.hidden=false);legacyAnnouncements(section,reel);return;}panel.innerHTML='<p role="status">Announcements could not be loaded.</p><button type="button">Try again</button>';panel.querySelector('button').onclick=load;}};void load();
++ }
++ function legacyAnnouncements(section,reel){
+   const cards=[...reel.querySelectorAll('.academy-news-card')];if(!cards.length)return;
+-  prepared.add(section);section.classList.add('announcements-master-detail','announcements-collage');
++  section.classList.add('announcements-master-detail','announcements-collage');
+   reel.removeAttribute('data-reel');reel.removeAttribute('tabindex');reel.removeAttribute('role');reel.className='announcement-detail';
+   section.querySelectorAll('.reel-controls').forEach(node=>node.remove());
+   const layout=document.createElement('div');layout.className='announcement-layout';reel.before(layout);
+@@ -53,5 +43,28 @@ export function publicHome(document){
+   });
+   // Reuse the existing Academy enquiry flow once for all enrolment flyers.
+   if(cards.some(card=>card.dataset.announcement?.startsWith('2027-'))){const enrol=document.createElement('button');enrol.type='button';enrol.className='announcement-enrol';enrol.dataset.action='news-enquiry';enrol.dataset.id='enrolments';enrol.textContent='Enrol now ↗';side.append(enrol);}
++
++ }
++ return ()=>{
++  const trackers=document.querySelector('#memorisation-reel');
++  if(trackers&&!preparedTrackers.has(trackers)&&view?.AcademyMemorisation?.selectSets){
++   preparedTrackers.add(trackers);const shown=new Set([...trackers.querySelectorAll('[data-memory-set]')].map(card=>card.dataset.memorySet));
++   const remaining=(view.AcademyMemorisationSets||[]).filter(set=>!shown.has(set.id));
++   for(const set of view.AcademyMemorisation.selectSets(remaining,Math.max(0,6-shown.size))){
++    const card=document.createElement('article');card.className='memory-card';card.dataset.memorySet=set.id;const top=document.createElement('div');top.className='memory-card-top';const level=document.createElement('span');level.className='memory-level';level.textContent='Level '+set.level;const title=document.createElement('h3');title.textContent=set.name;const count=document.createElement('p');count.textContent=set.tasks.length+' '+(set.subject==='SURAHS'?'surahs':'duas');top.append(level,title,count);const bottom=document.createElement('div');bottom.className='memory-card-bottom';const open=document.createElement('button');open.type='button';open.dataset.action='memorisation-set';open.dataset.id=set.id;open.textContent='View tasks';bottom.append(open);card.append(top,bottom);trackers.append(card);
++   }
++  }
++  for(const card of document.querySelectorAll('a.free-course-card[data-free-course],a.free-course-card[data-paid-course]')){
++   const key=card.dataset.freeCourse||card.dataset.paidCourse,art=card.querySelector('.free-course-art');if(!art||art.dataset.cardStandard==='green')continue;
++   art.dataset.cardStandard='green';const title=card.querySelector('h3'),label=title?.textContent||card.getAttribute('aria-label')?.split(' · ')[0];if(!label)continue;
++   const caption=document.createElement('span');caption.className='homepage-course-caption';const heading=document.createElement('h3');heading.textContent=label;caption.append(heading);
++   const metadata=[...(view?.AcademyApprovedFreeCourses||[]),...(view?.AcademyPaidCourses||[])].find(c=>c.key===key);
++   if(Number.isSafeInteger(metadata?.recordingCount)){const count=document.createElement('small');count.textContent=metadata.recordingCount+' '+(metadata.recordingCount===1?'recording':'recordings');caption.append(count);}
++   art.querySelectorAll('.free-course-title,.free-course-badge,.course-recording-count').forEach(node=>node.remove());caption.insertAdjacentHTML('beforeend',accessBadge(card.dataset.freeCourse?'free':'required'));art.append(caption);
++   const cover=approvedCourseCover(key);if(cover){let image=art.querySelector('img');if(!image){image=document.createElement('img');art.prepend(image);}image.src=cover;image.alt=label;}
++  }
++
++  const section=document.querySelector('#academy-news'),reel=section?.querySelector('#academy-news-reel');
++  if(section&&reel&&!prepared.has(section))mountAnnouncements(section,reel);
+  };
+ }
+diff --git a/src/announcements.mjs b/src/announcements.mjs
+new file mode 100644
+index 0000000..34253a9
+--- /dev/null
++++ b/src/announcements.mjs
+@@ -0,0 +1,21 @@
++import {bodyJSON,fail,json} from './protocol.mjs';
++import {normaliseAnnouncementFeed} from '../public/shared/announcement-feed.mjs';
++const publicPath='/api/public/academy-announcements';
++function authority(env){const value=env.ACADEMY_API_ORIGIN||env.ACADEMY_ORIGIN;let url;try{url=new URL(value);}catch{throw fail('The Academy connection is unavailable.',503);}if(url.protocol!=='https:'||url.origin!==value)throw fail('The Academy connection is unavailable.',503);return url.origin;}
++// Public content only: never forward cookies, bearer tokens or source secrets.
++// A validated empty publication is authoritative. Errors are never cached as empty.
++export async function publishedAnnouncements(request,env,fetcher,{cache=globalThis.caches?.default}={}){
++ const url=new URL(request.url),origin=authority(env),suffix=url.pathname.slice(publicPath.length),asset=['/image','/pdf'].includes(suffix),query=new URLSearchParams();
++ if(suffix&&!asset)throw fail('Announcement not found.',404);
++ if(asset){const id=url.searchParams.get('id'),hash=url.searchParams.get('asset');if(!/^[a-f0-9-]{36}$/i.test(id||'')||!/^[a-f0-9]{64}$/.test(hash||'')||[...url.searchParams.keys()].some(k=>!['id','asset'].includes(k)))throw fail('Announcement attachment not found.',404);query.set('id',id);query.set('asset',hash);}
++ const cacheKey=new Request(new URL(publicPath+suffix+(asset?'?'+query:''),url.origin));
++ if(cache)try{const hit=await cache.match(cacheKey);if(hit)return new Response(request.method==='HEAD'?null:hit.body,hit);}catch{}
++ const upstream=await fetcher(origin+'/api/academy/announcements/'+(asset?suffix.slice(1):'published')+(asset?'?'+query:''),{method:asset?request.method:'GET',headers:{Accept:asset?'*/*':'application/json'},credentials:'omit',redirect:'manual',signal:AbortSignal.timeout(20000)});
++ if(!upstream.ok){let code='ANNOUNCEMENTS_UNAVAILABLE';if(!asset&&upstream.status===503){try{const value=await bodyJSON(upstream.body,4096);if(value.code==='ANNOUNCEMENTS_NOT_ACTIVATED')code=value.code;}catch{}}else await upstream.body?.cancel();throw fail(asset?'Announcement attachment unavailable.':'Announcements could not be loaded.',asset&&upstream.status===404?404:503,code);}
++ const headers={'Cache-Control':'public, max-age=60, must-revalidate','X-Content-Type-Options':'nosniff'};let response;
++ if(asset){const type=upstream.headers.get('Content-Type')?.split(';')[0];if(suffix==='/pdf'?type!=='application/pdf':!['image/jpeg','image/png','image/webp'].includes(type)){await upstream.body?.cancel();throw fail('Announcement attachment unavailable.',503);}const length=Number(upstream.headers.get('Content-Length'));if(length>(suffix==='/pdf'?10:5)*1024*1024){await upstream.body?.cancel();throw fail('Announcement attachment unavailable.',503);}response=new Response(request.method==='HEAD'?null:upstream.body,{headers:{...headers,'Content-Type':type,...(length>0?{'Content-Length':String(length)}:{})}});
++ }else{const checked=normaliseAnnouncementFeed(await bodyJSON(upstream.body,2_500_000),origin);for(const row of checked.announcements)for(const key of ['imageUrl','pdfUrl'])if(row[key]){const u=new URL(row[key]);row[key]=publicPath+'/'+(key==='imageUrl'?'image':'pdf')+u.search;}response=json(checked,200,headers);}
++ if(cache&&request.method==='GET')try{await cache.put(cacheKey,response.clone());}catch{}
++ if(request.method==='HEAD')return new Response(null,response);
++ return response;
++}
+diff --git a/src/parallel-worker.mjs b/src/parallel-worker.mjs
+index 6a45d25..1ae4c5e 100644
+--- a/src/parallel-worker.mjs
++++ b/src/parallel-worker.mjs
+@@ -4,7 +4,7 @@ import {json} from './protocol.mjs';
+ export async function connected(request,env,ctx){
+  if(env.ENVIRONMENT!=='parallel'||env.AUTHORITY_MODE!=='ACADEMY'||env.PREVIEW_LOGIN_ENABLED==='1'||!/^https:\/\//.test(env.ACADEMY_ORIGIN||'')||!/^https:\/\//.test(env.ACADEMY_API_ORIGIN||'')||env.ACADEMY_ORIGIN==='https://academy.invalid')return json({success:false,error:'The real parallel configuration is required.'},503);
+  if(env.PLATFORM_ENABLED==='1'&&[env.ACADEMY_TO_WEBSITE_SECRET,env.WEBSITE_TO_ACADEMY_SECRET].some(s=>typeof s!=='string'||s.length<32))return json({success:false,error:'The Academy connection is not configured.'},503);
+- const path=new URL(request.url).pathname,privateRoute=path.startsWith('/auth/')||path.startsWith('/api/')&&!['/api/config','/api/public/home','/api/public/circles'].includes(path)&&!/^\/api\/public\/circles\/covers\/[a-f0-9]{64}$/.test(path);
++ const path=new URL(request.url).pathname,privateRoute=path.startsWith('/auth/')||path.startsWith('/api/')&&!['/api/config','/api/public/home','/api/public/circles','/api/public/academy-announcements'].includes(path)&&!/^\/api\/public\/academy-announcements\/(?:image|pdf)$/.test(path)&&!/^\/api\/public\/circles\/covers\/[a-f0-9]{64}$/.test(path);
+  // Signed imports can arrive while real browser access remains closed. The
+  // ordinary receiver still authenticates every delivery before any mutation.
+  return env.PARALLEL_ACCESS_ENABLED!=='1'&&privateRoute?json({success:false,error:'Parallel access is being synchronised. Existing Academy screens remain available.',code:'PARALLEL_PREPARING'},503):handle(request,env,ctx);
+diff --git a/src/worker.mjs b/src/worker.mjs
+index 39b761f..9f08b12 100644
+--- a/src/worker.mjs
++++ b/src/worker.mjs
+@@ -1,3 +1,4 @@
++import {publishedAnnouncements} from './announcements.mjs';
+ import {COVER_LIMIT,cardOptions,uploadCover,previewCover} from './playlist-cards.mjs';
+ import {publishedPlaylistDescriptors} from './playlist-catalogue.mjs';
+ import {mediaOptions,attributionChange,attachMedia,addPublishedAttribution,mediaCompanionSave,mediaDetail,addSupportingFiles} from './media-attribution.mjs';
+@@ -35,6 +36,7 @@ async function forwardSignIn(request,env,store,input,fetcher){
+ }
+ async function route(request,env,store,fetcher){
+  const url=new URL(request.url),path=url.pathname,method=request.method;
++ if((path==='/api/public/academy-announcements'||path.startsWith('/api/public/academy-announcements/'))&&['GET','HEAD'].includes(method))return publishedAnnouncements(request,env,fetcher);
+  if(path==='/api/public/header-date'&&method==='GET')return publicHeaderDate(request,env,fetcher);
+  if(path==='/api/public/circles'&&method==='GET')return json(await publicCatalogue(env),200,{'Cache-Control':'public, max-age=60'});
+  const publicCover=path.match(/^\/api\/public\/circles\/covers\/([a-f0-9]{64})$/);
+diff --git a/tests/announcements.test.mjs b/tests/announcements.test.mjs
+new file mode 100644
+index 0000000..b882976
+--- /dev/null
++++ b/tests/announcements.test.mjs
+@@ -0,0 +1,7 @@
++import test from 'node:test';import assert from 'node:assert/strict';import {publishedAnnouncements} from '../src/announcements.mjs';import {announcementFeed,normaliseAnnouncementFeed} from '../public/shared/announcement-feed.mjs';
++const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',hash='a'.repeat(64),schema='ACADEMY_ANNOUNCEMENTS_PUBLIC_V2',row={id,title:'A notice',summary:'Admin summary',message:'Full details',imageUrl:'/api/academy/announcements/image?id='+id+'&asset='+hash,imageAlt:'Flyer',pdfUrl:'',pdfName:'',enrolmentUrl:'https://example.test/form'},value=(generation=1,announcements=[row])=>({schema,success:true,generation,announcements}),env={ACADEMY_API_ORIGIN:'https://source.test'},request=()=>new Request('https://target.test/api/public/academy-announcements');
++test('proxy uses only fixed public Source routes, rewrites checked assets and never forwards credentials',async()=>{let calls=0;const r=await publishedAnnouncements(request(),env,async(url,opts)=>{calls++;assert.equal(url,'https://source.test/api/academy/announcements/published');assert.equal(opts.headers.Authorization,undefined);assert.equal(opts.headers.Cookie,undefined);assert.equal(opts.redirect,'manual');assert.equal(opts.credentials,'omit');return Response.json(value());},{cache:null});assert.equal(r.status,200);const body=await r.json();assert.equal(body.announcements[0].imageUrl,'/api/public/academy-announcements/image?id='+id+'&asset='+hash);normaliseAnnouncementFeed(body,'https://target.test','/api/public/academy-announcements/');assert.equal(calls,1);});
++test('successful empty is cached; temporary failure is not cached or presented as empty; only explicit unactivated preserves old notices',async()=>{let saved,calls=0;const cache={async match(){return saved?.clone();},async put(k,v){saved=v;}},fetcher=async()=>{calls++;return Response.json(value(2,[]));};assert.deepEqual((await (await publishedAnnouncements(request(),env,fetcher,{cache})).json()).announcements,[]);await publishedAnnouncements(request(),env,fetcher,{cache});assert.equal(calls,1);for(const code of ['ANNOUNCEMENTS_NOT_ACTIVATED','ANY_PRIVATE_REASON']){let puts=0;await assert.rejects(publishedAnnouncements(request(),env,async()=>Response.json({success:false,code},{status:503}),{cache:{async put(){puts++;}}}),error=>error.status===503&&error.code===(code==='ANNOUNCEMENTS_NOT_ACTIVATED'?code:'ANNOUNCEMENTS_UNAVAILABLE'));assert.equal(puts,0);}});
++test('assets support HEAD with no bearer/cookie, reject malformed/private URLs and failed redirects',async()=>{const url='https://target.test/api/public/academy-announcements/image?id='+id+'&asset='+hash;const r=await publishedAnnouncements(new Request(url,{method:'HEAD',headers:{Cookie:'secret',Authorization:'Bearer private'}}),env,async(u,o)=>{assert(u.startsWith('https://source.test/api/academy/announcements/image?'));assert.equal(o.method,'HEAD');assert.equal(o.headers.Cookie,undefined);return new Response(null,{headers:{'Content-Type':'image/png','Content-Length':'99'}});},{cache:null});assert.equal(r.status,200);assert.equal((await r.arrayBuffer()).byteLength,0);await assert.rejects(publishedAnnouncements(new Request(url+'&draft=1'),env,()=>{throw Error('should not fetch');},{cache:null}),e=>e.status===404);await assert.rejects(publishedAnnouncements(request(),env,async()=>new Response(null,{status:302,headers:{Location:'https://private.test'}}),{cache:null}),e=>e.status===503);});
++test('browser feed coalesces calls, caches empty independently of accounts and retains last-good on failure without generation regression',async()=>{let calls=0,now=0,next=value(1,[]),release;const url='https://target.test/feed-'+crypto.randomUUID(),storage=new Map(),store={getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)};const feed=announcementFeed({url,assetBase:'https://source.test',now:()=>now,storage:store,fetcher:async()=>{calls++;if(release)await new Promise(r=>release=r);return Response.json(next);}});assert.deepEqual((await Promise.all([feed.load(),feed.load()])).map(v=>v.announcements.length),[0,0]);assert.equal(calls,1);now=59000;await feed.load();assert.equal(calls,1);now=61000;next=value(2);await feed.load();assert.equal(calls,2);const second=announcementFeed({url,assetBase:'https://source.test',now:()=>now,storage:store,fetcher:()=>{throw Error('Should reuse');}});assert.equal((await second.load()).generation,2);next=value(1);await assert.rejects(feed.load({force:true}),/newer/);assert.equal(feed.saved.generation,2);assert.throws(()=>normaliseAnnouncementFeed(value(3,[{...row,imageUrl:'https://outside.test/private.png'}]),'https://source.test'),/attachment/);});
++test('actual unsigned Worker feed bypasses account/permission SQL, including a sign-in hold',async()=>{const {handle}=await import('../src/worker.mjs'),{connected}=await import('../src/parallel-worker.mjs');let queries=0,reads=0;const config={...env,PLATFORM_ENABLED:'1',ENVIRONMENT:'local',DB:{withSession(){return{prepare(){queries++;throw Error('Public announcements must not query D1');}};}}},fetcher=async()=>{reads++;return Response.json(value());};const response=await handle(request(),config,null,fetcher);assert.equal(response.status,200);assert.equal(response.headers.get('X-Local-D1-Queries'),'0');assert.equal(queries,0);assert.equal(reads,1);const original=globalThis.fetch;try{globalThis.fetch=fetcher;const held=await connected(request(),{...config,ENVIRONMENT:'parallel',AUTHORITY_MODE:'ACADEMY',ACADEMY_ORIGIN:'https://academy.test',ACADEMY_TO_WEBSITE_SECRET:'a'.repeat(32),WEBSITE_TO_ACADEMY_SECRET:'b'.repeat(32),PARALLEL_ACCESS_ENABLED:'0'},null);assert.equal(held.status,200);assert.equal(queries,0);}finally{globalThis.fetch=original;}});
+diff --git a/tests/page-shell-followup.test.mjs b/tests/page-shell-followup.test.mjs
+index d59ab56..d0105a1 100644
+--- a/tests/page-shell-followup.test.mjs
++++ b/tests/page-shell-followup.test.mjs
+@@ -8,18 +8,18 @@ function browser(html='<header><div class="programme-page-actions"></div></heade
+  Object.defineProperties(window,{history:{value:history,configurable:true},location:{value:{href:'https://site.test/studio/',origin:'https://site.test'},configurable:true},crypto:{value:{randomUUID},configurable:true},sessionStorage:{value:{getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,v),removeItem:k=>values.delete(k)},configurable:true}});
+  return {window,document,history,values,calls};
+ }
+-test('shared arrows track real router history, honour dirty-work guards and disable unavailable directions',()=>{
++test('single Back tracks real router history, honours dirty-work guards and keeps browser-native Forward available',()=>{
+  const f=browser();let leave=false;const h=installPageHistory({...f,canLeave:()=>leave});h.update({accountId:'one'});assert(h.bar.querySelector('[data-page-back]').disabled);f.history.pushState({},'','?website=one');f.history.replaceState({},'','?website=one#view=read');assert.deepEqual(h.position,{index:1,max:1});
+  h.bar.querySelector('[data-page-back]').click();assert.deepEqual(f.calls,[]);leave=true;h.bar.querySelector('[data-page-back]').click();assert.deepEqual(f.calls,['back']);
+  const trace=f.history.state.m4lCirclesNavigation.trace;f.history.replaceState({m4lCirclesNavigation:{trace,index:0}},''); // external pop state is tested with the native marker below
+- const native=JSON.parse([...f.values.values()][0]);native.index=0;f.history.state.m4lCirclesNavigation.index=0;f.window.dispatchEvent(new f.window.Event('popstate'));assert.equal(h.position.index,0);assert(!h.bar.querySelector('[data-page-forward]').disabled);h.bar.querySelector('[data-page-forward]').click();assert.deepEqual(f.calls,['back','forward']);
++ const native=JSON.parse([...f.values.values()][0]);native.index=0;f.history.state.m4lCirclesNavigation.index=0;f.window.dispatchEvent(new f.window.Event('popstate'));assert.equal(h.position.index,0);assert.equal(h.bar.querySelector('[data-page-forward]'),null);assert(h.bar.querySelector('[data-page-back]').disabled);f.history.forward();assert.deepEqual(f.calls,['back','forward']);
+ });
+ test('verified account changes discard the previous trace and navigation storage contains no URL or credential',()=>{
+  const f=browser(),h=installPageHistory(f);assert.equal(h.position,null);h.update({accountId:'one'});f.history.pushState({},'','?website=private');h.update({accountId:'two'});assert.deepEqual(h.position,{index:0,max:0});assert(h.bar.querySelector('[data-page-back]').disabled);assert(!JSON.stringify([...f.values]).includes('website=private'));assert(!JSON.stringify([...f.values]).includes('token'));h.update(null);assert.deepEqual(h.position,{index:0,max:0});
+ });
+ test('actual Builder, Import and public Prospectus templates each mount one top navigation bar',()=>{
+  const pages=[['../public/builder/index.html','header.pb-header'],['../public/import/index.html','header.import-page-actions'],['../../AcademyStudio-workspace-separation/local-content/release-1093/public/circles/prospectus-2027.html','header.prospectus-header']];
+- for(const [path,target]of pages){const html=readFileSync(new URL(path,import.meta.url),'utf8'),content=html.match(/<body[^>]*>([\s\S]*)<\/body>/i)?.[1];assert(content,path);const f=browser(content),h=installPageHistory({...f,target:f.document.querySelector(target)});h.update(null);assert.equal(f.document.querySelectorAll('.circles-page-navigation').length,1,path);assert.equal(h.bar.parentElement,f.document.querySelector(target),path);assert(h.bar.querySelector('[aria-label="Go back"]'));assert(h.bar.querySelector('[aria-label="Go forward"]'));}
++ for(const [path,target]of pages){const html=readFileSync(new URL(path,import.meta.url),'utf8'),content=html.match(/<body[^>]*>([\s\S]*)<\/body>/i)?.[1];assert(content,path);const f=browser(content),h=installPageHistory({...f,target:f.document.querySelector(target)});h.update(null);assert.equal(f.document.querySelectorAll('.circles-page-navigation').length,1,path);assert.equal(h.bar.parentElement,f.document.querySelector(target),path);assert(h.bar.querySelector('[aria-label="Go back"]'));assert.equal(h.bar.querySelector('[aria-label="Go forward"]'),null);}
+ });
+ function shell(){const f=browser('<header class="site-header"><a class="brand"><span>Academy</span></a><span class="circles-header-dates"></span><div class="account-controls"><details id="account-menu"><summary><span id="account-name"></span></summary><div id="account-panel"><nav><button id="home-button"></button><button id="my-websites"></button><button id="manage-button"></button><button id="academy-button"></button></nav></div></details><button id="header-home-button"></button><button id="header-refresh-button"></button><button id="sign-in-button"></button><button id="sign-out-button"></button></div></header>');let checks=0,release;const guard=()=>new Promise(r=>release=r),s=installProgrammeShell({...f,checkAdministration:()=>{checks++;return guard();}});return {...f,s,get checks(){return checks;},release:value=>release(value)};}
+ test('Studio has Learn/Admin only, checked scoped management discovery, and stale-account capability cannot restore Admin',async()=>{
+diff --git a/tests/public-home-review.test.mjs b/tests/public-home-review.test.mjs
+index a893c30..9041be9 100644
+--- a/tests/public-home-review.test.mjs
++++ b/tests/public-home-review.test.mjs
+@@ -8,7 +8,7 @@ test('public four-block merge keeps both independent destinations and restores t
+  render(false,null);assert.equal(document.querySelectorAll('.public-worship-links a').length,2);assert(document.querySelector('[data-home-area=mothers]').hidden);
+ });
+ test('announcement selection preserves the original flyer actions and complete exam text with idempotent observer refreshes',async()=>{
+- const {window,document}=parseHTML('<section id="academy-news"><div id="academy-news-reel"><article class="academy-news-card"><img alt="Original programme flyer"><button class="flyer-overlay-button">All programmes</button></article><article class="academy-news-card"><h3>Original exam wishes</h3><p>Actual wishes</p><p lang="ar" dir="rtl">رَبِّ زِدْنِي عِلْمًا</p></article></div></section>');let opened=0;const gallery=document.querySelector('.flyer-overlay-button');gallery.onclick=()=>opened++;const refine=publicHome(document);refine();assert.equal(document.querySelectorAll('.announcement-layout').length,1);
++ const {window,document}=parseHTML('<section id="academy-news"><div id="academy-news-reel"><article class="academy-news-card"><img alt="Original programme flyer"><button class="flyer-overlay-button">All programmes</button></article><article class="academy-news-card"><h3>Original exam wishes</h3><p>Actual wishes</p><p lang="ar" dir="rtl">رَبِّ زِدْنِي عِلْمًا</p></article></div></section>');window.fetch=async()=>Response.json({code:'ANNOUNCEMENTS_NOT_ACTIVATED'},{status:503});let opened=0;const gallery=document.querySelector('.flyer-overlay-button');gallery.onclick=()=>opened++;const refine=publicHome(document);refine();await new Promise(r=>setImmediate(r));assert.equal(document.querySelectorAll('.announcement-layout').length,1);
+  const buttons=document.querySelectorAll('.announcement-summary-list>button');buttons[1].click();assert.equal(document.querySelector('#announcement-detail-1').hidden,false);assert.match(document.querySelector('#announcement-detail-1').textContent,/رَبِّ/);buttons[0].click();gallery.click();assert.equal(opened,1);
+  let mutations=0;const observer=new window.MutationObserver(rows=>mutations+=rows.length);observer.observe(document.body,{subtree:true,childList:true,attributes:true});refine();await new Promise(r=>setImmediate(r));observer.disconnect();assert.equal(mutations,0);
+ });
+@@ -16,3 +16,4 @@ test('common badges reflect checked rights and free policy without converting st
+  const items=[{kind:'COURSE',key:'paid',websiteId:'paid',title:'Paid',cover:'/cover.png'},{kind:'COURSE',key:'free',websiteId:'free',title:'Free',cover:'/cover.png'},{kind:'TAFSEER',key:'yaseen',websiteId:'surah',title:'Surah Yaseen'}],rights=[{websiteId:'paid',canOpen:true,subscriptionStatus:'required',coursePolicy:{model:'PAID'}},{websiteId:'free',canOpen:true,subscriptionStatus:'free',coursePolicy:{model:'FREE'}},{websiteId:'surah',canOpen:true,subscriptionStatus:'subscribed'}];
+  const {document}=parseHTML(circlesCatalogue(items,rights,{applicationPath:'/studio/'}));assert.equal(document.querySelectorAll('.access-locked').length,1);assert.equal(document.querySelectorAll('.access-free').length,1);assert.equal(document.querySelectorAll('.access-open').length,1);assert.equal(document.querySelector('.access-free svg'),null);assert.equal(document.querySelectorAll('.collection-lock').length,3);
+ });
++test('fresh uncached activated-feed failures show retry and never restore frozen notices',async()=>{for(const code of ['ANNOUNCEMENT_PUBLICATION_PENDING','ANNOUNCEMENTS_UNAVAILABLE']){const {window,document}=parseHTML('<html><head></head><body><section id="academy-news"><div id="academy-news-reel"><article class="academy-news-card"><h3>Withdrawn frozen notice</h3></article></div></section></body></html>');Object.defineProperty(document,'baseURI',{value:'https://fresh-'+crypto.randomUUID()+'.test/'});window.fetch=async()=>Response.json({success:false,error:'Publication recovery pending',code},{status:503});publicHome(document)();await new Promise(r=>setImmediate(r));assert(document.querySelector('#academy-news-reel').hidden);assert.equal(document.querySelector('.announcement-layout'),null);assert.match(document.querySelector('.announcement-public-panel').textContent,/Announcements could not be loaded/);assert.equal(document.querySelector('.announcement-public-panel button').textContent,'Try again');}});

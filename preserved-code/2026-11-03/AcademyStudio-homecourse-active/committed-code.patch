@@ -1,0 +1,495 @@
+diff --git a/public/circles-dashboard.mjs b/public/circles-dashboard.mjs
+index fdbf184..081650f 100644
+--- a/public/circles-dashboard.mjs
++++ b/public/circles-dashboard.mjs
+@@ -1,7 +1,7 @@
+ import {api,identity} from './api.mjs';
+ import {dashboardHTML} from './shared/circles-dashboard-view.mjs';
+ export function circlesDashboard({onUpdate,openAcademy,show=()=>true,onWorkspace=()=>{}}){
+- let data=null,available=[],mode=null,pending=false,error='',ticket=0;const cache=new Map(),headers=new WeakMap();let renderedHost,renderedHTML;
++ let data=null,available=[],mode=null,pending=false,error='',ticket=0;const cache=new Map(),requests=new Map(),headers=new WeakMap();let renderedHost,renderedHTML;
+  function refresh(){
+   const signed=Boolean(identity.account),hero=document.getElementById('learning-circles');
+   for(const nav of document.querySelectorAll('.public-home-header .site-nav')){
+@@ -14,14 +14,20 @@ export function circlesDashboard({onUpdate,openAcademy,show=()=>true,onWorkspace
+   const html=data&&!pending?dashboardHTML(data):`<div class="circles-dashboard-panel"><h2>Your Academy dashboard</h2><p role="status">${pending?'Loading your Academy dashboard…':'Your dashboard could not be loaded.'}</p>${error?'<p>Open Academy or try again to check your dashboard.</p>':''}<button type="button" data-circles-dashboard-refresh${pending?' disabled':''}>${pending?'Loading…':'Try again'}</button><button type="button" data-circles-dashboard-home>Open Academy</button></div>`;
+   if(renderedHost!==host||renderedHTML!==html){renderedHost=host;renderedHTML=html;host.innerHTML=html;}
+  }
++ function request(selected,force,generation,accountId){
++  const key=JSON.stringify([accountId,generation,selected||'default',force]);
++  if(requests.has(key))return requests.get(key);
++  const loading=api('/api/circles/dashboard',{body:{...(selected?{mode:selected}:{}),...(force?{refresh:true}:{})}}).finally(()=>{if(requests.get(key)===loading)requests.delete(key);});
++  requests.set(key,loading);return loading;
++ }
+  async function load(selected=mode,force=false){
+   if(!identity.account)return;const current=++ticket,generation=identity.generation;mode=selected;pending=true;error='';refresh();
+-  try{const key=selected||'default';const value=!force&&cache.has(key)?cache.get(key):await api('/api/circles/dashboard',{body:{...(selected?{mode:selected}:{}),...(force?{refresh:true}:{})}});if(current!==ticket||generation!==identity.generation)return;data=value;available=value.availableModes;mode=value.mode;cache.set(mode,value);cache.set(key,value);}
+-  catch(e){if(current!==ticket||generation!==identity.generation)return;data=null;error=e.message;}
++  try{const key=selected||'default';const value=!force&&cache.has(key)?cache.get(key):await request(selected,force,generation,identity.account.accountId);if(current!==ticket||generation!==identity.generation)return;data=value;available=value.availableModes;mode=value.mode;cache.set(mode,value);cache.set(key,value);}
++  catch(e){if(current!==ticket||generation!==identity.generation)return;data=null;error=e.message;if([401,403,409].includes(e.status)){cache.clear();requests.clear();}}
+   finally{if(current===ticket&&generation===identity.generation){pending=false;onUpdate();}}
+  }
+- function clear(){ticket++;cache.clear();data=null;available=[];mode=null;pending=false;error='';refresh();}
+- window.addEventListener('website-course-policy-changed',()=>{const visible=Boolean(data)&&show();ticket++;cache.clear();data=null;pending=false;if(visible&&identity.account)void load(mode);else refresh();});
++ function clear(){ticket++;cache.clear();requests.clear();data=null;available=[];mode=null;pending=false;error='';refresh();}
++ window.addEventListener('website-course-policy-changed',()=>{const visible=Boolean(data)&&show();ticket++;cache.clear();requests.clear();data=null;pending=false;if(visible&&identity.account)void load(mode);else refresh();});
+  document.addEventListener('click',event=>{
+   if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
+   const choice=event.target.closest('[data-circles-workspace]');if(choice){event.preventDefault();event.stopImmediatePropagation();onWorkspace();if(choice.dataset.circlesWorkspace!==mode)void load(choice.dataset.circlesWorkspace);return;}
+diff --git a/public/shared/circles-course-row.mjs b/public/shared/circles-course-row.mjs
+index b9c6f31..8e86ac5 100644
+--- a/public/shared/circles-course-row.mjs
++++ b/public/shared/circles-course-row.mjs
+@@ -1,15 +1,17 @@
+ import {esc} from './model.mjs';
++import {homepageFreeCourseHref} from './homepage-free-courses.mjs';
+ 
+ export function purchasedCourseCards(courses){
+  return courses.map(course=>`<a class="circles-purchased-course" href="${esc(course.href)}" aria-label="${esc(course.label)} · Your paid course">${course.cover?`<img src="${esc(course.cover)}" alt="" loading="lazy">`:''}<span><small>Your paid course</small><h3>${esc(course.label)}</h3></span><span aria-hidden="true">↗</span></a>`).join('');
+ }
+ 
+-// Keep the design owner's artwork. Free cards are layout placeholders until
+-// their placement and timed classroom connection are approved separately.
++// Keep the artwork and the five explicitly reactivated free-course bookmarks.
++// Other free cards retain their existing inactive presentation.
+ export function circlesCourseRow(document){
+  const templates=new WeakMap(),rendered=new WeakMap();
+  function inactiveCards(root){
+   for(const card of root.querySelectorAll('a[data-free-course]')){
++   if(homepageFreeCourseHref(card.dataset.freeCourse))continue;
+    const placeholder=document.createElement('article');
+    placeholder.className=card.className+' circles-free-inactive';
+    placeholder.innerHTML=card.innerHTML;placeholder.setAttribute('aria-disabled','true');
+@@ -25,14 +27,14 @@ export function circlesCourseRow(document){
+   if(rendered.get(section)===signature){inactiveCards(section);return;}
+   section.innerHTML=templates.get(section);
+   if(signedIn){
+-   const publicTrack=section.querySelector('#free-course-reel'),freeCards=[...(publicTrack?.querySelectorAll('.circles-free-inactive')||[])];
++   const publicTrack=section.querySelector('#free-course-reel'),freeCards=[...(publicTrack?.querySelectorAll('.free-course-card:not(.paid-course-card)')||[])];
+    section.querySelector('.eyebrow').textContent='Your learning';
+    section.querySelector('h2').textContent='My courses';
+    section.querySelector('.branch-programme-intro').textContent='Your current and completed paid courses, with the latest classes first.';
+    publicTrack.id='circles-purchased-course-row';publicTrack.classList.add('circles-purchased-course-row');publicTrack.setAttribute('aria-label','Your paid courses');
+    const courses=navigation?.purchasedCourses;
+    publicTrack.innerHTML=!courses?'<p role="status">Loading your courses…</p>':courses.length?purchasedCourseCards(courses):'<p>No paid courses are linked to this account.</p>';
+-   if(freeCards.length){const free=document.createElement('section');free.className='circles-free-placeholders';free.setAttribute('aria-labelledby','circles-free-placeholders-title');free.innerHTML='<h3 id="circles-free-placeholders-title">Free courses</h3><p>Inactive for now</p><div class="free-course-reel" aria-label="Inactive free courses"></div>';free.querySelector('.free-course-reel').append(...freeCards);section.append(free);}
++   if(freeCards.length){const free=document.createElement('section');free.className='circles-free-placeholders';free.setAttribute('aria-labelledby','circles-free-placeholders-title');free.innerHTML='<h3 id="circles-free-placeholders-title">Free courses</h3><div class="free-course-reel" aria-label="Free courses"></div>';free.querySelector('.free-course-reel').append(...freeCards);section.append(free);}
+   }
+   // Store before the observer refreshes; unchanged output causes no mutations.
+   rendered.set(section,signature);
+diff --git a/public/shared/circles-dashboard-view.mjs b/public/shared/circles-dashboard-view.mjs
+index 7868e12..71d1097 100644
+--- a/public/shared/circles-dashboard-view.mjs
++++ b/public/shared/circles-dashboard-view.mjs
+@@ -3,10 +3,10 @@ const action=(label,value,classes='')=>`<button type="button" class="${classes}"
+ const item=(title,detail,button='')=>`<li><div><strong>${esc(title)}</strong>${detail?`<p>${esc(detail)}</p>`:''}</div>${button}</li>`;
+ const panel=(title,content,classes='')=>`<section class="circles-dashboard-panel ${classes}"><h3>${esc(title)}</h3>${content}</section>`;
+ const list=(rows,empty)=>rows.length?`<ul>${rows.join('')}</ul>`:`<p class="circles-dashboard-empty">${esc(empty)}</p>`;
+-export function timetableDays(rows=[]){
++export function timetableProgrammes(rows=[]){
+  const groups=new Map();
+- for(const row of rows){const activityKey=row.kind+':'+row.activityId,key=JSON.stringify([activityKey.toUpperCase(),row.date]);if(!groups.has(key))groups.set(key,{activityKey,activityName:row.activityName,date:row.date,lessons:[]});groups.get(key).lessons.push(row);}
+- return [...groups.values()].map(group=>({...group,lessons:group.lessons.sort((a,b)=>Number(a.startsAt)-Number(b.startsAt)||String(a.startTime).localeCompare(String(b.startTime)))})).sort((a,b)=>a.date.localeCompare(b.date)||Number(a.lessons[0].startsAt)-Number(b.lessons[0].startsAt)||a.activityName.localeCompare(b.activityName));
++ for(const row of rows){const activityKey=row.kind+':'+row.activityId,key=activityKey.toUpperCase();if(!groups.has(key))groups.set(key,{activityKey,activityName:row.activityName,lessons:[]});groups.get(key).lessons.push(row);}
++ return [...groups.values()].map(group=>({...group,lessons:group.lessons.sort((a,b)=>a.date.localeCompare(b.date)||Number(a.startsAt)-Number(b.startsAt)||String(a.startTime).localeCompare(String(b.startTime)))})).sort((a,b)=>a.lessons[0].date.localeCompare(b.lessons[0].date)||Number(a.lessons[0].startsAt)-Number(b.lessons[0].startsAt)||a.activityName.localeCompare(b.activityName));
+ }
+ export function assessmentGroups(data){
+  const allowed=new Map(data.activities.map(a=>[a.activityKey.toUpperCase(),a])),groups=new Map(),today=new Intl.DateTimeFormat('en-CA',{timeZone:data.timezone,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+@@ -17,19 +17,19 @@ export function assessmentGroups(data){
+ }
+ export function dashboardHTML(data){
+  const mode=data.mode,go=(label,tool,activityKey)=>action(label,{mode,tool,...(activityKey?{activityKey}:{})});
+- const groupedAdmin=mode==='admin'&&data.adminBadge==='Global Admin',days=groupedAdmin?timetableDays(data.timetable):[];
+- const programmeDay=group=>`<li class="circles-programme-day"><details><summary><div><strong>${esc(group.activityName)}</strong><p>${esc(group.date)} · ${group.lessons.length} ${group.lessons.length===1?'lesson':'lessons'}</p></div><span class="circles-session-info">Info</span></summary><div class="circles-day-lessons"><h4>Lessons on ${esc(group.date)}</h4>${list(group.lessons.map(r=>item([r.subjectName,r.moduleName].filter(Boolean).join(' · ')||r.title||'Lesson',[r.startTime+'–'+r.endTime,r.status==='SCHEDULED'?'':r.status].filter(Boolean).join(' · '))),'No lessons for this date.')}${go('Open programme timetable','timetable',group.activityKey)}</div></details></li>`;
++ const groupedAdmin=mode==='admin'&&data.adminBadge==='Global Admin',programmes=groupedAdmin?timetableProgrammes(data.timetable):[];
++ const programmeEntry=group=>`<li class="circles-programme-day circles-programme-entry"><details><summary title="Show all sessions in the displayed week"><div><strong>${esc(group.activityName)}</strong><p>${group.lessons.length} ${group.lessons.length===1?'session':'sessions'}</p></div><span class="circles-session-info" aria-hidden="true">ⓘ</span><span class="screen-reader-only">Show session details</span></summary><div class="circles-day-lessons"><h4>Sessions this week</h4>${list(group.lessons.map(r=>item([r.subjectName,r.moduleName].filter(Boolean).join(' · ')||r.title||'Lesson',[r.date,r.startTime+'–'+r.endTime,r.status==='SCHEDULED'?'':r.status].filter(Boolean).join(' · '))),'No sessions in this week.')}${go('Open programme timetable','timetable',group.activityKey)}</div></details></li>`;
+  const tasks=(data.dueNotes||[]).map(n=>item('Class Note · '+n.title,n.activityName+' · '+n.date,go('Open lesson','timetable',n.activityKey)));
+  if(data.enrolmentRequests?.count)tasks.unshift(item('Enrolment requests need review',data.enrolmentRequests.count+(data.enrolmentRequests.more?'+':'')+' requests',go('Review requests','enrolments')));
+  if(data.messages?.counts.toAcknowledge)tasks.push(item('Messages awaiting acknowledgement',String(data.messages.counts.toAcknowledge)+' notices',go('Open inbox','messages')));
+  const exams=assessmentGroups(data).map(r=>item(r.title,r.area.name+' · '+r.first+(r.last&&r.last!==r.first?' – '+r.last:''),go('Open Imtehaan','assessment',r.area.activityKey)));
+  const attention=panel('For your attention',list(tasks,data.dueNotes===null||data.messages===null||mode==='admin'&&data.enrolmentRequests===null?'Some actions could not be checked.':'No outstanding actions in the available Academy records.')+'<h4>Upcoming exams (Imtehaan)</h4>'+list(exams,data.assessments===null?'Upcoming exams could not be checked.':'No current or upcoming published exams.'),'circles-attention');
+  const next=(data.timetable||[]).filter(r=>r.status==='SCHEDULED'&&Number(r.endsAt)>Date.now()).sort((a,b)=>a.startsAt-b.startsAt).slice(0,3);
+- const upcomingDays=days.map(group=>({...group,next:Math.min(...group.lessons.filter(r=>r.status==='SCHEDULED'&&Number(r.endsAt)>Date.now()).map(r=>Number(r.startsAt)))})).filter(group=>Number.isFinite(group.next)).sort((a,b)=>a.next-b.next).slice(0,3);
+- const nextPanel=panel('Coming up next',list(groupedAdmin?upcomingDays.map(programmeDay):next.map(r=>item([r.subjectName,r.moduleName].filter(Boolean).join(' · ')||r.title||r.activityName,r.activityName+' · '+r.date+' · '+r.startTime+'–'+r.endTime,go('Open timetable','timetable',r.kind+':'+r.activityId))),'No upcoming sessions in this timetable week.'));
++ const upcomingProgrammes=programmes.map(group=>({...group,next:Math.min(...group.lessons.filter(r=>r.status==='SCHEDULED'&&Number(r.endsAt)>Date.now()).map(r=>Number(r.startsAt)))})).filter(group=>Number.isFinite(group.next)).sort((a,b)=>a.next-b.next).slice(0,3);
++ const nextPanel=panel('Coming up next',list(groupedAdmin?upcomingProgrammes.map(programmeEntry):next.map(r=>item([r.subjectName,r.moduleName].filter(Boolean).join(' · ')||r.title||r.activityName,r.activityName+' · '+r.date+' · '+r.startTime+'–'+r.endTime,go('Open timetable','timetable',r.kind+':'+r.activityId))),'No upcoming sessions in this timetable week.'));
+  const messages=panel('Messages',data.messages?`<p>${esc(data.messages.counts.unread)} unread</p>`+list(data.messages.notices.map(n=>item(n.subject,n.sender+(n.unread?' · Unread':''),go('Open inbox','messages'))),'No notices in your inbox.')+go('View inbox','messages'):'<p>Messages could not be checked.</p>'+go('Open Academy inbox','messages'));
+- const areas=panel(mode==='admin'?'Manage programmes and courses':mode==='teach'?'Continue teaching':'Continue learning',list(data.activities.map(a=>item(a.name,a.roles.map(r=>r.replaceAll('_',' ')).join(' · '),a.destinationHref?`<a class="circles-dashboard-link" href="${esc(a.destinationHref)}">Open</a>`:go('Open','activity',a.activityKey))),'No programmes assigned in this workspace.'));
+- const week=panel('This week',`<p>${esc(data.startDate||'')} – ${esc(data.endDate||'')}</p>`+list(groupedAdmin?days.map(programmeDay):data.timetable.map(r=>item(r.activityName,[r.date,r.startTime+'–'+r.endTime,r.subjectName||r.title,r.status==='SCHEDULED'?'':r.status].filter(Boolean).join(' · '),go('Open','timetable',r.kind+':'+r.activityId))),'No sessions in this timetable week.')+go('View full timetable','home'));
++ const areas=mode==='admin'?`<section class="circles-dashboard-panel circles-areas circles-curriculum">${go('Manage Curriculum','curriculum')}</section>`:panel(mode==='teach'?'Continue teaching':'Continue learning',list(data.activities.map(a=>item(a.name,a.roles.map(r=>r.replaceAll('_',' ')).join(' · '),a.destinationHref?`<a class="circles-dashboard-link" href="${esc(a.destinationHref)}">Open</a>`:go('Open','activity',a.activityKey))),'No programmes assigned in this workspace.'),'circles-areas');
++ const week=panel('This week',`<p>${esc(data.startDate||'')} – ${esc(data.endDate||'')}</p>`+list(groupedAdmin?programmes.map(programmeEntry):data.timetable.map(r=>item(r.activityName,[r.date,r.startTime+'–'+r.endTime,r.subjectName||r.title,r.status==='SCHEDULED'?'':r.status].filter(Boolean).join(' · '),go('Open','timetable',r.kind+':'+r.activityId))),'No sessions in this timetable week.')+go('View full timetable','home'));
+  const calendar=panel('Academy calendar',list((data.calendar||[]).map(r=>item(r.title||r.name||r.description,[r.date||r.startDate,r.endDate].filter(Boolean).join(' – '))),'No Academy calendar events in this week.')+go('Open calendar','calendar'));
+  const tools=panel('Quick tools',`<nav aria-label="Dashboard tools">${go('Library','library')}${go('Voice recorder','recorder')}${mode==='learn'||mode==='admin'?go('Surahs and Duas tracker','progress'):go('Teaching tools','home')}${mode==='teach'?go('Planning and attendance','home'):''}</nav>`);
+  const checked=new Intl.DateTimeFormat('en-GB',{dateStyle:'medium',timeStyle:'short',timeZone:data.timezone}).format(new Date(data.checkedAt));
+diff --git a/public/shared/circles-learn-courses.mjs b/public/shared/circles-learn-courses.mjs
+new file mode 100644
+index 0000000..cb78d7d
+--- /dev/null
++++ b/public/shared/circles-learn-courses.mjs
+@@ -0,0 +1,10 @@
++// Presentation only: both lists come from the same account-checked navigation.
++// Admin reader access must never be presented as a purchase.
++export function learnCourses(navigation,mode){
++ if(!navigation)return null;
++ const purchased=navigation.purchasedCourses;if(!Array.isArray(purchased))return null;
++ if(mode!=='learn'||!Array.isArray(navigation.adminCourses))return purchased;
++ const courses=new Map(purchased.map(course=>[course.href,course]));
++ for(const course of navigation.adminCourses)if(!courses.has(course.href))courses.set(course.href,course);
++ return [...courses.values()];
++}
+diff --git a/public/shared/homepage-free-courses.mjs b/public/shared/homepage-free-courses.mjs
+new file mode 100644
+index 0000000..a08116b
+--- /dev/null
++++ b/public/shared/homepage-free-courses.mjs
+@@ -0,0 +1,10 @@
++// The five featured cards explicitly reactivated by the owner on 31 October.
++// These bookmarks resolve the current public native mapping before the Studio
++// reader checks account/access; they never expose an author payload or media URL.
++export const activeHomepageFreeCourseKeys=Object.freeze([
++ 'imratun-muminah','resilience','living-with-mindfulness',
++ 'my-role-as-a-muslim-friend','my-salaah-my-joy'
++]);
++export function homepageFreeCourseHref(key){
++ return activeHomepageFreeCourseKeys.includes(key)?'/circles/free-learning.html?course='+encodeURIComponent(key):null;
++}
+diff --git a/src/academy-client.mjs b/src/academy-client.mjs
+index 5789c68..73561e5 100644
+--- a/src/academy-client.mjs
++++ b/src/academy-client.mjs
+@@ -4,7 +4,9 @@ export async function academyCommand(env,store,path,input,fetcher){
+  const origin=new URL(env.ACADEMY_API_ORIGIN||env.ACADEMY_ORIGIN);if(origin.protocol!=='https:'||origin.origin!==(env.ACADEMY_API_ORIGIN||env.ACADEMY_ORIGIN))throw fail('Academy connection is unavailable.',503);
+  for(let page=0;page<4;page++){
+  const signed=await signedHeaders(env.WEBSITE_TO_ACADEMY_SECRET,path,{...input,issuedAt:Date.now()});
+- const response=await fetcher(origin.origin+path,{method:'POST',headers:signed.headers,body:signed.payload,redirect:'manual',signal:AbortSignal.timeout(8000)});
++ // A cold dashboard assembles several bounded native readers. Other commands
++ // keep their existing deadline; this adds no retry or background work.
++ const response=await fetcher(origin.origin+path,{method:'POST',headers:signed.headers,body:signed.payload,redirect:'manual',signal:AbortSignal.timeout(path==='/internal/website/dashboard'?20000:8000)});
+  const result=await bodyJSON(response.body,262144);if(!response.ok)throw fail(result.error||'Academy could not complete this action.',response.status>=500?503:response.status,result.code||'ACADEMY_UNAVAILABLE');
+  for(const item of result.deliveries||[])await receive(new Request(env.WEBSITE_ORIGIN+'/internal/academy/events',{method:'POST',headers:{'X-Maktab-Signature':item.signature},body:JSON.stringify(item.delivery)}),env,store);
+  if(result.acknowledge?.length){const ack=await signedHeaders(env.WEBSITE_TO_ACADEMY_SECRET,'/internal/website/ack',{operationIds:result.acknowledge,issuedAt:Date.now()});try{const reply=await fetcher(origin.origin+'/internal/website/ack',{method:'POST',headers:ack.headers,body:ack.payload,redirect:'manual',signal:AbortSignal.timeout(5000)});await reply.body?.cancel();}catch{/* Delivery remains pending and exact retries are safe. */}}
+diff --git a/src/navigation.mjs b/src/navigation.mjs
+index 2bad6fd..25ca2e9 100644
+--- a/src/navigation.mjs
++++ b/src/navigation.mjs
+@@ -29,5 +29,9 @@ export async function circlesNavigation(env,store,actor){
+   FROM json_each(?) r JOIN websites w ON w.website_id=r.value`,[JSON.stringify([...purchased])]):[];
+  const latest=new Map(dates.map(r=>[r.website_id,r.latest_class]));
+  const purchasedCourses=items.filter(i=>purchased.has(i.websiteId)).map(i=>({key:i.key,label:i.title,href:'/studio/?website='+encodeURIComponent(id(i.websiteId)),cover:i.cover,latestClass:latest.get(i.websiteId)||null})).sort((a,b)=>(b.latestClass||0)-(a.latestClass||0)||a.label.localeCompare(b.label));
+- return {academia:['alimiyah','reboot','arabic-intensive'].filter(k=>programmes.includes(k)).map(key=>({key,label:programmeLabels[key]})),mothers:programmes.includes('mothers'),hifz:programmes.includes('hifz')?'https://hifz.maktab4life.org/':null,tafseer:'/studio/?view=collections&collection=tafseer',shortCourses:items.filter(i=>permitted.has(i.websiteId)).map(i=>({label:i.title,href:'/studio/?website='+encodeURIComponent(id(i.websiteId))})),purchasedCourses};
++ // Surface existing Global Admin reader access separately from actual purchases.
++ // Reuse the already checked local rights/policy result; never grant or buy here.
++ const adminPaid=new Set(actor.global_admin?rights.websites.filter(r=>r.canOpen&&r.coursePolicy?.model==='PAID').map(r=>r.websiteId):[]);
++ const adminCourses=items.filter(i=>adminPaid.has(i.websiteId)).map(i=>({key:i.key,label:i.title,href:'/studio/?website='+encodeURIComponent(id(i.websiteId)),cover:i.cover,accessLabel:'Admin access'}));
++ return {academia:['alimiyah','reboot','arabic-intensive'].filter(k=>programmes.includes(k)).map(key=>({key,label:programmeLabels[key]})),mothers:programmes.includes('mothers'),hifz:programmes.includes('hifz')?'https://hifz.maktab4life.org/':null,tafseer:'/studio/?view=collections&collection=tafseer',shortCourses:items.filter(i=>permitted.has(i.websiteId)).map(i=>({label:i.title,href:'/studio/?website='+encodeURIComponent(id(i.websiteId))})),purchasedCourses,adminCourses};
+ }
+diff --git a/tests/circles-dashboard-view.test.mjs b/tests/circles-dashboard-view.test.mjs
+index 9bbd8b3..c0ba7ef 100644
+--- a/tests/circles-dashboard-view.test.mjs
++++ b/tests/circles-dashboard-view.test.mjs
+@@ -1,28 +1,29 @@
+ import test from 'node:test';
+ import assert from 'node:assert/strict';
+-import {dashboardHTML,timetableDays} from '../public/shared/circles-dashboard-view.mjs';
++import {dashboardHTML,timetableProgrammes} from '../public/shared/circles-dashboard-view.mjs';
+ 
+ const lesson=(overrides={})=>({kind:'PROGRAM',activityId:'a',activityName:'Programme A',date:'2050-01-03',startTime:'10:00',endTime:'11:00',startsAt:Date.parse('2050-01-03T10:00:00Z'),endsAt:Date.parse('2050-01-03T11:00:00Z'),status:'SCHEDULED',subjectName:'First lesson',moduleName:'Level 1',...overrides});
+ const summary=overrides=>({mode:'admin',adminBadge:'Global Admin',timezone:'UTC',checkedAt:Date.now(),activities:[],assessments:[],dueNotes:[],messages:{counts:{unread:0,toAcknowledge:0},notices:[]},enrolmentRequests:{count:0},calendar:[],warnings:[],timetable:[],...overrides});
+ const panel=(html,name)=>html.split('<h3>'+name+'</h3>')[1].split('</section>')[0];
+ 
+-test('programme-day grouping preserves every lesson, separates identities/dates and keeps the snapshot unchanged',()=>{
++test('programme grouping combines dates, preserves every session, separates identities and keeps the snapshot unchanged',()=>{
+  const rows=[lesson({subjectName:'Later lesson',startTime:'12:00',endTime:'13:00',startsAt:Date.parse('2050-01-03T12:00:00Z')}),lesson(),lesson({date:'2050-01-04'}),lesson({activityId:'b',activityName:'Programme A'}),lesson({kind:'COURSE'})],before=JSON.stringify(rows);
+- const groups=timetableDays(rows);
+- assert.equal(groups.length,4);assert.equal(groups.reduce((n,g)=>n+g.lessons.length,0),5);
+- assert.deepEqual(groups.find(g=>g.activityKey==='PROGRAM:a'&&g.date==='2050-01-03').lessons.map(r=>r.subjectName),['First lesson','Later lesson']);
++ const groups=timetableProgrammes(rows);
++ assert.equal(groups.length,3);assert.equal(groups.reduce((n,g)=>n+g.lessons.length,0),5);
++ assert.deepEqual(groups.find(g=>g.activityKey==='PROGRAM:a').lessons.map(r=>r.subjectName),['First lesson','Later lesson','First lesson']);
+  assert.equal(JSON.stringify(rows),before);
+ });
+ 
+-test('Global Admin gets one daily entry with Info containing all lessons, including earlier or cancelled sessions',()=>{
+- const rows=[lesson({subjectName:'Earlier lesson',startsAt:1,endsAt:2}),lesson({subjectName:'Upcoming lesson'}),lesson({subjectName:'<Cancelled lesson>',status:'CANCELLED'}),lesson({activityId:'b',activityName:'Programme B'})];
++test('Global Admin gets one entry per programme with an info icon for all dates, including earlier or cancelled sessions',()=>{
++ const rows=[lesson({subjectName:'Earlier lesson',startsAt:1,endsAt:2}),lesson({subjectName:'Upcoming lesson',date:'2050-01-04'}),lesson({subjectName:'<Cancelled lesson>',status:'CANCELLED'}),lesson({activityId:'b',activityName:'Programme B'})];
+  const html=dashboardHTML(summary({timetable:rows}));
+  for(const name of ['Coming up next','This week']){
+   const section=panel(html,name);
+-  assert.equal((section.match(/class="circles-programme-day"/g)||[]).length,2);
+-  assert(section.includes('3 lessons'));assert(section.includes('Info</span>'));
++  assert.equal((section.match(/class="circles-programme-day circles-programme-entry"/g)||[]).length,2);
++  assert(section.includes('3 sessions'));assert(section.includes('ⓘ</span>'));assert(section.includes('Show session details'));
+   for(const title of ['Earlier lesson','Upcoming lesson','&lt;Cancelled lesson&gt;'])assert(section.includes(title));
+   assert(section.includes('CANCELLED'));assert(section.includes('Level 1'));assert(section.includes('10:00–11:00'));
++  assert(section.includes('2050-01-03'));assert(section.includes('2050-01-04'));
+   assert(!section.includes('<Cancelled lesson>'));assert(section.includes('Open programme timetable'));
+  }
+ });
+@@ -35,3 +36,19 @@ test('learning, teaching and programme Admin dashboards retain their individual
+   }
+  }
+ });
++
++test('Admin curriculum is one checked navigation action without an activity list; Learn and Teach keep their own areas',()=>{
++ const activities=[{activityKey:'PROGRAM:one',name:'Private programme',roles:['PROGRAM_ADMIN']},{activityKey:'COURSE:two',name:'Private course',roles:['ADMIN'],destinationHref:'/studio/?website=owned'}];
++ for(const adminBadge of ['Global Admin','Admin']){
++  const html=dashboardHTML(summary({adminBadge,activities}));
++  const section=html.split('<section class="circles-dashboard-panel circles-areas circles-curriculum">')[1].split('</section>')[0];
++  assert.equal((section.match(/data-circles-academy-action=/g)||[]).length,1);
++  assert(section.includes('Manage Curriculum'));assert(section.includes('&quot;tool&quot;:&quot;curriculum&quot;'));
++  assert(!section.includes('<ul>'));assert(!section.includes('Private programme'));assert(!section.includes('Private course'));
++  assert(!html.includes('Manage programmes and courses'));
++ }
++ for(const mode of ['learn','teach']){
++  const html=dashboardHTML(summary({mode,activities})),section=panel(html,mode==='learn'?'Continue learning':'Continue teaching');
++  assert(section.includes('Private programme'));assert(section.includes('Private course'));assert(!html.includes('circles-curriculum'));
++ }
++});
+diff --git a/tests/circles-dashboard.test.mjs b/tests/circles-dashboard.test.mjs
+index bdd9b26..44fd6f9 100644
+--- a/tests/circles-dashboard.test.mjs
++++ b/tests/circles-dashboard.test.mjs
+@@ -19,9 +19,13 @@ test('dashboard reuses current native scopes, caches bounded account summaries a
+   const state=random(),verifier=random(),issued=ok(await f.request('/auth/academy',{cookie:other,method:'POST',body:{state,challenge:await challenge(verifier),dashboard:{mode:'learn',tool:'activity',activityKey:f.source.f.scopes.programB}}}));
+   const response=await f.runtime.dispatchFetch('https://academy.test/api/website-platform/exchange',{method:'POST',headers:{Origin:'https://academy.test','Content-Type':'application/json'},body:JSON.stringify({state,verifier,code:issued.code})});const exchanged=await response.json();assert.equal(response.status,200,exchanged.error);assert.match(exchanged.destination,/\/learn$/);assert(exchanged.token);
+   assert.equal((await f.request('/auth/academy',{cookie,method:'POST',body:{state,challenge:await challenge(verifier),dashboard:{mode:'admin',tool:'home'}}})).status,403);
+-  const adminState=random(),adminVerifier=random(),adminTicket=ok(await f.request('/auth/academy',{cookie:admin,method:'POST',body:{state:adminState,challenge:await challenge(adminVerifier),dashboard:{mode:'admin',tool:'home'}}}));
+-  const adminExchange=await f.runtime.dispatchFetch('https://academy.test/api/website-platform/exchange',{method:'POST',headers:{Origin:'https://academy.test','Content-Type':'application/json'},body:JSON.stringify({state:adminState,verifier:adminVerifier,code:adminTicket.code})}),adminSession=await adminExchange.json();assert.equal(adminExchange.status,200,adminSession.error);assert.equal(adminSession.destination,'/academy/admin/#administration');assert.deepEqual(adminSession.circles,{mode:'admin',returnUrl:'https://website.test/?workspace=admin'});
++  assert.equal((await f.request('/auth/academy',{cookie,method:'POST',body:{state:random(),challenge:await challenge(random()),dashboard:{mode:'admin',tool:'curriculum'}}})).status,403,'Curriculum does not grant a learner Admin access');
++  for(const mode of ['learn','teach'])assert.equal((await f.request('/auth/academy',{cookie:admin,method:'POST',body:{state:random(),challenge:await challenge(random()),dashboard:{mode,tool:'curriculum'}}})).status,403,'Curriculum belongs to the Admin workspace');
++  for(const [tool,destination] of [['home','/academy/admin/#administration'],['curriculum','/academy/admin/#administration/curriculum']]){
++  const adminState=random(),adminVerifier=random(),adminTicket=ok(await f.request('/auth/academy',{cookie:admin,method:'POST',body:{state:adminState,challenge:await challenge(adminVerifier),dashboard:{mode:'admin',tool}}}));
++  const adminExchange=await f.runtime.dispatchFetch('https://academy.test/api/website-platform/exchange',{method:'POST',headers:{Origin:'https://academy.test','Content-Type':'application/json'},body:JSON.stringify({state:adminState,verifier:adminVerifier,code:adminTicket.code})}),adminSession=await adminExchange.json();assert.equal(adminExchange.status,200,adminSession.error);assert.equal(adminSession.destination,destination);assert.deepEqual(adminSession.circles,{mode:'admin',returnUrl:'https://website.test/?workspace=admin'});
+   const nativeAdmin=await f.runtime.dispatchFetch('https://academy.test/api/account/session',{method:'POST',headers:{Authorization:'Bearer '+adminSession.token,'Content-Type':'application/json'},body:'{}'});assert.equal(nativeAdmin.status,200);assert.equal((await nativeAdmin.json()).context.role,'GLOBAL_ADMIN','Management opens with the current native Admin context');
++  }
+   await f.run('UPDATE circles_navigation SET verified_at=0 WHERE account_id=?',f.source.f.actors.studentA);assert.equal((await f.request('/api/circles/dashboard',{cookie,method:'POST',body:{mode:'learn'}})).body.code,'ACCESS_REFRESH_REQUIRED','A known permission invalidation fences a saved dashboard');
+  }finally{await f.close();}
+ });
+diff --git a/tests/circles-learn-courses.test.mjs b/tests/circles-learn-courses.test.mjs
+new file mode 100644
+index 0000000..4ba946d
+--- /dev/null
++++ b/tests/circles-learn-courses.test.mjs
+@@ -0,0 +1,13 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {learnCourses} from '../public/shared/circles-learn-courses.mjs';
++
++test('Admin Learn includes existing paid-course access without relabelling or duplicating purchases',()=>{
++ const purchase={href:'/studio/?website=one',label:'Purchased course'},other={href:'/studio/?website=two',label:'Another paid course',accessLabel:'Admin access'};
++ const navigation={purchasedCourses:[purchase],adminCourses:[{...purchase,accessLabel:'Admin access'},other]},before=JSON.stringify(navigation);
++ assert.deepEqual(learnCourses(navigation,'learn'),[purchase,other]);
++ assert.deepEqual(learnCourses(navigation,'admin'),[purchase]);assert.deepEqual(learnCourses(navigation,'teach'),[purchase]);
++ assert.deepEqual(learnCourses({purchasedCourses:[purchase],adminCourses:[]},'learn'),[purchase]);
++ assert.equal(learnCourses(null,'learn'),null);assert.equal(learnCourses({adminCourses:[other]},'learn'),null);
++ assert.equal(JSON.stringify(navigation),before);
++});
+diff --git a/tests/circles-navigation.test.mjs b/tests/circles-navigation.test.mjs
+index 433ae23..9960f1f 100644
+--- a/tests/circles-navigation.test.mjs
++++ b/tests/circles-navigation.test.mjs
+@@ -20,6 +20,9 @@ test('native programme membership filters circle menus independently of short Co
+   const inherited=ok(await f.request('/api/circles/navigation',{cookie:admin}));assert(inherited.mothers);assert.equal(inherited.academia.length,1);
+   assert.equal(mine.purchasedCourses.length,1);assert.equal(mine.purchasedCourses[0].href,'/studio/?website=site-course');
+   assert.deepEqual(theirs.purchasedCourses,[]);assert.deepEqual(inherited.purchasedCourses,[],'Staff authority alone never becomes a purchased course');
++  assert.deepEqual(mine.adminCourses,[]);assert.deepEqual(theirs.adminCourses,[]);
++  assert.equal(inherited.adminCourses.length,1);assert.equal(inherited.adminCourses[0].href,'/studio/?website=site-course');assert.equal(inherited.adminCourses[0].accessLabel,'Admin access');
++  assert.equal((await f.request('/api/websites/site-course',{cookie:admin})).status,200,'The existing Global Admin reader gate already permits the course without a purchase');
+   const previousClass=Date.now()-86400000;await f.run("UPDATE timetable SET starts_at=?,ends_at=? WHERE offering_id='course'",previousClass,previousClass+3600000);
+   const completed=ok(await f.request('/api/circles/navigation',{cookie}));assert.equal(completed.purchasedCourses.length,1,'A completed class does not expire purchased course content');assert.equal(completed.purchasedCourses[0].latestClass,previousClass);
+   await f.run('UPDATE accounts SET verified_at=? WHERE account_id=?',Date.now()-61_000,f.source.f.actors.global);await f.run('UPDATE source_access_people SET verified_at=? WHERE account_id=?',Date.now()-61_000,f.source.f.actors.global);f.source.resetMetrics();ok(await f.request('/api/circles/navigation',{cookie:admin}));assert.equal(f.source.metrics.queries,0,'An ordinary staff menu is not a sensitive Admin operation');assert.notEqual((await f.request('/api/websites/site-course/edit',{cookie:admin})).status,200,'The destination retains the sensitive Admin freshness check');
+diff --git a/tests/dashboard-branded-default.test.mjs b/tests/dashboard-branded-default.test.mjs
+new file mode 100644
+index 0000000..d182d77
+--- /dev/null
++++ b/tests/dashboard-branded-default.test.mjs
+@@ -0,0 +1,19 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {fixture} from './fixture.mjs';
++import {circlesFixture} from './circles-fixture.mjs';
++import {signIn,ok} from './access-fixture.mjs';
++import {mkdirSync,writeFileSync} from 'node:fs';
++
++test('the branded default dashboard tolerates a nine-second Source delay and retains private cache reuse',{timeout:60000},async t=>{
++ const f=await fixture({academy:true,dashboard:true,dashboardDelayMs:9000,authorityMode:'ACADEMY',navigation:{mothers:'programA',alimiyah:'programB'},websiteOrigin:'https://maktab4life.org',academyApiOrigin:'https://source-api.test',websiteServerOrigin:'https://academy-studio-parallel.naidu-hajira.workers.dev',verification:{accountSeconds:43200,adminSeconds:60,liveSeconds:43200}});
++ try{
++  await circlesFixture(f);const cookie=await signIn(f,'global');
++  f.source.resetMetrics();const began=Date.now(),opened=await f.request('/api/circles/dashboard',{cookie,method:'POST',body:{}}),first=ok(opened),elapsed=Date.now()-began,cold={targetRowsRead:opened.reads,...f.source.metrics};assert(elapsed>=9000,'The real local Source result arrives after the former eight-second deadline');
++  assert.equal(first.mode,'admin');assert.equal(first.adminBadge,'Global Admin');assert.deepEqual(first.availableModes,['learn','teach','admin']);
++  assert.equal(first.cached,false);assert(Array.isArray(first.timetable));assert(Array.isArray(first.activities));
++  f.source.resetMetrics();const reused=await f.request('/api/circles/dashboard',{cookie,method:'POST',body:{}}),second=ok(reused),warm={targetRowsRead:reused.reads,...f.source.metrics};
++  assert.equal(second.mode,'admin');assert.equal(second.cached,true);assert.equal(f.source.metrics.queries,0);
++  const evidence={syntheticOnly:true,liveRequests:0,sourceDelayMs:9000,firstBuildElapsedMs:elapsed,cold,warm,mode:first.mode,privateCacheReused:second.cached};mkdirSync('outputs',{recursive:true});writeFileSync('outputs/dashboard-first-build.json',JSON.stringify(evidence,null,2)+'\n');t.diagnostic(JSON.stringify(evidence));
++ }finally{await f.close();}
++});
+diff --git a/tests/dashboard-deadline.test.mjs b/tests/dashboard-deadline.test.mjs
+new file mode 100644
+index 0000000..50c6873
+--- /dev/null
++++ b/tests/dashboard-deadline.test.mjs
+@@ -0,0 +1,31 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {academyCommand} from '../src/academy-client.mjs';
++import {dashboardSnapshot} from '../src/dashboard.mjs';
++
++const env={ACADEMY_API_ORIGIN:'https://source-api.test',ACADEMY_ORIGIN:'https://academy.test',WEBSITE_ORIGIN:'https://website.test',WEBSITE_TO_ACADEMY_SECRET:'synthetic-dashboard-command-secret'};
++const deferred=()=>{let resolve;const promise=new Promise(done=>{resolve=done;});return {promise,resolve};};
++
++test('only dashboard assembly receives the longer deadline; other commands and acknowledgement are unchanged',async t=>{
++ const deadlines=[],timeout=AbortSignal.timeout.bind(AbortSignal);t.mock.method(AbortSignal,'timeout',milliseconds=>{deadlines.push(milliseconds);return timeout(milliseconds);});
++ const calls=[],fetcher=async(url,options)=>{calls.push({url,options});return Response.json(url.endsWith('/dashboard')?{dashboard:{mode:'admin'},acknowledge:['synthetic-delivery']}:{done:true});};
++ await academyCommand(env,{},'/internal/website/dashboard',{sourceRef:'synthetic-reference'},fetcher);
++ for(const path of ['/internal/website/sign-in','/internal/website/status','/internal/website/open-academy'])await academyCommand(env,{},path,{},fetcher);
++ assert.deepEqual(deadlines,[20000,5000,8000,8000,8000]);assert(calls.every(c=>c.url.startsWith(env.ACADEMY_API_ORIGIN)));assert(calls.every(c=>c.options.redirect==='manual'));
++ let failed=0;await assert.rejects(academyCommand(env,{},'/internal/website/dashboard',{},async()=>{failed++;throw new DOMException('Timed out','TimeoutError');}),e=>e.name==='TimeoutError');assert.equal(failed,1,'A timeout does not retry Source');
++});
++
++test('a delayed first dashboard result still rechecks actor, permission proof and policy before caching',async()=>{
++ for(const change of ['epoch','proof','policy','revoked','source-denied']){
++  const now=Date.now(),actor={account_id:'one',token_hash:'one-token',source_ref:'synthetic-reference',epoch:1},state={epoch:1,proof:now,policy:1},started=deferred(),reply=deferred(),writes=[];
++  const store={
++   async first(sql){if(sql.includes('circles_navigation'))return {epoch:1,verified_at:state.proof,programmes_json:'[]'};if(sql.includes('course_policy_state'))return {revision:state.policy};assert.fail('Unexpected query');},
++   async actor(){if(state.revoked)throw Object.assign(Error('Signed out'),{status:401});return {...actor,epoch:state.epoch};}
++  };
++  const runtime={...env,ACCOUNT_MAX_AGE_SECONDS:'43200',CONTENT:{get:async()=>null,put:async(...args)=>writes.push(args)}};
++  const request=dashboardSnapshot(runtime,store,actor,{},async()=>{started.resolve();return reply.promise;});await started.promise;
++  if(change==='epoch')state.epoch=2;else if(change==='proof')state.proof=now+1;else if(change==='policy')state.policy=2;else if(change==='revoked')state.revoked=true;
++  reply.resolve(change==='source-denied'?Response.json({error:'Denied'},{status:403}):Response.json({dashboard:{mode:'admin',availableModes:['admin'],activities:[]}}));
++  await assert.rejects(request,error=>error.status===(change==='revoked'?401:change==='source-denied'?403:409));assert.equal(writes.length,0,change+' cannot cache a delayed summary');
++ }
++});
+diff --git a/tests/dashboard-load.test.mjs b/tests/dashboard-load.test.mjs
+new file mode 100644
+index 0000000..59a3782
+--- /dev/null
++++ b/tests/dashboard-load.test.mjs
+@@ -0,0 +1,55 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import vm from 'node:vm';
++import {readFileSync} from 'node:fs';
++
++const source=readFileSync(new URL('../public/circles-dashboard.mjs',import.meta.url),'utf8').replace(/^import .*\n/gm,'').replace('export function circlesDashboard','function circlesDashboard')+'\nglobalThis.makeDashboard=circlesDashboard;';
++const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
++const snapshot=(mode,label=mode)=>({mode,label,availableModes:['learn','teach','admin'],adminBadge:'Global Admin'});
++function client(){
++ const window=new EventTarget(),document=Object.assign(new EventTarget(),{getElementById:()=>null,querySelectorAll:()=>[]}),identity={account:{accountId:'one',globalAdmin:true},generation:1},calls=[];
++ const api=(path,options)=>{const value=deferred();calls.push({path,options,...value});return value.promise;};
++ const context=vm.createContext({window,document,identity,api,dashboardHTML:()=>''});vm.runInContext(source,context);
++ let updates=0;const dashboard=context.makeDashboard({onUpdate:()=>updates++,openAcademy:()=>{}});
++ return {dashboard,identity,window,calls,get updates(){return updates;}};
++}
++
++test('identical pending loads and explicit refreshes share one request per account, generation and perspective',async()=>{
++ const c=client(),first=[c.dashboard.load(),c.dashboard.load(),c.dashboard.load()];
++ assert.equal(c.calls.length,1);c.calls[0].resolve(snapshot('admin'));await Promise.all(first);
++ assert.equal(c.dashboard.mode,'admin');assert.equal(c.updates,1);await c.dashboard.load('admin');assert.equal(c.calls.length,1,'A return uses its existing private client snapshot');
++ const refreshed=[c.dashboard.load('admin',true),c.dashboard.load('admin',true)];
++ assert.equal(c.calls.length,2);assert.equal(c.calls[1].options.body.refresh,true);c.calls[1].resolve(snapshot('admin','fresh'));await Promise.all(refreshed);
++ assert.equal(c.dashboard.data.label,'fresh');assert.equal(c.updates,3);
++});
++
++test('different perspectives and explicit refresh intent do not share the wrong pending result',async()=>{
++ const c=client(),learn=c.dashboard.load('learn'),teach=c.dashboard.load('teach'),fresh=c.dashboard.load('teach',true);
++ assert.equal(c.calls.length,3);c.calls[2].resolve(snapshot('teach','fresh teaching'));await fresh;
++ c.calls[0].resolve(snapshot('learn','old learning'));c.calls[1].resolve(snapshot('teach','old teaching'));await Promise.all([learn,teach]);
++ assert.equal(c.dashboard.data.label,'fresh teaching');assert.equal(c.dashboard.mode,'teach');
++});
++
++test('clear or a policy change fences pending work and an old completion cannot delete the replacement request',async()=>{
++ for(const invalidate of [c=>c.dashboard.clear(),c=>c.window.dispatchEvent(new Event('website-course-policy-changed'))]){
++  const c=client(),old=c.dashboard.load('learn');invalidate(c);const next=c.dashboard.load('learn');
++  assert.equal(c.calls.length,2);c.calls[0].resolve(snapshot('learn','old'));await old;assert.equal(c.dashboard.data,null);
++  const same=c.dashboard.load('learn');assert.equal(c.calls.length,2,'The replacement is still coalesced');c.calls[1].resolve(snapshot('learn','new'));await Promise.all([next,same]);
++  assert.equal(c.dashboard.data.label,'new');
++ }
++});
++
++test('account changes reject old display results and denied loads never retry automatically',async()=>{
++ const c=client(),old=c.dashboard.load('learn');c.identity.account={accountId:'two'};c.identity.generation++;c.dashboard.clear();const current=c.dashboard.load('learn');
++ assert.equal(c.calls.length,2);c.calls[0].resolve(snapshot('learn','other account'));await old;assert.equal(c.dashboard.data,null);
++ c.calls[1].reject(Object.assign(Error('Denied'),{status:403}));await current;assert.equal(c.dashboard.data,null);assert.equal(c.calls.length,2);
++ const retry=c.dashboard.load('learn');assert.equal(c.calls.length,3,'A later explicit request can recover after rejection');c.calls[2].resolve(snapshot('learn','current account'));await retry;assert.equal(c.dashboard.data.label,'current account');
++});
++
++test('an authority denial during refresh invalidates older cached perspectives before any explicit return',async()=>{
++ for(const status of [401,403,409]){
++  const c=client(),first=c.dashboard.load('learn');c.calls[0].resolve(snapshot('learn','previous permission'));await first;
++  const refresh=c.dashboard.load('learn',true);c.calls[1].reject(Object.assign(Error('Permission changed'),{status}));await refresh;assert.equal(c.dashboard.data,null);assert.equal(c.calls.length,2);
++  const returned=c.dashboard.load('learn');assert.equal(c.calls.length,3,'An explicit return must check Source instead of restoring the older private cache');c.calls[2].resolve(snapshot('learn','current permission'));await returned;assert.equal(c.dashboard.data.label,'current permission');
++ }
++});
+diff --git a/tests/fixture.mjs b/tests/fixture.mjs
+index b39f5f6..94cc8cb 100644
+--- a/tests/fixture.mjs
++++ b/tests/fixture.mjs
+@@ -4,9 +4,11 @@ import {build} from 'esbuild';
+ import {readFileSync} from 'node:fs';
+ import {random,sha256,challenge,signedHeaders} from '../src/protocol.mjs';
+ import {newCourse} from '../public/shared/model.mjs';
+-export async function fixture({academy=false,authorityMode='WEBSITE',academyApiOrigin,verification={},navigation,dashboard=false,coursePublication=false,mou=false,websiteOrigin='https://website.test',websiteServerOrigin}={}){
++export async function fixture({academy=false,authorityMode='WEBSITE',academyApiOrigin,verification={},navigation,dashboard=false,dashboardDelayMs=0,coursePublication=false,mou=false,websiteOrigin='https://website.test',websiteServerOrigin}={}){
+  const secret=random()+random(),entry=new URL('../src/worker.mjs',import.meta.url).pathname;
+- const script=(await build({stdin:{contents:`import {handle} from ${JSON.stringify(entry)};export default {fetch(r,e,c){${academy?"if(new URL(r.url).hostname==='academy.test')return e.ACADEMY_TEST.fetch(r);":''}return handle(r,e,c,${academy?'(u,o)=>{if(e.ACADEMY_API_ORIGIN&&new URL(u).origin!==e.ACADEMY_API_ORIGIN)throw Error("Server commands must use the API origin");return e.ACADEMY_TEST.fetch(u,o)}':"async()=>{throw Error('No Academy network call is allowed in this fixture');}"});}};`,resolveDir:process.cwd()},bundle:true,write:false,format:'esm',platform:'browser',external:['cloudflare:workers']})).outputFiles[0].text;
++ const delay=Number.isSafeInteger(dashboardDelayMs)&&dashboardDelayMs>0?`if(new URL(u).pathname==='/internal/website/dashboard'){await new Promise(done=>setTimeout(done,${dashboardDelayMs}));if(o.signal.aborted)throw o.signal.reason;}`:'';
++ const sourceFetch=`async(u,o)=>{if(e.ACADEMY_API_ORIGIN&&new URL(u).origin!==e.ACADEMY_API_ORIGIN)throw Error("Server commands must use the API origin");const response=await e.ACADEMY_TEST.fetch(u,o);${delay}return response;}`;
++ const script=(await build({stdin:{contents:`import {handle} from ${JSON.stringify(entry)};export default {fetch(r,e,c){${academy?"if(new URL(r.url).hostname==='academy.test')return e.ACADEMY_TEST.fetch(r);":''}return handle(r,e,c,${academy?sourceFetch:"async()=>{throw Error('No Academy network call is allowed in this fixture');}"});}};`,resolveDir:process.cwd()},bundle:true,write:false,format:'esm',platform:'browser',external:['cloudflare:workers']})).outputFiles[0].text;
+  const env={PLATFORM_ENABLED:'1',...(mou?{MOU_TEST:'1'}:{}),...(coursePublication?{COURSE_PUBLICATION_TEST:'1'}:{}),ENVIRONMENT:'local',WEBSITE_ORIGIN:websiteOrigin,...(websiteServerOrigin?{SOURCE_SERVER_ORIGIN_TEST:websiteServerOrigin}:{}),ACADEMY_ORIGIN:'https://academy.test',AUTHORITY_MODE:authorityMode,...(dashboard?{DASHBOARD_TEST:'1'}:{}),...(navigation?{NAVIGATION_TEST:navigation}:{}),...(academyApiOrigin?{ACADEMY_API_ORIGIN:academyApiOrigin}:{}),ACCOUNT_MAX_AGE_SECONDS:String(verification.accountSeconds??86400),ADMIN_MAX_AGE_SECONDS:String(verification.adminSeconds??300),...(verification.liveSeconds===undefined?{}:{LIVE_ACCESS_MAX_AGE_SECONDS:String(verification.liveSeconds)}),ACADEMY_TO_WEBSITE_SECRET:secret,WEBSITE_TO_ACADEMY_SECRET:random()+random()};
+  const source=academy?await (await import('./academy-runtime.mjs')).academyRuntime(env):null;
+  const runtime=new Miniflare(convertV4MiniflareOptions({workers:[{name:'platform',modules:true,script,compatibilityDate:'2026-09-28',compatibilityFlags:['nodejs_compat'],bindings:env,d1Databases:{DB:'platform-local'},r2Buckets:{CONTENT:'content-local',MEDIA:'media-local'},...(academy?{serviceBindings:{ACADEMY_TEST:'academy'}}:{})},...(source?.workers||[])]}));
+diff --git a/tests/homepage-free-courses.test.mjs b/tests/homepage-free-courses.test.mjs
+new file mode 100644
+index 0000000..a5845b7
+--- /dev/null
++++ b/tests/homepage-free-courses.test.mjs
+@@ -0,0 +1,47 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {readFile} from 'node:fs/promises';
++import {resolve} from 'node:path';
++import {runInNewContext} from 'node:vm';
++import {activeHomepageFreeCourseKeys,homepageFreeCourseHref} from '../public/shared/homepage-free-courses.mjs';
++import {nativeCourseIndex,withNativeCourseLink} from '../public/shared/native-course-links.mjs';
++import {activateHomepageFreeCourseCards} from '../tools/circles-ui-adaptation.mjs';
++
++const build=process.env.CIRCLES_UI_BASE&&resolve(process.env.CIRCLES_UI_BASE);
++const read=path=>readFile(resolve(build,path),'utf8');
++
++test('only the five owner-selected free cards get canonical Course bookmarks',()=>{
++ assert.equal(activeHomepageFreeCourseKeys.length,5);
++ for(const key of activeHomepageFreeCourseKeys)assert.equal(homepageFreeCourseHref(key),'/circles/free-learning.html?course='+key);
++ for(const key of ['spending','surah-al-kahf','mothers-baqarah','parenting-for-the-aakirah','mawaddah-wah-rahma','https://outside.test',null])assert.equal(homepageFreeCourseHref(key),null);
++});
++
++test('actual frozen homepage renders active cards from the first frame and each rotation; other cards stay inert',{skip:!build},async()=>{
++ const before=await read('circles/app.js'),after=activateHomepageFreeCourseCards(before),context={esc:String};
++ const code=after.split('\n').filter(line=>/^function (?:inactiveFreeCourseCard|freeCourseCard)\(/.test(line)).join('\n');
++ runInNewContext(code,context);
++ for(const key of activeHomepageFreeCourseKeys){
++  const html=context.freeCourseCard({key,title:key,cover:'cover.png',coverAlt:'Cover',href:'https://outside.test'});
++  assert.match(html,new RegExp('href="/circles/free-learning.html\\?course='+key+'"'));
++  assert.match(html,/>Free<\/span>/);assert.doesNotMatch(html,/circles-free-inactive|aria-disabled|Inactive|outside\.test/);
++ }
++ for(const key of ['spending','mawaddah-wah-rahma','unknown']){
++  const html=context.freeCourseCard({key,title:key,cover:'cover.png',coverAlt:'Cover'});
++  assert.match(html,/aria-disabled="true"/);assert.doesNotMatch(html,/<a\b|href=|data-free-course=/);
++ }
++ assert.equal(activateHomepageFreeCourseCards(after),after);
++ assert(before.includes('function refreshFeaturedCourses()')&&after.includes('function refreshFeaturedCourses()'));
++});
++
++test('the five bookmarks resolve through exact current native Course keys, without author/media fallback',{skip:!build},async()=>{
++ const context={};runInNewContext(await read('circles/free-learning-catalogue.js'),context);
++ const index=nativeCourseIndex(activeHomepageFreeCourseKeys.map(key=>({key,kind:'COURSE',title:key,websiteId:'native-'+key,pending:false})));
++ for(const key of activeHomepageFreeCourseKeys){
++  const item=context.AcademyApprovedFreeCourses.find(row=>row.key===key);assert(item);
++  const linked=withNativeCourseLink(item,index);assert.equal(linked.href,'/studio/?website=native-'+key);
++  assert.equal(linked.access,'free');assert.equal(linked.canOpen,undefined);assert.equal(linked.videoId,undefined);
++ }
++ const podcast=await read('circles/podcast-view.mjs');
++ assert.match(podcast,/if\(selected\?\.nativeWebsiteId\).*location.replace\(selected.href\)/);
++ assert.match(podcast,/if\(nativeCourseIssue\)throw Error\(nativeCourseIssue\)/);
++});

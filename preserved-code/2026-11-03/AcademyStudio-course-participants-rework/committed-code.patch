@@ -1,0 +1,259 @@
+diff --git a/public/app.css b/public/app.css
+index 7b8b045..a1a0fc3 100644
+--- a/public/app.css
++++ b/public/app.css
+@@ -17,3 +17,5 @@
+ #my-learning.mou-active>p,#my-learning.mou-active>h1{display:none}.mou-programme{display:grid;gap:24px}.mou-programme>header{position:relative;padding-right:80px}.mou-programme>header h1{font-size:clamp(32px,5vw,60px);margin:16px 0}.mou-programme [data-mou-refresh]{position:absolute;top:24px;right:24px;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:9px;border-radius:50%}.mou-programme>section>h2{margin-top:0}.mou-programme time{overflow-wrap:anywhere}
+ 
+ .circles-header-dates{grid-column:1/-1;flex-basis:100%;width:100%;text-align:right;color:#7b6c74;font:400 11px/1.5 var(--sans,Arial,sans-serif)}.public-home-header:has(.circles-header-dates),.site-header:has(.circles-header-dates){flex-wrap:wrap}.circles-header-dates time{white-space:nowrap}@media(max-width:600px){.circles-header-dates{text-align:center;font-size:10px}}
++
++.course-access-notice{max-width:min(440px,calc(100vw - 36px));padding:28px;border:1px solid #ddced7;border-radius:12px;background:#fffdf8;color:#493b43}.course-access-notice::backdrop{background:#35252e66}.course-access-notice h2{font:400 28px/1.2 Georgia,serif;margin:0 0 14px}.course-access-notice p{line-height:1.6}.course-access-notice button{min-height:42px;padding:8px 18px;border:0;border-radius:7px;background:#68515c;color:white;cursor:pointer}
+diff --git a/public/app.mjs b/public/app.mjs
+index 8274ef0..edac9fd 100644
+--- a/public/app.mjs
++++ b/public/app.mjs
+@@ -1,5 +1,6 @@
+ import {recordingTextEditor} from './shared/recording-text-editor.mjs';
+ import {playlistMetadataEditor} from './shared/playlist-metadata-editor.mjs';
++import {showLockedAccessNotice} from './shared/access-badge.mjs';
+ import {ensurePlaylistCardStyles} from './shared/playlist-card.mjs';
+ import {publishedPlaylistRows,presentPublishedPlaylists,playlistMediaQuery,mergePlaylistMediaPage} from './shared/published-playlists.mjs';
+ import {pinEntry} from './shared/pin-entry.mjs';
+@@ -14,7 +15,7 @@ import {openAcademyFromCircles} from './shared/circles-sign-in.mjs';
+ import {applicationPath as websiteApplicationPath,collectionKind} from './shared/circles-routes.mjs';
+ const appPath=websiteApplicationPath(document);
+ import {circlesHome,learningBranches,homeBranch} from './shared/circles-home.mjs';
+-import {circlesCatalogue} from './shared/circles-catalogue.mjs';
++import {circlesCatalogue,selectCatalogueCollection} from './shared/circles-catalogue.mjs';
+ import {replaceTafseerArtwork,tafseerDisplayCourse,tafseerCourseCover} from './shared/tafseer-cover.mjs';
+ import {presentRecordingWebsite,seriesRecordings,seriesRoute,parseSeriesRoute} from './shared/recording-website.mjs';
+ import {bindRecordingGuides} from './shared/media-bindings.mjs';
+@@ -191,7 +192,8 @@ document.addEventListener('click',event=>{
+  const collections=event.target.closest('[data-home-collections]');if(collections&&!event.metaKey&&!event.ctrlKey){event.preventDefault();void library().catch(e=>status(e.message));return;}
+  if(event.target.closest('[data-home-replay]')){renderPublicCircle();return;}
+  if(event.target.closest('[data-home-academy]')){if(identity.account)openAcademy();else {const params=new URLSearchParams(location.search);params.set('destination','academy');history.replaceState(null,'','/?'+params);openSignIn();}return;}
+- const tab=event.target.closest('[data-circles-tab]');if(tab){$('my-learning').querySelector('h1').textContent=tab.dataset.circlesTab==='COURSE'?'Courses':'Tafseer and Tadabbur';document.title=(tab.dataset.circlesTab==='COURSE'?'Courses':'Tafseer')+' · Umm Abbad Academy';const params=new URLSearchParams(location.search);params.set('view','collections');params.set('collection',tab.dataset.circlesTab==='COURSE'?'courses':'tafseer');history.pushState(null,'',appPath+'?'+params);const root=tab.closest('.connected-circles');for(const node of root.querySelectorAll('[data-circles-section]'))node.hidden=node.dataset.circlesSection!==tab.dataset.circlesTab;for(const node of root.querySelectorAll('[data-circles-tab]'))node.setAttribute('aria-current',node===tab?'page':'false');}
++ const tab=event.target.closest('[data-circles-tab]');if(tab){$('my-learning').querySelector('h1').textContent=tab.dataset.circlesTab==='COURSE'?'Courses':'Tafseer and Tadabbur';document.title=(tab.dataset.circlesTab==='COURSE'?'Courses':'Tafseer')+' · Umm Abbad Academy';const params=new URLSearchParams(location.search);params.set('view','collections');params.set('collection',tab.dataset.circlesTab==='COURSE'?'courses':'tafseer');history.pushState(null,'',appPath+'?'+params);selectCatalogueCollection(tab.closest('.connected-circles'),tab.dataset.circlesTab);}
++ const locked=event.target.closest('[data-course-access-locked]');if(locked){event.preventDefault();showLockedAccessNotice(document);return;}
+  const link=event.target.closest('a[data-circles-website]');if(link&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey&&event.button===0){event.preventDefault();void openWebsite(link.dataset.circlesWebsite).catch(e=>status(e.message));}
+ });
+ document.addEventListener('input',event=>{if(!textEditor.editing&&current&&event.target.hasAttribute('data-sp-note')){ui.reflections[event.target.dataset.spNote]=event.target.value;remember();}});
+diff --git a/public/shared/access-badge.mjs b/public/shared/access-badge.mjs
+index b8c41e8..4bd0e51 100644
+--- a/public/shared/access-badge.mjs
++++ b/public/shared/access-badge.mjs
+@@ -1,4 +1,10 @@
+ import {esc} from './model.mjs';
++export const lockedCourseMessage='Access to this course can be purchased from Admin.';
++export function showLockedAccessNotice(doc=document){
++ let dialog=doc.getElementById('course-access-notice');
++ if(!dialog){dialog=doc.createElement('dialog');dialog.id='course-access-notice';dialog.className='course-access-notice';dialog.setAttribute('aria-labelledby','course-access-notice-title');dialog.innerHTML='<h2 id="course-access-notice-title">Course access</h2><p>'+lockedCourseMessage+'</p><button type="button">Close</button>';dialog.querySelector('button').onclick=()=>dialog.close();doc.body.append(dialog);}
++ if(!dialog.open)dialog.showModal();return dialog;
++}
+ export function accessBadge(state='required'){
+  const value=state==='free'?'Free':state==='subscribed'?'Open':'Locked';
+  const icon=value==='Free'?'':`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/>${value==='Open'?'<path d="M8 10V6a4 4 0 0 1 7.8-1.2"/>':'<path d="M8 10V6a4 4 0 0 1 8 0v4"/>'}<path d="M12 14v3"/></svg>`;
+diff --git a/public/shared/circles-catalogue.css b/public/shared/circles-catalogue.css
+index 1a24f7c..00312f6 100644
+--- a/public/shared/circles-catalogue.css
++++ b/public/shared/circles-catalogue.css
+@@ -16,3 +16,5 @@
+ .connected-circles [data-circles-section=COURSE] .collection-grid{align-items:stretch;gap:20px}
+ 
+ .published-playlists{margin-top:30px}.published-playlists h2{font:400 30px/1.2 var(--circle-serif,Georgia,serif)}.recording-playlist-scroll{overflow-x:auto;min-width:0;max-width:100%;border:1px solid #ddced7;border-radius:10px;background:#fffaf5}.recording-playlist-table{width:100%;border-collapse:collapse;text-align:left;font-size:13px}.recording-playlist-table th,.recording-playlist-table td{padding:14px 18px;border-bottom:1px solid #e3d6dc;vertical-align:middle}.recording-playlist-table thead th{font:600 10px/1.5 'DM Sans',Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;background:#f2e9ed;color:#796d75}.recording-playlist-table tbody th{font:400 23px/1.3 var(--circle-serif,Georgia,serif)}.recording-playlist-table td:last-child{white-space:nowrap}.recording-playlist-table a[data-circles-website]{display:inline-flex;align-items:center;min-height:44px;padding:8px 16px;box-sizing:border-box;border-radius:7px;background:#526747;color:#fffdf5;text-decoration:none;font-weight:600}.recording-playlist-table a:focus-visible{outline:3px solid #ae8f9f;outline-offset:3px}@media(max-width:800px){.recording-playlist-table{min-width:680px}}
++
++.collection-card>button.collection-cover{display:block;width:100%;padding:0;text-align:left;font:inherit;border:0;cursor:pointer}
+diff --git a/public/shared/circles-catalogue.mjs b/public/shared/circles-catalogue.mjs
+index ad27eaa..244ee0c 100644
+--- a/public/shared/circles-catalogue.mjs
++++ b/public/shared/circles-catalogue.mjs
+@@ -5,17 +5,24 @@ import {approvedCourseCover} from './approved-course-artwork.mjs';
+ export {accessBadge as catalogueLock} from './access-badge.mjs';
+ import {accessBadge as catalogueLock} from './access-badge.mjs';
+ 
++const collectionNavigation=kind=>`${kind==='COURSE'?'':'<button data-circles-tab="TAFSEER" aria-current="page">Tafseer</button>'}<button data-circles-tab="COURSE" aria-current="${kind==='COURSE'?'page':'false'}">Courses</button>`;
++export function selectCatalogueCollection(root,kind){
++ kind=kind==='COURSE'?'COURSE':'TAFSEER';
++ const nav=root.querySelector('.circles-collection-nav');if(nav)nav.innerHTML=collectionNavigation(kind);
++ for(const section of root.querySelectorAll('[data-circles-section]'))section.hidden=section.dataset.circlesSection!==kind;
++}
++
+ export function circlesCatalogue(items,access=[],{applicationPath='/',kind='TAFSEER'}={}){
+  applicationPath=applicationPath==='/studio/'?'/studio/':'/';kind=kind==='COURSE'?'COURSE':'TAFSEER';
+  const rights=new Map(access.map(r=>[r.websiteId,r]));
+  const card=source=>{
+   const item={...source,...(source.key==='foundations'?{title:'Introduction to Qur’anic Studies'}:{}),...(approvedCourseCover(source.key)?{cover:approvedCourseCover(source.key)}:{})};
+-  const right=rights.get(item.websiteId),state=item.kind==='COURSE'?(right?.coursePolicy?.model==='FREE'?'free':right?.subscriptionStatus==='subscribed'?'subscribed':'required'):(item.publicTextUrl?'free':right?.subscriptionStatus==='subscribed'?'subscribed':'required');
++  const right=rights.get(item.websiteId),state=item.kind==='COURSE'?(right?.coursePolicy?.model==='FREE'?'free':right?.canOpen===true?'subscribed':'required'):(item.publicTextUrl?'free':right?.canOpen===true?'subscribed':'required');
+   const ornament=tafseerCover(item),label=item.key==='fatir'?'Text pending':item.title;
+   const body=`${ornament||(item.cover?`<img src="${esc(item.cover)}" alt="" loading="lazy">`:'<span class="cover-circles"><i></i><i></i><i></i></span>')}${catalogueLock(state)}${!ornament?`<span class="collection-card-name">${esc(label)}${Number.isSafeInteger(item.recordings)?'<small>'+item.recordings+' recordings</small>':''}</span>`:''}`;
+   const href=item.pending?null:(item.publicTextUrl&&!right?.canOpen?item.publicTextUrl:null)||(item.websiteId?applicationPath+'?website='+encodeURIComponent(item.websiteId):null);
+-  const accessible=item.title+(state==='free'?'':state==='subscribed'?' · Subscribed':' · Subscription required');
+-  return `<article class="collection-card${ornament?' collection-tafseer':''}" style="--card-accent:${esc(item.accent)};--card-soft:${esc(item.soft)}">${href?`<a href="${esc(href)}" ${item.publicTextUrl&&!right?.canOpen?'':'data-circles-website="'+esc(item.websiteId)+'"'} class="collection-cover${ornament?' tafseer-cover':''}" aria-label="${esc(accessible)}">${body}</a>`:`<div class="collection-cover${ornament?' tafseer-cover':''}" role="img" aria-label="${esc(item.title+' · Text pending')}">${body}</div>`}</article>`;
++  const accessible=item.title+(state==='free'?' · Free':state==='subscribed'?' · Open':' · Locked');
++  return `<article class="collection-card${ornament?' collection-tafseer':''}" style="--card-accent:${esc(item.accent)};--card-soft:${esc(item.soft)}">${href?state==='required'?`<button type="button" data-course-access-locked class="collection-cover${ornament?' tafseer-cover':''}" aria-label="${esc(accessible)}">${body}</button>`:`<a href="${esc(href)}" ${item.publicTextUrl&&!right?.canOpen?'':'data-circles-website="'+esc(item.websiteId)+'"'} class="collection-cover${ornament?' tafseer-cover':''}" aria-label="${esc(accessible)}">${body}</a>`:`<div class="collection-cover${ornament?' tafseer-cover':''}" role="img" aria-label="${esc(item.title+' · Text pending')}">${body}</div>`}</article>`;
+  };
+- return `<nav class="circles-collection-nav" aria-label="Learning collections"><button data-circles-tab="TAFSEER" aria-current="${kind==='TAFSEER'?'page':'false'}">Tafseer</button><button data-circles-tab="COURSE" aria-current="${kind==='COURSE'?'page':'false'}">Courses</button></nav>${['TAFSEER','COURSE'].map(section=>`<section data-circles-section="${section}" aria-label="${section==='TAFSEER'?'Tafseer':'Courses'}" ${section!==kind?'hidden':''}><div class="collection-grid">${items.filter(i=>i.kind===section).map(card).join('')}</div></section>`).join('')}`;
++ return `<nav class="circles-collection-nav" aria-label="Learning collections">${collectionNavigation(kind)}</nav>${['TAFSEER','COURSE'].map(section=>`<section data-circles-section="${section}" aria-label="${section==='TAFSEER'?'Tafseer':'Courses'}" ${section!==kind?'hidden':''}><div class="collection-grid">${items.filter(i=>i.kind===section).map(card).join('')}</div></section>`).join('')}`;
+ }
+diff --git a/public/shared/playlist-card.css b/public/shared/playlist-card.css
+index bf199bf..e82ed0d 100644
+--- a/public/shared/playlist-card.css
++++ b/public/shared/playlist-card.css
+@@ -6,3 +6,6 @@
+ 
+ .playlist-editor-dialog{width:min(1100px,calc(100vw - 32px));max-height:90vh;box-sizing:border-box;padding:24px;border:1px solid #d9c9d1;border-radius:14px;background:#faf7f1;color:#44363f;overflow:auto}.playlist-editor-dialog::backdrop{background:#322b3099}.playlist-editor-dialog>header{display:flex;justify-content:space-between;align-items:center;gap:20px}.playlist-editor-dialog h2{font:400 34px/1.2 'Libre Caslon Display',Georgia,serif}.playlist-editor-dialog form{display:grid;gap:16px}.playlist-editor-dialog form>label{display:grid;gap:6px}.playlist-editor-dialog textarea,.playlist-editor-dialog input,.playlist-editor-dialog select{box-sizing:border-box;max-width:100%;min-width:0;padding:12px;background:#fffdf9;border:1px solid #d5c6cd;border-radius:6px;color:inherit}.playlist-editor-dialog input[type=checkbox]{width:18px;height:18px}.playlist-editor-dialog button{min-height:42px;padding:10px 16px;border:1px solid #526747;border-radius:22px;background:#526747;color:#fffaf2;cursor:pointer}.playlist-editor-dialog footer,.playlist-editor-dialog .pms-toolbar{display:flex;gap:10px;flex-wrap:wrap}.playlist-editor-dialog .mou-playlist-scroll{overflow:auto;max-width:100%}.playlist-editor-dialog table{border-collapse:collapse;min-width:700px;width:100%}.playlist-editor-dialog td,.playlist-editor-dialog th{padding:14px;border-bottom:1px solid #d9c9d1;text-align:left}.playlist-editor-dialog td:first-child{min-width:260px}.playlist-editor-dialog [hidden]{display:none!important}.playlist-editor-dialog [role=alert]{color:#943d51}.rs-episode-heading .sp-inline-entry,.rs-series-tools .sp-inline-entry,.rs-series-tools [data-edit-playlist],.rs-episode-heading [data-edit-recording-text],.rs-card-actions [data-edit-recording-text]{font-weight:700!important;background:#526747!important;color:#fffaf2!important;border:1px solid #526747!important;padding:11px 18px!important;border-radius:22px!important;min-height:42px}
+ @media(max-width:700px){.playlist-editor-dialog{padding:16px}.playlist-editor-dialog .playlist-card-editor{min-width:260px}}
++
++/* Shared fixed image treatment for Course, Tafseer and MOU playlist cards. */
++.playlist-artwork-card.has-picture{color:#fffaf1}.has-picture .playlist-card-label{background:linear-gradient(0deg,#254e41 0%,#355e50f5 68%,#355e5000 100%);color:#fffaf1;padding:64px 22px 48px}.playlist-artwork-card>.access-badge{position:absolute;right:14px;bottom:14px;z-index:2;display:flex;align-items:center;gap:5px;padding:6px 11px;border:1px solid #d6c8b8;border-radius:20px;background:#fffaf1;color:#596952;font:600 12px/1.3 Arial,sans-serif}.playlist-artwork-card>.access-badge svg{width:14px;height:14px}
+diff --git a/public/shared/playlist-card.mjs b/public/shared/playlist-card.mjs
+index 6791b26..ed8bf17 100644
+--- a/public/shared/playlist-card.mjs
++++ b/public/shared/playlist-card.mjs
+@@ -1,3 +1,4 @@
++import {accessBadge} from './access-badge.mjs';
+ // Display metadata only. Native playlist IDs, publication and access stay authoritative.
+ const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ export const CARD_PRESETS=Object.freeze({sage:{label:'Sage',css:'linear-gradient(135deg,#71846c,#365a4c)'},plum:{label:'Plum',css:'linear-gradient(135deg,#937187,#553c52)'},rose:{label:'Rose',css:'linear-gradient(135deg,#b37c89,#713e58)'},gold:{label:'Gold',css:'linear-gradient(135deg,#ac8b45,#65522d)'},ocean:{label:'Ocean',css:'linear-gradient(135deg,#528b92,#2b556c)'},sunset:{label:'Sunset',css:'linear-gradient(135deg,#bb8866,#784e65)'}});
+@@ -18,14 +19,16 @@ export function playlistCardHTML(row,{href='',action='',websiteId='',kind=row.ki
+  const id=row.id||row.playlistId;if(!/^[-A-Za-z0-9_:]{1,180}$/.test(id||''))return '';
+  const card=playlistCard(row.card),appearance=cardAppearance(card),title=row.name??row.title??'',src=card.style==='image'?(imageURL||cardImageURL(card.image?.url)):null,tafseer=kind==='TAFSEER'&&card.style==='default';
+  const cover=src?`<img class="playlist-card-picture" src="${esc(src)}" alt="" loading="lazy">`:tafseer?(defaultArtwork||'<span class="playlist-card-ornament" aria-hidden="true">◇</span>'):'';
+- const body=`${cover}<span class="playlist-card-label"><strong>${esc(title)}</strong>${card.teacher?'<span class="playlist-card-teacher">'+esc(card.teacher)+'</span>':''}${Number.isSafeInteger(row.recordings)?'<span class="playlist-card-count">'+row.recordings+' '+(row.recordings===1?'recording':'recordings')+'</span>':''}</span>${accessLabel?'<span class="playlist-card-access">'+esc(accessLabel)+'</span>':''}`;
++ const body=`${cover}<span class="playlist-card-label"><strong>${esc(title)}</strong>${card.teacher?'<span class="playlist-card-teacher">'+esc(card.teacher)+'</span>':''}${Number.isSafeInteger(row.recordings)?'<span class="playlist-card-count">'+row.recordings+' '+(row.recordings===1?'recording':'recordings')+'</span>':''}</span>${accessLabel?accessBadge(accessLabel==='Free'?'free':['Open','Reading materials'].includes(accessLabel)?'subscribed':'required'):''}`;
+  const classes='playlist-artwork-card'+(src?' has-picture':'')+(tafseer?' is-tafseer':'')+(defaultArtwork&&tafseer?' has-surah-artwork':'');const style=`--playlist-card-background:${esc(appearance.background)};--playlist-card-ink:${appearance.ink}`;
++ const locked=Boolean(accessLabel&&!['Free','Open','Reading materials'].includes(accessLabel));
++ if(locked&&!preview)return `<button type="button" class="${classes}" style="${style}" data-playlist-id="${esc(id)}" data-course-access-locked aria-label="${esc(title+' · Locked')}">${body}</button>`;
+  if(preview)return `<div class="${classes}" style="${style}" data-playlist-id="${esc(id)}">${body}</div>`;
+  const attrs=`class="${classes}" style="${style}" data-playlist-id="${esc(id)}" aria-label="${esc('Open playlist: '+title)}"`;
+  return href?`<a ${attrs} href="${esc(href)}"${websiteId?' data-circles-website="'+esc(websiteId)+'"':''}>${body}</a>`:`<button type="button" ${attrs} data-lm="${esc(action)}" data-id="${esc(id)}">${body}</button>`;
+ }
+ export function ensurePlaylistCardStyles(document,href){if(document.querySelector('link[data-playlist-card-styles]'))return;const link=document.createElement('link');link.rel='stylesheet';link.href=href;link.dataset.playlistCardStyles='';document.head.append(link);}
+-export function cardEditorHTML(row,{kind='PROGRAM',teacher=false,imageRequired=false}={}){const card=playlistCard(row.card);return `<div class="playlist-card-editor" data-card-kind="${esc(kind)}"><div class="playlist-card-preview" data-card-preview>${playlistCardHTML(row,{kind,preview:true})}</div><div class="playlist-card-fields"><p>The card uses this playlist’s name. Save changes privately, then publish when ready.</p><label>Card background<select data-card-field="style">${[['default','Default design'],['colour','Solid colour'],['gradient','Preset gradient'],['image','Picture with title band']].map(([id,label])=>'<option value="'+id+'"'+(card.style===id?' selected':'')+'>'+label+'</option>').join('')}</select></label><label>Colour<input type="color" data-card-field="colour" value="${card.colour}"></label><label>Gradient / title band<select data-card-field="gradient"><option value="">Use solid colour</option>${Object.entries(CARD_PRESETS).map(([id,preset])=>'<option value="'+id+'"'+(card.gradient===id?' selected':'')+'>'+preset.label+'</option>').join('')}</select></label><label>Picture <span>${imageRequired?'Required for Course publication':'Optional'}</span><input type="file" data-card-image accept="image/png,image/jpeg,image/webp"></label><p class="playlist-card-help">PNG, JPEG or WebP · up to 5 MB. Uploading a picture keeps it private until publication.</p><button type="button" data-card-remove-image${card.image?'':' hidden'}>Remove picture</button>${card.image?'<button type="button" data-card-preview-image>Preview saved picture</button>':''}<p role="status" data-card-status></p></div></div>`;}
++export function cardEditorHTML(row,{kind='PROGRAM',teacher=false,imageRequired=false}={}){const card=playlistCard(row.card);return `<div class="playlist-card-editor" data-card-kind="${esc(kind)}"><div class="playlist-card-preview" data-card-preview>${playlistCardHTML(row,{kind,preview:true})}</div><div class="playlist-card-fields"><p>The standard card design is fixed. Upload a picture and the same title styling will be applied automatically.</p><input type="hidden" data-card-field="style" value="${card.style}"><input type="hidden" data-card-field="gradient" value="${card.gradient||''}"><label>Picture <span>${imageRequired?'Required for Course publication':'Optional'}</span><input type="file" data-card-image accept="image/png,image/jpeg,image/webp"></label><p class="playlist-card-help">PNG, JPEG or WebP · up to 5 MB. Pictures stay private until publication.</p><button type="button" data-card-remove-image${card.image?'':' hidden'}>Remove picture</button>${card.image?'<button type="button" data-card-preview-image>Preview saved picture</button>':''}<p role="status" data-card-status></p></div></div>`;}
+ export async function optimiseCardPicture(file,{maxBytes=512*1024,maxDimension=1400}={}){
+  const bitmap=await createImageBitmap(file);try{if(bitmap.width>12000||bitmap.height>12000||bitmap.width*bitmap.height>40_000_000)throw Error('Choose a smaller picture for the card.');const canvas=document.createElement('canvas'),scale=Math.min(1,maxDimension/Math.max(bitmap.width,bitmap.height));canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));const context=canvas.getContext('2d');if(!context)throw Error('This browser could not prepare the card picture.');context.drawImage(bitmap,0,0,canvas.width,canvas.height);for(const quality of [.86,.72,.58,.44]){const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',quality));if(blob&&blob.size<=maxBytes)return new File([blob],'playlist-card.webp',{type:blob.type});}throw Error('Choose a less detailed picture for this card.');}finally{bitmap.close();}
+ }
+@@ -36,7 +39,7 @@ export function bindCardEditor(host,{getRow,onChange,onUpload,onPreview,isCurren
+  const status=text=>{if(active())host.querySelector('[data-card-status]').textContent=text;};
+  const change=patch=>{const row=getRow(),card={...playlistCard(row.card),...patch};onChange(card);preview();};
+  host.addEventListener('input',event=>{const field=event.target.dataset.cardField;if(!field)return;let value=event.target.value;if(field==='gradient')value=value||null;const patch={[field]:value};if(field==='style'&&['default','colour'].includes(value)){patch.gradient=null;patch.image=null;release();}if(field==='style'&&value==='gradient'&&!getRow().card?.gradient){patch.gradient='sage';host.querySelector('[data-card-field=gradient]').value='sage';}if(field==='gradient'&&getRow().card?.style!=='image'){patch.style=value?'gradient':'colour';host.querySelector('[data-card-field=style]').value=patch.style;}change(patch);});
+- host.addEventListener('change',async event=>{if(!event.target.matches('[data-card-image]'))return;let file=event.target.files?.[0];if(!file)return;const request=++ticket;if(!cardImageTypes.includes(file.type)||file.size<1||file.size>5*1024*1024){status('Choose a PNG, JPEG or WebP picture up to 5 MB.');return;}onBusy(true);status('Uploading private picture…');try{file=await prepareImage(file);if(!active()||request!==ticket)return;const bytes=await file.arrayBuffer(),hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),n=>n.toString(16).padStart(2,'0')).join(''),image={assetId:hash,sha256:hash,type:file.type,size:file.size,alt:''};const saved=await onUpload(file,image);if(!active()||request!==ticket)return;if(!cardImageRef(saved))throw Error('The uploaded picture could not be verified.');release();blobURL=URL.createObjectURL(file);change({style:'image',image:saved});host.querySelector('[data-card-field=style]').value='image';host.querySelector('[data-card-remove-image]').hidden=false;status('Picture uploaded privately. Save this playlist, then publish to use it.');}catch(error){if(active()&&request===ticket)status(error.message);}finally{if(active()&&request===ticket)onBusy(false);}});
+- host.addEventListener('click',async event=>{if(event.target.closest('[data-card-remove-image]')){ticket++;release();change({style:'colour',image:null});host.querySelector('[data-card-field=style]').value='colour';event.target.hidden=true;status('Picture removed from this draft. Save to keep the change.');}if(event.target.closest('[data-card-preview-image]')){const request=++ticket;onBusy(true);try{const blob=await onPreview(getRow().card?.image);if(!active()||request!==ticket)return;release();blobURL=URL.createObjectURL(blob);preview();}catch(error){if(active())status(error.message);}finally{if(active()&&request===ticket)onBusy(false);}}});
++ host.addEventListener('change',async event=>{if(!event.target.matches('[data-card-image]'))return;let file=event.target.files?.[0];if(!file)return;const request=++ticket;if(!cardImageTypes.includes(file.type)||file.size<1||file.size>5*1024*1024){status('Choose a PNG, JPEG or WebP picture up to 5 MB.');return;}onBusy(true);status('Uploading private picture…');try{file=await prepareImage(file);if(!active()||request!==ticket)return;const bytes=await file.arrayBuffer(),hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),n=>n.toString(16).padStart(2,'0')).join(''),image={assetId:hash,sha256:hash,type:file.type,size:file.size,alt:''};const saved=await onUpload(file,image);if(!active()||request!==ticket)return;if(!cardImageRef(saved))throw Error('The uploaded picture could not be verified.');release();blobURL=URL.createObjectURL(file);change({style:'image',colour:'#45665A',gradient:null,image:saved});host.querySelector('[data-card-field=style]').value='image';host.querySelector('[data-card-remove-image]').hidden=false;status('Picture uploaded privately. Save this playlist, then publish to use it.');}catch(error){if(active()&&request===ticket)status(error.message);}finally{if(active()&&request===ticket)onBusy(false);}});
++ host.addEventListener('click',async event=>{if(event.target.closest('[data-card-remove-image]')){ticket++;release();change({style:'default',colour:'#45665A',gradient:null,image:null});host.querySelector('[data-card-field=style]').value='default';event.target.hidden=true;status('Picture removed from this draft. Save to keep the change.');}if(event.target.closest('[data-card-preview-image]')){const request=++ticket;onBusy(true);try{const blob=await onPreview(getRow().card?.image);if(!active()||request!==ticket)return;release();blobURL=URL.createObjectURL(blob);preview();}catch(error){if(active())status(error.message);}finally{if(active()&&request===ticket)onBusy(false);}}});
+  return {preview,destroy(){closed=true;ticket++;release();}};
+ }
+diff --git a/tests/circles-routes.test.mjs b/tests/circles-routes.test.mjs
+index 84c2e50..0cf9958 100644
+--- a/tests/circles-routes.test.mjs
++++ b/tests/circles-routes.test.mjs
+@@ -15,8 +15,8 @@ test('Circles Tafseer and Courses select their native collection and preserve re
+  const items=[{key:'yaseen',kind:'TAFSEER',title:'Surah Yaseen',websiteId:'original-surah'},{key:'course',kind:'COURSE',title:'Original Course',websiteId:'original-course'}];
+  assert.equal(learningDestination('tafseer'),'/studio/?view=collections&collection=tafseer');assert.equal(learningDestination('courses'),'/studio/?view=collections&collection=courses');
+  const html=circlesCatalogue(items,[],{applicationPath:'/studio/',kind:collectionKind('tafseer')});
+- assert(html.includes('href="/studio/?website=original-surah"'));assert(html.includes('data-circles-tab="TAFSEER" aria-current="page"'));assert(html.includes('aria-label="Courses" hidden'));assert(html.includes('Subscription required'));
+- const course=circlesCatalogue(items,[{websiteId:'original-course',subscriptionStatus:'subscribed'}],{applicationPath:'/studio/',kind:collectionKind('courses')});
+- assert(course.includes('data-circles-tab="COURSE" aria-current="page"'));assert(course.includes('aria-label="Tafseer" hidden'));assert(course.includes('Original Course · Subscribed'));
+- const unsafe=circlesCatalogue(items,[],{applicationPath:'https://outside.test/',kind:'admin'});assert(!unsafe.includes('https://outside.test'));assert(unsafe.includes('href="/?website=original-surah"'));
++ assert(html.includes('data-course-access-locked'));assert(!html.includes('href="/studio/?website=original-surah"'));assert(html.includes('data-circles-tab="TAFSEER" aria-current="page"'));assert(html.includes('aria-label="Courses" hidden'));assert(html.includes('Locked'));
++ const course=circlesCatalogue(items,[{websiteId:'original-course',canOpen:true,subscriptionStatus:'subscribed'}],{applicationPath:'/studio/',kind:collectionKind('courses')});
++ assert(course.includes('data-circles-tab="COURSE" aria-current="page"'));assert(course.includes('aria-label="Tafseer" hidden'));assert(course.includes('Original Course · Open'));
++ const unsafe=circlesCatalogue(items,[{websiteId:'original-surah',canOpen:true}],{applicationPath:'https://outside.test/',kind:'admin'});assert(!unsafe.includes('https://outside.test'));assert(unsafe.includes('href="/?website=original-surah"'));
+ });
+diff --git a/tests/course-card-rework.test.mjs b/tests/course-card-rework.test.mjs
+new file mode 100644
+index 0000000..85f7bdf
+--- /dev/null
++++ b/tests/course-card-rework.test.mjs
+@@ -0,0 +1,35 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {parseHTML} from 'linkedom';
++import {circlesCatalogue,selectCatalogueCollection} from '../public/shared/circles-catalogue.mjs';
++import {playlistCardHTML,cardEditorHTML,CARD_DEFAULT} from '../public/shared/playlist-card.mjs';
++import {showLockedAccessNotice,lockedCourseMessage} from '../public/shared/access-badge.mjs';
++const course={kind:'COURSE',key:'synthetic-course',websiteId:'native-site',title:'A checked Course',cover:'/synthetic.png',accent:'#45665a',soft:'#faf7f1'};
++function doc(html){return parseHTML('<html><body>'+html+'</body></html>').document;}
++test('the Course catalogue shows Free, Open or Locked using current native policy and opening rights',()=>{
++ for(const [rights,label]of [[{canOpen:true,coursePolicy:{model:'FREE'}},'Free'],[{canOpen:true,subscriptionStatus:'required',coursePolicy:{model:'PAID'}},'Open'],[{canOpen:false,subscriptionStatus:'subscribed',coursePolicy:{model:'PAID'}},'Locked']]){
++  const root=doc(circlesCatalogue([course],[{websiteId:'native-site',...rights}],{kind:'COURSE'}));assert.equal(root.querySelector('.access-badge').textContent.trim(),label);
++  if(label==='Locked'){assert(root.querySelector('button[data-course-access-locked]'));assert.equal(root.querySelector('a[data-circles-website]'),null);}else assert(root.querySelector('a[data-circles-website="native-site"]'));
++  assert.equal(root.querySelector('[data-circles-tab=TAFSEER]'),null,'Learn → Courses has no Tafseer link');
++ }
++});
++test('entering Courses from Tafseer also removes the Tafseer link without fetching another catalogue',()=>{
++ const root=doc(circlesCatalogue([course],[],{kind:'TAFSEER'}));
++ assert(root.querySelector('[data-circles-tab=TAFSEER]'));
++ selectCatalogueCollection(root,'COURSE');
++ assert.equal(root.querySelector('[data-circles-tab=TAFSEER]'),null);
++ assert.equal(root.querySelector('[data-circles-tab=COURSE]').getAttribute('aria-current'),'page');
++ assert(root.querySelector('[data-circles-section=TAFSEER]').hidden);
++ assert(!root.querySelector('[data-circles-section=COURSE]').hidden);
++ assert(root.querySelector('[data-course-access-locked]'));
++});
++test('shared native playlist cards use the same badge treatment and hold locked clicks away from protected links',()=>{
++ const image={assetId:'a'.repeat(64),sha256:'a'.repeat(64),type:'image/png',size:20,alt:'',url:'/api/public/circles/covers/'+'a'.repeat(64)},row={id:'native-playlist',name:'Shared card',card:{...CARD_DEFAULT,style:'image',image}};
++ for(const kind of ['COURSE','TAFSEER','PROGRAM'])for(const accessLabel of ['Free','Open','Locked']){const root=doc(playlistCardHTML(row,{kind,href:'/studio/?website=native-playlist',websiteId:row.id,accessLabel}));assert(root.querySelector('.has-picture'));assert.equal(root.querySelector('.access-badge').textContent.trim(),accessLabel);assert.equal(Boolean(root.querySelector('[data-course-access-locked]')),accessLabel==='Locked');if(accessLabel==='Locked')assert.equal(root.querySelector('a'),null);}
++});
++test('new playlist card editing offers a private image upload with the standard fixed design',()=>{
++ const root=doc(cardEditorHTML({id:'new-playlist',name:'New playlist',card:CARD_DEFAULT},{kind:'COURSE',imageRequired:true}));assert(root.querySelector('input[type=file][data-card-image]'));assert.equal(root.querySelector('input[type=color],select[data-card-field]'),null);assert.match(root.body.textContent,/standard card design is fixed/);assert.match(root.body.textContent,/private until publication/);assert.match(root.body.textContent,/Required for Course publication/);
++});
++test('a locked card opens the exact purchase-from-Admin notice without a request or content access',()=>{
++ const document=doc('');const create=document.createElement.bind(document);document.createElement=name=>{const el=create(name);if(name==='dialog'){el.showModal=()=>el.setAttribute('open','');el.close=()=>el.removeAttribute('open');}return el;};const notice=showLockedAccessNotice(document);assert.equal(notice.querySelector('p').textContent,lockedCourseMessage);assert(notice.hasAttribute('open'));notice.querySelector('button').click();assert(!notice.hasAttribute('open'));assert.equal(document.querySelectorAll('dialog').length,1);
++});
+diff --git a/tests/course-participants-search.test.mjs b/tests/course-participants-search.test.mjs
+new file mode 100644
+index 0000000..591690a
+--- /dev/null
++++ b/tests/course-participants-search.test.mjs
+@@ -0,0 +1,36 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {studioFixture} from './studio-access-fixture.mjs';
++import {signIn} from './access-fixture.mjs';
++
++test('the compact Participants commands link existing Core users, grant and revoke Paid access without creating users or staff',async t=>{
++ const z=await studioFixture();t.after(()=>z.f.close());await z.handover();let view=await z.good({action:'read'});
++ if(view.coursePolicy.model!=='PAID'){await z.good({action:'save',revision:view.revision,change:{action:'course-policy',operationId:crypto.randomUUID(),accessModel:'PAID'}});view=await z.good({action:'read'});}
++ const id=z.x.grant,coreBefore=await z.x.db.prepare('SELECT count(*) n FROM accounts').first('n'),staffBefore=(await z.f.db.prepare('SELECT * FROM staff ORDER BY account_id,offering_id').all()).results,operationId=crypto.randomUUID();
++ await z.good({action:'provision',input:{operationId,accountId:id}});await z.good({action:'resume',input:{jobId:operationId}});view=await z.good({action:'read',accountId:id});
++ const grant={action:'save',revision:view.revision,change:{action:'participant',operationId:crypto.randomUUID(),accountId:id,enrolled:true,live:true,purchased:true,cohort:view.person.cohort||'',reason:'Added in Course Participants'}};
++ await z.good(grant);assert((await z.good(grant)).replayed);assert.equal(await z.x.db.prepare('SELECT count(*) n FROM accounts').first('n'),coreBefore);
++ const cookie=await signIn(z.f,'studentB');assert.equal((await z.f.request('/api/websites/site-course',{cookie})).status,200);
++ view=await z.good({action:'read',accountId:id});await z.good({action:'save',revision:view.revision,change:{action:'access-batch',operationId:crypto.randomUUID(),changes:[{action:'participant',accountId:id,enrolled:false,live:false,purchased:false,cohort:view.person.cohort||'',reason:'Course access unchecked in Participants'}]}});
++ assert.equal((await z.f.request('/api/websites/site-course',{cookie})).status,403);assert.deepEqual((await z.f.db.prepare('SELECT * FROM staff ORDER BY account_id,offering_id').all()).results,staffBefore);
++});
++
++test('Course user selection uses current native Core identity and only the permitted Studio-owned Global Admin scope',async t=>{
++ const z=await studioFixture();t.after(()=>z.f.close());
++ assert.equal((await z.proxy({action:'course-user-search',search:''})).status,409,'Legacy ownership must not silently activate Studio');
++ await z.handover();const result=await z.good({action:'course-user-search',search:''});assert.equal(result.schema,'COURSE_USER_SEARCH_V1');assert(result.accounts.some(a=>a.accountId===z.x.student));assert(result.accounts.length<=20);assert(result.accounts.every(a=>a.displayName&&!('pin' in a)&&!('whatsapp' in a)));
++ assert.equal((await z.proxy({action:'course-user-search',search:''},{who:'studentA'})).status,403);
++ assert.equal((await z.proxy({action:'course-user-search',search:''},{who:'adminB'})).status,403);
++ assert.equal((await z.proxy({action:'course-user-search',search:'x'.repeat(81)})).status,400);
++ const token=await z.nativeLogin();await z.x.run('UPDATE account_sessions SET revoked_at=? WHERE account_id=?',new Date().toISOString(),z.f.source.f.actors.global);assert.equal((await z.proxy({action:'course-user-search',search:''})).status,401);assert(token);
++});
++
++test('native Course user search stays bounded after 4,000 then 8,000 unrelated Core accounts and roles',async t=>{
++ const z=await studioFixture();t.after(()=>z.f.close());await z.handover();
++ const add=async prefix=>{await z.x.run("WITH RECURSIVE n(x) AS(VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<4000) INSERT INTO accounts(account_id,display_name,login_link_id,active) SELECT ?||printf('%05d',x),'Unrelated user',?||printf('%05d',x),1 FROM n",prefix,prefix);await z.x.run("INSERT INTO role_assignments(assignment_id,account_id,activity_key,role,active,review_state) SELECT 'role-'||account_id,account_id,?,'STUDENT',1,'CONFIRMED' FROM accounts WHERE account_id LIKE ?",z.f.source.f.scopes.programB,prefix+'%');};
++ const measure=async()=>{z.f.source.resetMetrics();const result=await z.good({action:'course-user-search',search:'no match'});return {result,metrics:{...z.f.source.metrics},statements:z.f.source.statements.slice()};};
++ await add('zz-a-');await measure();const a=await measure();await add('zz-z-');await measure();const b=await measure();
++ assert.equal(a.result.accounts.length,0);assert.equal(b.result.accounts.length,0);assert(a.result.more&&b.result.more);assert(a.result.nextCursor);assert.equal(b.result.nextCursor,a.result.nextCursor);
++ assert.equal(b.metrics.queries,a.metrics.queries);assert(b.metrics.rowsRead<=a.metrics.rowsRead+4,JSON.stringify({before:a.metrics,after:b.metrics}));
++ t.diagnostic(JSON.stringify({sourceRoot:z.f.source.root,after4000:a.metrics,after8000:b.metrics,emptyResults:true,boundedCandidateKeys:50,localOnly:true}));
++});
+diff --git a/tests/public-home-review.test.mjs b/tests/public-home-review.test.mjs
+index 9041be9..faf6a84 100644
+--- a/tests/public-home-review.test.mjs
++++ b/tests/public-home-review.test.mjs
+@@ -14,6 +14,6 @@ test('announcement selection preserves the original flyer actions and complete e
+ });
+ test('common badges reflect checked rights and free policy without converting staff opening rights into a purchase',()=>{
+  const items=[{kind:'COURSE',key:'paid',websiteId:'paid',title:'Paid',cover:'/cover.png'},{kind:'COURSE',key:'free',websiteId:'free',title:'Free',cover:'/cover.png'},{kind:'TAFSEER',key:'yaseen',websiteId:'surah',title:'Surah Yaseen'}],rights=[{websiteId:'paid',canOpen:true,subscriptionStatus:'required',coursePolicy:{model:'PAID'}},{websiteId:'free',canOpen:true,subscriptionStatus:'free',coursePolicy:{model:'FREE'}},{websiteId:'surah',canOpen:true,subscriptionStatus:'subscribed'}];
+- const {document}=parseHTML(circlesCatalogue(items,rights,{applicationPath:'/studio/'}));assert.equal(document.querySelectorAll('.access-locked').length,1);assert.equal(document.querySelectorAll('.access-free').length,1);assert.equal(document.querySelectorAll('.access-open').length,1);assert.equal(document.querySelector('.access-free svg'),null);assert.equal(document.querySelectorAll('.collection-lock').length,3);
++ const {document}=parseHTML(circlesCatalogue(items,rights,{applicationPath:'/studio/'}));assert.equal(document.querySelectorAll('.access-locked').length,0);assert.equal(document.querySelectorAll('.access-free').length,1);assert.equal(document.querySelectorAll('.access-open').length,2);assert.equal(document.querySelector('.access-free svg'),null);assert.equal(document.querySelectorAll('.collection-lock').length,3);assert.equal(rights[0].subscriptionStatus,'required','Showing Open must not materialise a purchase for staff');
+ });
+ test('fresh uncached activated-feed failures show retry and never restore frozen notices',async()=>{for(const code of ['ANNOUNCEMENT_PUBLICATION_PENDING','ANNOUNCEMENTS_UNAVAILABLE']){const {window,document}=parseHTML('<html><head></head><body><section id="academy-news"><div id="academy-news-reel"><article class="academy-news-card"><h3>Withdrawn frozen notice</h3></article></div></section></body></html>');Object.defineProperty(document,'baseURI',{value:'https://fresh-'+crypto.randomUUID()+'.test/'});window.fetch=async()=>Response.json({success:false,error:'Publication recovery pending',code},{status:503});publicHome(document)();await new Promise(r=>setImmediate(r));assert(document.querySelector('#academy-news-reel').hidden);assert.equal(document.querySelector('.announcement-layout'),null);assert.match(document.querySelector('.announcement-public-panel').textContent,/Announcements could not be loaded/);assert.equal(document.querySelector('.announcement-public-panel button').textContent,'Try again');}});

@@ -1,0 +1,256 @@
+diff --git a/public/shared/media-admin-panel.mjs b/public/shared/media-admin-panel.mjs
+index a04886d..ba6b97f 100644
+--- a/public/shared/media-admin-panel.mjs
++++ b/public/shared/media-admin-panel.mjs
+@@ -1,6 +1,6 @@
+ import {esc} from './model.mjs';
+ import {learnerCompanion} from './learner-companion.mjs';
+-import {youtubeSource,reviewedCompanion,pendingMedia,saveMediaDraft,publishMediaDraft} from './media-workflow.mjs';
++import {youtubeSource,reviewedCompanion,pendingMedia,saveMediaDraft,publishMediaDraft,checkedMediaSelection,checkedMediaTeacherIds} from './media-workflow.mjs';
+ export function mountMediaAdmin(host,{api,mutate,offeringId,current,initialRecord,optionsPromise,onRecord}){
+  if(!document.querySelector('link[href="/shared/media-attachment.css"]')){const link=document.createElement('link');link.rel='stylesheet';link.href='/shared/media-attachment.css';document.head.append(link);}
+  let disposed=false,busy=false,dirty=false,options,record,pending=null,imported=null,detail=null,publishOperations=null;
+@@ -10,13 +10,14 @@ export function mountMediaAdmin(host,{api,mutate,offeringId,current,initialRecor
+  const teachers=(selected=[])=>options.teachers.map(t=>'<label class="check"><input type="checkbox" name="teacherIds" value="'+esc(t.id)+'"'+(selected.includes(t.id)?' checked':'')+'> '+esc(t.name)+'</label>').join('');
+  async function load(){const r=initialRecord||await api(path+'/media-review');initialRecord=null;assert();const o=optionsPromise?await optionsPromise:await api(path+'/media-options');optionsPromise=null;assert();record=r;options=o;onRecord?.(r);dirty=false;pending=null;imported=null;detail=null;publishOperations=null;draw();}
+  function associationFields(){
+-  if(options.kind==='COURSE')return '<p>This recording belongs directly to the selected Course.</p>';
+-  const mou=options.programmeKey==='mothers',choices=mou?(options.playlists||[]):options.subjects;
+-  return '<label>'+(mou?'MOU playlist':'Surah')+'<select name="'+(mou?'playlistId':'websiteId')+'" required><option value="">Choose '+(mou?'a playlist':'a Surah')+'</option>'+choices.map(s=>'<option value="'+esc(s.id)+'"'+'>'+esc(s.name)+(mou?' · '+esc(s.closeDate?'Closed '+s.closeDate:'Open · current paid month'):'')+'</option>').join('')+'</select></label>'+(mou?'<p>Open playlists use the current paid month; completed playlists use the close date’s month. Manage playlists in Access Management.</p>':'')+'<label>Original recorded class<select name="cohort" required><option value="">Choose a class</option>'+options.classes.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('')+'</select></label>'+(!options.classes.length?'<p>No named native class choices are available for this programme.</p>':'')+'<label>Original recording date<input type="date" name="lessonDate" required></label>';
++  const course=options.kind==='COURSE',mou=options.programmeKey==='mothers',choices=(options.playlists||[]).filter(p=>p.legacy!==true),label=course?'Course playlist':mou?'MOU playlist':options.kind==='TAFSEER'?'Surah playlist':'Programme playlist';
++  const selector='<label>'+label+'<select name="playlistId" required><option value="">Choose a playlist</option>'+choices.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+' · '+esc(p.closeDate?'Closed '+p.closeDate:course?'Open':'Open · current paid month')+'</option>').join('')+'</select></label>'+(choices.length?'':'<p>No playlists are available. Create a playlist in Access Management before adding recordings.</p>');
++  if(course)return selector+'<p>Recordings are grouped in this playlist and retain the Course’s existing access.</p><label>Original recording date (optional)<input type="date" name="lessonDate"></label>';
++  return selector+'<p>Open playlists use the current paid month; completed playlists use the close date’s month. Manage playlists in Access Management.</p><label>Original recorded class<select name="cohort" required><option value="">Choose a class</option>'+options.classes.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('')+'</select></label>'+(!options.classes.length?'<p>No named native class choices are available for this programme.</p>':'')+'<label>Original recording date<input type="date" name="lessonDate" required></label>';
+  }
+  function draw(){
+   if(!active())return;host.classList.add('studio-media-attachment');
+-  host.innerHTML='<h2>Add a recorded lesson</h2><p>Keep one recording source with its reviewed summary and topics. Save privately, review the saved lesson, then publish it separately.</p><p role="status" aria-live="polite" data-media-status></p><form data-media-attach><fieldset data-recording-fields><legend>Recording and association</legend><label>Lesson title<input name="title" required maxlength="240"></label>'+associationFields()+'<fieldset><legend>Recorded Teacher · choose one to ten</legend>'+teachers()+(!options.teachers.length?'<p>No registered Teachers are available for this programme.</p>':'')+'</fieldset><label>Recording source<select name="sourceKind"><option value="YOUTUBE">YouTube recording link</option><option value="UPLOAD">Upload an MP4 recording</option></select></label><label data-youtube-source>YouTube recording link<input type="url" name="sourceURL" required placeholder="https://www.youtube.com/watch?v=…"></label><label data-upload-source hidden>MP4 recording<input type="file" name="recordingFile" accept="video/mp4"></label></fieldset><fieldset data-recording-fields><legend>Reviewed processed content</legend><label>Import processed companion (optional)<input type="file" data-companion-import accept="application/json,.json"></label><label>Full lesson summary<textarea name="summary" required maxlength="20000" rows="8"></textarea></label><label>Topic guide · one timestamp and heading per line<textarea name="topics" required placeholder="00:00 Introduction" rows="5"></textarea></label><div class="form-grid"><label>Recording length · minutes<input name="minutes" type="number" min="0" max="1440" required></label><label>Additional seconds<input name="seconds" type="number" min="0" max="59" value="0" required></label></div><label>Lesson reference (optional)<textarea name="lessonReference" maxlength="2000"></textarea></label><label>Practice or application (optional)<textarea name="application" maxlength="20000"></textarea></label><label class="check"><input type="checkbox" name="reviewed" required>I reviewed this summary and topic guide against the recording.</label></fieldset><fieldset data-recording-fields><legend>Supporting files · optional</legend><label>PDFs or images<input name="supportingFiles" type="file" multiple accept="application/pdf,image/png,image/jpeg,image/webp"></label><p>'+(options.programmeKey==='mothers'?'These follow the selected playlist’s current-month or close-month access; original recording dates and classes remain history.':'These stay separate from the recording and use the same original class/month or Course access.')+'</p></fieldset><button type="submit" class="primary"'+(!options.teachers.length||options.kind!=='COURSE'&&!options.classes.length||options.programmeKey==='mothers'&&!(options.playlists||[]).length?' disabled':'')+'>Save and attach privately</button> <button type="button" data-media-discard>Clear this form</button></form><section><div class="toolbar"><h3>Saved recorded lessons</h3><button type="button" data-media-refresh>Refresh saved lessons</button></div>'+record.media.slice(0,50).filter(m=>m.audience==='RECORDING'&&['video/mp4','video/youtube'].includes(m.mime_type)).map(m=>{const c=m.attribution_draft?JSON.parse(m.attribution_draft):null;return '<article class="card"><h4>'+esc(m.title)+'</h4><p>'+esc(c?.playlist?.name||c?.subject?.name|| (options.kind==='COURSE'?'Course recording':'Historical recording'))+' · '+esc(c?.teacherName||'Teacher not selected')+'</p><p>'+esc(m.lesson_date)+' · '+(m.published?'Published':'Private')+'</p><button type="button" data-media-review="'+esc(m.attachment_id)+'">Review lesson</button></article>';}).join('')+'</section><section data-media-detail></section>';
++  host.innerHTML='<h2>Add a recorded lesson</h2><p>Keep one recording source with its reviewed summary and topics. Save privately, review the saved lesson, then publish it separately.</p><p role="status" aria-live="polite" data-media-status></p><form data-media-attach><fieldset data-recording-fields><legend>Recording and association</legend><label>Lesson title<input name="title" required maxlength="240"></label>'+associationFields()+'<fieldset><legend>Recorded Teacher · choose one to ten</legend>'+teachers()+(!options.teachers.length?'<p>No registered Teachers are available for this programme.</p>':'')+'</fieldset><label>Recording source<select name="sourceKind"><option value="YOUTUBE">YouTube recording link</option><option value="UPLOAD">Upload an MP4 recording</option></select></label><label data-youtube-source>YouTube recording link<input type="url" name="sourceURL" required placeholder="https://www.youtube.com/watch?v=…"></label><label data-upload-source hidden>MP4 recording<input type="file" name="recordingFile" accept="video/mp4"></label></fieldset><fieldset data-recording-fields><legend>Reviewed processed content</legend><label>Import processed companion (optional)<input type="file" data-companion-import accept="application/json,.json"></label><label>Full lesson summary<textarea name="summary" required maxlength="20000" rows="8"></textarea></label><label>Topic guide · one timestamp and heading per line<textarea name="topics" required placeholder="00:00 Introduction" rows="5"></textarea></label><div class="form-grid"><label>Recording length · minutes<input name="minutes" type="number" min="0" max="1440" required></label><label>Additional seconds<input name="seconds" type="number" min="0" max="59" value="0" required></label></div><label>Lesson reference (optional)<textarea name="lessonReference" maxlength="2000"></textarea></label><label>Practice or application (optional)<textarea name="application" maxlength="20000"></textarea></label><label class="check"><input type="checkbox" name="reviewed" required>I reviewed this summary and topic guide against the recording.</label></fieldset><fieldset data-recording-fields><legend>Supporting files · optional</legend><label>PDFs or images<input name="supportingFiles" type="file" multiple accept="application/pdf,image/png,image/jpeg,image/webp"></label><p>'+'These follow the selected playlist and the recording’s existing access.'+'</p></fieldset><button type="submit" class="primary"'+(!options.teachers.length||options.kind!=='COURSE'&&!options.classes.length||!(options.playlists||[]).some(p=>p.legacy!==true)?' disabled':'')+'>Save and attach privately</button> <button type="button" data-media-discard>Clear this form</button></form><section><div class="toolbar"><h3>Saved recorded lessons</h3><button type="button" data-media-refresh>Refresh saved lessons</button></div>'+record.media.slice(0,50).filter(m=>m.audience==='RECORDING'&&['video/mp4','video/youtube'].includes(m.mime_type)).map(m=>{const c=m.attribution_draft?JSON.parse(m.attribution_draft):null;return '<article class="card"><h4>'+esc(m.title)+'</h4><p>'+esc(c?.playlist?.name||c?.subject?.name|| (options.kind==='COURSE'?'Course recording':'Historical recording'))+' · '+esc(c?.teacherName||'Teacher not selected')+'</p><p>'+esc(m.lesson_date)+' · '+(m.published?'Published':'Private')+'</p><button type="button" data-media-review="'+esc(m.attachment_id)+'">Review lesson</button></article>';}).join('')+'</section><section data-media-detail></section>';
+  }
+  function renderDetail(){
+   const c=detail.recordedContext,companion=detail.companion,target=host.querySelector('[data-media-detail]');
+@@ -34,8 +35,8 @@ export function mountMediaAdmin(host,{api,mutate,offeringId,current,initialRecor
+   const form=event.target.closest('[data-media-attach],[data-media-teacher-save],[data-media-companion-save]');if(!form)return;event.preventDefault();if(busy||!active())return;
+   try{
+    if(form.matches('[data-media-companion-save]')){const fields=Object.fromEntries(new FormData(form)),durationSeconds=Number(fields.minutes)*60+Number(fields.seconds),companion=reviewedCompanion({...fields,imported:detail.companion,durationSeconds});busy=true;await mutate(path,{action:'media-companion-save',attachmentId:detail.attachmentId,revision:detail.companionRevision,durationSeconds,companion});assert();busy=false;dirty=false;await review(detail.attachmentId);report('Companion saved privately. Review the full saved lesson before publication.');return;}
+-   if(form.matches('[data-media-teacher-save]')){const ids=new FormData(form).getAll('teacherIds');busy=true;await mutate(path,{action:'media-attribution-save',attachmentId:detail.attachmentId,revision:detail.attributionRevision,teacherIds:ids});assert();busy=false;dirty=false;await review(detail.attachmentId);report('Teacher attribution saved privately. Review and publish this lesson to update its displayed Teacher.');return;}
+-   if(!pending){const data=new FormData(form),input=Object.fromEntries(data);input.teacherIds=data.getAll('teacherIds');input.durationSeconds=Number(input.minutes)*60+Number(input.seconds);input.supportingFiles=data.getAll('supportingFiles').filter(f=>f.size);input.recordingFile=data.get('recordingFile');if(!input.teacherIds.length||input.teacherIds.length>10)throw Error('Choose one to ten registered Teachers.');if(input.sourceKind==='YOUTUBE')youtubeSource(input.sourceURL);else if(!input.recordingFile?.size)throw Error('Choose the MP4 recording.');if(input.supportingFiles.length>10||input.supportingFiles.some(f=>f.size>(f.type.startsWith('image/')?5:16)*1024*1024))throw Error('Choose up to ten supporting files, PDFs up to 16 MB and images up to 5 MB.');input.companion=reviewedCompanion({...input,imported});pending=pendingMedia(input);}
++   if(form.matches('[data-media-teacher-save]')){const ids=checkedMediaTeacherIds(options,new FormData(form).getAll('teacherIds'));busy=true;await mutate(path,{action:'media-attribution-save',attachmentId:detail.attachmentId,revision:detail.attributionRevision,teacherIds:ids,...(detail.recordedContext?.playlist?{playlistId:detail.recordedContext.playlist.id}:{})});assert();busy=false;dirty=false;await review(detail.attachmentId);report('Teacher attribution saved privately. Review and publish this lesson to update its displayed Teacher.');return;}
++   if(!pending){const data=new FormData(form),input=Object.fromEntries(data);input.teacherIds=data.getAll('teacherIds');input.durationSeconds=Number(input.minutes)*60+Number(input.seconds);input.supportingFiles=data.getAll('supportingFiles').filter(f=>f.size);input.recordingFile=data.get('recordingFile');if(!input.teacherIds.length||input.teacherIds.length>10)throw Error('Choose one to ten registered Teachers.');if(input.sourceKind==='YOUTUBE')youtubeSource(input.sourceURL);else if(!input.recordingFile?.size)throw Error('Choose the MP4 recording.');if(input.supportingFiles.length>10||input.supportingFiles.some(f=>f.size>(f.type.startsWith('image/')?5:16)*1024*1024))throw Error('Choose up to ten supporting files, PDFs up to 16 MB and images up to 5 MB.');const selected=checkedMediaSelection(options,input);input.teacherIds=selected.teacherIds;input.websiteId=selected.websiteId;input.companion=reviewedCompanion({...input,imported});pending=pendingMedia(input);}
+    busy=true;form.querySelectorAll('fieldset').forEach(f=>f.disabled=true);form.querySelector('[type=submit]').disabled=true;
+    const saved=await saveMediaDraft({pending,api,path,current:assert,report});assert();busy=false;await load();await review(saved.attachmentId);report('Lesson attached privately with its source, full summary, topics and supporting files. Review it before publishing.');
+   }catch(error){busy=false;if(active()){report(error.message+(pending?' Resume the same private save to reuse its completed steps.':''));const button=form.querySelector('[type=submit]');if(button){button.disabled=false;if(pending)button.textContent='Resume private save';}}}
+diff --git a/public/shared/media-workflow.mjs b/public/shared/media-workflow.mjs
+index eb3e756..e620d04 100644
+--- a/public/shared/media-workflow.mjs
++++ b/public/shared/media-workflow.mjs
+@@ -12,9 +12,37 @@ export function reviewedCompanion({summary,topics,application,lessonReference,im
+  if(!Number.isInteger(durationSeconds)||durationSeconds<1||durationSeconds>86400||value.topics.some(t=>t.start>=durationSeconds))throw Error('Confirm the recording length and keep all topics within it.');return value;
+ }
+ const uuid=()=>crypto.randomUUID();
+-export function pendingMedia(input){return {input,assetId:uuid(),attachmentId:uuid(),sourceOperation:uuid(),attachOperation:uuid(),companionOperation:uuid(),uploadStartOperation:uuid(),uploadCompleteOperation:uuid(),parts:[],supports:input.supportingFiles.map(file=>({file,assetId:uuid(),attachmentId:uuid(),operationId:uuid()}))};}
++const nativeId=value=>typeof value==='string'&&/^[-A-Za-z0-9_:]{1,180}$/.test(value);
++export function checkedMediaTeacherIds(options,selected){
++ if(!Array.isArray(selected)||selected.length<1||selected.length>10||selected.some(id=>!nativeId(id))||new Set(selected.map(id=>id.toLowerCase())).size!==selected.length)throw Error('Choose one to ten distinct registered Teachers.');
++ if(!Array.isArray(options?.teachers))throw Error('Refresh the checked Teacher choices.');
++ return selected.map(id=>{const matches=options.teachers.filter(t=>typeof t.id==='string'&&t.id.toLowerCase()===id.toLowerCase());if(matches.length!==1)throw Error('Refresh the checked Teacher selection.');return matches[0].id;});
++}
++export function checkedMediaPlaylist(options,playlistId){
++ if(!nativeId(playlistId))throw Error('Choose a playlist before saving this recording.');
++ const matches=Array.isArray(options?.playlists)?options.playlists.filter(p=>p.id===playlistId):[];
++ if(matches.length!==1||matches[0].legacy===true||!nativeId(matches[0].id)||typeof matches[0].name!=='string'||!matches[0].name.trim()||matches[0].websiteId!=null&&!nativeId(matches[0].websiteId))throw Error('Choose a current playlist from the checked choices.');
++ return matches[0];
++}
++export function checkedMediaSelection(options,input){
++ const playlist=checkedMediaPlaylist(options,input.playlistId),teacherIds=checkedMediaTeacherIds(options,input.teacherIds);
++ if(options.kind!=='COURSE'&&(!nativeId(input.cohort)||!options.classes?.some(c=>c.id===input.cohort)))throw Error('Choose a current native recorded class.');
++ if(options.kind!=='COURSE'||input.lessonDate){const date=input.lessonDate;let parsed;try{parsed=new Date(date+'T00:00:00Z').toISOString().slice(0,10);}catch{}if(!/^\d{4}-\d{2}-\d{2}$/.test(date||'')||parsed!==date)throw Error('Use the actual original recording date.');}
++ if(input.websiteId&&playlist.websiteId&&input.websiteId!==playlist.websiteId)throw Error('The saved recording parent differs from the selected playlist. Reopen the recording.');
++ return {playlist,teacherIds,websiteId:playlist.websiteId||input.websiteId||null};
++}
++function freezeCompanion(value){for(const item of Object.values(value))if(item&&typeof item==='object')freezeCompanion(item);return Object.freeze(value);}
++export function pendingMedia(input){
++ if(!nativeId(input.playlistId))throw Error('Choose a playlist before saving this recording.');
++ const snapshot=Object.freeze({...input,teacherIds:Object.freeze([...input.teacherIds]),supportingFiles:Object.freeze([...input.supportingFiles]),companion:freezeCompanion(structuredClone(input.companion))});
++ return {input:snapshot,assetId:uuid(),attachmentId:uuid(),sourceOperation:uuid(),attachOperation:uuid(),companionOperation:uuid(),uploadStartOperation:uuid(),uploadCompleteOperation:uuid(),parts:[],supports:snapshot.supportingFiles.map(file=>({file,assetId:uuid(),attachmentId:uuid(),operationId:uuid()}))};
++}
+ export async function saveMediaDraft({pending:p,api,path,current=()=>{},report=()=>{}}){
+  const input=p.input,checked=()=>current();checked();
++ if(p.path&&p.path!==path)throw Error('Resume this private save in its original programme or Course.');p.path=path;
++ // One fresh selection read per explicit Save; never per file or background poll.
++ const options=await api(path+'/media-options');checked();const selected=checkedMediaSelection(options,input);
++ const association=JSON.stringify([selected.playlist.id,selected.websiteId]);if(p.association&&p.association!==association)throw Error('The playlist parent changed. Reopen the saved recording before continuing.');p.association=association;
+  if(input.sourceKind==='YOUTUBE'&&!p.reuseSource){
+   report('Saving the recording source privately…');await api(path,{body:{action:'youtube',operationId:p.sourceOperation,assetId:p.assetId,videoId:youtubeSource(input.sourceURL),title:input.title}});checked();
+  }else if(input.sourceKind!=='YOUTUBE'){
+@@ -24,10 +52,11 @@ export async function saveMediaDraft({pending:p,api,path,current=()=>{},report=(
+   await api(path+'/recording',{body:{action:'complete',operationId:p.uploadCompleteOperation,assetId:p.assetId,parts:p.parts}});checked();
+  }
+  for(const support of p.supports){checked();report('Saving supporting file: '+support.file.name);await api(path+'/files?'+new URLSearchParams({assetId:support.assetId,operationId:support.operationId,filename:support.file.name}),{method:'PUT',body:support.file});checked();}
+- await api(path,{body:{action:'media-attach',operationId:p.attachOperation,attachmentId:p.attachmentId,assetId:p.assetId,title:input.title,teacherIds:input.teacherIds,playlistId:input.playlistId||null,websiteId:input.websiteId||null,cohort:input.cohort||'',lessonDate:input.lessonDate||'',supportingFiles:p.supports.map(s=>({assetId:s.assetId,attachmentId:s.attachmentId}))}});checked();
++ await api(path,{body:{action:'media-attach',operationId:p.attachOperation,attachmentId:p.attachmentId,assetId:p.assetId,title:input.title,teacherIds:selected.teacherIds,playlistId:selected.playlist.id,websiteId:selected.websiteId,cohort:input.cohort||'',lessonDate:input.lessonDate||'',supportingFiles:p.supports.map(s=>({assetId:s.assetId,attachmentId:s.attachmentId}))}});checked();
+  report('Saving the reviewed summary and topic guide…');await api(path,{body:{action:'media-companion-save',operationId:p.companionOperation,attachmentId:p.attachmentId,revision:0,durationSeconds:input.durationSeconds,companion:input.companion}});checked();return {attachmentId:p.attachmentId};
+ }
+ export async function publishMediaDraft({detail,operations,api,path,current=()=>{}}){
+- current();const choices=await api(path+'/media-options');current();if(!detail.recordedContext?.teacherIds.every(id=>choices.teachers.some(t=>t.id===id)))throw Error('Refresh the checked Teacher selection before publishing.');
++ current();const choices=await api(path+'/media-options');current();checkedMediaTeacherIds(choices,detail.recordedContext?.teacherIds);
++ const playlist=detail.recordedContext?.playlist;if(playlist){const selected=checkedMediaPlaylist(choices,playlist.id);if(selected.websiteId&&selected.websiteId!==playlist.websiteId)throw Error('The saved playlist parent changed. Review this recording again.');}else if(!detail.published)throw Error('Choose and save a playlist before publishing this recording.');
+  await api(path,{body:{action:'media-publication',operationId:operations.recording,attachmentId:detail.attachmentId,revision:detail.attributionRevision,draftContext:detail.draftContext,...(detail.companion?{sourceRevision:detail.sourceRevision,companionKey:detail.companionDraftKey,companionRevision:detail.companionRevision}:{})}});current();
+ }
+diff --git a/public/shared/mou-prepared-review.mjs b/public/shared/mou-prepared-review.mjs
+index b0e4e1c..71a8c34 100644
+--- a/public/shared/mou-prepared-review.mjs
++++ b/public/shared/mou-prepared-review.mjs
+@@ -1,5 +1,6 @@
+ import {reviewNativeMouPlan} from './native-mou-import.mjs';
+ import {learnerCompanion} from './learner-companion.mjs';
++import {checkedMediaTeacherIds,checkedMediaPlaylist} from './media-workflow.mjs';
+ const check=(ok,message)=>{if(!ok)throw Error(message);};
+ const hash=async value=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(value)))),n=>n.toString(16).padStart(2,'0')).join('');
+ export async function reviewMouCatalogue(plan){
+@@ -48,9 +49,9 @@ export async function runMouLesson({plan,itemId,phase,teacherIds,playlistId,api,
+  const fresh=await api('/api/admin/'+encodeURIComponent(plan.preflight.offeringId)+'/prepared-recordings');current();
+  check(await hash(fresh.plan)===await hash(plan),'The prepared review changed. Reopen it before continuing.');
+  const state=mouLessonState(plan,item,fresh.facts);if(state.published)return {published:true,unchanged:true};
+- const selected=teacherIds|| (state.attribution?JSON.parse(state.attribution.draft_json).teacherIds:[]);check(Array.isArray(selected)&&selected.length>0&&selected.length<=10,'Choose a checked registered Teacher before continuing.');
+- const choices=await api('/api/admin/'+encodeURIComponent(fresh.facts.offeringId)+'/media-options');current();check(selected.every(id=>choices.teachers.some(t=>t.id===id)),'Choose a current checked registered Teacher.');
+- const savedPlaylist=state.attribution?JSON.parse(state.attribution.draft_json).playlist?.id:null;const selectedPlaylist=playlistId||savedPlaylist;check(selectedPlaylist&&(choices.playlists||[]).some(p=>p.id===selectedPlaylist),'Choose a MOU playlist before attaching or publishing.');if(savedPlaylist)check(savedPlaylist===selectedPlaylist,'Preserve the saved playlist selection.');
++ const requestedTeachers=teacherIds|| (state.attribution?JSON.parse(state.attribution.draft_json).teacherIds:[]);
++ const choices=await api('/api/admin/'+encodeURIComponent(fresh.facts.offeringId)+'/media-options');current();const selected=checkedMediaTeacherIds(choices,requestedTeachers);
++ const savedPlaylist=state.attribution?JSON.parse(state.attribution.draft_json).playlist?.id:null;const selectedPlaylist=playlistId||savedPlaylist;checkedMediaPlaylist(choices,selectedPlaylist);if(savedPlaylist)check(savedPlaylist===selectedPlaylist,'Preserve the saved playlist selection.');
+  const step=action=>{const row=item.steps.find(r=>r.body.action===action);check(row,'The reviewed step is missing.');return row;};
+  let actions;
+  if(phase==='attach')actions=[...(!state.website?['website-create']:[]),...(!state.asset?['youtube']:[]),...(!state.asset?.attachment_id?['attachment']:[]),...(!state.subject?['mou-subject']:[]),...(!state.asset?.companion_draft_key?['companion-save']:[])];
+diff --git a/tests/media-playlist-client.test.mjs b/tests/media-playlist-client.test.mjs
+new file mode 100644
+index 0000000..a5113d2
+--- /dev/null
++++ b/tests/media-playlist-client.test.mjs
+@@ -0,0 +1,101 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {createRequire} from 'node:module';
++import {mountMediaAdmin} from '../public/shared/media-admin-panel.mjs';
++import {checkedMediaPlaylist,checkedMediaSelection,pendingMedia,saveMediaDraft,publishMediaDraft,reviewedCompanion} from '../public/shared/media-workflow.mjs';
++const {parseHTML}=createRequire(import.meta.url)('linkedom');
++const flush=()=>new Promise(resolve=>setImmediate(resolve));
++const choices=(kind='COURSE',programmeKey=null)=>({kind,programmeKey,teachers:[{id:'teacher-one',name:'Registered Teacher'}],classes:[{id:'original-class',name:'Original recorded class'}],subjects:[{id:'legacy-site',name:'Legacy Surah'}],playlists:[{id:'explicit-playlist',websiteId:'playlist-wrapper',name:'Checked playlist',closeDate:null}]});
++function input(extra={}){
++ const durationSeconds=60;
++ return {sourceKind:'YOUTUBE',sourceURL:'https://www.youtube.com/watch?v=abcdefghijk',title:'Reviewed source',playlistId:'explicit-playlist',teacherIds:['teacher-one'],durationSeconds,companion:reviewedCompanion({summary:'Actual source-specific summary.',topics:'00:00 Opening\n00:20 Main point',application:'Reviewed practice.',durationSeconds}),supportingFiles:[],...extra};
++}
++async function panel(t,options){
++ const previous={document:globalThis.document,window:globalThis.window};
++ const {document,window}=parseHTML('<html><head></head><body><section id="media"></section></body></html>');
++ globalThis.document=document;globalThis.window=window;window.confirm=()=>false;
++ const calls=[],host=document.getElementById('media');
++ const dispose=mountMediaAdmin(host,{offeringId:'course',current:()=>true,initialRecord:{media:[]},optionsPromise:Promise.resolve(options),api:async path=>{calls.push(path);throw Error('Unexpected request');},mutate:async()=>{throw Error('Unexpected mutation');}});
++ t.after(()=>{dispose();for(const [name,value]of Object.entries(previous)){if(value===undefined)delete globalThis[name];else globalThis[name]=value;}});
++ await flush();return {document,host,calls};
++}
++
++for(const [label,kind,programmeKey]of [['Course','COURSE',null],['Tafseer','TAFSEER',null],['MOU','TAFSEER','mothers']]){
++ test(label+' attachment form selects a checked playlist without a timetable session',async t=>{
++  const f=await panel(t,choices(kind,programmeKey)),form=f.host.querySelector('[data-media-attach]');
++  assert(form.querySelector('select[name=playlistId][required]'));
++  assert.equal(form.querySelector('select[name=playlistId] option[value="explicit-playlist"]').textContent,'Checked playlist · Open'+(kind==='COURSE'?'':' · current paid month'));
++  assert.equal(form.querySelector('[name=websiteId]'),null,'No guessed Surah/website fallback');
++  assert.equal(form.querySelector('[name=sessionId],[name=sessionDate],[name=publicationId]'),null);
++  assert.equal(form.querySelector('[name=cohort]')!==null,kind!=='COURSE');
++  assert.equal(form.querySelector('[name=lessonDate]').hasAttribute('required'),kind!=='COURSE');
++  assert.equal(form.querySelector('[type=submit]').disabled,false);assert.deepEqual(f.calls,[]);
++ });
++ test(label+' cannot create ungrouped media when the native playlist list is empty',async t=>{
++  const options=choices(kind,programmeKey);options.playlists=[];const f=await panel(t,options);
++  assert(f.host.querySelector('[data-media-attach] [type=submit]').disabled);
++  assert.match(f.host.textContent,/Create a playlist/);assert.equal(f.host.querySelector('[name=websiteId]'),null);
++ });
++}
++
++test('legacy website descriptors are not silently adopted as new recording playlists',async t=>{
++ const options=choices();options.playlists[0].legacy=true;const f=await panel(t,options);
++ assert(f.host.querySelector('[data-media-attach] [type=submit]').disabled);
++ assert.throws(()=>checkedMediaPlaylist(options,'explicit-playlist'),/current playlist/);
++});
++
++test('checked selection preserves a native playlist parent, Teacher and original recorded class/date',()=>{
++ const options=choices('TAFSEER'),value=input({cohort:'original-class',lessonDate:'2024-03-11'});
++ const selected=checkedMediaSelection(options,value);assert.equal(selected.playlist.id,value.playlistId);assert.equal(selected.websiteId,'playlist-wrapper');assert.deepEqual(selected.teacherIds,['teacher-one']);
++ for(const change of [{playlistId:''},{playlistId:'legacy-site'},{cohort:'Unknown class'},{lessonDate:'2024-02-31'},{teacherIds:[]},{teacherIds:['teacher-one','TEACHER-ONE']},{teacherIds:['unknown']},{websiteId:'different-wrapper'}])assert.throws(()=>checkedMediaSelection(options,{...value,...change}));
++});
++
++test('bad or removed selections cause no source, file, attachment or companion writes',async()=>{
++ for(const bad of [{playlistId:'removed'},{teacherIds:[]},{teacherIds:['unknown']},{cohort:'other-class'}]){
++  const p=pendingMedia(input({cohort:'original-class',lessonDate:'2024-03-11',...bad})),calls=[];
++  await assert.rejects(saveMediaDraft({pending:p,path:'/api/admin/tafseer',api:async(path,options)=>{calls.push({path,options});return choices('TAFSEER');}}));
++  assert.equal(calls.length,1);assert.equal(calls[0].path,'/api/admin/tafseer/media-options');assert.equal(calls[0].options,undefined);
++ }
++ assert.throws(()=>pendingMedia(input({playlistId:null})),/Choose a playlist/);
++});
++
++test('lost acknowledgements preserve the selected playlist, exact identities and processed content across retries',async()=>{
++ const original=input({supportingFiles:[new File(['%PDF-1.7\nSynthetic source\n%%EOF'],'source.pdf',{type:'application/pdf'})],sessionId:'must-not-be-used'}),p=pendingMedia(original),calls=[];let lose=true;
++ const api=async(path,options)=>{calls.push({path,body:options?.body,method:options?.method});if(path.endsWith('/media-options'))return choices();if(options?.body?.action==='media-companion-save'&&lose){lose=false;throw Error('Lost acknowledgement');}return {};};
++ await assert.rejects(saveMediaDraft({pending:p,api,path:'/api/admin/course'}),/Lost acknowledgement/);
++ original.playlistId='another';original.teacherIds.push('unknown');original.sourceURL='https://youtu.be/lmnopqrstuv';original.companion.summary='Changed elsewhere';original.supportingFiles.length=0;
++ await saveMediaDraft({pending:p,api,path:'/api/admin/course'});
++ const attaches=calls.filter(c=>c.body?.action==='media-attach'),sources=calls.filter(c=>c.body?.action==='youtube'),companions=calls.filter(c=>c.body?.action==='media-companion-save');
++ assert.equal(attaches.length,2);assert.deepEqual(attaches[0].body,attaches[1].body);
++ assert.equal(attaches[0].body.playlistId,'explicit-playlist');assert.equal(attaches[0].body.websiteId,'playlist-wrapper');assert.deepEqual(attaches[0].body.teacherIds,['teacher-one']);
++ assert.equal(attaches[0].body.supportingFiles.length,1);assert(!Object.keys(attaches[0].body).some(k=>/session/i.test(k)));
++ assert.deepEqual(sources[0].body,sources[1].body);assert.equal(sources[0].body.videoId,'abcdefghijk');assert.deepEqual(companions[0].body,companions[1].body);assert.equal(companions[1].body.companion.summary,'Actual source-specific summary.');
++ assert.equal(calls.filter(c=>c.path.endsWith('/media-options')).length,2,'One bounded options read per explicit Save');
++ const before=calls.length;await assert.rejects(saveMediaDraft({pending:p,api,path:'/api/admin/another'}),/original programme/);assert.equal(calls.length,before);
++});
++
++test('a changed playlist wrapper stops a resumed save before any additional source writes',async()=>{
++ const p=pendingMedia(input()),calls=[];let changed=false;
++ const api=async(path,options)=>{calls.push({path,options});if(path.endsWith('/media-options')){const o=choices();if(changed)o.playlists[0].websiteId='different-parent';return o;}if(options?.body?.action==='youtube'){changed=true;throw Error('Lost source acknowledgement');}return {};};
++ await assert.rejects(saveMediaDraft({pending:p,api,path:'/api/admin/course'}),/Lost source/);const before=calls.length;
++ await assert.rejects(saveMediaDraft({pending:p,api,path:'/api/admin/course'}),/playlist parent changed/);
++ assert.equal(calls.length,before+1);assert(calls.at(-1).path.endsWith('/media-options'));
++});
++
++test('an account change during the checked selection read cannot start a source upload',async()=>{
++ const calls=[],p=pendingMedia(input());let changed=false;
++ await assert.rejects(saveMediaDraft({pending:p,path:'/api/admin/course',current:()=>{if(changed)throw Error('Account changed');},api:async(path,options)=>{calls.push({path,options});changed=true;return choices();}}),/Account changed/);
++ assert.equal(calls.length,1);assert.equal(calls[0].options,undefined);
++});
++
++test('publication checks the saved playlist and Teacher without publishing the playlist or guessing a legacy group',async()=>{
++ const base={attachmentId:'recording',published:false,recordedContext:{teacherIds:['teacher-one'],playlist:{id:'explicit-playlist',websiteId:'playlist-wrapper',name:'Checked playlist'}},attributionRevision:1,draftContext:'exact-context'},calls=[];
++ const api=async(path,options)=>{calls.push({path,body:options?.body});return path.endsWith('/media-options')?choices():{};};
++ await publishMediaDraft({detail:base,operations:{recording:'one-publication'},api,path:'/api/admin/course'});
++ assert.deepEqual(calls.map(c=>c.body?.action).filter(Boolean),['media-publication']);
++ for(const detail of [{...base,recordedContext:{...base.recordedContext,teacherIds:[]}},{...base,recordedContext:{...base.recordedContext,playlist:{id:'removed',websiteId:'playlist-wrapper'}}},{...base,recordedContext:{teacherIds:['teacher-one']}}]){
++  calls.length=0;await assert.rejects(publishMediaDraft({detail,operations:{recording:'held'},api,path:'/api/admin/course'}));assert.equal(calls.filter(c=>c.body).length,0);
++ }
++ calls.length=0;await publishMediaDraft({detail:{...base,published:true,recordedContext:{teacherIds:['teacher-one']}},operations:{recording:'legacy-review'},api,path:'/api/admin/course'});
++ assert.equal(calls.at(-1).body.action,'media-publication');assert(!('playlistId' in calls.at(-1).body),'Published historical media is not silently moved or copied');
++});
+diff --git a/tests/media-workflow.test.mjs b/tests/media-workflow.test.mjs
+index 0523b92..3fd4c94 100644
+--- a/tests/media-workflow.test.mjs
++++ b/tests/media-workflow.test.mjs
+@@ -3,15 +3,15 @@ import assert from 'node:assert/strict';
+ import {fixture} from './fixture.mjs';
+ import {pendingMedia,saveMediaDraft,publishMediaDraft,reviewedCompanion} from '../public/shared/media-workflow.mjs';
+ const ok=r=>{assert.equal(r.status,200,JSON.stringify(r.body));return r.body;};
+-async function setup(){const f=await fixture({nativeTeacherChoices:[{id:'outsider',name:'Registered native Teacher'}],verification:{accountSeconds:43200,adminSeconds:60}});const cookie=(await f.login('admin')).cookie;await f.run("UPDATE sessions SET source_ref='native-synthetic-admin' WHERE account_id='admin'");const costs=[],api=async(path,{body,method}={})=>{if(body instanceof Blob)body=new Uint8Array(await body.arrayBuffer());const r=await f.request(path,{cookie,...(body?{method:method||'POST',body}:{})});costs.push({action:body?.action||method||'GET',rowsRead:r.reads,queries:r.queries,rowsWritten:Number(r.response.headers.get('X-Local-D1-Rows-Written'))});return ok(r);};return {...f,cookie,api,costs,path:'/api/admin/course'};}
+-function pending(){const durationSeconds=60,companion=reviewedCompanion({summary:'The actual reviewed full summary.',topics:'00:00 Opening\n00:20 Second heading',application:'A reviewed practice.',lessonReference:'A checked reference',durationSeconds});return pendingMedia({sourceKind:'UPLOAD',title:'One source with companion',teacherIds:['outsider'],durationSeconds,companion,recordingFile:new File([new Uint8Array([0,0,0,24]),'ftypmp42synthetic mp4 payload'],'recording.mp4',{type:'video/mp4'}),supportingFiles:[new File(['%PDF-1.7\nSynthetic supporting reading\n%%EOF'],'support.pdf',{type:'application/pdf'})]});}
++async function setup(){const f=await fixture({nativeTeacherChoices:[{id:'outsider',name:'Registered native Teacher'}],verification:{accountSeconds:43200,adminSeconds:60}});const cookie=(await f.login('admin')).cookie;await f.run("UPDATE sessions SET source_ref='native-synthetic-admin' WHERE account_id='admin'");const costs=[],api=async(path,{body,method}={})=>{if(body instanceof Blob)body=new Uint8Array(await body.arrayBuffer());const r=await f.request(path,{cookie,...(body?{method:method||'POST',body}:{})});costs.push({action:body?.action||method||'GET',rowsRead:r.reads,queries:r.queries,rowsWritten:Number(r.response.headers.get('X-Local-D1-Rows-Written'))});return ok(r);};const path='/api/admin/course',table=await api(path+'/playlists'),playlistId=crypto.randomUUID();await api(path,{body:{action:'mou-playlist-save',operationId:crypto.randomUUID(),playlistId,name:'Course recording playlist',closeDate:'',revision:table.revision,playlistRevision:0,websiteRevision:0}});const publishPlaylist=async()=>{const latest=await api(path+'/playlists'),row=latest.playlists.find(p=>p.id===playlistId);return api(path,{body:{action:'mou-playlist-publication',operationId:crypto.randomUUID(),playlistId,published:true,revision:latest.revision,playlistRevision:row.revision,websiteRevision:row.websiteRevision}});};return {...f,cookie,api,costs,path,playlistId,publishPlaylist};}
++function pending(playlistId){const durationSeconds=60,companion=reviewedCompanion({summary:'The actual reviewed full summary.',topics:'00:00 Opening\n00:20 Second heading',application:'A reviewed practice.',lessonReference:'A checked reference',durationSeconds});return pendingMedia({playlistId,sourceKind:'UPLOAD',title:'One source with companion',teacherIds:['outsider'],durationSeconds,companion,recordingFile:new File([new Uint8Array([0,0,0,24]),'ftypmp42synthetic mp4 payload'],'recording.mp4',{type:'video/mp4'}),supportingFiles:[new File(['%PDF-1.7\nSynthetic supporting reading\n%%EOF'],'support.pdf',{type:'application/pdf'})]});}
+ test('MP4 source once with companion and supporting PDF resumes exact saves and atomically publishes one lesson without resetting upload clocks',async t=>{
+- const f=await setup();t.after(()=>f.close());const p=pending();let lose=true;const unreliable=async(path,options)=>{const value=await f.api(path,options);if(options?.body?.action==='media-companion-save'&&lose){lose=false;throw Error('Lost save acknowledgement');}return value;};await assert.rejects(saveMediaDraft({pending:p,api:unreliable,path:f.path}),/Lost save/);const uploaded=(await f.db.prepare('SELECT created_at FROM uploads WHERE asset_id=?').bind(p.assetId).first()).created_at;await saveMediaDraft({pending:p,api:f.api,path:f.path});assert.equal((await f.db.prepare('SELECT created_at FROM uploads WHERE asset_id=?').bind(p.assetId).first()).created_at,uploaded);assert.equal((await f.db.prepare('SELECT count(*) n FROM attachments').first()).n,2);assert.equal((await f.db.prepare('SELECT count(*) n FROM recording_companions').first()).n,1);
++ const f=await setup();t.after(()=>f.close());const p=pending(f.playlistId);let lose=true;const unreliable=async(path,options)=>{const value=await f.api(path,options);if(options?.body?.action==='media-companion-save'&&lose){lose=false;throw Error('Lost save acknowledgement');}return value;};await assert.rejects(saveMediaDraft({pending:p,api:unreliable,path:f.path}),/Lost save/);const uploaded=(await f.db.prepare('SELECT created_at FROM uploads WHERE asset_id=?').bind(p.assetId).first()).created_at;await saveMediaDraft({pending:p,api:f.api,path:f.path});assert.equal((await f.db.prepare('SELECT created_at FROM uploads WHERE asset_id=?').bind(p.assetId).first()).created_at,uploaded);assert.equal((await f.db.prepare('SELECT count(*) n FROM attachments').first()).n,2);assert.equal((await f.db.prepare('SELECT count(*) n FROM recording_companions').first()).n,1);
+  const learner=(await f.login('learner')).cookie;for(const id of [p.attachmentId,p.supports[0].attachmentId])assert.equal((await f.request('/api/media/'+id,{cookie:learner})).status,404);
+- const detail=await f.api(f.path+'/media-detail?attachment='+p.attachmentId),operations={recording:crypto.randomUUID()};assert.equal(detail.companion.summary,p.input.companion.summary);assert.equal(detail.supportingFiles.length,1);let losePublication=true;const uncertain=async(path,options)=>{const value=await f.api(path,options);if(options?.body?.action==='media-publication'&&losePublication){losePublication=false;throw Error('Lost publication acknowledgement');}return value;};await assert.rejects(publishMediaDraft({detail,operations,api:uncertain,path:f.path}),/Lost publication/);await publishMediaDraft({detail,operations,api:f.api,path:f.path});
++ const detail=await f.api(f.path+'/media-detail?attachment='+p.attachmentId),operations={recording:crypto.randomUUID()};assert.equal(detail.companion.summary,p.input.companion.summary);assert.equal(detail.supportingFiles.length,1);let losePublication=true;const uncertain=async(path,options)=>{const value=await f.api(path,options);if(options?.body?.action==='media-publication'&&losePublication){losePublication=false;throw Error('Lost publication acknowledgement');}return value;};await assert.rejects(publishMediaDraft({detail,operations,api:uncertain,path:f.path}),/Lost publication/);await publishMediaDraft({detail,operations,api:f.api,path:f.path});await f.publishPlaylist();
+  const feed=ok(await f.request('/api/offerings/course/media',{cookie:learner}));const video=feed.media.find(m=>m.attachment_id===p.attachmentId);assert.deepEqual(video.recordedContext.teacherIds,['outsider']);assert.equal(video.supportingFiles[0].attachmentId,p.supports[0].attachmentId);assert.equal((await f.request('/api/media/'+p.supports[0].attachmentId,{cookie:learner})).status,200);const outsider=(await f.login('outsider')).cookie;assert.equal((await f.request('/api/media/'+p.supports[0].attachmentId,{cookie:outsider})).status,403);assert.equal((await f.db.prepare('SELECT revision FROM recording_companions WHERE attachment_id=?').bind(p.attachmentId).first()).revision,2);console.log('LOCAL_STUDIO_MP4_WORKFLOW '+JSON.stringify({costs:f.costs,oneVideo:true,oneCompanion:true,oneSupportingPdf:true,originalSuccessfulUploadUnchanged:true,sourceCallsAreSyntheticTeacherDTO:true}));
+ });
+ test('another Admin companion draft and reused support identities stop publication/attachment without changing any saved record',async t=>{
+- const f=await setup();t.after(()=>f.close());const p=pending();await saveMediaDraft({pending:p,api:f.api,path:f.path});const detail=await f.api(f.path+'/media-detail?attachment='+p.attachmentId);await f.api(f.path,{body:{action:'media-companion-save',operationId:crypto.randomUUID(),attachmentId:p.attachmentId,revision:1,durationSeconds:60,companion:{summary:'Winning Admin draft',topics:[{time:'00:00',title:'Winning topic'}]}}});await assert.rejects(publishMediaDraft({detail,operations:{recording:crypto.randomUUID()},api:f.api,path:f.path}),/saved companion/);assert.equal((await f.db.prepare('SELECT count(*) n FROM attachments WHERE published=1').first()).n,0);assert.equal((await f.db.prepare('SELECT count(*) n FROM recording_companions WHERE published_key IS NOT NULL').first()).n,0);
+- const reused=await f.request(f.path,{cookie:f.cookie,method:'POST',body:{action:'media-attach',operationId:crypto.randomUUID(),assetId:p.assetId,attachmentId:'another-recording',title:'Held duplicate',teacherIds:['outsider'],supportingFiles:[{assetId:p.supports[0].assetId,attachmentId:p.supports[0].attachmentId}]}});assert.equal(reused.status,409);assert.equal((await f.db.prepare('SELECT count(*) n FROM attachments').first()).n,2);
++ const f=await setup();t.after(()=>f.close());const p=pending(f.playlistId);await saveMediaDraft({pending:p,api:f.api,path:f.path});const detail=await f.api(f.path+'/media-detail?attachment='+p.attachmentId);await f.api(f.path,{body:{action:'media-companion-save',operationId:crypto.randomUUID(),attachmentId:p.attachmentId,revision:1,durationSeconds:60,companion:{summary:'Winning Admin draft',topics:[{time:'00:00',title:'Winning topic'}]}}});await assert.rejects(publishMediaDraft({detail,operations:{recording:crypto.randomUUID()},api:f.api,path:f.path}),/saved companion/);assert.equal((await f.db.prepare('SELECT count(*) n FROM attachments WHERE published=1').first()).n,0);assert.equal((await f.db.prepare('SELECT count(*) n FROM recording_companions WHERE published_key IS NOT NULL').first()).n,0);
++ const reused=await f.request(f.path,{cookie:f.cookie,method:'POST',body:{action:'media-attach',operationId:crypto.randomUUID(),assetId:p.assetId,attachmentId:'another-recording',title:'Held duplicate',teacherIds:['outsider'],playlistId:f.playlistId,supportingFiles:[{assetId:p.supports[0].assetId,attachmentId:p.supports[0].attachmentId}]}});assert.equal(reused.status,409);assert.equal((await f.db.prepare('SELECT count(*) n FROM attachments').first()).n,2);
+ });
