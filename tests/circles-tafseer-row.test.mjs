@@ -23,7 +23,7 @@ test('no checked right produces a locked badge, never assumed Admin/purchase acc
  assert.equal(document.querySelectorAll('.access-open').length,0);
 });
 
-test('ready rail is directly above courses, replaces only Tafseer button and preserves artwork',()=>{
+test('ready rail is directly above courses, replaces only Tafseer button and preserves artwork',async()=>{
  const document=fixture(),presenter=mountTafseerRail(document),originalCourses=document.querySelector('#programmes').innerHTML;
  presenter.update({visible:true,items,rights});
  assert.equal(document.querySelector('#circles-dashboard').lastElementChild.className,'circles-tafseer-rail');
@@ -32,7 +32,9 @@ test('ready rail is directly above courses, replaces only Tafseer button and pre
  assert(!document.querySelector('[href="/mothers"]').hidden);
  assert.equal(document.querySelector('#programmes').innerHTML,originalCourses);
  const cover=document.querySelector('.circles-tafseer-rail .collection-cover');
+ const changes=[],observer=new document.defaultView.MutationObserver(rows=>changes.push(...rows));observer.observe(document.body,{childList:true,subtree:true,attributes:true});
  presenter.update({visible:true,items,rights});
+ await new Promise(resolve=>setImmediate(resolve));observer.disconnect();assert.equal(changes.length,0);
  assert.equal(document.querySelector('.circles-tafseer-rail .collection-cover'),cover);
 });
 
