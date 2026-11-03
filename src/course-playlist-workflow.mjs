@@ -6,6 +6,7 @@ import {playlistScope} from './mou-playlists.mjs';
 import {cardInput,optionalTeacherIds,savedCard,cardDTO,cardPublication,finishCardPublication} from './playlist-cards.mjs';
 import {attributionChange,mediaDetail} from './media-attribution.mjs';
 import {streamMedia} from './media.mjs';
+import {existingMediaCounts,existingMediaDetail,emptyMediaCounts} from './existing-media-view.mjs';
 
 const revision=async(store,offer)=>(await store.first('SELECT revision FROM access_revisions WHERE offering_id=?',[offer]))?.revision||0;
 async function scope(store,actor,offer,readOnly=false){const s=await playlistScope(store,actor,offer,{readOnly});if(s.kind!=='COURSE')throw fail('Open Course Media.',403);return s;}
@@ -26,6 +27,7 @@ export async function coursePlaylistRead(env,store,actor,offer,input={},fetcher)
  await scope(store,actor,offer,true);const start=await revision(store,offer);
  if(input.action==='course-playlist-options')return locations(env,store,actor,offer,{after:input.after||'',...(input.activityKey?{activityKey:input.activityKey}:{})},fetcher,{readOnly:true});
  if(input.action==='course-playlist-detail'){
+  if(input.websiteId||input.unassigned){const collection=await existingMediaDetail(env,store,offer,input);if(start!==await revision(store,offer))throw fail('The Course changed. Refresh it.',409,'CHANGE_CONFLICT');return {collection,revision:start};}
   const row=await rowFor(store,offer,input.playlistId);if(!row)throw fail('Choose a saved Course playlist.',404);
   const card=await store.first('SELECT * FROM playlist_card_designs WHERE playlist_id=?',[row.playlist_id]);
   const result={playlist:{id:row.playlist_id,name:row.title,description:row.description_draft,revision:row.revision,websiteId:row.website_id,websiteRevision:row.website_revision,contentRevision:row.content_revision,publishedContentRevision:row.content_published_revision,cardPublished:Boolean(row.enabled&&row.published_key),publishedDescription:row.description_published,card:cardDTO(card.draft_json),teacherIds:JSON.parse(card.teacher_ids_json),placements:await metadata(store,row.playlist_id,'DRAFT'),publishedPlacements:await metadata(store,row.playlist_id,'PUBLISHED'),content:await entries(store,row.playlist_id,'DRAFT'),publishedContent:await entries(store,row.playlist_id,'PUBLISHED')},revision:start};
@@ -41,9 +43,11 @@ export async function coursePlaylistRead(env,store,actor,offer,input={},fetcher)
   return {items:rows.slice(0,50),more:rows.length>50,next:rows.length>50?rows[49].id:null,revision:start};
  }
  const rows=await store.all(`SELECT p.playlist_id id,w.title name,p.revision,w.revision websiteRevision,w.enabled,w.published_key,c.content_revision contentRevision,c.content_published_revision publishedContentRevision,(SELECT count(*) FROM course_playlist_content x WHERE x.playlist_id=p.playlist_id AND x.stage='DRAFT' AND x.kind='RECORDING') recordings FROM mou_playlists p JOIN websites w USING(website_id) JOIN course_playlist_workflows c USING(playlist_id) WHERE p.offering_id=? AND p.playlist_id>? ORDER BY p.playlist_id LIMIT 51`,[offer,input.after||'']);
- const websites=await store.all('SELECT website_id id,title,enabled FROM websites w WHERE offering_id=? AND NOT EXISTS(SELECT 1 FROM mou_playlists p WHERE p.website_id=w.website_id) ORDER BY website_id LIMIT 101',[offer]);if(websites.length>100)throw fail('Choose a narrower reading website list.',409);
- const legacy=await store.all('SELECT p.playlist_id id,w.title,w.website_id websiteId FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.offering_id=? AND NOT EXISTS(SELECT 1 FROM course_playlist_workflows c WHERE c.playlist_id=p.playlist_id) ORDER BY p.playlist_id LIMIT 101',[offer]);if(legacy.length>100)throw fail('Choose a narrower existing playlist list.',409);
- return {playlists:rows.slice(0,50).map(r=>({...r,cardPublished:Boolean(r.enabled&&r.published_key),published_key:undefined})),websites,legacy,revision:start,more:rows.length>50,next:rows.length>50?rows[49].id:null};
+ const websites=await store.all('SELECT website_id id,title,enabled,published_key IS NOT NULL hasPublishedWebsite FROM websites w WHERE offering_id=? AND NOT EXISTS(SELECT 1 FROM mou_playlists p WHERE p.website_id=w.website_id) ORDER BY website_id LIMIT 101',[offer]);if(websites.length>100)throw fail('Choose a narrower reading website list.',409);
+ const legacy=await store.all('SELECT p.playlist_id id,w.title,w.website_id websiteId,w.enabled,w.published_key IS NOT NULL hasPublishedWebsite FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.offering_id=? AND NOT EXISTS(SELECT 1 FROM course_playlist_workflows c WHERE c.playlist_id=p.playlist_id) ORDER BY p.playlist_id LIMIT 101',[offer]);if(legacy.length>100)throw fail('Choose a narrower existing playlist list.',409);
+ const counts=await existingMediaCounts(store,offer),decorate=w=>({...w,...(counts.websites.get(w.websiteId||w.id)||emptyMediaCounts)});
+ if(start!==await revision(store,offer))throw fail('The Course changed. Refresh it.',409,'CHANGE_CONFLICT');
+ return {playlists:rows.slice(0,50).map(r=>({...r,cardPublished:Boolean(r.enabled&&r.published_key),published_key:undefined})),websites:websites.map(decorate),legacy:legacy.map(decorate),unassigned:counts.unassigned,revision:start,more:rows.length>50,next:rows.length>50?rows[49].id:null};
 }
 
 export async function coursePlaylistSave(env,store,actor,offer,input,fetcher){

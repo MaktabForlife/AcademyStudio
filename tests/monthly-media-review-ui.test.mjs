@@ -43,7 +43,7 @@ async function legacyScreen({programmeKey='mothers',deny=false,delayed=false}={}
  const host=document.querySelector('main'),calls=[],identity={account:{accountId:'admin'},generation:1},websiteId='saved-website';let finish;
  const documentReply={document:{lessons:[{id:'reading-one',sections:[{blocks:[{type:'note',aside:true,sourceKey:'recording:editorial-one',text:'The existing reviewed summary.',attribution:'Recorded lesson'}]}]}]},assets:[{type:'application/pdf',asset_id:'shared-pdf',attachment_id:'protected-pdf',title:'Shared original notes'}]};
  const media=[{attachment_id:'recording-one',asset_id:'original-video',lesson_id:'native-one',type:'video/youtube',title:'Original recording',published:true},{attachment_id:'different-recording',asset_id:'different-video',lesson_id:'unmapped',type:'video/youtube',title:'Unmapped recording',published:true}];
- const api=async path=>{calls.push(path);if(path.endsWith('/playlists'))return {playlists:[{id:websiteId,websiteId,name:'Existing collection',enabled:true,legacy:true}]};if(path.includes('/media-review?'))return {media};if(path==='/api/websites/'+websiteId){if(deny)throw Object.assign(Error('Current access denied'),{status:403});if(delayed)return new Promise(resolve=>finish=()=>resolve(documentReply));return documentReply;}if(path.includes('/media?'))return {media,mediaBindings:[{editorialLessonId:'editorial-one',nativeLessonId:'native-one',assetId:'original-video'}]};throw Error(path);};
+ const api=async path=>{calls.push(path);if(path.endsWith('/playlists'))return {playlists:[{id:websiteId,websiteId,name:'Existing collection',enabled:true,websitePublished:true,legacy:true}]};if(path.includes('/media-review?'))return {media};if(path==='/api/websites/'+websiteId){if(deny)throw Object.assign(Error('Current access denied'),{status:403});if(delayed)return new Promise(resolve=>finish=()=>resolve(documentReply));return documentReply;}if(path.includes('/media?'))return {media,mediaBindings:[{editorialLessonId:'editorial-one',nativeLessonId:'native-one',assetId:'original-video'}]};throw Error(path);};
  const dispose=mountMonthlyMedia(host,{api,identity,offering:{offering_id:'offering',programme_key:programmeKey},current:()=>true,initialRecord:{canManageContent:true,mediaRevision:1}});
  await settle();host.querySelector('[data-monthly=legacy]').click();await settle();
  return {host,calls,identity,dispose,finish:()=>finish()};
@@ -52,9 +52,9 @@ async function legacyScreen({programmeKey='mothers',deny=false,delayed=false}={}
 test('existing MOU and Tafseer collections show their exact published summaries and shared PDFs, reusing warm reads',async()=>{
  for(const programmeKey of ['mothers','tafseer']){
   const f=await legacyScreen({programmeKey});try{
-   assert.match(f.host.textContent,/The existing reviewed summary/);assert.match(f.host.textContent,/Shared original notes/);assert.equal(f.host.querySelector('a').getAttribute('href'),'/api/media/protected-pdf?draft=1');
+   assert.match(f.host.textContent,/The existing reviewed summary/);assert.match(f.host.textContent,/Shared original notes/);assert(f.host.querySelector('a[href="/api/media/protected-pdf?draft=1"]'));
    const cards=[...f.host.querySelectorAll('.monthly-recording')];assert.equal(cards.length,2);assert.match(cards[1].textContent,/summary has not been added/,'An unmatched recording cannot borrow another recording’s summary');assert.equal(f.calls.length,4);
-   f.host.querySelector('[data-monthly=back]').click();await settle();f.host.querySelector('[data-monthly=legacy]').click();await settle();assert.equal(f.calls.length,4,'Returning to the same collection reuses the checked presentation cache');assert.equal(f.host.querySelectorAll('a').length,1);
+   f.host.querySelector('[data-monthly=back]').click();await settle();f.host.querySelector('[data-monthly=legacy]').click();await settle();assert.equal(f.calls.length,4,'Returning to the same collection reuses the checked presentation cache');assert.equal(f.host.querySelectorAll('a').length,3);
   }finally{f.dispose();clearMonthlyMediaCache();}
  }
 });
