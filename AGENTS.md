@@ -1,3 +1,13 @@
+# GitHub source of truth — 3 November 2026
+
+- Owner explicitly requires GitHub to be the source of truth. Canonical repositories are https://github.com/MaktabForlife/Academy.git and https://github.com/MaktabForlife/AcademyStudio.git. `studio_dev` is the new V109.14 baseline branch in both. This instruction supersedes historical local-only/no-push wording for reviewed source synchronisation. No merge is authorised by this sync.
+- Keep all existing local files, working copies and branches. No force-push, remote branch deletion, history replacement or Hifz change is part of this sync. New feature work starts from the verified GitHub `studio_dev` baseline. Coordinate active work rather than overwriting another checkout.
+- Before a future deployment, commit and push all reviewed source, configuration, packaging tools and public release assets to the canonical GitHub repository. Verify the exact local commit equals the selected remote branch, the working tree is clean, and public assets match their committed manifest. Do not deploy unpushed code or use ignored/local-only files as the authoritative release package.
+- Academy and Studio remain one paired, tested release. Record both GitHub commits, version, manifests and compatible recovery references. Preserve permissions, acquired access, original media, manual attachment/publication, 43200/43200/60 verification and small live checks.
+- Source synchronisation is not deployment approval. This upload must not deploy, publish media, change rights, apply schemas, change DNS or trigger automatic builds. Use `[CF-Pages-Skip] [skip ci]` at the start of the synchronisation commit message. Future release activation requires the user's applicable approval.
+- These are public repositories. Keep credentials, account/session tokens, private R2 content, user exports, local databases and private review material out of tracked files and reachable upload history. Check the final tree and newly reachable history before pushing; never print secret values. Public infrastructure identifiers and approved public assets are configuration, not authentication credentials.
+- `release/v109.14/public` and its adjacent manifest preserve the exact already-deployed public package. They contain no private R2/user records. The original deployed commit is recorded in the manifest; subsequent governance/packaging commits do not change the live app.
+
 # Complete paired release integration — 1 November 2026
 
 - Root-owned `feature/studio-complete-1094` combines frozen reviewed media3989ea38 with forthcoming Circles UI/access and MOU playlist checkpoints. It is not yet a complete release. Root Source integration is `../Academy-complete-1094` on its own feature branch.

@@ -1,0 +1,14 @@
+.student-course .sp-inline-entry{font:600 12px/1.3 'DM Sans',sans-serif;min-height:40px;padding:8px 10px;border:1px solid #bda3b8;background:#f0e7ee;color:#694165;border-radius:7px;white-space:nowrap}
+.student-course .sp-sidebar>.sp-inline-entry{width:100%;margin-top:15px}
+.student-course .sp-row-actions{flex:none}
+.sp-inline-toolbar{position:sticky;top:var(--academy-banner-height,0px);z-index:55;border:1px solid #c9b4c4;border-radius:10px;background:#fffaf0;padding:12px 16px;margin:0 0 12px;color:#3d303a;font:14px/1.5 'DM Sans',Arial,sans-serif}
+.sp-inline-toolbar[hidden]{display:none}
+.sp-inline-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.sp-inline-controls>div{display:flex;gap:7px;flex-wrap:wrap;margin-left:auto}.sp-inline-state{font-size:12px;color:#735b6c}.sp-inline-toolbar p{margin:7px 0 0;font-size:12px;color:#735b6c}
+.sp-inline-toolbar button,.sp-inline-review-actions button{min-height:44px;border:1px solid #bda3b8;border-radius:7px;background:white;color:#694165;padding:8px 12px;font:600 13px/1.3 'DM Sans',Arial,sans-serif;cursor:pointer}.sp-inline-toolbar .sp-primary,.sp-inline-review-actions .sp-primary{background:#694165;color:white;border-color:#694165}.sp-inline-toolbar button:disabled{opacity:.6;cursor:wait}
+.sp-inline-review-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.sp-inline-editing [data-inline-path]{outline:1px dashed #ad86a1;outline-offset:4px;border-radius:2px;min-height:1em;cursor:text;white-space:pre-wrap;overflow-wrap:anywhere}
+.sp-inline-editing [data-inline-path]:focus{outline:2px solid #815473;background:#fffaf0;box-shadow:0 0 0 5px #fffaf0}
+.sp-inline-editing [data-inline-path]:empty:before{content:attr(data-inline-placeholder);opacity:.55;font:italic 14px/1.5 'DM Sans',Arial,sans-serif}
+.sp-inline-editing .sp-reflection textarea:disabled{opacity:.5}.sp-inline-editing .sp-theme{cursor:default}
+.website-inline-editing .sp-reading-toolbar{position:static!important}.website-inline-editing .sp-theme [data-inline-path]{display:block}
+@media(max-width:600px){.sp-inline-toolbar{padding:10px 12px}.sp-inline-controls>div{width:100%;margin:0}.sp-inline-controls>div button{flex:1;padding:8px}.student-course .sp-row-actions{gap:5px}.student-course .sp-course-row{gap:8px}.student-course .sp-inline-entry{padding:8px}.student-course .sp-course-row>div:first-child{flex:1;min-width:0}}

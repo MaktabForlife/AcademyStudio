@@ -1,0 +1,92 @@
+/* PDF-guided palettes and composition; learning actions keep one behaviour. */
+.student-course .sp-inner{background:var(--sp-paper);color:var(--sp-ink)}.student-course .sp-companion-home .sp-hero-actions{display:none}.sp-companion-reading-entry{margin:10px 0 20px}.student-course .sp-companion-reading-entry .sp-reading-along{margin:0;min-height:44px;padding:10px 16px;border:1px solid var(--sp-accent);border-radius:9px;color:var(--sp-accent);background:var(--sp-paper);font-size:14px;font-weight:600;text-decoration:none}.student-course .sp-recording-overview{border-color:var(--sp-border);background:var(--sp-soft)}.student-course .sp-recorded-lesson{border-color:var(--sp-border);background:var(--sp-paper)}.student-course .sp-recorded-meta,.student-course .sp-recording-overview h2 em,.student-course .sp-recording-topics summary,.student-course .sp-topic-time,.student-course .sp-hear-quotation,.student-course .sp-recorded-quote p{color:var(--sp-accent)}.student-course .sp-recorded-lesson .sp-watch-full{background:var(--sp-accent);border-color:var(--sp-accent)}.student-course .sp-recorded-lesson .sp-watch-full:hover{filter:brightness(.91)}.student-course .sp-recording-topics button:hover{background:var(--sp-soft)}.student-course .sp-recording-overview>header{max-width:none}.student-course .sp-hero-image img{object-fit:contain;object-position:center;border-radius:8px}.student-course .sp-recordings-present .sp-hero-image img{max-height:190px}.student-course [data-course-theme=rose] .sp-hero{border-bottom:1px solid #dca5bc;padding-bottom:22px}.student-course [data-course-theme=rose] .sp-hero h1{font-family:Georgia,serif}.student-course [data-course-theme=rose] .sp-ayah{border:1px solid #e8bfd0;border-radius:12px}.student-course [data-course-theme=rose] .sp-theme{border-top:4px solid #db9ab8;background:#fffafb}.student-course [data-course-theme=terracotta] .sp-recording-overview{border-radius:3px;border-top:5px solid #a84937;border-bottom:3px solid #d2ba8c}.student-course [data-course-theme=terracotta] .sp-hero{border-bottom:3px solid #d2ba8c}.student-course [data-course-theme=terracotta] .sp-reading-section h2{padding-left:14px;border-left:5px solid #a84937}.student-course [data-course-theme=terracotta] .sp-reading-body{font-family:Georgia,serif}.student-course [data-course-theme=terracotta] .sp-ayah{background:#f5efdf;border-radius:2px;border-bottom:2px solid #cdb986}.student-course [data-course-theme=terracotta] .sp-theme{border-radius:3px;border-top:4px solid #a84937}.student-course [data-course-theme=ocean] :is(.sp-hero h1,.sp-reading-section h2,.sp-lesson-card h3){font-family:'DM Sans',sans-serif;font-weight:600}.student-course [data-course-theme=ocean] .sp-recording-overview{border-radius:5px;border-top:5px solid #057fa0}.student-course [data-course-theme=ocean] .sp-reading-section h2{border-bottom:3px solid #53a9c5;padding-bottom:10px}.student-course [data-course-theme=ocean] .sp-ayah{border-left:4px solid #087999;border-radius:4px}.student-course [data-course-theme=ocean] .sp-theme{border-top:4px solid #096185;background:#f5fbfd}.student-course [data-course-theme=charcoal] :is(.sp-hero h1,.sp-reading-section h2,.sp-lesson-card h3){font-family:'DM Sans',sans-serif;font-weight:650;letter-spacing:-.04em}.student-course [data-course-theme=charcoal] .sp-hero{border-bottom:4px solid #34383a}.student-course [data-course-theme=charcoal] .sp-recording-overview{border-radius:4px;border-top:5px solid #34383a}.student-course [data-course-theme=charcoal] .sp-reading-section h2{border-left:4px solid #a77558;padding-left:14px}.student-course [data-course-theme=charcoal] .sp-ayah{background:#f0eeeb;border-bottom:3px solid #a77558}.student-course [data-course-theme=forest] :is(.sp-hero h1,.sp-reading-section h2){font-family:'DM Sans',sans-serif;font-weight:500}.student-course [data-course-theme=forest] .sp-recording-overview{border-radius:5px;border-top:5px solid #174d45;border-left:5px solid #9ab52d}.student-course [data-course-theme=forest] .sp-ayah{border-left:4px solid #99b42a;background:#f2f6e7}.student-course [data-course-theme=forest] .sp-reading-section h2{padding-bottom:12px;border-bottom:2px solid #a6bc4f}.student-course [data-course-theme=forest] .sp-theme{border-left:4px solid #9bb72d;background:#fafcf3}.student-course [data-course-theme=sage] .sp-hero{background:#eef3e9;padding:24px;border-radius:16px}.student-course [data-course-theme=sage] :is(.sp-hero h1,.sp-reading-section h2){font-family:'DM Sans',sans-serif;font-weight:400;letter-spacing:-.04em}.student-course [data-course-theme=sage] .sp-recording-overview{background:#eef3e9;border-radius:18px}.student-course [data-course-theme=sage] .sp-ayah{background:#eff4eb;border-radius:14px}.student-course [data-course-theme=sage] .sp-theme{background:#f2f6ee;border-color:#cad8c4}.student-course [data-course-theme=sand] :is(.sp-hero h1,.sp-reading-section h2){font-family:'DM Sans',sans-serif;font-weight:600;letter-spacing:-.03em}.student-course [data-course-theme=sand] .sp-reading-section h2{display:inline-block;padding:10px 18px;border-radius:0 24px 24px 0;background:#e8dbc4;font-size:clamp(24px,4vw,34px)}.student-course [data-course-theme=sand] .sp-ayah{border-radius:22px;background:#eee4d4}.student-course [data-course-theme=sand] .sp-recording-overview{border-radius:22px;background:#e9ece5}.student-course [data-course-theme=sand] .sp-theme{background:#f1ece2;border-radius:18px}.student-course [data-course-theme=burgundy] .sp-hero{border-top:5px solid #76234f;padding-top:20px}.student-course [data-course-theme=burgundy] .sp-reading-section h2{padding:12px 18px;background:#76234f;color:white;border-radius:3px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:clamp(25px,4vw,34px)}.student-course [data-course-theme=burgundy] .sp-ayah{border-left:4px solid #a1517c;background:#f7edf2}.student-course [data-course-theme=burgundy] .sp-theme{border-top:4px solid #76234f;background:#fffafd}@media(max-width:580px){.sp-companion-reading-entry{margin:6px 0 18px}.student-course [data-course-theme=sage] .sp-hero{padding:18px}.student-course [data-course-theme=sand] .sp-reading-section h2{padding:10px 14px}.student-course .sp-reading-section h2{overflow-wrap:anywhere}}
+
+/* The builder preview and normal reader share the compact course row. */
+.student-course .sp-course-row{padding:8px 18px}.student-course .sp-row-actions{flex-wrap:wrap;justify-content:flex-end;max-width:62%}.student-course .sp-row-actions button{min-height:44px}@container course (max-width:360px){.student-course .sp-course-row strong{font-size:22px}.student-course .sp-course-row small{font-size:7px;letter-spacing:.7px}}
+
+/* A quiet frame for the ayah; the ornament stays outside the text flow. */
+.student-course [data-course-theme] .sp-ayah{
+ position:relative;
+ isolation:isolate;
+ margin-block:16px;
+ padding:14px 20px 18px;
+ border:1px solid var(--sp-border);
+ border-top:2px solid color-mix(in srgb,var(--sp-accent) 48%,#ba9b62);
+ border-radius:16px 4px 16px 4px;
+ background:linear-gradient(135deg,var(--sp-paper),color-mix(in srgb,var(--sp-paper) 65%,var(--sp-soft)));
+ box-shadow:0 2px 9px #30283205;
+ text-align:center;
+}
+.student-course .sp-ayah::before{
+ content:"";
+ position:absolute;
+ inset:5px;
+ border:1px solid color-mix(in srgb,var(--sp-accent) 12%,transparent);
+ border-radius:11px 2px 11px 2px;
+ pointer-events:none;
+ z-index:-1;
+}
+.student-course .sp-ayah::after{
+ content:"";
+ position:absolute;
+ right:7px;
+ bottom:7px;
+ width:72px;
+ height:60px;
+ background:var(--sp-accent);
+ -webkit-mask:url('./assets/ayah-sprig.svg') center/contain no-repeat;
+ mask:url('./assets/ayah-sprig.svg') center/contain no-repeat;
+ opacity:.16;
+ pointer-events:none;
+ z-index:-1;
+}
+.student-course .sp-ayah .sp-reference{
+ display:table;
+ max-width:100%;
+ margin:0 auto 7px;
+ padding:2px 10px;
+ border:1px solid var(--sp-border);
+ border-radius:20px;
+ background:var(--sp-paper);
+ font-size:12px;
+ line-height:1.5;
+ letter-spacing:.3px;
+}
+.student-course .sp-ayah .sp-arabic{
+ margin:0 0 8px;
+ color:var(--sp-ink);
+ line-height:1.95;
+ text-align:center;
+}
+.student-course .sp-ayah figcaption{
+ max-width:62ch;
+ margin-inline:auto;
+ font-family:Georgia,serif;
+ font-size:max(17px,calc(var(--reading-size,18px) - 1px));
+ line-height:1.65;
+ color:var(--sp-ink);
+}
+@container course (max-width:400px){
+ .student-course [data-course-theme] .sp-ayah{padding:12px 16px 16px;margin-block:14px}
+ .student-course .sp-ayah::after{width:58px;height:48px;opacity:.13}
+}
+@media(forced-colors:active){
+ .student-course [data-course-theme] .sp-ayah{background:Canvas;border-color:CanvasText;box-shadow:none}
+ .student-course .sp-ayah::before,.student-course .sp-ayah::after{display:none}
+}
+
+/* Quotation colours follow the selected website palette in both editors/readers. */
+.student-course [data-course-theme] .sp-quote{
+ --sp-quote-ink:var(--sp-accent);
+ --sp-quote-border:color-mix(in srgb,var(--sp-accent) 52%,var(--sp-paper));
+ color:var(--sp-quote-ink);
+ border-color:var(--sp-quote-border);
+ background:var(--sp-paper);
+}
+.student-course [data-course-theme=rose] .sp-quote{--sp-quote-border:#bd7595}
+.student-course [data-course-theme] .sp-quote p,
+.student-course [data-course-theme] .sp-quote cite,
+.student-course [data-course-theme] .sp-quote .sp-hear-quotation{color:var(--sp-quote-ink)}
+@media(forced-colors:active){
+ .student-course [data-course-theme] .sp-quote{--sp-quote-ink:CanvasText;background:Canvas;border-color:CanvasText}
+}

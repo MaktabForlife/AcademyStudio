@@ -1,0 +1,3 @@
+# Exact reviewed false positives: ephemeral test keys, SQL and storage identifiers.
+b05a53a318c6efb7b423996c5e3fa0c2e02412c5:tests/mou-playlists.test.mjs:generic-api-key:66
+09033781d3bb88de8fa933cf82f123f36ffb7f0f:src/recording-companions.mjs:generic-api-key:23
