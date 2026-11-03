@@ -11,7 +11,9 @@ export function checkedProgrammeNavigation(value,permitted){
  return value;
 }
 const currentProgrammeNavigation=(value,permitted)=>{try{checkedProgrammeNavigation(value,permitted);return true;}catch{return false;}};
-const weekVersion=1,cacheFormat='DASHBOARD_WEEKS_V1';
+// Older empty personal-audience snapshots omit Global Admin oversight classes.
+// Upgrade once through the current native gates; retain ordinary warm reuse.
+const weekVersion=1,cacheFormat='DASHBOARD_WEEKS_V2';
 export function dashboardWeek(value){
  const selectedDate=date(value),anchor=new Date(selectedDate+'T12:00:00Z');anchor.setUTCDate(anchor.getUTCDate()-anchor.getUTCDay());
  const weekStart=date(anchor.toISOString().slice(0,10));anchor.setUTCDate(anchor.getUTCDate()+6);return {selectedDate,weekStart,weekEnd:date(anchor.toISOString().slice(0,10))};
