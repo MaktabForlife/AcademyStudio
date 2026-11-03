@@ -1,3 +1,9 @@
+# V109.15 post-release review — LOCAL ONLY, 3 November 2026
+
+The owner requested small live navigation/media checks, local fixes and NO further deployment. This supersedes the fulfilled V109.15 deployment approval below. Preserve every local file, all permissions and Hifz. This isolated feature branch starts from the exact deployed GitHub studio_dev commit. Do not publish content, change rights/data/schema/DNS, deploy or push this review without applicable owner instructions. Keep test/build outputs and original changed bytes in parent outputs/academy-postrelease-review-10915-20261103/.
+
+Local corrections cover Studio Offering/section URL consistency, checked Course-to-Admin context, existing MOU summary/shared-PDF enrichment with exact permission-filtered mappings and cache reuse, and the Programs initial version/loading label. The separate missing Global Admin Learn/Teach dashboard classes correction is owned by Circles integration; do not duplicate its dashboard/Join edits. Full-document Home returns intentionally retain a neutral gate until a checked bootstrap; do not expose cached private markup before current account verification.
+
 # Paired source-cleanup release V109.15 — authorised 3 November 2026
 
 The owner authorised finishing the remaining checks and deploying Academy and Studio together. This supersedes the historical cleanup-only deployment hold for this reviewed release. Keep live checks small. No local file deletion, Hifz, schema/data/rights/DNS change or actual media attachment/publication. Use only the tested matching pair and committed GitHub public packages; retain V109.14 recovery and all outputs. Later releases require applicable owner approval.
