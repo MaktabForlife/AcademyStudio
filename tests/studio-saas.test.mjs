@@ -10,7 +10,7 @@ import {fixture} from './fixture.mjs';
 import {accessFixture} from './access-fixture.mjs';
 import {random,challenge,sha256} from '../src/protocol.mjs';
 const root='https://worshipuponbaseera.ummabbadacademy.app',provider='https://ummabbadacademy.maktab4life.org',backend='https://academy-studio-parallel.naidu-hajira.workers.dev',pages='https://academy-studio-public.pages.dev';
-const env={WEBSITE_ORIGIN:root,WEBSITE_ALIAS_ORIGINS:'[]',STUDIO_BACKEND_ORIGIN:backend,ACADEMY_ORIGIN:'https://academy-maktab4life.pages.dev',ACADEMY_PORTAL_ORIGIN:'https://ummabbadacademy.app',STUDIO_PROVIDER_ORIGIN:provider,STUDIO_REDIRECT_ORIGINS:'["https://maktab4life.org","https://www.maktab4life.org"]',PUBLIC_ASSET_ORIGIN:pages,RELEASE_VERSION:'109.20'};
+const env={PUBLIC_ASSET_SOURCE:'pages',WEBSITE_ORIGIN:root,WEBSITE_ALIAS_ORIGINS:'[]',STUDIO_BACKEND_ORIGIN:backend,ACADEMY_ORIGIN:'https://academy-maktab4life.pages.dev',ACADEMY_PORTAL_ORIGIN:'https://ummabbadacademy.app',STUDIO_PROVIDER_ORIGIN:provider,STUDIO_REDIRECT_ORIGINS:'["https://maktab4life.org","https://www.maktab4life.org"]',PUBLIC_ASSET_ORIGIN:pages,RELEASE_VERSION:'109.20'};
 test('static Pages fetch strips credentials and query input, uses a fixed origin and preserves range streams',async()=>{
  const file=Object.keys(manifest.manifest).find(path=>path.startsWith('_assets/')&&path.endsWith('.css'));assert(file);
  const response=await pagesAsset(new Request(root+'/'+file+'?code=private&url=https://evil.test',{headers:{Cookie:'__Host-maktab_web=private',Authorization:'Bearer private',Origin:root,Range:'bytes=10-19','If-Range':'"original"','If-None-Match':'"asset"','X-Maktab-Front-Door':'evil.test'}}),env,async request=>{
@@ -104,4 +104,16 @@ test('prepared static Pages and Worker candidate retain reviewed bytes, storage 
  assert.equal(receipt.publicOrigin,root);assert.deepEqual(receipt.verificationSeconds,[43200,43200,60]);assert.equal(receipt.manualMediaPublication,true);
  assert.deepEqual(candidate.d1_databases,production.d1_databases);assert.deepEqual(candidate.r2_buckets,production.r2_buckets);assert.equal(candidate.vars.ACCOUNT_MAX_AGE_SECONDS,'43200');assert.equal(candidate.vars.ADMIN_MAX_AGE_SECONDS,'60');assert.equal(candidate.routes,undefined);
  assert.equal(plan.active,false);assert.equal(plan.customHostname.hostname,new URL(root).hostname);assert(!plan.workerRoutes.includes('*/*'));assert.equal(plan.providerRecord.content,'100::');
+});
+
+test('transfer bridge preserves the current public hostname and Worker assets until SaaS is ready',async()=>{
+ let applicationCalls=0,assetCalls=0;
+ const current={...env,PUBLIC_ASSET_SOURCE:'worker',WEBSITE_ORIGIN:'https://maktab4life.org',STUDIO_REDIRECT_ORIGINS:'["https://www.maktab4life.org"]',ASSETS:{fetch:async()=>{assetCalls++;return new Response('existing reviewed asset',{headers:{'Content-Type':'text/css'}});}}};
+ delete current.PUBLIC_ASSET_ORIGIN;
+ const deps={application:async(request,passed)=>{applicationCalls++;assert.equal(passed.ASSETS,current.ASSETS);assert.equal(request.headers.get('Cookie'),'__Host-maktab_web=fixture');return passed.ASSETS.fetch(request);},assetFetcher(){throw Error('No Pages dependency during transfer');}};
+ const response=await saasWebsite(new Request('https://maktab4life.org/shared/example.css',{headers:{Cookie:'__Host-maktab_web=fixture'}}),current,{},deps);
+ assert.equal(response.status,200);assert.equal(applicationCalls,1);assert.equal(assetCalls,1);assert.equal(await response.text(),'existing reviewed asset');
+ const www=await saasWebsite(new Request('https://www.maktab4life.org/studio/?website=fixture'),current,{},deps);assert.equal(www.headers.get('Location'),'https://maktab4life.org/studio/?website=fixture');
+ const transition=JSON.parse(await readFile(new URL('../.build/studio-saas/transition-worker.jsonc',import.meta.url)));
+ assert.equal(transition.vars.WEBSITE_ORIGIN,'https://maktab4life.org');assert.equal(transition.vars.PUBLIC_ASSET_SOURCE,'worker');assert.equal(transition.vars.PUBLIC_ASSET_ORIGIN,undefined);assert.deepEqual(transition.d1_databases,JSON.parse(await readFile(new URL('../wrangler.production.jsonc',import.meta.url))).d1_databases);
 });

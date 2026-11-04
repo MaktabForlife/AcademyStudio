@@ -34,9 +34,14 @@ export async function prepareStudioSaas({root=resolve(import.meta.dirname,'..'),
  const candidate=structuredClone(production);
  candidate.main='../../hosting/saas/worker.mjs';candidate.compatibility_date=config.compatibilityDate;
  candidate.assets.directory='./reviewed/public';
- candidate.vars={...candidate.vars,WEBSITE_ORIGIN:config.websiteOrigin,WEBSITE_ALIAS_ORIGINS:'[]',STUDIO_BACKEND_ORIGIN:hostingOrigins(production.vars).studioBackend,ACADEMY_PORTAL_ORIGIN:config.academyPortalOrigin,STUDIO_PROVIDER_ORIGIN:config.providerOrigin,PUBLIC_ASSET_ORIGIN:config.assetOrigin,STUDIO_REDIRECT_ORIGINS:JSON.stringify(config.redirectOrigins)};
+ candidate.vars={...candidate.vars,PUBLIC_ASSET_SOURCE:'pages',WEBSITE_ORIGIN:config.websiteOrigin,WEBSITE_ALIAS_ORIGINS:'[]',STUDIO_BACKEND_ORIGIN:hostingOrigins(production.vars).studioBackend,ACADEMY_PORTAL_ORIGIN:config.academyPortalOrigin,STUDIO_PROVIDER_ORIGIN:config.providerOrigin,PUBLIC_ASSET_ORIGIN:config.assetOrigin,STUDIO_REDIRECT_ORIGINS:JSON.stringify(config.redirectOrigins)};
  assert(!candidate.routes,'Routes must be separately reviewed, not deployed by this preparation.');
  await writeFile(resolve(output,'worker.jsonc'),JSON.stringify(candidate,null,2)+'\n');
+ const transition=structuredClone(candidate),current=hostingOrigins(production.vars);
+ transition.vars={...transition.vars,PUBLIC_ASSET_SOURCE:'worker',WEBSITE_ORIGIN:current.website,WEBSITE_ALIAS_ORIGINS:'[]',STUDIO_REDIRECT_ORIGINS:JSON.stringify(current.aliases)};
+ delete transition.vars.PUBLIC_ASSET_ORIGIN;
+ transition.compatibility_date=production.compatibility_date;
+ await writeFile(resolve(output,'transition-worker.jsonc'),JSON.stringify(transition,null,2)+'\n');
  const bundle=await build({entryPoints:[resolve(root,'hosting/saas/worker.mjs')],bundle:true,write:false,format:'esm',platform:'browser',external:['cloudflare:workers'],metafile:true,target:'es2022'});
  await writeFile(resolve(output,'candidate-worker.mjs'),bundle.outputFiles[0].contents);await writeFile(resolve(output,'bundle-meta.json'),JSON.stringify(bundle.metafile,null,2)+'\n');
  const publicHost=new URL(config.websiteOrigin).hostname,providerHost=new URL(config.providerOrigin).hostname;

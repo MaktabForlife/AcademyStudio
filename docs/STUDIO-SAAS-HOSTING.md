@@ -38,6 +38,14 @@ Source settings: config/studio-saas.json. Current settings remain in wrangler.pr
 
 The generated activation-plan.json is an inactive checklist, not an executable deployment. The production config/main entry are untouched by this branch.
 
+## Domain-transfer bridge
+
+config/maktab-domain-transfer.json records the five current public DNS entries and the existing two source-account Worker routes, read from Cloudflare management UI on 4 November. It contains no credentials. The source router will not move with registration.
+
+The generated transition-worker.jsonc prepares the same Studio application entry in explicit worker-asset mode at the current maktab4life.org address. It keeps the existing reviewed ASSETS bundle, current cookie host and permissions, redirects www, and preserves native Academy aliases. There is no dependency on the new SaaS hostname or Pages asset origin during the domain transfer. It can be staged as a matching release before the move; it is not deployed by this preparation.
+
+Target-zone root/www DNS should use the reviewed originless Worker records with routes to academy-studio-parallel, rather than relying on the old account’s Pages apex CNAME/router. Hifz and the two email-blocking TXT records are preserved. These are inactive proposed changes, not modifications to live DNS.
+
 ## Before activation
 
 1. Review the exact tested commits, the generated plan, account IDs and public-file receipt. Rebuild from the then-current reviewed Academy/Studio release if either canonical branch changes.
@@ -45,7 +53,7 @@ The generated activation-plan.json is an inactive checklist, not an executable d
 3. Give GitHub a limited Studio Pages Write deployment credential in its protected production environment; the existing individual Worker Editor token does not grant Pages Write. Do not put credentials in code or chat.
 4. Publish the tested static files to the Pages project. Confirm its actual service address matches config/studio-saas.json; stage the complete Worker candidate without activating it.
 5. Prepare Academy's matching config/hosting.json Studio destination and WEBSITE_PLATFORM_ORIGIN. Preserve WEBSITE_PLATFORM_SERVER_ORIGIN and the existing exact native Academy origin unless separately reviewed. Do not broaden global CORS merely because these are sibling hostnames.
-6. Configure/verify the SaaS fallback origin, custom-hostname ownership, TLS certificate, precise Worker routes and matching customer CNAME in their correct accounts. Both hostname and SSL statuses must be active. No broad wildcard hostname trust or * /* route is required.
+6. Configure/verify the SaaS fallback origin, custom-hostname ownership, TLS certificate, precise Worker routes and matching customer CNAME in their correct accounts. Both hostname and SSL statuses must be active. No route covering unrelated hostnames or broad wildcard hostname trust is required.
 7. Stage and test Academy and Studio as one release: sign-in/handover, cookie/CSRF/account switching, acquired monthly/Surah/Course rights, scoped Admin changes, protected PDFs/ranges, Join opening times and small read budgets. Keep media attachment/publication manual.
 8. Activate only when the domain move and exact paired release are ready and authorised. Keep the current release and old routing available for recovery; update host configuration rather than rewriting app links.
 

@@ -71,6 +71,7 @@ jobs:
           path: |
             Studio/.build/studio-saas/pages/
             Studio/.build/studio-saas/worker.jsonc
+            Studio/.build/studio-saas/transition-worker.jsonc
             Studio/.build/studio-saas/candidate-worker.mjs
             Studio/.build/studio-saas/worker-env.d.ts
             Studio/.build/studio-saas/bundle-meta.json
