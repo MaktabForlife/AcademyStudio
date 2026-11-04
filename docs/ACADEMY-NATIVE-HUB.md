@@ -19,3 +19,5 @@ POST /internal/studio/hub-join uses the same proof fields plus offeringId and le
 ACADEMY_PORTAL_ORIGIN is returned by /api/config. Its default remains the current Studio WEBSITE_ORIGIN, which deliberately leaves the new connector closed until an explicit distinct native portal origin is configured in the reviewed paired release.
 
 This source preparation does not update the existing release manifest. Both packages must be rebuilt and checked together before deployment.
+
+The saved `/circles/academy/mothers/surah-al-baqarah/` reader (including exact `index.html` spelling) is an additional explicit connection target. No broader Academy reader path is accepted, and its existing media/access gates remain in force.

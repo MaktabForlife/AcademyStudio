@@ -30,3 +30,8 @@ test('blocked storage and an unactivated same-origin portal fail closed',async()
  const first=browser();await assert.rejects(connectAcademy({win:first.win,storage:blocked,fetcher:async()=>Response.json({academyPortalOrigin:portal})}),/temporary browser storage/);assert.equal(first.events.length,0);
  const same=browser();await assert.rejects(connectAcademy({win:same.win,storage:mapStorage(),fetcher:async()=>Response.json({academyPortalOrigin:origin})}),/not configured/);assert.equal(same.events.length,0);
 });
+
+test('only the saved Baqarah compatibility reader is accepted outside canonical Studio readers',()=>{
+ for(const path of ['/circles/academy/mothers/surah-al-baqarah/','/circles/academy/mothers/surah-al-baqarah/index.html'])assert.equal(checkedTarget(path,origin),path);
+ for(const path of ['/circles/academy/','/circles/academy/mothers/','/circles/academy/mothers/other/','/circles/academy/mothers/surah-al-baqarah/secret.html'])assert.throws(()=>checkedTarget(path,origin));
+});

@@ -7,7 +7,7 @@ export function checkedOrigin(value){
 export function checkedTarget(value,origin){
  if(typeof value!=='string'||value.length>1800||!value.startsWith('/')||value.startsWith('//')||value.includes('\\'))throw Error('Choose an existing Studio page.');
  const url=new URL(value,origin),simple=new Set(['website','offering','playlist','recording','lesson','course']);
- if(url.origin!==origin||!['/studio/','/circles/free-learning.html'].includes(url.pathname)||url.hash.length>200)throw Error('Choose an existing Studio page.');
+ if(url.origin!==origin||!['/studio/','/circles/free-learning.html','/circles/academy/mothers/surah-al-baqarah/','/circles/academy/mothers/surah-al-baqarah/index.html'].includes(url.pathname)||url.hash.length>200)throw Error('Choose an existing Studio page.');
  for(const [key,value]of url.searchParams){
   if(url.searchParams.getAll(key).length!==1)throw Error('Choose one Studio destination.');
   if(simple.has(key)){if(!/^[-A-Za-z0-9_:]{1,180}$/.test(value))throw Error('Choose an existing Studio page.');}

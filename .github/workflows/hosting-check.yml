@@ -30,9 +30,15 @@ jobs:
         run: |
           npm ci --prefix Academy/backend --no-audit --no-fund
           npm ci --prefix Studio --no-audit --no-fund
+      - name: Build the Academy portal source only on this disposable runner
+        working-directory: Academy
+        env:
+          PORTAL_STUDIO_SOURCE: ${{ github.workspace }}/Studio
+          PORTAL_STUDIO_SHA: ${{ github.sha }}
+        run: node tools/import-academy-portal.mjs
       - name: Run origin, router and paired cookie tests without live requests
         working-directory: Studio
-        run: node --test --test-concurrency=1 tests/deployment-origin-config.test.mjs tests/website-routing.test.mjs tests/website-launch.test.mjs tests/academy-origins.test.mjs tests/native-hub-bridge.test.mjs tests/academy-connect.test.mjs
+        run: node --test --test-concurrency=1 tests/deployment-origin-config.test.mjs tests/website-routing.test.mjs tests/website-launch.test.mjs tests/academy-origins.test.mjs tests/native-hub-bridge.test.mjs tests/academy-connect.test.mjs tests/native-portal-paired.test.mjs tests/native-portal-browser.test.mjs
       - name: Verify source-only preparation
         working-directory: Studio
         run: |
