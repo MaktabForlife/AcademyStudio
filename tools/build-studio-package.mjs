@@ -24,10 +24,9 @@ export async function buildStudioPackage({root=resolve(import.meta.dirname,'..')
   await mkdir(dirname(resolve(target,path)),{recursive:true});await writeFile(resolve(target,path),data);sourceFiles++;
  }}
  await copy(resolve(root,'public'));
- // The deployed package retains its reviewed cache address. Every public byte is
- // checked below. New release versions receive a fresh content-derived address.
- const signature=expected?.prefix?.match(/^\/_assets\/([a-f0-9]{64})\/$/)?.[1];
- const assets=await versionPublicAssets(target,{signature});
+ // Cache addresses derive from source bytes. Reviewed releases must still
+ // reproduce every public filename and byte exactly.
+ const assets=await versionPublicAssets(target);
  if(expected)assert.deepEqual(Object.fromEntries(Object.entries(assets.manifest).sort()),Object.fromEntries(Object.entries(expected.manifest).sort()),'Public source differs from the reviewed release; prepare a new release version.');
  const commit=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
  const manifest=expected||{version,repository:'MaktabForlife/AcademyStudio',sourceVersionCommit:commit,canonicalSource:true,publicFiles:assets.files,prefix:assets.prefix,manifest:assets.manifest,verificationSeconds:[43200,43200,60],manualMediaAttachment:true,manualMediaPublication:true};
