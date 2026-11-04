@@ -45,7 +45,7 @@ jobs:
           const results=await Promise.all(tasks.map(async t=>{
            if(!t.token)return {label:t.label,passed:false,status:'not requested',issue:'Saved secret is empty'};
            if(t.token!==t.token.trim())return {label:t.label,passed:false,status:'not requested',issue:'Saved token contains leading or trailing whitespace'};
-           if(!/^[\x21-\x7e]+$/.test(t.token))return {label:t.label,passed:false,status:'not requested',issue:'Saved token contains whitespace, line breaks or non-ASCII characters',format:{spacesOrTabs:/[ \t]/.test(t.token),lineBreaks:/[\r\n]/.test(t.token),nonAscii:/[^\x00-\x7f]/.test(t.token),looksLikeCurl:/^\s*curl\b/i.test(t.token),looksMasked:/[\u2022\u25cf]/.test(t.token)}};
+           if(!/^[\x21-\x7e]+$/.test(t.token))return {label:t.label,passed:false,status:'not requested',issue:'Saved token contains whitespace, line breaks or non-ASCII characters',format:{spacesOrTabs:/[ \t]/.test(t.token),lineBreaks:/[\r\n]/.test(t.token),nonAscii:/[^\x00-\x7f]/.test(t.token),looksLikeCurl:/^\s*curl\b/i.test(t.token),looksMasked:/[\u2022\u25cf]/.test(t.token),ellipsis:/\u2026/.test(t.token),curlyQuotes:/[\u2018-\u201f]/.test(t.token),invisibleFormatting:/[\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/.test(t.token),longDash:/[\u2013\u2014]/.test(t.token),fullWidthCharacters:/[\uff01-\uff5e]/.test(t.token)}};
            if(scope==='studio-format')return {label:t.label,passed:true,status:'format valid; connection not requested'};
            try{
             attempted++;
