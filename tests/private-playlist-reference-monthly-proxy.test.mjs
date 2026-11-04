@@ -1,0 +1,19 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {studioFixture} from './studio-access-fixture.mjs';
+import {newCourse} from '../public/shared/model.mjs';
+
+test('signed Academy review/private-save works for Tafseer and MOU, with scoped source links and source state preserved',async t=>{
+ const z=await studioFixture({mou:true,navigation:{mothers:'programB'}});t.after(()=>z.f.close());
+ const token=await z.nativeLogin(),registered=await z.f.runtime.dispatchFetch('https://academy.test/api/admin/platform/programme-studio/register',{method:'POST',headers:{Origin:'https://academy.test','Content-Type':'application/json',Authorization:'Bearer '+token,'X-Academy-Workspace':'ADMIN'},body:JSON.stringify({programmeKey:'mothers',accessModel:'MONTHLY',noMediaMigration:true,operationId:crypto.randomUUID()})});assert.equal(registered.status,200,await registered.text());
+ const mothers=await z.f.db.prepare("SELECT offering_id FROM programme_offerings WHERE programme_key='mothers'").first('offering_id');
+ for(const [label,activity,initialOffer,published]of [['Tafseer',z.x.programA,'tafseer',true],['MOU',z.f.source.f.scopes.programB,mothers,false]]){
+  await z.handover(activity);const offer=initialOffer||await z.f.db.prepare("SELECT offering_id FROM programme_offerings WHERE programme_key='mothers'").first('offering_id');const good=command=>z.good(command,{activity}),source='source-'+label,target='target-'+label,doc=newCourse(),key=source+'.json';doc.home.imageId='';await z.f.content.put(key,JSON.stringify(doc));
+  await z.f.run('INSERT INTO websites(website_id,offering_id,title,draft_key,published_key,enabled,revision) VALUES(?,?,?,?,?,?,1)',source,offer,'Original '+label,key,published?key:null,Number(published));
+  await z.f.run("INSERT INTO objects VALUES(?,NULL,'video/youtube','Original',0,NULL,'abcdefghijk')",source+'-asset');await z.f.run('INSERT INTO asset_owners VALUES(?,?)',source+'-asset',offer);await z.f.run("INSERT INTO attachments VALUES(?,?,?,?,?,'','','Original recording','RECORDING',?)",source+'-recording',offer,source,source+'-asset','original-lesson',Number(published));
+  const before=await z.f.db.prepare('SELECT * FROM websites WHERE website_id=?').bind(source).first();let table=await good({action:'mou-playlists'});await good({action:'mou-playlist-save',operationId:crypto.randomUUID(),playlistId:target,name:'Private '+label,closeDate:'',revision:table.revision,playlistRevision:0,websiteRevision:0});
+  const review=await good({action:'existing-playlist-review',websiteId:source});assert.equal(review.kind,'TAFSEER');assert.equal(review.recordings.length,1);assert.equal((await z.proxy({action:'existing-playlist-review',websiteId:source},{activity,who:'studentA'})).status,403);
+  table=await good({action:'mou-playlists',playlistId:target});const p=table.playlists.find(r=>r.id===target),command={action:'existing-playlist-save',operationId:crypto.randomUUID(),playlistId:target,websiteId:source,reviewHash:review.reviewHash,revision:table.revision,playlistRevision:p.revision,websiteRevision:p.websiteRevision};assert((await good(command)).private);assert((await good(command)).replayed);
+  const saved=await good({action:'mou-playlists',playlistId:target});assert.deepEqual(saved.sourceWebsites,[{websiteId:source,title:'Original '+label,websitePublished:published}]);assert.equal(saved.items.length,1);assert.equal(await z.f.db.prepare('SELECT count(*) n FROM playlist_source_websites WHERE playlist_id=?').bind(target).first('n'),1);assert.deepEqual(await z.f.db.prepare('SELECT * FROM websites WHERE website_id=?').bind(source).first(),before);
+  const docAfter=JSON.parse(await (await z.f.content.get((await z.f.db.prepare('SELECT draft_key FROM websites WHERE website_id=?').bind(target).first('draft_key')))).text());assert(!JSON.stringify(docAfter).includes(source),'Original private source identity is kept in Admin provenance, not website JSON');
+ }
+});

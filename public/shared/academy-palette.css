@@ -12,6 +12,8 @@
   --palette-ivory:#fff8ec;
   --palette-ink:#1f2921;
   --homepage-block-radius:16px;
+  --dashboard-card-size:270px;
+  --dashboard-card-gap:20px;
 }
 :root,.circle,.circles-theme {
   --theme-paper:var(--palette-paper);
@@ -70,7 +72,7 @@ html,body.circle,body.circles-theme {background:var(--theme-paper);color:var(--t
 .circle .circles-sign-in::backdrop {background:color-mix(in srgb,var(--palette-ink) 50%,transparent)}
 .circle .circles-sign-in :is(input,button) {border-color:var(--theme-line)}
 .circle .circles-sign-in input {background:color-mix(in srgb,var(--palette-paper) 60%,var(--palette-ivory));color:var(--theme-ink);accent-color:var(--palette-forest)}
-.circle .academy-news {background:var(--theme-forest)!important;color:var(--theme-surface)!important}
+.circle .academy-news {background:var(--theme-tan)!important;color:var(--theme-surface)!important}
 .circle .academy-news>.section-head :is(.eyebrow,h2) {color:var(--theme-surface)!important}
 .circle .academy-news>.section-head .eyebrow:before {background:var(--palette-gold)}
 .circle .announcements-collage .announcement-summary-list>button {background:var(--theme-gold);color:var(--theme-ink);border-color:var(--theme-line)}
@@ -93,9 +95,7 @@ html,body.circle,body.circles-theme {background:var(--theme-paper);color:var(--t
 .circle .free-course-card .free-course-art[data-card-standard=green] {border-color:var(--palette-forest);background:var(--theme-soft)}
 .circle :is(.homepage-course-caption,.course-artwork-caption) {background:linear-gradient(0deg,color-mix(in srgb,var(--palette-forest) 72%,var(--palette-ink)),color-mix(in srgb,var(--palette-forest) 95%,transparent));color:var(--theme-surface)}
 .circle .homepage-course-caption .access-badge {background:var(--theme-surface);color:var(--palette-forest)}
-.circle :is(.memory-card,.memory-card-top,.academy-invitation) {background:var(--theme-soft);color:var(--theme-ink);border-color:var(--theme-line)}
-.circle .memory-card-bottom {background:var(--theme-surface);border-color:var(--theme-line)}
-.circle .memory-card :is(h3,.memory-level,p,button) {color:var(--palette-forest);border-color:var(--theme-line)}
+.circle .academy-invitation {background:var(--theme-soft);color:var(--theme-ink);border-color:var(--theme-line)}
 .circle .academy-teaching {background:var(--theme-forest);color:var(--theme-surface)}
 .circle .academy-teaching :is(h2,p,.eyebrow) {color:var(--theme-surface)}
 .circle .academy-invitation :is(h2,p,.eyebrow),.circle .academy-story h2 {color:var(--palette-forest)}
@@ -175,8 +175,9 @@ html,body.circle,body.circles-theme {background:var(--theme-paper);color:var(--t
 .circle .circles-tafseer-rail>header>a {font:500 12px/1.5 'DM Sans',Arial,sans-serif;color:var(--palette-forest);text-underline-offset:5px;flex:none}
 .circle .circles-tafseer-rail .circles-collection-nav {display:none}
 .circle .circles-tafseer-rail .connected-circles {padding:0}
-.circle .circles-tafseer-rail .collection-grid {display:flex;gap:20px;overflow-x:auto;padding:3px 1px 14px;scroll-snap-type:x proximity}
-.circle .circles-tafseer-rail .collection-card {flex:0 0 calc((100% - 60px)/4);min-width:230px;scroll-snap-align:start}
+.circle .circles-tafseer-rail .collection-grid {display:flex;gap:var(--dashboard-card-gap);overflow-x:auto;padding:3px 1px 14px;scroll-snap-type:x proximity}
+.circle #programmes.circles-dashboard-courses .circles-purchased-course-row {gap:var(--dashboard-card-gap)}
+.circle .circles-tafseer-rail .collection-card,.circle #programmes.circles-dashboard-courses .circles-purchased-course {flex:0 0 var(--dashboard-card-size);min-width:0;scroll-snap-align:start}
 .circle .circles-tafseer-rail [hidden] {display:none!important}
 .circle .circles-tafseer-rail .collection-cover.tafseer-cover {position:relative;display:flex;align-items:center;justify-content:center;padding:22px 22px 50px;overflow:hidden;text-decoration:none;container-type:inline-size;box-sizing:border-box;width:100%;height:auto;aspect-ratio:1;border:1px solid var(--theme-line);border-radius:var(--homepage-block-radius);--card-accent:var(--palette-tan)!important;--card-soft:var(--palette-ivory)!important;--ornament:var(--palette-tan);background:var(--theme-surface)}
 .circle .circles-tafseer-rail .tafseer-cover:before {content:'';position:absolute;inset:0;background:url('/shared/assets/tafseer-geometric.svg') center/58px repeat;opacity:.25}
@@ -192,5 +193,4 @@ html,body.circle,body.circles-theme {background:var(--theme-paper);color:var(--t
 .circle .circles-tafseer-rail .collection-lock.access-badge {position:absolute;bottom:10px;right:10px;z-index:4;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:14px;font:600 10px/1.2 'DM Sans',sans-serif;background:var(--theme-paper);color:var(--theme-ink)}
 .circle .circles-tafseer-rail .access-badge svg {width:13px;height:13px;flex-shrink:0}
 #circles-dashboard .circles-programme-link[hidden] {display:none!important}
-@media(max-width:1000px) {.circle .circles-tafseer-rail .collection-card {flex-basis:calc((100% - 40px)/3)}}
-@media(max-width:700px) {.circle .circles-tafseer-rail .collection-card {flex-basis:78%;min-width:240px}.circle .circles-tafseer-rail h2 {font-size:29px}}
+@media(max-width:700px) {.circle .circles-tafseer-rail h2 {font-size:29px}}
