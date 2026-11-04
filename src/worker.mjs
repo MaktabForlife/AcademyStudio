@@ -1,3 +1,6 @@
+import {hubSummary,hubJoin} from './hub-bridge.mjs';
+import {offeringJoin} from './offering-join.mjs';
+import {hostingOrigins} from './deployment-origins.mjs';
 import {accountView,privateViewTag,privateUnchanged,privateNotModified,privateReply,checkedViewReply} from './read-cache.mjs';
 import {coursePlaylistRead,coursePlaylistSave,coursePlaylistContentSave,coursePlaylistPublish,publishedCourseContent,coursePlaylistFile,coursePublishedExtras} from './course-playlist-workflow.mjs';
 import {existingCollection,referenceCollectionPDF} from './existing-collection.mjs';
@@ -53,10 +56,12 @@ async function route(request,env,store,fetcher,checkedActor=null){
   return json(home,200,{'Cache-Control':'public, max-age=60'});
  }
  if(path==='/internal/academy/events'&&method==='POST'){const result=await receive(request,env,store);if(result.changedOffering)await publishSchedule(env,store,result.changedOffering);return json(result);}
+ if(path==='/internal/studio/hub-summary'&&method==='POST')return json(await hubSummary(request,env,store));
+ if(path==='/internal/studio/hub-join'&&method==='POST')return json(await hubJoin(request,env,store));
  if(path==='/internal/studio/course-publication'&&method==='POST')return json(await coursePublication(request,env,store));
  if(path==='/internal/studio/playlist-cover'&&method==='POST')return json(await studioAccess(request,env,store,fetcher,{coverOnly:true}));
  if(path==='/internal/studio/access'&&method==='POST')return json(await studioAccess(request,env,store,fetcher));
- if(path==='/api/config'&&method==='GET')return json({academyOrigin:env.ACADEMY_ORIGIN,localPreview:env.ENVIRONMENT==='local',authorityMode:env.AUTHORITY_MODE||'WEBSITE'});
+ if(path==='/api/config'&&method==='GET')return json({academyOrigin:env.ACADEMY_ORIGIN,academyPortalOrigin:hostingOrigins(env).academyPortal,localPreview:env.ENVIRONMENT==='local',authorityMode:env.AUTHORITY_MODE||'WEBSITE'});
  if(method==='POST'||method==='PUT'||method==='DELETE')originCheck(request,env);
  if(path==='/auth/login'&&method==='POST')return forwardSignIn(request,env,store,await bodyJSON(request.body,4096),fetcher);
  if(path==='/auth/exchange'&&method==='POST'){const previous=parseCookie(request),result=await exchange(await bodyJSON(request.body,4096),env,store);if(previous)await store.run('UPDATE sessions SET revoked=1 WHERE token_hash=?',[await sha256(previous)]);return json({signedIn:true,accountId:result.accountId},200,{'Set-Cookie':result.cookie});}
@@ -159,7 +164,7 @@ async function route(request,env,store,fetcher,checkedActor=null){
    const media=await addSupportingFiles(store,await addPublishedAttribution(store,rows.slice(0,50)));return privateReply({media,more:rows.length>50,...(playlist?{playlist:{id:playlist.playlist_id,name:playlist.title,revision:playlist.revision}}:{}),companions:await permittedCompanionIndexes(store,media),mediaBindings:mediaWebsite?await permittedGuideBindings(env,mediaWebsite,media,store):[]},tag);
   }
   if(method!=='POST')throw fail('This action needs a POST request.',405);const input=await bodyJSON(request.body,16384);
-  if(action==='join'){if(scope.completed_course)throw fail('This completed Course has no live sessions.',403,'JOIN_CLOSED');await accessGate(store,actor,offeringId,{live:true});if(!actor.global_admin&&!scope.live&&!scope.role)throw fail('Current live-session access is required.',403);const session=await store.first('SELECT session_id,starts_at,ends_at,zoom_url,cancelled FROM timetable WHERE session_id=? AND offering_id=?',[id(input.sessionId),offeringId]),now=Date.now();if(!session||session.cancelled||now<session.starts_at-300_000||now>=session.ends_at||!session.zoom_url)throw fail('Joining is available from five minutes before the lesson until it ends.',403,'JOIN_CLOSED');await joinAudience(store,actor,offeringId,session,scope);return json({destination:session.zoom_url});}
+  if(action==='join')return json(await offeringJoin(store,actor,offeringId,scope,input));
   if(action==='enrol')return json(await requestEnrolment(store,actor,offeringId,input));
   if(action==='provision')return json(await beginProvision(store,actor,offeringId,input));
   if(action==='resume')return json(await resumeProvision(env,store,actor,offeringId,input,fetcher));

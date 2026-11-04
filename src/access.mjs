@@ -1,3 +1,4 @@
+import {isHubActor} from './hub-actor.mjs';
 import {fail,id,integer,flag,text,month,date,boundedAge,sha256} from './protocol.mjs';
 export const academyAuthority=env=>env.AUTHORITY_MODE==='ACADEMY';
 export const freeCourse=scope=>scope?.kind==='COURSE'&&scope.access_model==='FREE';
@@ -19,7 +20,7 @@ export async function accessGate(store,actor,offeringId,{admin=false,live=false,
   // Studio owns acquired rights; Academy still owns class windows/lifecycle.
   if(!live&&!admin)return {...row,studio:true};
  }
- if(!actor.source_ref)throw fail('Sign in through Academy for parallel access.',401,'SIGN_IN_REQUIRED');
+ if(!actor.source_ref&&!isHubActor(actor))throw fail('Sign in through Academy for parallel access.',401,'SIGN_IN_REQUIRED');
  const liveAge=Math.max(30,Math.min(86400,Number(store.env.LIVE_ACCESS_MAX_AGE_SECONDS)||boundedAge(store.env)/1000))*1000,maxAge=live?Math.min(liveAge,boundedAge(store.env,admin&&!readOnly)):boundedAge(store.env,admin&&!readOnly);
  if(row&&!row.enabled)throw fail('This offering is unavailable in Academy.',403,'SOURCE_SCOPE_UNAVAILABLE');
  if(live&&row?.live_enabled===0)throw fail('Live entry is closed for this offering.',403,'JOIN_CLOSED');

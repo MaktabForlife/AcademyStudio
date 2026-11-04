@@ -1,3 +1,4 @@
+import {isHubActor} from './hub-actor.mjs';
 import {cataloguePlaylistRights} from './mou-playlists.mjs';
 import {academyAuthority} from './access.mjs';
 import {bodyJSON,boundedAge,fail,id} from './protocol.mjs';
@@ -74,7 +75,7 @@ async function loadCatalogueAccess(store,actor,websiteIds,{navigationOnly=false}
   const staff=Boolean(actor.global_admin||row.role),free=row.kind==='COURSE'&&row.access_model==='FREE',parallel=academyAuthority(store.env)&&row.authority!=='WEBSITE';
   if(academyAuthority(store.env)&&!row.source_enabled)return base;if(row.fenced)return {...base,needsRefresh:true};
   if(parallel){
-   if(!actor.source_ref||!row.source_enabled||row.kind==='TAFSEER'&&!row.mapped)return base;
+   if(!actor.source_ref&&!isHubActor(actor)||!row.source_enabled||row.kind==='TAFSEER'&&!row.mapped)return base;
    if((!free||staff)&&(!row.ready||row.generation!==row.person_generation||row.verified_at<now-boundedAge(store.env)))return {...base,needsRefresh:true};
   }
   const accessBasis=row.kind==='COURSE'&&row.purchased?'purchase':free?'free':row.kind==='TAFSEER'&&row.paid?'paid-month':row.kind==='TAFSEER'&&row.granted?'website-grant':null;

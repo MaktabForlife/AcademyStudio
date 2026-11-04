@@ -13,12 +13,12 @@ export async function programmeSnapshot(store,actor){
  if(mou?.authority==='WEBSITE'){const current=programmes.filter(k=>k!=='mothers');if(await studioMouVisible(store,actor,mou))current.push('mothers');return current;}
  return programmes;
 }
-export async function circlesNavigation(env,store,actor){
- const programmes=await programmeSnapshot(store,actor),items=(await publicCatalogue(env)).items.filter(i=>i.kind==='COURSE'&&i.websiteId&&!i.pending);
+export async function circlesNavigation(env,store,actor,{catalogue,rights:checkedRights}={}){
+ const programmes=await programmeSnapshot(store,actor),items=(catalogue??await publicCatalogue(env)).items.filter(i=>i.kind==='COURSE'&&i.websiteId&&!i.pending);
  if(items.length>50)throw fail('The short course navigation needs review.',503);
  // Ordinary menu presentation keeps the twelve-hour bound, including staff.
  // The destination retains its existing, independent sensitive-action checks.
- const rights=await catalogueAccess(store,actor,items.map(i=>i.websiteId),{navigationOnly:true});
+ const rights=checkedRights?{...checkedRights,websites:checkedRights.websites.filter(r=>items.some(i=>i.websiteId===r.websiteId))}:await catalogueAccess(store,actor,items.map(i=>i.websiteId),{navigationOnly:true});
  if(rights.websites.some(r=>r.needsRefresh))throw fail('Confirm your course access to continue.',409,'ACCESS_REFRESH_REQUIRED');
  const permitted=new Set(rights.websites.filter(r=>r.canOpen).map(r=>r.websiteId));
  const purchased=new Set(rights.websites.filter(r=>r.canOpen&&r.accessBasis==='purchase').map(r=>r.websiteId));
