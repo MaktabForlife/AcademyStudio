@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "state": "prepared-not-active",
+  "accountId": "2b01ca929611669e032703ff19f7098f",
+  "projectName": "academy-studio-public",
+  "productionBranch": "studio_dev",
+  "compatibilityDate": "2026-10-28",
+  "providerZone": "maktab4life.org",
+  "providerOrigin": "https://ummabbadacademy.maktab4life.org",
+  "websiteOrigin": "https://worshipuponbaseera.ummabbadacademy.app",
+  "academyPortalOrigin": "https://ummabbadacademy.app",
+  "hifzPublicOrigin": "https://mahadarwa-hifz.ummabbadacademy.app",
+  "assetOrigin": "https://academy-studio-public.pages.dev",
+  "redirectOrigins": [
+    "https://maktab4life.org",
+    "https://www.maktab4life.org"
+  ],
+  "workerConfig": "wrangler.production.jsonc",
+  "failOpen": false,
+  "providerZoneId": "dc5a8932ae64e294ab53090de552324d",
+  "providerZoneStatus": "pending",
+  "assetProjectId": "4a369706-6b02-48e9-ad7f-69abb4fd4ec4"
+}

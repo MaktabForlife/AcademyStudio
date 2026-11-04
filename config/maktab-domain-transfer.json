@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "state": "prepared-not-active",
+  "observedAt": "2026-11-04T16:04:53Z",
+  "sourceAccountId": "c9a3e355b3d7a795880b1d36a1dbe123",
+  "sourceZoneId": "3199f3903d600451476f9070fd7dbd13",
+  "targetAccountId": "2b01ca929611669e032703ff19f7098f",
+  "zone": "maktab4life.org",
+  "currentRecords": [
+    {
+      "type": "CNAME",
+      "name": "hifz.maktab4life.org",
+      "content": "maktab-hifz.pages.dev",
+      "proxied": true,
+      "ttl": 1
+    },
+    {
+      "type": "CNAME",
+      "name": "maktab4life.org",
+      "content": "academy-maktab4life.pages.dev",
+      "proxied": true,
+      "ttl": 1
+    },
+    {
+      "type": "CNAME",
+      "name": "www.maktab4life.org",
+      "content": "academy-maktab4life.pages.dev",
+      "proxied": true,
+      "ttl": 1
+    },
+    {
+      "type": "TXT",
+      "name": "*._domainkey.maktab4life.org",
+      "content": "v=DKIM1; p=",
+      "proxied": false,
+      "ttl": 1
+    },
+    {
+      "type": "TXT",
+      "name": "maktab4life.org",
+      "content": "v=spf1 -all",
+      "proxied": false,
+      "ttl": 1
+    }
+  ],
+  "currentWorker": {
+    "accountId": "c9a3e355b3d7a795880b1d36a1dbe123",
+    "name": "maktab-website-router",
+    "routes": [
+      "maktab4life.org/*",
+      "www.maktab4life.org/*"
+    ]
+  },
+  "proposedTransition": {
+    "worker": "academy-studio-parallel",
+    "entry": "hosting/saas/worker.mjs",
+    "publicAssetSource": "worker",
+    "publicOrigin": "https://maktab4life.org",
+    "routes": [
+      "maktab4life.org/*",
+      "www.maktab4life.org/*"
+    ],
+    "dnsChanges": [
+      {
+        "type": "AAAA",
+        "name": "maktab4life.org",
+        "content": "100::",
+        "proxied": true,
+        "ttl": 1
+      },
+      {
+        "type": "AAAA",
+        "name": "www.maktab4life.org",
+        "content": "100::",
+        "proxied": true,
+        "ttl": 1
+      }
+    ],
+    "preserveRecords": [
+      "hifz.maktab4life.org CNAME",
+      "*._domainkey.maktab4life.org TXT",
+      "maktab4life.org TXT"
+    ]
+  },
+  "transferGate": [
+    "Do not accept the registrar move before the target zone, reviewed transition Worker, route and DNS configuration are ready.",
+    "The source Worker does not transfer with the zone.",
+    "Use the existing Studio Worker and current Worker asset bundle during transfer; do not depend on the new SaaS hostname or Pages service being active.",
+    "Re-read current DNS and source routes before the final move if they have changed.",
+    "Verify the unchanged Hifz connection and both current/new Academy connections with bounded checks.",
+    "Activate the new SaaS public hostname in a later separately verified step."
+  ]
+}

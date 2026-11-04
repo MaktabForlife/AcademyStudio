@@ -2,7 +2,7 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "academy-studio-parallel",
   "account_id": "2b01ca929611669e032703ff19f7098f",
-  "main": "src/launch-worker.mjs",
+  "main": "hosting/saas/worker.mjs",
   "compatibility_date": "2026-10-28",
   "compatibility_flags": [
     "nodejs_compat"
@@ -28,7 +28,12 @@
     "LIVE_ACCESS_MAX_AGE_SECONDS": "43200",
     "ADMIN_MAX_AGE_SECONDS": "60",
     "RELEASE_VERSION": "109.20",
-    "ACADEMY_PORTAL_ORIGIN": "https://ummabbadacademy.app"
+    "ACADEMY_PORTAL_ORIGIN": "https://ummabbadacademy.app",
+    "PUBLIC_ASSET_SOURCE": "worker",
+    "WEBSITE_ALIAS_ORIGINS": "[]",
+    "STUDIO_BACKEND_ORIGIN": "https://academy-studio-parallel.naidu-hajira.workers.dev",
+    "STUDIO_PROVIDER_ORIGIN": "https://ummabbadacademy.maktab4life.org",
+    "STUDIO_REDIRECT_ORIGINS": "[\"https://www.maktab4life.org\"]"
   },
   "d1_databases": [
     {
