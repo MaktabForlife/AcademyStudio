@@ -5,7 +5,7 @@ on:
       scope:
         description: Check both accounts or Studio only
         type: choice
-        options: [both, studio, studio-format]
+        options: [both, studio, studio-format, studio-metadata]
         default: both
 permissions:
   contents: read
@@ -39,8 +39,16 @@ jobs:
            {label:'Studio Worker',account:studioAccount,token:studio,path:'/workers/scripts/academy-studio-parallel/settings',kind:'worker'}
           ];
           const scope=process.env.CONNECTION_SCOPE||'both';
-          if(!['both','studio','studio-format'].includes(scope))throw new Error('Unknown verification scope');
-          const tasks=scope.startsWith('studio')?allTasks.filter(t=>t.label==='Studio Worker'):allTasks;
+          if(!['both','studio','studio-format','studio-metadata'].includes(scope))throw new Error('Unknown verification scope');
+          const metadataPaths=[
+           ['/workers/services/academy-studio-parallel/environments/production/bindings','Studio bindings metadata'],
+           ['/workers/services/academy-studio-parallel/environments/production/routes?show_zonename=true','Studio routes metadata'],
+           ['/workers/domains/records?page=0&per_page=5&service=academy-studio-parallel&environment=production','Studio domains metadata'],
+           ['/workers/services/academy-studio-parallel/environments/production/subdomain','Studio subdomain metadata'],
+           ['/workers/services/academy-studio-parallel/environments/production','Studio service metadata'],
+           ['/workers/scripts/academy-studio-parallel/schedules','Studio schedules metadata']
+          ];
+          const tasks=scope==='studio-metadata'?metadataPaths.map(([path,label])=>({label,path,account:studioAccount,token:studio,kind:'metadata'})):scope.startsWith('studio')?allTasks.filter(t=>t.label==='Studio Worker'):allTasks;
           let attempted=0;
           const results=await Promise.all(tasks.map(async t=>{
            if(!t.token)return {label:t.label,passed:false,status:'not requested',issue:'Saved secret is empty'};
@@ -54,7 +62,7 @@ jobs:
             });
             const value=await response.json();
             if(!response.ok||value.success!==true)return {label:t.label,passed:false,status:response.status,errorCodes:(value.errors||[]).map(e=>e.code).filter(n=>typeof n==='number')};
-            const valid=t.kind==='pages'?value.result?.name==='academy-maktab4life':Array.isArray(value.result?.bindings);
+            const valid=t.kind==='metadata'?value.result!==undefined&&value.result!==null:t.kind==='pages'?value.result?.name==='academy-maktab4life':Array.isArray(value.result?.bindings);
             return {label:t.label,passed:valid,status:response.status,...(t.kind==='worker'&&valid?{bindings:value.result.bindings.length}:{})};
            }catch(e){
             const errorType=['TypeError','SyntaxError','TimeoutError','AbortError'].includes(e?.name)?e.name:'RequestError';
