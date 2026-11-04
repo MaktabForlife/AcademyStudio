@@ -49,3 +49,15 @@ test('Global Admin Learn projection preserves raw master authority in signed pro
   const noToken=await source('/api/academy/hub/read',{kind:'navigation',input:{}});assert.equal(noToken.status,401);
  }finally{await f.close();}
 });
+
+test('real native GET pv1 is conditional only after current authentication and exposes CORS headers',async()=>{
+ const {f,source,login}=await setup();try{
+  const firstLogin=await login(),token=firstLogin.token,input={kind:'access',input:{websiteIds:['site-course','site-surah']}},path='/api/academy/hub/read?request='+encodeURIComponent(JSON.stringify(input));
+  const get=async(who=token,tag)=>f.runtime.dispatchFetch('https://academy.test'+path,{headers:{Origin:portal,Authorization:'Bearer '+who,...(tag?{'If-None-Match':tag}:{})}});
+  const one=await get();assert.equal(one.status,200,await one.clone().text());const tag=one.headers.get('ETag');assert.match(tag,/^"pv1-[a-f0-9]{64}"$/);assert.match(one.headers.get('Access-Control-Expose-Headers'),/ETag/);assert.match(one.headers.get('Access-Control-Expose-Headers'),/X-Maktab-Server-Time/);await one.body.cancel();
+  const unchanged=await get(token,tag);assert.equal(unchanged.status,304,await unchanged.clone().text());assert.equal(await unchanged.text(),'');assert(Number(unchanged.headers.get('X-Maktab-Server-Time'))>0);
+  const newer=await login();assert.notEqual(newer.token,token);const isolated=await get(newer.token,tag);assert.equal(isolated.status,200,await isolated.clone().text());assert.notEqual(isolated.headers.get('ETag'),tag);await isolated.body.cancel();
+  const preflight=await f.runtime.dispatchFetch('https://academy.test'+path,{method:'OPTIONS',headers:{Origin:portal,'Access-Control-Request-Method':'GET','Access-Control-Request-Headers':'authorization,if-none-match'}});assert.equal(preflight.status,204);assert.match(preflight.headers.get('Access-Control-Allow-Headers'),/If-None-Match/);
+  await source('/api/account/logout',{},token);const revoked=await get(token,tag);assert.equal(revoked.status,401,await revoked.clone().text());await revoked.body.cancel();
+ }finally{await f.close();}
+});
