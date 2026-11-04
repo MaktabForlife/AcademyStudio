@@ -1,0 +1,62 @@
+name: Academy portal domain
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Exact reviewed Academy commit containing the hosting configuration
+        required: true
+        type: string
+      mode:
+        description: Inspect or associate the configured Academy portal domain
+        type: choice
+        options: [inspect, associate]
+        default: inspect
+permissions:
+  contents: read
+concurrency:
+  group: academy-portal-domain
+  cancel-in-progress: false
+jobs:
+  domain:
+    if: github.repository == 'MaktabForlife/AcademyStudio' && github.ref == 'refs/heads/studio_dev'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: MaktabForlife/Academy
+          ref: ${{ inputs.source_ref }}
+          path: academy-source
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18.0"
+      - name: Manage only the configured Academy Pages domain
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_SOURCE_API_TOKEN }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          node --input-type=module <<'DOMAIN_CHECK'
+          import assert from 'node:assert/strict';
+          import {readFile,appendFile} from 'node:fs/promises';
+          const config=JSON.parse(await readFile('academy-source/config/hosting.json','utf8'));
+          const origin=new URL(config.academyPortalOrigin);
+          assert(origin.protocol==='https:'&&origin.origin===config.academyPortalOrigin&&!origin.username&&!origin.password&&/^[a-z0-9.-]+$/.test(origin.hostname));
+          assert(['inspect','associate'].includes(process.env.MODE));
+          assert(process.env.TOKEN&&process.env.TOKEN===process.env.TOKEN.trim());
+          const account='c9a3e355b3d7a795880b1d36a1dbe123',project='academy-maktab4life',path='/accounts/'+account+'/pages/projects/'+project+'/domains';
+          let requests=0,created=false;
+          async function api(method,suffix='',body){
+           requests++;
+           const response=await fetch('https://api.cloudflare.com/client/v4'+path+suffix,{method,headers:{Authorization:'Bearer '+process.env.TOKEN,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),redirect:'error',signal:AbortSignal.timeout(20000)});
+           const result=await response.json();
+           if(!response.ok||!result.success)throw Error('Pages domain '+method+' failed ('+response.status+'): '+JSON.stringify((result.errors||[]).map(e=>({code:e.code,message:e.message}))));
+           return result.result;
+          }
+          const domains=await api('GET');let domain=domains.find(d=>d.name===origin.hostname);
+          if(!domain&&process.env.MODE==='associate'){domain=await api('POST','',{name:origin.hostname});created=true;}
+          const result={account,project,domain:origin.hostname,mode:process.env.MODE,associated:Boolean(domain),created,status:domain?.status||null,verification:domain?.verification_data?.status||null,validation:domain?.validation_data?.status||null,validationError:domain?.validation_data?.error_message||null,zone:domain?.zone_tag||null,managementRequests:requests,d1Requests:0,deployments:0,dnsRecordsEdited:0};
+          console.log(JSON.stringify(result));
+          await appendFile(process.env.GITHUB_STEP_SUMMARY,'### Academy portal domain\n\n'+JSON.stringify(result,null,2)+'\n');
+          DOMAIN_CHECK
