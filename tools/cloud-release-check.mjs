@@ -99,7 +99,9 @@ const scope={version,source:'work/Academy',studio:'work/AcademyStudio',baseline:
 await save('approval-and-scope.json',scope);
 function run(dir,args,file){
  const r=spawnSync(process.execPath,args,{cwd:dir,encoding:'utf8',maxBuffer:16*1024*1024,env:{...process.env,ACADEMY_SOURCE:source}});
- assert.equal(r.status,0,file+' failed: '+(r.stderr||r.stdout).slice(-4000));
+ await writeFile(resolve(out,file),r.stdout+'\n'+r.stderr);
+ const lines=(r.stdout+'\n'+r.stderr).split('\n'),failures=lines.flatMap((line,i)=>/not ok|error:|ERR_|failureType/.test(line)?lines.slice(Math.max(0,i-2),i+28):[]).join('\n');
+ assert.equal(r.status,0,file+' failed: '+(failures||r.stderr||r.stdout).slice(0,10000));
  return writeFile(resolve(out,file),r.stdout+'\n'+r.stderr);
 }
 await run(source,['--test','--test-reporter=tap','backend/tests/academy-workspace-client.test.mjs','backend/tests/academy-workspace-destination.test.mjs','backend/tests/academy-header-workspaces.test.mjs'],'academy-tests.log');
