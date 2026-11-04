@@ -31,3 +31,7 @@ The ordinary pipeline has no hosted SQL permission. It detects migration changes
 ## First run
 
 Use Deploy unchecked to verify cloud testing. V109.17 is already live: prepare a fresh version and frozen packages for the next deployment, rather than redeploying it to test the workflow. Credentials are confined to the manual deployment job, never the check-only job or pull requests.
+
+## Build packages without Mac writes
+
+After code and version updates are reviewed on GitHub feature branches, use each repository's Build release package in GitHub workflow. The default comparison mode rebuilds the current package and verifies every public byte without pushing. For a new release, select its feature branch, set the new version and previous verified baseline, and turn comparison mode off. It scans the generated package before committing it to the same feature branch. Run the paired check after both packages are ready. Package building never deploys to Cloudflare.
