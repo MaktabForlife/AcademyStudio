@@ -1,3 +1,7 @@
+## V109.18 — reviewed repository housekeeping
+
+One complete public source now replaces retained release copies. Packages are built and tested on GitHub, then deployed together with Academy under explicit approval. Preserve current content, permissions, 43200/43200/60 verification and manual media attachment/publication. The hosting migration remains separate; Hifz and all Mac files stay unchanged.
+
 # AcademyStudio
 
 Studio delivers Courses, Tafseer and Mothers of the Ummah with the Circles interface. Academy owns master identity and published timetables; Studio owns its transferred content and material access.

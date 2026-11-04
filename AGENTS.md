@@ -4,7 +4,7 @@ GitHub is the source of truth: MaktabForlife/AcademyStudio, primary branch studi
 
 ## Current authorised scope
 
-The owner authorised repository housekeeping and asked that it be applied directly to studio_dev, with rollback/studio-before-housekeeping-20261104 preserved. This authorises source organisation, GitHub-run build/tests and reviewed GitHub commits only. No deployment, DNS, hosted SQL/data/rights/media changes or Hifz changes are authorised.
+The owner authorised repository housekeeping and asked that it be applied directly to studio_dev, with rollback/studio-before-housekeeping-20261104 preserved. The owner subsequently authorised deploying this tested cleanup to Academy and Studio together from GitHub as V109.18. Keep live verification bounded and preserve the compatible V109.17 rollback. No Mac writes/deletions, hosting migration, DNS, hosted SQL/data/rights/media changes or Hifz changes are authorised. All real media attachment and publication remain manual.
 
 The proposed hosting migration remains a plan: Academy will own the homepage/shared dashboard at maktab4life.org; Studio Pages and its existing backend/storage will be in the Studio account at studio.maktab4life.org; Studio keeps its secure cookie and Hifz remains unchanged. Do not build or deploy that migration under the housekeeping approval.
 
