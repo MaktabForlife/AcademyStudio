@@ -1,0 +1,41 @@
+name: Check configurable Studio hosting
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CI: "true"
+      WRANGLER_SEND_METRICS: "false"
+      ACADEMY_SOURCE: ${{ github.workspace }}/Academy
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: MaktabForlife/Academy
+          ref: studio_dev
+          path: Academy
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          path: Studio
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18.0"
+      - name: Install synthetic test dependencies on GitHub
+        run: |
+          npm ci --prefix Academy/backend --no-audit --no-fund
+          npm ci --prefix Studio --no-audit --no-fund
+      - name: Run origin, router and paired cookie tests without live requests
+        working-directory: Studio
+        run: node --test --test-concurrency=1 tests/deployment-origin-config.test.mjs tests/website-routing.test.mjs tests/website-launch.test.mjs tests/academy-origins.test.mjs
+      - name: Verify source-only preparation
+        working-directory: Studio
+        run: |
+          git diff --exit-code
+          git status --porcelain
+          node --input-type=module -e "import {readFile} from 'node:fs/promises'; const r=JSON.parse(await readFile('release/current.json')); console.log(JSON.stringify({reviewedPublicVersion:r.version,sourceTestsOnly:true,cloudflareRequests:0,hostedSQL:0,macWrites:0}));"

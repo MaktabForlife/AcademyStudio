@@ -1,3 +1,4 @@
+import {websiteOrigin} from './deployment-origins.mjs';
 export const fail=(message,status=400,code='INVALID_REQUEST')=>Object.assign(new Error(message),{status,code});
 export const id=value=>{if(typeof value!=='string'||!/^[-A-Za-z0-9_:]{1,180}$/.test(value))throw fail('Invalid stable identifier.');return value;};
 export const text=(value,max=240)=>{if(typeof value!=='string'||value.length>max||/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value))throw fail('Invalid text.');return value;};
@@ -19,7 +20,7 @@ export const challenge=async verifier=>btoa(String.fromCharCode(...new Uint8Arra
 export const safeToken=value=>typeof value==='string'&&/^[A-Za-z0-9_-]{43}$/.test(value);
 export const parseCookie=request=>{const value=request.headers.get('Cookie')||'';const hits=value.split(';').map(x=>x.trim()).filter(x=>x.startsWith('__Host-maktab_web='));if(hits.length!==1)return '';const token=hits[0].slice(18);return safeToken(token)?token:'';};
 export const cookie=(token,age=86400)=>`__Host-maktab_web=${token}; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=${age}`;
-export function originCheck(request,env){if(request.headers.get('Origin')!==env.WEBSITE_ORIGIN)throw fail('Reopen this action from the website.',403,'ORIGIN_REQUIRED');}
+export function originCheck(request,env){if(request.headers.get('Origin')!==websiteOrigin(env))throw fail('Reopen this action from the website.',403,'ORIGIN_REQUIRED');}
 export function boundedAge(env,admin=false){const seconds=Number(admin?env.ADMIN_MAX_AGE_SECONDS:env.ACCOUNT_MAX_AGE_SECONDS);return Number.isInteger(seconds)&&seconds>0&&seconds<=(admin?900:86400)?seconds*1000:(admin?300_000:3_600_000);}
 export async function sign(secret,purpose,payload){if(typeof secret!=='string'||secret.length<32)throw fail('The private connection is not configured.',503);const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);return [...new Uint8Array(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(purpose+'\n'+payload)))].map(x=>x.toString(16).padStart(2,'0')).join('');}
 export async function verify(secret,purpose,payload,signature){if(!/^[a-f0-9]{64}$/.test(signature||'')||typeof secret!=='string'||secret.length<32)return false;const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['verify']);const sig=Uint8Array.from(signature.match(/../g),x=>parseInt(x,16));return crypto.subtle.verify('HMAC',key,sig,new TextEncoder().encode(purpose+'\n'+payload));}
