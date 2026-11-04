@@ -27,7 +27,8 @@
     "ACCOUNT_MAX_AGE_SECONDS": "43200",
     "LIVE_ACCESS_MAX_AGE_SECONDS": "43200",
     "ADMIN_MAX_AGE_SECONDS": "60",
-    "RELEASE_VERSION": "109.18"
+    "RELEASE_VERSION": "109.18",
+    "ACADEMY_PORTAL_ORIGIN": "https://ummabbadacademy.app"
   },
   "d1_databases": [
     {

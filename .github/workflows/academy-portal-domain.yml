@@ -56,7 +56,7 @@ jobs:
           }
           const domains=await api('GET');let domain=domains.find(d=>d.name===origin.hostname);
           if(!domain&&process.env.MODE==='associate'){domain=await api('POST','',{name:origin.hostname});created=true;}
-          const result={account,project,domain:origin.hostname,mode:process.env.MODE,associated:Boolean(domain),created,status:domain?.status||null,verification:domain?.verification_data?.status||null,validation:domain?.validation_data?.status||null,validationError:domain?.validation_data?.error_message||null,zone:domain?.zone_tag||null,managementRequests:requests,d1Requests:0,deployments:0,dnsRecordsEdited:0};
+          const result={account,project,domain:origin.hostname,mode:process.env.MODE,associated:Boolean(domain),created,status:domain?.status||null,verification:domain?.verification_data?.status||null,validation:domain?.validation_data?.status||null,validationError:domain?.validation_data?.error_message||null,zone:domain?.zone_tag||null,managementRequests:requests,d1Requests:0,deployments:0,directDnsEdits:0};
           console.log(JSON.stringify(result));
           await appendFile(process.env.GITHUB_STEP_SUMMARY,'### Academy portal domain\n\n'+JSON.stringify(result,null,2)+'\n');
           DOMAIN_CHECK

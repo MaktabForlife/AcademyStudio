@@ -40,7 +40,7 @@ const gh=(path,body)=>JSON.parse(execFileSync('gh',['api',...(body?['--method','
 if(mode==='publish-receipt'){
  const v=await json(resolve(out,'verification.json')),prior=await json(resolve(out,'baseline.json'));
  assert(v.passed&&v.version===version);
- const receipt={version,source:{commit:commits.source,workerVersion:v.source.workerVersion,pages:v.source.pages},studio:{commit:commits.target,workerVersion:v.studio.workerVersion},coordinatorVersion:v.coordinator.versionId,databaseVersions:prior.databaseVersions,verificationSeconds:v.verificationSeconds,manualLessonAttachment:true,manualLessonPublication:true,localTests:v.localChecks,unsignedLiveChecks:v.unsignedChecks,verifiedAt:v.verifiedAt};
+ const receipt={version,source:{commit:commits.source,workerVersion:v.source.workerVersion,pages:v.source.pages},studio:{commit:commits.target,workerVersion:v.studio.workerVersion},coordinatorVersion:v.coordinator.versionId,bindings:v.bindings,hosting:v.hosting,databaseVersions:prior.databaseVersions,verificationSeconds:v.verificationSeconds,manualLessonAttachment:true,manualLessonPublication:true,localTests:v.localChecks,unsignedLiveChecks:v.unsignedChecks,verifiedAt:v.verifiedAt};
  const release=gh('/repos/MaktabForlife/AcademyStudio/releases',{tag_name:'v'+version,target_commitish:commits.target,name:'V'+version+' — paired Academy and Studio',body:'Tested and deployed together from exact GitHub source. Academy '+commits.source+'; Studio '+commits.target+'. Media attachment and publication remain manual.',draft:false,prerelease:false});
  const body=JSON.stringify(receipt,null,2)+'\n',url=release.upload_url.split('{')[0]+'?name=paired-release.json';
  execFileSync('gh',['api','--method','POST',url,'-H','Content-Type: application/json','-H','Content-Length: '+Buffer.byteLength(body),'--input','-'],{input:body,stdio:['pipe','ignore','pipe']});
@@ -90,7 +90,7 @@ for(const [side,dir]of Object.entries(dirs)){
 }
 await save('source-assets.json',manifests.source);await save('studio-assets.json',manifests.target);
 const rollbackManifest=await json(resolve(source,'release/v'+baseline.version+'/manifest.json'));
-const scope={version,source:'work/Academy',studio:'work/AcademyStudio',baseline:{source:{...baseline.source,coordinatorVersion:baseline.coordinatorVersion},studio:baseline.studio},rollback:{pagesArtifact:resolve(source,'release/v'+baseline.version+'/public'),pagesManifest:{files:Object.keys(rollbackManifest.manifest).length,manifest:rollbackManifest.manifest}},databaseUpdates:[]};
+const scope={version,source:'work/Academy',studio:'work/AcademyStudio',baseline:{source:{...baseline.source,coordinatorVersion:baseline.coordinatorVersion},studio:baseline.studio},hosting:await json(resolve(source,'config/hosting.json')),baselineBindings:baseline.bindings||{source:43,coordinator:3,studio:17},rollback:{pagesArtifact:resolve(source,'release/v'+baseline.version+'/public'),pagesManifest:{files:Object.keys(rollbackManifest.manifest).length,manifest:rollbackManifest.manifest}},databaseUpdates:[]};
 await save('approval-and-scope.json',scope);
 function run(dir,args,file){
  const r=spawnSync(process.execPath,args,{cwd:dir,encoding:'utf8',maxBuffer:16*1024*1024,env:{...process.env,ACADEMY_SOURCE:source}});
@@ -99,8 +99,10 @@ function run(dir,args,file){
 }
 await run(source,['--test','--test-reporter=tap','backend/tests/academy-workspace-client.test.mjs','backend/tests/academy-workspace-destination.test.mjs','backend/tests/academy-header-workspaces.test.mjs'],'academy-tests.log');
 await run(studio,['--test','--test-reporter=tap','--test-concurrency=1','tests/source-package.test.mjs','tests/private-playlist-reference.test.mjs','tests/private-playlist-reference-ui.test.mjs','tests/private-playlist-reference-monthly-proxy.test.mjs','tests/monthly-media-review-ui.test.mjs','tests/course-playlist-workflow.test.mjs','tests/monthly-media-collection.test.mjs'],'paired-media-tests.log');
+await run(source,['--test','--test-reporter=tap','backend/tests/portal-hosting.test.mjs','backend/tests/academy-circles-native.test.mjs','backend/tests/academy-circles-native-join.test.mjs','backend/tests/academy-circles-free-join.test.mjs','backend/tests/academy-hifz-handoff.test.mjs','backend/tests/academy-hifz-bridge-ui.test.mjs'],'portal-source-tests.log');
+await run(studio,['--test','--test-reporter=tap','--test-concurrency=1','tests/deployment-origin-config.test.mjs','tests/website-routing.test.mjs','tests/website-launch.test.mjs','tests/academy-origins.test.mjs','tests/native-hub-bridge.test.mjs','tests/academy-connect.test.mjs','tests/native-portal-paired.test.mjs','tests/native-portal-browser.test.mjs'],'portal-paired-tests.log');
 function totals(t){const n=key=>Number(t.match(new RegExp('^# '+key+' (\\d+)$','m'))?.[1]);const v={tests:n('tests'),pass:n('pass'),fail:n('fail')};assert(v.tests>0&&v.tests===v.pass&&v.fail===0);return v;}
-const localTests={academyUI:totals(await readFile(resolve(out,'academy-tests.log'),'utf8')),pairedMedia:totals(await readFile(resolve(out,'paired-media-tests.log'),'utf8'))};
+const localTests={portalSource:totals(await readFile(resolve(out,'portal-source-tests.log'),'utf8')),portalPaired:totals(await readFile(resolve(out,'portal-paired-tests.log'),'utf8')),academyUI:totals(await readFile(resolve(out,'academy-tests.log'),'utf8')),pairedMedia:totals(await readFile(resolve(out,'paired-media-tests.log'),'utf8'))};
 await save('local-acceptance.json',{localTests,hostedSQL:0,hostedLogins:0});
 await run(studio,['tools/check-paired-static.mjs',version],'static-routes.log');
 const config=await json(resolve(studio,'wrangler.production.jsonc'));

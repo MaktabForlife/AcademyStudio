@@ -30,7 +30,7 @@ for(const page of old.pageEntries){
  let expected=200;
  if(native){if(['/academy/pdf-icon-samples/','/academy/website-platform/handover/'].includes(page.route))expected=404;else if(['/academy/teaching/','/academy/open-library/','/programs/timetable.html','/programs/manage.html','/programs/lesson-media.html','/programs/library-view.html','/programs/library.html','/programs/media.html'].includes(page.route))expected=302;}
  else if(['/preview/','/preview/websites/','/import/'].includes(page.route))expected=410;
- else if(page.route==='/circles/'||page.route==='/circles/prospectus-2027.html')expected=307;
+ else if(page.route==='/'||page.route==='/circles/'||page.route==='/circles/prospectus-2027.html')expected=307;
  assert.equal(response.status,expected,page.source+' '+page.route);
  const text=await response.text();
  if(native&&['/academy/','/academy/admin/'].includes(page.route)){assert.match(text,/data-circles-native="true"/);assert(!/id="(?:overview|dashboard|about|contact|prospectus|workshops)"/.test(text));}
