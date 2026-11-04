@@ -1,5 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {fixture} from './fixture.mjs';import {accessFixture,signIn,ok} from './access-fixture.mjs';
+import {random,challenge} from '../src/protocol.mjs';
 import {hosting} from '../../Academy/backend/src/academy/hosting.mjs';
 const portal=hosting().academyPortalOrigin;
 async function setup(){
@@ -25,6 +26,14 @@ test('real native Source session reaches signed Studio summaries and Join withou
   const joined=await source('/api/academy/hub/studio-join',{offeringId:'course',sessionId:session.session_id},token);assert.equal(joined.status,200,JSON.stringify(joined.body));assert.match(joined.body.destination,/^https:\/\/.*zoom\.us\//);
   await f.run('UPDATE timetable SET starts_at=? WHERE session_id=?',Date.now()+301000,session.session_id);
   const closed=await source('/api/academy/hub/studio-join',{offeringId:'course',sessionId:session.session_id},token);assert.equal(closed.body.code,'JOIN_CLOSED');
+
+  let sourceRef;
+  for(let visit=0;visit<2;visit++){
+   const verifier=random(),state=random(),start=await source('/api/academy/hub/studio-start',{challenge:await challenge(verifier),state,...(sourceRef?{sourceRef}:{})},token);
+   assert.equal(start.status,200,JSON.stringify(start.body));assert(start.body.code);if(sourceRef)assert.equal(start.body.sourceRef,sourceRef);sourceRef=start.body.sourceRef;
+   const exchanged=await f.request('/auth/exchange',{method:'POST',body:{code:start.body.code,state,verifier}});assert.equal(exchanged.status,200,JSON.stringify(exchanged.body));assert.match(exchanged.response.headers.get('Set-Cookie'),/__Host-maktab_web=.*HttpOnly/);
+   const replay=await f.request('/auth/exchange',{method:'POST',body:{code:start.body.code,state,verifier}});assert.equal(replay.status,401);
+  }
   await source('/api/account/logout',{},token);
   const ended=await source('/api/academy/hub/read',{kind:'navigation',input:{}},token);assert.equal(ended.status,401,JSON.stringify(ended.body));
   t.diagnostic(JSON.stringify({pairedNativeSession:true,studioCookies:0,hostedSQL:0,cloudflareRequests:0}));

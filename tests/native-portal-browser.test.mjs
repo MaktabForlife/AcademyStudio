@@ -27,6 +27,19 @@ test('a late login cannot overwrite a switched account and revokes only its unus
  assert.equal(calls.length,2);assert.equal(calls[1].url,hosting.academyApiOrigin+'/api/account/logout');assert.equal(calls[1].init.headers.Authorization,'Bearer late-unused-token');assert(!calls.some(c=>c.url.includes('/auth/exchange')));
 });
 test('the source portal homepage JavaScript import graph resolves on a disposable runner',async()=>{
- const result=await build({entryPoints:[root+'/portal/circles-home-entry.mjs'],bundle:true,write:false,format:'esm',platform:'browser',metafile:true,plugins:[{name:'portal-root-imports',setup(b){b.onResolve({filter:/^\//},args=>({path:resolve(root+'/portal','.'+args.path)}));}}]});
+ const result=await build({entryPoints:[root+'/portal/circles-home-entry.mjs'],bundle:true,write:false,format:'esm',platform:'browser',metafile:true,plugins:[{name:'portal-root-imports',setup(b){b.onResolve({filter:/^\//},args=>args.kind==='entry-point'?null:({path:resolve(root+'/portal','.'+args.path)}));}}]});
  assert(result.outputFiles[0].text.length>0);assert(Object.keys(result.metafile.inputs).length>10);
+});
+
+test('a switch during previous-token revocation cannot be overwritten by the older completed login',async()=>{
+ let finishLogout,entered;const ready=new Promise(r=>entered=r),calls=[];
+ await browser(async({module,local})=>{
+  const pending=module.api('/auth/native-login',{body:{uniqueid:'synthetic',pin:'1234'}});await ready;local.setItem('m4l_account_token','newest-account-token');finishLogout(Response.json({success:true}));
+  await assert.rejects(pending,e=>e.name==='AbortError');assert.equal(local.getItem('m4l_account_token'),'newest-account-token');
+ },async(url,init)=>{
+  calls.push({url,init});if(url.endsWith('/hub/login'))return Response.json({token:'older-login-token',account:{uniqueid:'synthetic'}});
+  if(init.headers.Authorization==='Bearer old-native-token'){entered();return new Promise(r=>finishLogout=r);}
+  return Response.json({success:true});
+ });
+ assert.equal(calls.filter(c=>c.init.headers.Authorization==='Bearer older-login-token'&&c.url.endsWith('/api/account/logout')).length,1);
 });
