@@ -13,6 +13,10 @@ on:
         description: Previous verified package version
         default: "109.17"
         type: string
+      refresh_deploy_tool:
+        description: Pin the reviewed Wrangler 4.157.0 deployment-metadata fix
+        default: false
+        type: boolean
       dry_run:
         description: Compare rebuilt current package without pushing
         default: true
@@ -37,6 +41,40 @@ jobs:
       - name: Install pinned build tools
         run: |
           if [ "$GITHUB_REPOSITORY" = "MaktabForlife/Academy" ]; then npm ci --prefix backend --no-audit --no-fund; else npm ci --no-audit --no-fund; fi
+      - name: Refresh the reviewed deployment tool on GitHub
+        if: inputs.refresh_deploy_tool
+        env:
+          WRANGLER_SEND_METRICS: "false"
+        run: |
+          test "$GITHUB_REPOSITORY" = "MaktabForlife/AcademyStudio"
+          test "$GITHUB_REF_NAME" = "studio_dev"
+          test "${{ inputs.dry_run }}" = "true"
+          test -z "$(git status --porcelain)"
+          release_initial_sha="$(git rev-parse HEAD)"
+          npm install --save-dev --save-exact wrangler@4.157.0 --ignore-scripts --no-audit --no-fund
+          node --input-type=module <<'TOOL_CHECK'
+          import assert from 'node:assert/strict';
+          import {readFile} from 'node:fs/promises';
+          import {execFileSync} from 'node:child_process';
+          import {resolve} from 'node:path';
+          import {buildStudioPackage} from './tools/build-studio-package.mjs';
+          const old=JSON.parse(execFileSync('git',['show','HEAD:package.json'],{encoding:'utf8'}));
+          const next=JSON.parse(await readFile('package.json','utf8'));
+          assert.equal(next.devDependencies.wrangler,'4.157.0');
+          const restored=structuredClone(next);restored.devDependencies.wrangler=old.devDependencies.wrangler;
+          assert.deepEqual(restored,old,'Only the deployment tool may change.');
+          const files=execFileSync('git',['diff','--name-only'],{encoding:'utf8'}).trim().split('\n').sort();
+          assert.deepEqual(files,['package-lock.json','package.json']);
+          const version=JSON.parse(await readFile('release/current.json','utf8')).version;
+          const built=await buildStudioPackage({version,output:resolve(process.env.RUNNER_TEMP,'reviewed-tool-build/public')});
+          assert(built.exactReviewedBytes);
+          console.log(JSON.stringify({deploymentTool:'4.157.0',exactPublicBytes:true,publicFiles:built.files,macWrites:0,cloudflareRequests:0}));
+          TOOL_CHECK
+          git diff --check
+          test "$(git ls-remote origin "refs/heads/$GITHUB_REF_NAME" | cut -f1)" = "$release_initial_sha"
+          git add -- package.json package-lock.json
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m '[CF-Pages-Skip] [skip ci] Pin Wrangler 4.157.0 fix for scoped-token deployments'
+          git push origin "HEAD:refs/heads/$GITHUB_REF_NAME"
       - name: Install verified credential scanner
         env:
           SCANNER_DIGEST: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
