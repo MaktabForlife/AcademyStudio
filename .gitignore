@@ -56,3 +56,6 @@ service-account.json
 /tools/prepare-ui-10911.mjs
 /tools/prepare-unified-pages.mjs
 /tools/serve-recording-collections.mjs
+
+# Website packages are generated on GitHub, not retained source.
+/release/v*/

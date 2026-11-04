@@ -1,10 +1,11 @@
 // Runs in GitHub's disposable runner. Does not write to the owner's Mac.
 import assert from 'node:assert/strict';
-import {readFile,writeFile,readdir,mkdir,appendFile,lstat} from 'node:fs/promises';
+import {readFile,writeFile,readdir,mkdir,appendFile,lstat,mkdtemp} from 'node:fs/promises';
 import {resolve,relative} from 'node:path';
 import {createHash} from 'node:crypto';
 import {execFileSync,spawnSync} from 'node:child_process';
 import {build} from 'esbuild';
+import {buildStudioPackage} from './build-studio-package.mjs';
 const root=resolve(process.env.GITHUB_WORKSPACE||process.env.M4L_PROJECT_ROOT||'.');
 const source=resolve(root,'work/Academy'),studio=resolve(root,'work/AcademyStudio');
 const out=resolve(process.env.M4L_RELEASE_OUTPUT||process.env.RUNNER_TEMP+'/paired-release');
@@ -20,12 +21,14 @@ if(process.env.RELEASE_VERSION)assert.equal(process.env.RELEASE_VERSION,version)
 const commits={source:git(source,'rev-parse','HEAD'),target:git(studio,'rev-parse','HEAD')};
 const dirs={source,target:studio};
 const repos={source:'MaktabForlife/Academy',target:'MaktabForlife/AcademyStudio'};
+let packageExists=false;try{packageExists=(await lstat(resolve(studio,'release/v'+version+'/public'))).isDirectory();}catch(e){if(e.code!=='ENOENT')throw e;}
+await buildStudioPackage({root:studio,version,...(packageExists?{output:resolve(await mkdtemp(resolve(process.env.RUNNER_TEMP,'studio-source-recheck-')),'public')}:{})});
 const manifests={};
 for(const [side,dir]of Object.entries(dirs)){
  assert.equal(git(dir,'remote','get-url','origin').replace(/\.git$/,''),'https://github.com/'+repos[side]);
  assert.equal(git(dir,'status','--porcelain'),'','Source tree changed during verification');
  assert.equal((await json(resolve(dir,'release/current.json'))).version,version);
- const m=await json(resolve(dir,'release/v'+version+'/manifest.json'));
+ const m=await json(resolve(dir,side==='target'?'release/manifest.json':'release/v'+version+'/manifest.json'));
  assert.equal(m.repository,repos[side]);
  const actual={},base=resolve(dir,'release/v'+version+'/public');
  async function visit(p){for(const e of await readdir(p,{withFileTypes:true})){assert(!e.isSymbolicLink());const f=resolve(p,e.name);if(e.isDirectory())await visit(f);else{assert((await lstat(f)).isFile());actual[relative(base,f)]=sha(await readFile(f));}}}
@@ -74,10 +77,10 @@ for(const [side,dir]of Object.entries(dirs)){
  for(const f of findings){
   // Exact public integrity hashes may resemble secrets. Verify their file bytes.
   const content=git(dir,'show',f.Commit+':'+f.File).split('\n')[f.StartLine-1]||'';
-  const m=f.File.match(/^release\/v(\d+\.\d+)\/manifest\.json$/);
+  const m=f.File.match(/^release\/(?:v(\d+\.\d+)\/)?manifest\.json$/);
   const pair=content.match(/^\s*"([^"]+)": "([a-f0-9]{64})",?$/);
   let publicValue=false;
-  if(m&&pair)publicValue=sha(await readFile(resolve(dir,'release/v'+m[1]+'/public',pair[1])))===pair[2];
+  if(m&&pair)publicValue=sha(await readFile(resolve(dir,'release/v'+(m[1]||version)+'/public',pair[1])))===pair[2];
   // These exact lines contain storage identifiers/accessors, not credentials.
   if(/(?:^|\/)m4l-academy-(?:history|progress)\.js$/.test(f.File)&&["da4b73c0e4887323a7bac1b1b9ffbf00bf63649ab24b5f3362f624d0628be0b7","fda1b2bf2e8787fd53d53d29a9e7670ff83a6a9cc8b22ca7f63d64acd18a0754"].includes(sha(content.trim())))publicValue=true;
   if(f.File==='tools/cloud-release-check.mjs'&&["11bd93b2ce5afe79c3d4cb8a99993fd210c706934e421dc398df9b9d0299311a","b1f7353e27116a3c628cc80b31031c19af4a5774c541ef1c584dc3c412122302"].includes(sha(content.trim())))publicValue=true;
@@ -95,12 +98,12 @@ function run(dir,args,file){
  return writeFile(resolve(out,file),r.stdout+'\n'+r.stderr);
 }
 await run(source,['--test','--test-reporter=tap','backend/tests/academy-workspace-client.test.mjs','backend/tests/academy-workspace-destination.test.mjs','backend/tests/academy-header-workspaces.test.mjs'],'academy-tests.log');
-await run(studio,['--test','--test-reporter=tap','--test-concurrency=1','tests/private-playlist-reference.test.mjs','tests/private-playlist-reference-ui.test.mjs','tests/private-playlist-reference-monthly-proxy.test.mjs','tests/monthly-media-review-ui.test.mjs','tests/course-playlist-workflow.test.mjs','tests/monthly-media-collection.test.mjs'],'paired-media-tests.log');
+await run(studio,['--test','--test-reporter=tap','--test-concurrency=1','tests/source-package.test.mjs','tests/private-playlist-reference.test.mjs','tests/private-playlist-reference-ui.test.mjs','tests/private-playlist-reference-monthly-proxy.test.mjs','tests/monthly-media-review-ui.test.mjs','tests/course-playlist-workflow.test.mjs','tests/monthly-media-collection.test.mjs'],'paired-media-tests.log');
 function totals(t){const n=key=>Number(t.match(new RegExp('^# '+key+' (\\d+)$','m'))?.[1]);const v={tests:n('tests'),pass:n('pass'),fail:n('fail')};assert(v.tests>0&&v.tests===v.pass&&v.fail===0);return v;}
 const localTests={academyUI:totals(await readFile(resolve(out,'academy-tests.log'),'utf8')),pairedMedia:totals(await readFile(resolve(out,'paired-media-tests.log'),'utf8'))};
 await save('local-acceptance.json',{localTests,hostedSQL:0,hostedLogins:0});
 await run(studio,['tools/check-paired-static.mjs',version],'static-routes.log');
-const config=await json(resolve(studio,'wrangler.github-'+version.replaceAll('.','')+'.jsonc'));
+const config=await json(resolve(studio,'wrangler.production.jsonc'));
 const entries=[resolve(studio,config.main),resolve(source,'backend/src/academy/d1/worker.js'),resolve(source,'release/v'+version+'/public/_worker.js'),resolve(studio,'release/v'+version+'/public/api.mjs'),resolve(source,'release/v'+version+'/public/js/m4l-course-media-view.mjs')];
 const builds=[];for(const e of entries){const r=await build({entryPoints:[e],bundle:true,write:false,format:'esm',platform:'browser',target:'es2022',external:['cloudflare:*','node:*'],logLevel:'silent'});builds.push({entry:relative(root,e),bytes:r.outputFiles.reduce((n,f)=>n+f.contents.length,0),warnings:r.warnings.length});}
 await save('bundle-checks.json',{passed:true,builds});

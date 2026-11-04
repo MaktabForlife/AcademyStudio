@@ -29,7 +29,7 @@ test('hosted preview is fail-closed, labelled, and disconnected from Academy',as
   const home=await runtime.dispatchFetch('https://preview.test/api/public/home');assert.equal(home.status,200);assert.deepEqual((await home.json()).cards,[]);
   const protectedPage=await runtime.dispatchFetch('https://preview.test/api/websites');assert.equal(protectedPage.status,401);
  }finally{await runtime.dispose();}
- const config=JSON.parse(readFileSync(new URL('../wrangler.preview.jsonc',import.meta.url),'utf8'));
+ const config=JSON.parse(readFileSync(new URL('../config/wrangler.preview.jsonc',import.meta.url),'utf8'));
  assert.equal(config.account_id,'2b01ca929611669e032703ff19f7098f');
  assert.equal(config.vars.ACADEMY_ORIGIN,'https://academy.invalid');
  assert.equal(config.main,'src/preview-worker.mjs');

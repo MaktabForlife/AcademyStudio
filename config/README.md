@@ -1,0 +1,1 @@
+These are separate preview/connection environments, retained for existing test and administration tools. The active production configuration is ../wrangler.production.jsonc. Their bindings and runtime policies are preserved; none is deployment approval. Use only GitHub runners unless local writes are explicitly approved.

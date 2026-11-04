@@ -9,7 +9,7 @@ const scope=JSON.parse(await readFile(resolve(out,'approval-and-scope.json')));
 const old=JSON.parse(await readFile(resolve(import.meta.dirname,'paired-static-routes.json')));
 const source=await import(resolve(root,scope.source,'backend/tools/academy-site.mjs'));
 const {launch}=await import(resolve(root,scope.studio,'src/launch-worker.mjs'));
-const config=JSON.parse(await readFile(resolve(root,scope.studio,'wrangler.github-'+version.replaceAll('.','')+'.jsonc')));
+const config=JSON.parse(await readFile(resolve(root,scope.studio,'wrangler.production.jsonc')));
 let sourceAssets=0,studioAssets=0,dbOrObjectReads=0;
 function assets(base,side){return {fetch:async request=>{
  const url=new URL(request.url);let path=decodeURIComponent(url.pathname);if(path.endsWith('/'))path+='index.html';

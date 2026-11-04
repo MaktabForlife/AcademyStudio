@@ -6,7 +6,7 @@ import {accessFixture,signIn,ok} from './access-fixture.mjs';
 import {accessGate} from '../src/access.mjs';
 import {boundedAge} from '../src/protocol.mjs';
 
-const {vars}=JSON.parse(readFileSync(new URL('../wrangler.parallel.jsonc',import.meta.url),'utf8'));
+const {vars}=JSON.parse(readFileSync(new URL('../config/wrangler.parallel.jsonc',import.meta.url),'utf8'));
 const verification={accountSeconds:vars.ACCOUNT_MAX_AGE_SECONDS,adminSeconds:vars.ADMIN_MAX_AGE_SECONDS,liveSeconds:vars.LIVE_ACCESS_MAX_AGE_SECONDS};
 const TWELVE_HOURS=12*3600_000;
 
