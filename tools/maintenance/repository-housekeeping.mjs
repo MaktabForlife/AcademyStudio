@@ -54,7 +54,8 @@ for(const p of ['tools/paired-release.mjs','tools/check-paired-static.mjs','tool
  s=s.replaceAll("+'/wrangler.github-'+version.replaceAll('.','')+'.jsonc'","+'/wrangler.production.jsonc'");
  if(p==='tools/cloud-release-check.mjs'){
   s=s.replace("import {build} from 'esbuild';","import {build} from 'esbuild';\nimport {buildStudioPackage} from './build-studio-package.mjs';");
-  s=s.replace("const manifests={};","await buildStudioPackage({root:studio,version});\nconst manifests={};");
+  s=s.replace("mkdir,appendFile,lstat}","mkdir,appendFile,lstat,mkdtemp}");
+  s=s.replace("const manifests={};","let packageExists=false;try{packageExists=(await lstat(resolve(studio,'release/v'+version+'/public'))).isDirectory();}catch(e){if(e.code!=='ENOENT')throw e;}\nawait buildStudioPackage({root:studio,version,...(packageExists?{output:resolve(await mkdtemp(resolve(process.env.RUNNER_TEMP,'studio-source-recheck-')),'public')}:{})});\nconst manifests={};");
   s=s.replace("const m=await json(resolve(dir,'release/v'+version+'/manifest.json'));","const m=await json(resolve(dir,side==='target'?'release/manifest.json':'release/v'+version+'/manifest.json'));");
   s=s.replace("const m=f.File.match(/^release\\/v(\\d+\\.\\d+)\\/manifest\\.json$/);","const m=f.File.match(/^release\\/(?:v(\\d+\\.\\d+)\\/)?manifest\\.json$/);");
   s=s.replace("if(m&&pair)publicValue=sha(await readFile(resolve(dir,'release/v'+m[1]+'/public',pair[1])))===pair[2];","if(m&&pair)publicValue=sha(await readFile(resolve(dir,'release/v'+(m[1]||version)+'/public',pair[1])))===pair[2];");
@@ -86,6 +87,7 @@ for(const p of tracked.filter(p=>/^(tools|tests|docs)\//.test(p)&&/\.(?:mjs|js|m
 }
 const removed=tracked.filter(p=>/^release\/v\d+\.\d+\//.test(p)||/^wrangler\.(?:github|release|ui|recovery)-/.test(p)||moves.has(p)||noteMoves.has(p));
 for(const p of removed)await fs.rm(resolve(root,p)); // GitHub runner only, after assertions above.
+for(const folder of new Set(tracked.map(p=>p.match(/^release\/(v\d+\.\d+)\//)?.[1]).filter(Boolean)))await fs.rm(resolve(root,'release',folder),{recursive:true,force:true});
 let ignore=await fs.readFile('.gitignore','utf8');
 ignore+='\n# Website packages are generated on GitHub, not retained source.\n/release/v*/\n';
 await write('.gitignore',ignore);
