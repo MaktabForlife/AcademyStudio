@@ -75,7 +75,7 @@ jobs:
             const value=await response.json();
             if(!response.ok||value.success!==true)return {label:t.label,passed:false,status:response.status,errorCodes:(value.errors||[]).map(e=>e.code).filter(n=>typeof n==='number')};
             const valid=t.kind==='metadata'?value.result!==undefined&&value.result!==null:t.kind==='pages'?value.result?.name==='academy-maktab4life':Array.isArray(value.result?.bindings);
-            return {label:t.label,passed:valid,status:response.status,...(t.kind==='worker'&&valid?{bindings:value.result.bindings.length}:{})};
+            return {label:t.label,passed:valid,status:response.status,...(t.kind==='worker'&&valid?{bindings:value.result.bindings.length}:{}),...(t.kind==='pages'&&valid?{productionBranch:value.result.production_branch,canonicalDeployment:{id:value.result.canonical_deployment.id,url:value.result.canonical_deployment.url,commit:value.result.canonical_deployment.deployment_trigger.metadata.commit_hash}}:{})};
            }catch(e){
             const errorType=['TypeError','SyntaxError','TimeoutError','AbortError'].includes(e?.name)?e.name:'RequestError';
             const causeCode=typeof e?.cause?.code==='string'&&/^[A-Z0-9_]{1,40}$/.test(e.cause.code)?e.cause.code:undefined;

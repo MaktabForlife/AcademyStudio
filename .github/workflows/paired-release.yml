@@ -170,3 +170,4 @@ jobs:
             ${{ github.workspace }}/.cloud-output/staged-verification.json
             ${{ github.workspace }}/.cloud-output/stage-source.log
             ${{ github.workspace }}/.cloud-output/stage-target.log
+            ${{ github.workspace }}/.cloud-output/activate-*.log
