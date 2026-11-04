@@ -88,3 +88,15 @@ test('a late native opener cannot replace the newly selected account or leave re
   await done;assert.equal(local.getItem('m4l_account_token'),'switched-account-token');assert.equal(child.sessionStorage.getItem('m4l_circles_return'),null);assert(child.closed);
  },async()=>{throw Error('No API request is expected by the isolated opener helper.');});
 });
+
+test('anonymous bootstrap cannot reveal a stored display copy and makes zero upstream requests',async()=>{
+ let upstream=0;
+ await browser(async({module,local,session})=>{
+  const now=Date.now(),account={accountId:'old-account',cacheSession:'old-session',verifiedAt:now,sessionExpiresAt:now+43200000};
+  local.removeItem('m4l_account_token');
+  session.setItem('m4l-private-display-v1',JSON.stringify({owner:JSON.stringify([account.accountId,account.cacheSession]),entries:[{key:JSON.stringify(['/api/circles/bootstrap',[]]),etag:'"pv1-'+'a'.repeat(64)+'"',expiresAt:now+43200000,value:{account,dashboard:{marker:'previous-account-private-copy'}}}]}));
+  await assert.rejects(module.api('/api/circles/bootstrap',{optionalSession:true}),e=>e.status===401);
+  assert.equal(module.identity.account,null);assert.equal(session.getItem('m4l-private-display-v1'),null);
+ },async()=>{upstream++;throw Error('An anonymous homepage must not query the account API.');});
+ assert.equal(upstream,0);
+});
