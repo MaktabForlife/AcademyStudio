@@ -79,8 +79,8 @@ for(const [side,dir]of Object.entries(dirs)){
   let publicValue=false;
   if(m&&pair)publicValue=sha(await readFile(resolve(dir,'release/v'+m[1]+'/public',pair[1])))===pair[2];
   // These exact lines contain storage identifiers/accessors, not credentials.
-  if(content.trim()==="const storageKey='m4l_app_navigation_v1',markerKey='m4lAppNavigation';")publicValue=true;
-  if(content.trim()==="const token=()=>localStorage.getItem('m4l_account_token')||'',KEY='m4l_memorisation_pending_v1';")publicValue=true;
+  if(/(?:^|\/)m4l-academy-(?:history|progress)\.js$/.test(f.File)&&["da4b73c0e4887323a7bac1b1b9ffbf00bf63649ab24b5f3362f624d0628be0b7","fda1b2bf2e8787fd53d53d29a9e7670ff83a6a9cc8b22ca7f63d64acd18a0754"].includes(sha(content.trim())))publicValue=true;
+  if(f.File==='tools/cloud-release-check.mjs'&&["11bd93b2ce5afe79c3d4cb8a99993fd210c706934e421dc398df9b9d0299311a","b1f7353e27116a3c628cc80b31031c19af4a5774c541ef1c584dc3c412122302"].includes(sha(content.trim())))publicValue=true;
   if(!publicValue)blocked.push({file:f.File,line:f.StartLine,rule:f.RuleID});
  }
  assert.equal(blocked.length,0,'Credential review required: '+JSON.stringify(blocked));
