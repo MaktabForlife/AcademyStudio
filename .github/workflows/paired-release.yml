@@ -4,6 +4,17 @@ on:
     branches: [studio_dev, feature/github-cloud-releases]
   pull_request:
     branches: [studio_dev]
+  workflow_call:
+    inputs:
+      source_ref:
+        default: studio_dev
+        type: string
+      studio_ref:
+        default: studio_dev
+        type: string
+      deploy:
+        default: false
+        type: boolean
   workflow_dispatch:
     inputs:
       source_ref:
@@ -33,8 +44,8 @@ jobs:
       version: ${{ steps.check.outputs.version }}
     env:
       M4L_PROJECT_ROOT: ${{ github.workspace }}
-      M4L_RELEASE_OUTPUT: ${{ runner.temp }}/paired-release
-      GITLEAKS_BIN: ${{ runner.temp }}/gitleaks/gitleaks
+      M4L_RELEASE_OUTPUT: ${{ github.workspace }}/.cloud-output
+      GITLEAKS_BIN: ${{ github.workspace }}/.cloud-tools/gitleaks/gitleaks
       WRANGLER_SEND_METRICS: "false"
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -47,6 +58,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          repository: MaktabForlife/AcademyStudio
           ref: ${{ inputs.studio_ref || github.sha }}
           path: work/AcademyStudio
           fetch-depth: 0
@@ -62,10 +74,10 @@ jobs:
         env:
           SCANNER_DIGEST: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
         run: |
-          mkdir -p "$RUNNER_TEMP/gitleaks"
-          curl --fail --location --silent --show-error https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz -o "$RUNNER_TEMP/gitleaks/package.tgz"
-          printf '%s  %s\n' "$SCANNER_DIGEST" "$RUNNER_TEMP/gitleaks/package.tgz" | sha256sum --check
-          tar -xzf "$RUNNER_TEMP/gitleaks/package.tgz" -C "$RUNNER_TEMP/gitleaks" gitleaks
+          mkdir -p "$(dirname "$GITLEAKS_BIN")"
+          curl --fail --location --silent --show-error https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz -o "$(dirname "$GITLEAKS_BIN")/package.tgz"
+          printf '%s  %s\n' "$SCANNER_DIGEST" "$(dirname "$GITLEAKS_BIN")/package.tgz" | sha256sum --check
+          tar -xzf "$(dirname "$GITLEAKS_BIN")/package.tgz" -C "$(dirname "$GITLEAKS_BIN")" gitleaks
       - name: Test the exact paired GitHub source with synthetic data
         id: check
         working-directory: work/AcademyStudio
@@ -79,19 +91,19 @@ jobs:
           name: paired-review-${{ github.run_id }}
           retention-days: 30
           path: |
-            ${{ runner.temp }}/paired-release/checks.json
-            ${{ runner.temp }}/paired-release/baseline.json
-            ${{ runner.temp }}/paired-release/local-acceptance.json
-            ${{ runner.temp }}/paired-release/approval-and-scope.json
-            ${{ runner.temp }}/paired-release/github-verification.json
-            ${{ runner.temp }}/paired-release/source-assets.json
-            ${{ runner.temp }}/paired-release/studio-assets.json
-            ${{ runner.temp }}/paired-release/static-route-matrix.json
-            ${{ runner.temp }}/paired-release/bundle-checks.json
-            ${{ runner.temp }}/paired-release/academy-tests.log
-            ${{ runner.temp }}/paired-release/paired-media-tests.log
+            ${{ github.workspace }}/.cloud-output/checks.json
+            ${{ github.workspace }}/.cloud-output/baseline.json
+            ${{ github.workspace }}/.cloud-output/local-acceptance.json
+            ${{ github.workspace }}/.cloud-output/approval-and-scope.json
+            ${{ github.workspace }}/.cloud-output/github-verification.json
+            ${{ github.workspace }}/.cloud-output/source-assets.json
+            ${{ github.workspace }}/.cloud-output/studio-assets.json
+            ${{ github.workspace }}/.cloud-output/static-route-matrix.json
+            ${{ github.workspace }}/.cloud-output/bundle-checks.json
+            ${{ github.workspace }}/.cloud-output/academy-tests.log
+            ${{ github.workspace }}/.cloud-output/paired-media-tests.log
   deploy:
-    if: github.event_name == 'workflow_dispatch' && inputs.deploy && github.ref == 'refs/heads/studio_dev'
+    if: github.repository == 'MaktabForlife/AcademyStudio' && github.event_name == 'workflow_dispatch' && inputs.deploy && github.ref == 'refs/heads/studio_dev'
     needs: check
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -100,7 +112,7 @@ jobs:
       contents: write
     env:
       M4L_PROJECT_ROOT: ${{ github.workspace }}
-      M4L_RELEASE_OUTPUT: ${{ runner.temp }}/paired-release
+      M4L_RELEASE_OUTPUT: ${{ github.workspace }}/.cloud-output
       WRANGLER_SEND_METRICS: "false"
       GH_TOKEN: ${{ github.token }}
       RELEASE_VERSION: ${{ needs.check.outputs.version }}
@@ -116,6 +128,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          repository: MaktabForlife/AcademyStudio
           ref: ${{ needs.check.outputs.studio_sha }}
           path: work/AcademyStudio
           fetch-depth: 0
@@ -130,7 +143,7 @@ jobs:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: paired-review-${{ github.run_id }}
-          path: ${{ runner.temp }}/paired-release
+          path: ${{ github.workspace }}/.cloud-output
       - name: Verify reviewed commits and activate both systems
         working-directory: work/AcademyStudio
         env:
@@ -151,7 +164,7 @@ jobs:
           name: paired-deployment-${{ github.run_id }}
           retention-days: 30
           path: |
-            ${{ runner.temp }}/paired-release/verification.json
-            ${{ runner.temp }}/paired-release/public-checks.json
-            ${{ runner.temp }}/paired-release/activation.json
-            ${{ runner.temp }}/paired-release/staged-verification.json
+            ${{ github.workspace }}/.cloud-output/verification.json
+            ${{ github.workspace }}/.cloud-output/public-checks.json
+            ${{ github.workspace }}/.cloud-output/activation.json
+            ${{ github.workspace }}/.cloud-output/staged-verification.json

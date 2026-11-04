@@ -22,7 +22,7 @@ const dirs={source,target:studio};
 const repos={source:'MaktabForlife/Academy',target:'MaktabForlife/AcademyStudio'};
 const manifests={};
 for(const [side,dir]of Object.entries(dirs)){
- assert.equal(git(dir,'remote','get-url','origin'),'https://github.com/'+repos[side]+'.git');
+ assert.equal(git(dir,'remote','get-url','origin').replace(/\.git$/,''),'https://github.com/'+repos[side]);
  assert.equal(git(dir,'status','--porcelain'),'','Source tree changed during verification');
  assert.equal((await json(resolve(dir,'release/current.json'))).version,version);
  const m=await json(resolve(dir,'release/v'+version+'/manifest.json'));
