@@ -1,0 +1,43 @@
+.circles-page-navigation{display:flex;align-items:center;gap:4px;flex:none}
+.circles-page-navigation button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:40px;min-height:44px;padding:5px;border:0;border-radius:8px;background:transparent;color:#67515f;font:10px/1.2 'DM Sans',Arial,sans-serif;cursor:pointer}
+.circles-page-navigation button:disabled{opacity:.35;cursor:default}.circles-page-navigation button:focus-visible{outline:3px solid #a07a89;outline-offset:2px}
+.circles-page-navigation svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.programme-studio-modes{display:flex;gap:4px;padding:3px;border-radius:10px;background:#eee5e8;margin-left:auto}
+.programme-studio-modes button{min-height:38px;min-width:72px;border:0;border-radius:7px;padding:8px 18px;background:transparent;color:#67515f;font:600 12px/1.4 'DM Sans',Arial,sans-serif}
+.programme-studio-modes button[aria-current=page]{background:#67515f;color:#fffaf3}
+.programme-dashboard-bar:has(.programme-studio-modes){justify-content:space-between;align-items:center;gap:12px}
+@media(max-width:800px){.circles-programme-page .programme-page-actions{flex-wrap:wrap;justify-content:flex-end}.circles-programme-page .programme-header-account{align-items:flex-start}.circles-programme-page .programme-dashboard-link{width:auto;min-width:100px}.programme-studio-modes button{min-width:62px;padding:8px 12px}.public-home-header .circles-page-navigation{grid-column:auto}.circles-page-navigation button{min-width:34px}}
+
+.import-page-actions{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}.pb-header>.circles-page-navigation,.prospectus-header>.circles-page-navigation{margin-left:auto}
+@media(max-width:800px){
+ body.circles-programme-page .programme-header-account{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;width:100%}
+ body.circles-programme-page .account-menu,body.circles-programme-page .account-menu>summary{width:100%}
+ body.circles-programme-page .programme-profile{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:none;width:100%}
+ body.circles-programme-page .programme-page-actions{display:flex;flex-wrap:nowrap;justify-content:space-between;width:100%;gap:4px}
+ body.circles-programme-page .programme-welcome{white-space:nowrap}
+}
+
+/* Keep the small-screen brand separate from account and navigation controls. */
+@media(max-width:800px){
+ body.circles-programme-page .site-header{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px 12px}
+ body.circles-programme-page .programme-brand-details{grid-column:1;grid-row:1;width:100%;min-width:0}
+ body.circles-programme-page .programme-header-account{display:contents}
+ body.circles-programme-page .account-menu{grid-column:2;grid-row:1;justify-self:end;width:auto;min-width:0;max-width:100%}
+ body.circles-programme-page .account-menu>summary{width:auto;min-width:0}
+ body.circles-programme-page .programme-profile{display:block;width:auto;max-width:145px;text-align:right}
+ body.circles-programme-page .programme-welcome{display:none}
+ body.circles-programme-page .programme-page-actions{grid-column:1/-1;grid-row:2;justify-content:center;gap:8px;width:100%;flex-wrap:wrap}
+ body.circles-programme-page .programme-studio-modes{grid-column:1/-1;grid-row:3;justify-self:center;margin:0}
+ body.circles-programme-page .account-panel{left:auto;right:0}
+}
+
+/* Small-screen workspace selectors share the brand row. */
+@media(max-width:800px){
+ body.circles-programme-page .site-header{grid-template-columns:minmax(118px,1fr) auto;align-items:center;gap:10px 8px}
+ body.circles-programme-page .programme-brand-details{grid-column:1;grid-row:1}
+ body.circles-programme-page .programme-studio-modes{grid-column:2;grid-row:1;justify-self:end;margin:0;max-width:100%}
+ body.circles-programme-page .programme-studio-modes button{min-width:46px;padding:8px;font-size:11px}
+ body.circles-programme-page .account-menu{grid-column:1;grid-row:2;justify-self:start}
+ body.circles-programme-page .programme-page-actions{grid-column:2;grid-row:2;justify-content:flex-end;width:auto;gap:3px;flex-wrap:nowrap}
+ .circles-page-navigation button{font-size:10px}
+}

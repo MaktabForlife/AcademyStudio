@@ -1,0 +1,166 @@
+/* Shared podcast-like series and episode pages, within the Circles family. */
+.circles-theme .student-course .rs-series-tools button[data-join]:not(:disabled),.circles-theme .student-course .rs-session-list button[data-join]:not(:disabled){background:#526747;border-color:#526747;color:#fffdf5;box-shadow:0 2px 7px #43553a20;font-weight:600}
+.circles-theme .student-course button[data-join]:disabled{opacity:.6;box-shadow:none}
+.circles-theme .student-course .rs-shell{max-width:1080px;margin:auto;border:0;padding:0 0 30px}
+.circles-theme .rs-series-header{display:grid;grid-template-columns:100px minmax(0,1fr);gap:22px;align-items:center;padding:26px 0 30px}
+.circles-theme .rs-series-cover{position:relative;min-width:0;isolation:isolate}
+.circles-theme .rs-series-cover::before{content:'';position:absolute;inset:-8px;border-radius:50%;background:var(--circle-tint);z-index:-1}
+.circles-theme .rs-series-cover .sp-hero-image{width:100%;max-width:none;margin:0;display:block}
+.circles-theme .rs-series-cover .sp-hero-image::before,.circles-theme .rs-series-cover figcaption{display:none}
+.circles-theme .rs-series-cover img{display:block;width:100%;height:auto;max-height:180px;object-fit:contain;border-radius:5px;position:relative}
+.circles-theme .student-course .rs-series-name{display:block;padding:0;border:0;background:none;color:var(--sp-ink);font:400 clamp(31px,5.2vw,58px)/1.06 var(--circle-serif);text-align:left;letter-spacing:-.025em;overflow-wrap:anywhere}
+.circles-theme .rs-series-identity .sp-eyebrow{display:block;font-size:9px;line-height:1.5;margin:0 0 8px}
+.circles-theme .rs-subtitle{font-size:12px;line-height:1.65;margin:9px 0 0;color:var(--circle-muted)}
+.circles-theme .rs-series-description{font-size:13px;line-height:1.7;max-width:65ch;color:var(--circle-muted);margin:12px 0 0}
+.circles-theme .rs-compact{grid-template-columns:64px minmax(0,1fr);padding:18px 0 22px;gap:17px}
+.circles-theme .rs-compact .rs-series-name{font-size:30px}
+.circles-theme .rs-compact .rs-subtitle{display:none}
+.circles-theme .rs-tabs{display:flex;gap:16px;border-bottom:1px solid var(--circle-rule);overflow-x:auto;scrollbar-width:thin;padding:0;white-space:nowrap}
+.circles-theme .student-course .rs-tabs button{flex:none;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;padding:12px 1px 14px;color:var(--circle-muted);font-size:13px;font-weight:500}
+.circles-theme .rs-tabs button[aria-current=page]{border-color:var(--sp-accent);color:var(--sp-accent)}
+.circles-theme .student-course .rs-page{padding:22px 0 32px;min-width:0}
+.circles-theme .rs-list-heading{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin:0 0 18px}
+.circles-theme .rs-list-heading :is(h1,h2){font:400 31px/1.2 var(--circle-serif);margin:0;letter-spacing:-.02em}
+.circles-theme .rs-list-heading>span{font-size:11px;color:var(--circle-muted)}
+.circles-theme .rs-episodes{display:grid;gap:13px}
+.circles-theme .rs-episode-card{padding:21px 20px;background:var(--circle-surface);border:1px solid var(--circle-rule);border-radius:10px;min-width:0}
+.circles-theme .rs-card-meta{display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:10px;line-height:1.7;color:var(--circle-muted)}
+.circles-theme .rs-card-meta>span:first-child{letter-spacing:.11em;color:var(--sp-accent);font-size:9px}
+.circles-theme .rs-episode-card h3{margin:9px 0 10px}
+.circles-theme .student-course .rs-episode-card h3 button,.circles-theme .student-course .rs-reading-card h2 button{padding:0;border:0;background:transparent;font:400 27px/1.17 var(--circle-serif);color:var(--sp-accent);letter-spacing:-.015em;text-align:left;min-height:0;overflow-wrap:anywhere}
+.circles-theme .rs-card-summary{font-size:13px;line-height:1.8;color:var(--circle-muted);margin:0 0 16px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;white-space:normal}
+.circles-theme .rs-card-actions,.circles-theme .rs-actions{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.circles-theme .student-course .rs-listen{display:inline-flex;gap:9px;align-items:center;padding:10px 18px;background:var(--sp-accent);border:1px solid var(--sp-accent);border-radius:999px;color:#fff;font:500 12px/1.5 'DM Sans',sans-serif;min-height:44px}
+.circles-theme .rs-listen svg{width:15px;height:15px;flex:none}
+.circles-theme .student-course :is(.rs-view-lesson,.rs-back,.rs-reading-link){padding:8px 0;border:0;background:none;color:var(--sp-accent);font-size:12px;text-align:left;border-radius:0}
+.circles-theme .rs-view-lesson span,.circles-theme .rs-reading-link span{margin-left:10px}
+.circles-theme .rs-episode{max-width:850px}
+.circles-theme .rs-episode-heading{padding:0 0 28px;border-bottom:1px solid var(--circle-rule)}
+.circles-theme .rs-episode-heading>.sp-eyebrow{display:block;margin:12px 0}
+.circles-theme .rs-episode h1,.circles-theme .rs-about h1{font:400 clamp(36px,5.6vw,60px)/1.07 var(--circle-serif);letter-spacing:-.025em;margin:0 0 25px;overflow-wrap:anywhere}
+.circles-theme .rs-episode h2{font:400 28px/1.2 var(--circle-serif);margin:0 0 16px}
+.circles-theme .rs-description{padding:28px 0}
+.circles-theme .rs-description>p{font-size:14px;line-height:1.95;white-space:pre-line;color:var(--circle-muted);margin:0;max-width:75ch}
+.circles-theme .rs-topics{padding:26px 0;border-top:1px solid var(--circle-rule)}
+.circles-theme .rs-section-title{display:flex;align-items:center;gap:13px;margin-bottom:16px}
+.circles-theme .rs-section-title h2{margin:0}
+.circles-theme .rs-section-icon{display:grid;place-items:center;width:33px;height:33px;border:1px solid var(--circle-rule);border-radius:50%;color:var(--sp-accent);flex:none;font-size:24px}
+.circles-theme .rs-topics ol{padding:0;margin:0;list-style:none}
+.circles-theme .rs-topics li{border-top:1px solid var(--circle-rule)}
+.circles-theme .rs-topics li:last-child{border-bottom:1px solid var(--circle-rule)}
+.circles-theme .student-course .rs-topics li>:is(button,div){display:flex;align-items:baseline;gap:16px;width:100%;padding:16px 5px;border:0;border-radius:0;background:transparent;color:var(--sp-ink);font:400 13px/1.65 'DM Sans',sans-serif;text-align:left;min-height:52px;overflow-wrap:anywhere}
+.circles-theme .rs-topics li svg{display:none}
+.circles-theme .rs-topics li button:hover{background:var(--circle-tint)}
+.circles-theme .rs-topic-time{color:var(--sp-accent);font-size:11px;font-variant-numeric:tabular-nums;min-width:50px;flex:none}
+.circles-theme .rs-associated{padding:24px 0;border-top:1px solid var(--circle-rule)}
+.circles-theme .rs-associated .rs-reading-link{display:block}
+.circles-theme .rs-words{padding:24px;background:var(--circle-tint);border-radius:10px}
+.circles-theme .rs-words blockquote{margin:15px 0 0;font:400 23px/1.5 var(--circle-serif)}
+.circles-theme .rs-intro,.circles-theme .rs-muted,.circles-theme .rs-empty{font-size:13px;line-height:1.8;color:var(--circle-muted)}
+.circles-theme .rs-pending{font-size:11px;color:var(--circle-muted);padding:10px 14px;border:1px solid var(--circle-rule);border-radius:999px}
+.circles-theme .rs-readings{display:grid;gap:14px;margin-top:24px}
+.circles-theme .rs-reading-card{padding:22px;background:var(--circle-surface);border:1px solid var(--circle-rule);border-radius:10px}
+.circles-theme .rs-reading-card h2{margin:9px 0 12px}
+.circles-theme .rs-reading-card>p:not(.sp-eyebrow){font-size:13px;line-height:1.8;color:var(--circle-muted)}
+.circles-theme .rs-about{padding:16px 0 24px;max-width:760px}
+.circles-theme .rs-about>p{font-size:15px;line-height:1.9;white-space:pre-line}
+.circles-theme .rs-about>.sp-eyebrow{font-size:10px;margin-bottom:20px}
+.circles-theme .rs-about-subtitle{font-family:var(--circle-serif);font-size:27px!important}
+.circles-theme .rs-original-reading{max-width:850px;margin:auto}
+.circles-theme .rs-shell>.sp-footer{padding:22px 0;border-top:1px solid var(--circle-rule);gap:10px;flex-wrap:wrap}
+.circles-theme .rs-shell .sp-local-review-status{margin:0 0 22px;font-size:10px}
+.circles-theme .rs-shell .sp-local-review-status span{font-size:10px}
+@media(min-width:760px){
+ .circles-theme .rs-series-header{grid-template-columns:162px minmax(0,1fr);gap:40px;padding:42px 0}
+ .circles-theme .rs-series-header.rs-compact{grid-template-columns:74px minmax(0,1fr);padding:25px 0;gap:24px}
+ .circles-theme .rs-compact .rs-series-name{font-size:36px}
+ .circles-theme .rs-tabs{gap:34px}
+ .circles-theme .student-course .rs-tabs button{font-size:14px}
+ .circles-theme .rs-subtitle{font-size:14px}
+ .circles-theme .rs-series-description{font-size:14px}
+ .circles-theme .student-course .rs-page{padding:30px 0 45px}
+ .circles-theme .rs-episode-card{padding:26px 30px}
+ .circles-theme .rs-card-summary{max-width:85ch;font-size:14px}
+ .circles-theme .student-course .rs-episode-card h3 button{font-size:31px}
+ .circles-theme .rs-readings{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:380px){.circles-theme .rs-series-header{gap:18px;grid-template-columns:76px minmax(0,1fr)}.circles-theme .rs-series-name{font-size:30px!important}.circles-theme .rs-tabs{gap:16px}.circles-theme .rs-episode-card{padding:18px 15px}.circles-theme .rs-episode h1{font-size:34px}.circles-theme .rs-card-actions{gap:8px 15px}}
+
+.circles-theme .rs-series-title{margin:0}
+
+.circles-theme .rs-series-tools:empty{display:none}
+.circles-theme .rs-series-tools{display:flex;gap:10px;margin-top:12px;max-width:none}
+.circles-theme .student-course .rs-series-tools button{min-height:36px;font-size:11px;padding:7px 12px;background:transparent;border:1px solid var(--circle-rule);border-radius:999px;color:var(--sp-accent)}
+
+/* The standard Surah name artwork replaces the former photograph everywhere. */
+.circles-theme .tafseer-name-artwork{--card-accent:var(--sp-accent);--card-soft:var(--sp-soft);--ornament:#9b8053;position:relative;isolation:isolate;container-type:inline-size;display:flex;align-items:center;justify-content:center;aspect-ratio:1;border:1px solid #bca783;border-radius:7px;background:color-mix(in srgb,var(--sp-soft) 26%,#faf5ed);color:var(--sp-accent);overflow:hidden;width:100%;padding:10% 8% 22%}
+.circles-theme .tafseer-name-artwork::before{content:'';position:absolute;inset:0;background:url('/_assets/15bcf09e4bde897f57816220d377abc670d0dfd15d1d3c8f7df35999cb64fb55/shared/assets/tafseer-geometric.svg') center/48px repeat;opacity:.3;z-index:-2;border-radius:0}
+.circles-theme .tafseer-name-artwork::after{content:'';position:absolute;inset:18% 12%;background:color-mix(in srgb,var(--sp-soft) 26%,#faf5ed);box-shadow:0 0 13px 13px color-mix(in srgb,var(--sp-soft) 26%,#faf5ed);z-index:-1;border-radius:50%}
+.circles-theme .tafseer-name-artwork .tafseer-frame{position:absolute;inset:4px;color:var(--ornament)}
+.circles-theme .tafseer-name-artwork .tafseer-frame>svg{height:100%;width:100%;stroke:currentColor;stroke-width:.85}
+.circles-theme .tafseer-name-artwork .tafseer-lettering{display:flex;flex-direction:column;align-items:center;text-align:center;font-family:Amiri,'Geeza Pro',serif;line-height:1.3;width:100%;position:relative;z-index:2}
+.circles-theme .tafseer-name-artwork .tafseer-prefix{font-size:clamp(9px,11cqi,18px);line-height:1.7}
+.circles-theme .tafseer-name-artwork .tafseer-surah-name{font-size:clamp(18px,30cqi,58px);line-height:1.5;white-space:nowrap}
+.circles-theme .tafseer-name-artwork .tafseer-flourish{width:43%;height:9px;stroke:var(--ornament);stroke-width:.8;margin-top:3px}
+.circles-theme .tafseer-name-artwork .tafseer-english{position:absolute;bottom:11%;left:8%;right:8%;font:500 clamp(6px,6.5cqi,11px)/1.3 'DM Sans',sans-serif;text-align:center;color:var(--sp-accent);z-index:2}
+.circles-theme .rs-tafseer.rs-shell .rs-series-header{grid-template-columns:100px minmax(0,1fr)}
+.circles-theme .rs-tafseer.rs-shell .rs-series-header.rs-compact{grid-template-columns:90px minmax(0,1fr)}
+.circles-theme .sp-hero-image:has(.tafseer-name-artwork)::before{display:none}
+@media(min-width:760px){.circles-theme .rs-tafseer.rs-shell .rs-series-header{grid-template-columns:174px minmax(0,1fr)}.circles-theme .rs-tafseer.rs-shell .rs-series-header.rs-compact{grid-template-columns:110px minmax(0,1fr)}}
+@media(max-width:359px){.circles-theme .rs-tafseer.rs-shell .rs-series-header,.circles-theme .rs-tafseer.rs-shell .rs-series-header.rs-compact{grid-template-columns:82px minmax(0,1fr)}}
+
+.circles-theme .rs-inline-readings{margin-top:32px;border-top:1px solid var(--circle-rule);padding-top:24px;min-width:0}
+.circles-theme .rs-embedded-reading{margin:28px 0;padding-top:22px;border-top:1px solid var(--circle-rule);overflow-wrap:anywhere;min-width:0}
+.circles-theme .rs-embedded-reading .sp-page-title{font-size:clamp(25px,4vw,36px)}
+.circles-theme .rs-embedded-reading textarea{max-width:100%;box-sizing:border-box}
+
+.circles-theme .rs-inline-closing{margin-top:32px;padding:24px;border:1px solid var(--circle-rule);border-radius:12px;background:var(--circle-surface);min-width:0}
+/* The full saved summary is the list text. No separate excerpt or hidden truncation. */
+.circles-theme .rs-card-summary{display:block;-webkit-line-clamp:unset;overflow:visible;max-width:90ch;white-space:normal}
+.circles-theme ul.rs-card-summary{padding-left:1.4em}
+.circles-theme .rs-episode{max-width:none}
+.circles-theme .rs-topics>summary{font:400 25px/1.4 var(--circle-serif);color:var(--sp-accent);cursor:pointer;min-height:44px}
+.circles-theme .rs-companion-layout{display:block}
+.circles-theme .rs-companion-layout.has-quotations{display:grid;grid-template-columns:minmax(0,1fr) minmax(200px,28%);gap:32px}
+.circles-theme .rs-topic-note,.circles-theme .rs-application,.circles-theme .rs-references{padding:24px 0;border-top:1px solid var(--circle-rule)}
+.circles-theme .rs-topic-note p,.circles-theme .rs-application p{line-height:1.85;font-size:15px;max-width:80ch}
+.circles-theme .rs-preserve-lines{white-space:pre-wrap}
+.circles-theme .rs-reference{color:var(--circle-muted);font-size:12px}
+.circles-theme .rs-references article{padding:18px 0;border-bottom:1px solid var(--circle-rule)}
+.circles-theme .rs-references [lang=ar]{font-family:Amiri,serif;font-size:26px;line-height:1.8}
+.circles-theme .rs-transcript pre{font:14px/1.8 'DM Sans',sans-serif;white-space:pre-wrap;overflow-wrap:anywhere}
+.circles-theme .rs-collections-back{display:inline-block;padding:18px 0}
+.reader-workspace.is-listening:has(.rs-player-slot #companion-player){display:block}
+.rs-player-slot .sp-companion-player{position:static;width:100%;max-width:850px;margin:0 0 24px;box-shadow:none}
+.rs-player-slot .sp-companion-player>div:last-child{display:none}
+.rs-player-slot .sp-companion-player-media :is(iframe,video){max-height:480px;height:auto;min-height:0;aspect-ratio:16/9}
+@media(max-width:650px){.circles-theme .rs-companion-layout.has-quotations{display:block}.rs-player-slot .sp-companion-player h2{display:none}.circles-theme .rs-episode-card{padding:22px 17px}.circles-theme .rs-card-summary{font-size:14px}}
+
+.mou-subject-card{position:relative}.mou-subject-card a[data-circles-website]::after{content:'';position:absolute;inset:0}.mou-subject-card a[href^="/builder/"]{position:relative;z-index:1}.mou-subject-card:has(a[data-circles-website]):hover{border-color:var(--circle-accent,#805764)}
+
+.circles-theme .rs-card-quotation{margin:18px 0 14px auto;max-width:65%;text-align:right;font:italic 400 21px/1.5 var(--circle-serif);color:#826477}.circles-theme .rs-card-quotation:before{content:'“'}.circles-theme .rs-card-quotation:after{content:'”'}@media(max-width:650px){.circles-theme .rs-card-quotation{max-width:100%;font-size:19px}}
+.circles-theme .rs-card-main,.circles-theme .rs-watch-pane,.circles-theme .rs-read-pane{min-width:0}
+.circles-theme .rs-series-tools{max-width:none!important;flex-wrap:wrap!important}
+.circles-theme .rs-live-sessions:empty{display:none}
+.circles-theme .rs-live-sessions:not(:empty){margin:0}
+.circles-theme .sp-session-grid.rs-session-list{display:grid;grid-template-columns:minmax(0,1fr);gap:13px}
+.circles-theme .rs-session-list .rs-episode-card{margin:0;max-width:none}
+.circles-theme .rs-session-list .rs-episode-card h3{font:400 29px/1.2 var(--circle-serif);color:var(--sp-accent);margin:9px 0 12px}
+.circles-theme .rs-session-list .sp-status{font:12px/1.7 'DM Sans',sans-serif;color:var(--circle-muted)}
+.circles-theme .rs-session-list .sp-lesson-media{margin-top:14px}
+.circles-theme .rs-shell[data-series-view=recording]{max-width:1360px}
+.circles-theme .rs-watch-pane{padding-top:24px}
+.circles-theme .rs-read-pane .rs-description:first-child{padding-top:24px}
+.circles-theme .rs-read-pane .rs-companion-layout.has-quotations{display:block}
+@media(min-width:1000px){
+ .circles-theme .rs-episode-card.has-quotation{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,30%);gap:32px;align-items:center}
+ .circles-theme .rs-episode-card.has-quotation .rs-card-quotation{max-width:none;margin:0;padding-left:28px;border-left:1px solid var(--circle-rule)}
+}
+@media(min-width:1200px){
+ .circles-theme .rs-watch-read-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:start}
+ .circles-theme .rs-watch-pane{position:sticky;top:24px}
+ .circles-theme .rs-read-pane{border-left:1px solid var(--circle-rule);padding-left:32px}
+ .circles-theme .rs-read-pane .rs-inline-readings:first-child{margin-top:0;border-top:0}
+ .circles-theme .rs-read-pane .rs-embedded-reading{margin-top:16px}
+ .circles-theme .rs-watch-pane .sp-companion-player{max-width:none}
+}

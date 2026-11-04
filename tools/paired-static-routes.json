@@ -1,0 +1,204 @@
+{
+  "pageEntries": [
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/admin/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/calendar/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/course-companion/surah-kahf/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/course-websites/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/course-websites/public/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/course-websites/view/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/courses/manage/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/enrolment/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/enrolment/manage/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/hifz/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/library/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/library/manage/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/media/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/monthly-media/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/open-library/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/pdf-compare/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/pdf-icon-samples/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/pdf-reader/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/pdf-tools/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/subjects/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/teaching/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/website-platform/connect/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/website-platform/handover/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/website-studio/connect/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/academy/website-studio/session/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/account/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/activities/kaaba-puzzle/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/activities/surahs-in-my-heart/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/pdf-viewer/web/viewer.html"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/programs/attendance.html"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/programs/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/programs/lesson-media.html"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/programs/library-view.html"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/programs/library.html"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/programs/manage.html"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/programs/media.html"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/programs/timetable.html"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/recorder/"
+    },
+    {
+      "source": "Academy deployed Pages",
+      "route": "/users/"
+    },
+    {
+      "source": "Studio deployed assets",
+      "route": "/builder/"
+    },
+    {
+      "source": "Studio deployed assets",
+      "route": "/circles/academy/mothers/surah-al-baqarah/"
+    },
+    {
+      "source": "Studio deployed assets",
+      "route": "/circles/free-learning.html"
+    },
+    {
+      "source": "Studio deployed assets",
+      "route": "/circles/"
+    },
+    {
+      "source": "Studio deployed assets",
+      "route": "/circles/prospectus-2027.html"
+    },
+    {
+      "source": "Studio deployed assets",
+      "route": "/import/"
+    },
+    {
+      "source": "Studio deployed assets",
+      "route": "/"
+    },
+    {
+      "source": "Studio deployed assets",
+      "route": "/preview/"
+    },
+    {
+      "source": "Studio deployed assets",
+      "route": "/preview/websites/"
+    },
+    {
+      "source": "Studio deployed assets",
+      "route": "/studio/"
+    }
+  ]
+}

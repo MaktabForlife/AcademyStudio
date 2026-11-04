@@ -1,0 +1,29 @@
+.free-cover{position:relative;overflow:hidden;aspect-ratio:1}
+.free-cover>img{display:block;width:100%;height:100%;object-fit:cover}
+/* Crop the supplied poster to its Qur’an photograph; preserve the source pixels. */
+.free-cover[data-course="resilience"]>img{position:absolute;max-width:none;width:210.91954%;height:auto;left:-110.91954%;top:-83.33333%}
+
+.free-cover[data-course="imratun-muminah"]>img{object-fit:contain;background:#f9f9f7}
+.free-ulum-cover{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#746943;background:#f3eee1;text-align:center}
+.free-ulum-cover>svg{position:absolute;inset:0;width:100%;height:100%;z-index:0}
+.free-ulum-cover>span{position:relative;z-index:1}
+.free-ulum-arabic{font:36px/1.5 'Amiri',serif;direction:rtl;color:#4c675e}
+.free-ulum-flourish{font:24px/1.2 Georgia,serif;color:#9a8159}
+.free-ulum-english{font:13px/1.6 var(--serif);color:#4c675e}
+
+.free-course-card p[lang="ar"],.free-library-card p[lang="ar"]{font:18px/1.6 'Amiri',serif;text-align:center}.free-subtitle[lang="ar"]{font-family:'Amiri',serif;text-align:right;font-size:24px}
+
+.free-course-title{position:absolute;inset:auto 0 0;z-index:2;padding:36px 17px 17px;background:linear-gradient(transparent,rgba(35,51,43,.92) 35%);color:#fff9f3;text-align:left}
+.free-cover[data-course="imratun-muminah"] .free-course-title{background:linear-gradient(transparent,rgba(82,56,76,.94) 35%)}
+.circle .free-course-card .free-course-title h3,.free-cover .free-course-title h2{font:400 23px/1.2 var(--serif);letter-spacing:-.5px;color:inherit;margin:0}
+@media(max-width:600px){.circle .free-course-card .free-course-title h3,.free-cover .free-course-title h2{font-size:22px}}
+
+.course-lock-icon{width:16px;height:16px;flex-shrink:0;vertical-align:middle}
+.paid-course-badge{display:flex;align-items:center;gap:5px;color:#674e5b}
+.paid-course-card .free-course-title{padding-bottom:42px}
+.course-recording-count{position:absolute;z-index:3;left:17px;bottom:14px;color:#fff9f3;font:11px/1.5 var(--sans)}
+.course-pattern-cover{position:absolute;inset:0;background:var(--course-cover-colour,#746e5e);color:#fff9f3;overflow:hidden}
+.course-cover-orbit{position:absolute;width:110%;height:110%;border:1px solid #fff8;outline:1px solid #fff4;outline-offset:-18px;border-radius:50%;top:-20%;left:25%;box-shadow:0 0 0 24px #ffffff08,0 0 0 48px #ffffff08}
+.course-cover-mark{position:absolute;left:18px;top:32%;font:52px/1 var(--serif);color:#f3dfc6}
+.free-cover[data-course="surah-al-kahf"]>img{object-fit:cover;object-position:center 20%}
+.paid-course-card .course-pattern-cover .free-course-title{background:linear-gradient(transparent,rgba(40,37,30,.7) 45%)}

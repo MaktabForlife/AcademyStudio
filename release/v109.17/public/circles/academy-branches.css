@@ -1,0 +1,213 @@
+/* The familiar three-way switch now connects the Academy's learning areas. */
+.circle #studio{display:none}
+html.branch-site{scroll-padding-top:95px}
+.circle .learning-home-shortcut{display:none}
+.branch-navigation{position:sticky;top:0;z-index:35;background:#fbf7f3f5;backdrop-filter:blur(12px);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.branch-nav-inner{min-height:72px;display:flex;align-items:center;justify-content:space-between;gap:24px}
+.branch-switch{display:flex;align-items:center;padding:5px;gap:4px;background:#eee5df;border:1px solid #e2d5d0;border-radius:40px}
+.branch-switch a{display:flex;align-items:center;justify-content:center;gap:10px;min-height:44px;padding:10px 26px;border-radius:30px;font-size:12px;color:#8a717a;transition:background .2s,color .2s}
+.branch-switch a>.branch-number{font-size:9px;letter-spacing:.04em;color:#a0878e}
+.branch-switch a>.branch-label{font:inherit;line-height:1.3;color:inherit;text-align:center;text-wrap:balance;min-width:0}
+.branch-switch a[aria-current=page]{background:#fffdfa;color:#664451;box-shadow:0 2px 6px #6344510c}
+.branch-switch a:hover{background:#fffcf8a8;color:#664451}
+.branch-nav-note{font-size:11px;color:#907780;letter-spacing:.02em}
+.circle .academy-welcome{border-top:0}
+.circle .academy-hero-foot>span{display:block}
+.circle .academy-hero-foot>.text-button{flex-shrink:0}
+.academy-pillars .pillar-selector{aspect-ratio:1.55;margin-bottom:32px}
+.academy-pillars .pillar-trigger{z-index:3}
+.academy-pillars .pillar-womanhood{z-index:1;top:28%;background:#674954;box-shadow:none}
+.academy-pillars .pillar-copy,.academy-pillars .pillar-academia .pillar-copy{left:10%;right:auto;top:12%;width:80%;height:72%}
+.academy-pillars .pillar-womanhood .pillar-copy{left:10%;top:62%;width:80%;height:25%}
+.academy-pillars .pillar-womanhood .pillar-label{font-size:clamp(17px,4.3vw,29px)}
+.academy-pillars .pillar-branch-byline{font-size:clamp(9px,2.4vw,12px);line-height:1.5;margin-bottom:8px;max-width:90%;text-wrap:balance}
+.academy-pillars .pillar-label{font-size:clamp(24px,6.2vw,42px);line-height:1.15}
+.academy-pillars .pillar-baseera .pillar-label{font-size:clamp(18px,4.8vw,34px);max-width:100%}
+.academy-pillars .pillar-womanhood .pillar-connection{margin-top:7px;font-size:clamp(8px,1.9vw,11px)}
+.academy-pillars .pillar-womanhood:focus-visible{outline-offset:-6px}
+.hifz-branch-link{display:flex;align-items:center;gap:22px;max-width:930px;margin:28px auto 0;padding:25px 28px;background:#f0ede3;border:1px solid #dedbcd;border-radius:5px}
+.hifz-branch-link>div{flex:1}
+.hifz-branch-link .eyebrow{justify-content:start;font-size:9px;margin-bottom:10px}
+.hifz-branch-link h3{font:400 25px/1.3 var(--serif);margin:0 0 8px}
+.hifz-branch-link p{font-size:11px;margin:0}
+.hifz-branch-link>.text-button{white-space:nowrap;font-size:11px;min-height:44px}
+.hifz-symbol{width:54px;height:54px;display:grid;place-items:center;flex-shrink:0;border:1px solid #cccbb8;border-radius:50%;color:#7c8065}
+.hifz-symbol .icon{width:24px;height:24px}
+.branch-programme-intro{max-width:720px;font-size:13px;line-height:1.9;margin:-3px 0 28px}
+.branch-programmes .course-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.branch-studio .branch-programmes .course-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.branch-hifz .branch-programmes .course-grid{grid-template-columns:minmax(0,1fr);max-width:700px}
+.branch-hifz .branch-programmes .course-card{display:grid;grid-template-columns:220px minmax(0,1fr)}
+.branch-hifz .branch-programmes .course-art{height:100%;min-height:270px}
+.collection-card .course-bottom{align-items:start;gap:15px}
+.collection-card .course-bottom .meta{max-width:160px;line-height:1.7}
+.collection-card .course-bottom .text-button{white-space:nowrap;min-height:35px}
+.menu-branch-links{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.menu-branch-links .btn{margin-top:0;font-size:12px}
+.collection-home{padding-top:28px}
+.collection-breadcrumb{display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:10px;color:var(--muted);margin-bottom:25px}
+.collection-breadcrumb .text-button{min-height:44px;font-size:11px}
+.collection-hero{display:grid;grid-template-columns:1.15fr 1fr;gap:45px;align-items:center;margin-bottom:32px}
+.collection-hero h1{font:400 46px/1.15 var(--serif);letter-spacing:-1.4px;margin:0 0 20px}
+.collection-hero p{font-size:14px;line-height:1.9;max-width:530px}
+.collection-hero>img{height:280px;object-fit:cover;width:100%;border-radius:6px 55px 6px 6px}
+.collection-signature{font-size:11px;color:#9c717e}
+.collection-sections{display:flex;gap:30px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:8px 0;margin-bottom:35px}
+.collection-sections button{min-height:44px;background:transparent;border:0;padding:8px 0;color:var(--accent);font-size:12px}
+.collection-workspace{display:grid;grid-template-columns:1.2fr 1fr;gap:35px;align-items:start}
+.collection-workspace .eyebrow{font-size:10px}
+.collection-player{display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:285px;padding:35px;text-align:center;background:#654a57;color:#fff9f6;border-radius:5px}
+.collection-player>.icon{width:38px;height:38px;padding:9px;border:1px solid #b69ba7;border-radius:50%;margin-bottom:22px}
+.collection-player h2{font:400 29px/1.25 var(--serif);max-width:330px;margin-bottom:14px}
+.collection-player p{font-size:12px;line-height:1.8;color:#e4cfd9;max-width:330px}
+.collection-player>span{font-size:10px;color:#d2b9c6}
+.collection-workspace>section>.text-button{font-size:11px;min-height:44px;margin-top:10px}
+.collection-notes h2{font:400 29px/1.3 var(--serif);margin:0 0 20px}
+.collection-notes label{display:block;font-size:11px;color:var(--muted);margin-bottom:12px}
+.collection-notes textarea{display:block;width:100%;min-height:210px;resize:vertical;background:#fffdfa;border:1px solid #d9c5cb;border-radius:5px;padding:17px;font-size:13px;line-height:1.8;color:var(--ink)}
+.collection-notes small{display:block;font-size:10px;color:var(--muted);margin-top:9px}
+.collection-reflection{padding:35px;margin:38px 0 50px;background:#eee3df;border-radius:5px}
+.collection-reflection h2{font:400 30px/1.3 var(--serif);margin-bottom:16px}
+.collection-reflection p{font-size:13px;line-height:1.9}
+.collection-reflection .text-button{font-size:12px;min-height:44px}
+.circle.is-dashboard .branch-navigation .branch-nav-inner{max-width:1350px}
+@media(max-width:820px){
+ html.branch-site{scroll-padding-top:85px}
+ .circle .site-header .nav-actions>.learning-home-shortcut{display:inline-grid}
+ .branch-nav-inner{min-height:65px;justify-content:center;padding-left:20px;padding-right:20px}
+ .branch-nav-note{display:none}
+ .branch-switch{flex:1;max-width:480px;gap:2px;padding:4px}
+ .branch-switch a{flex:1;min-width:0;gap:8px;padding:8px 12px;font-size:12px}
+ .branch-switch a>.branch-number{font-size:9px}
+ .academy-pillars .pillar-copy>.icon{width:21px;height:21px;margin-bottom:8px}
+ .academy-pillars .pillar-branch-byline{margin-bottom:6px}
+ .academy-pillars .pillar-selector{margin-bottom:28px}
+ .hifz-branch-link{padding:22px;gap:17px;flex-wrap:wrap}
+ .hifz-branch-link h3{font-size:23px}
+ .hifz-branch-link>.text-button{margin-left:71px}
+ .branch-programmes .course-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .branch-programme-intro{font-size:12px}
+ .collection-card .course-bottom{flex-wrap:wrap;gap:6px}
+ .collection-card .course-bottom .text-button{min-height:44px}
+ .collection-breadcrumb>span{display:none}
+ .collection-hero{gap:25px}
+ .collection-hero h1{font-size:36px}
+ .collection-hero p{font-size:12px}
+ .collection-hero>img{height:230px}
+ .collection-workspace{gap:23px}
+ .collection-player{padding:26px;min-height:280px}
+ .collection-player h2,.collection-notes h2{font-size:26px}
+}
+@media(max-width:600px){
+ .branch-nav-inner{padding-left:20px;padding-right:20px}
+ .branch-switch a{gap:6px;font-size:12px;padding:8px 10px}
+ .academy-pillars .pillar-branch-byline{font-size:10px;max-width:96%;margin-bottom:6px}
+ .academy-pillars .pillar-copy>.icon{width:18px;height:18px;margin-bottom:8px}
+ .academy-pillars .pillar-selector{aspect-ratio:1.55}
+ .academy-pillars .pillar-label{font-size:clamp(23px,6.3vw,35px)}
+ .academy-pillars .pillar-womanhood .pillar-connection{margin-top:6px}
+ .hifz-branch-link{padding:21px 18px;gap:14px}
+ .hifz-symbol{width:42px;height:42px}
+ .hifz-symbol .icon{width:20px;height:20px}
+ .hifz-branch-link>.text-button{margin-left:56px}
+ .hifz-branch-link h3{font-size:22px}
+ .hifz-branch-link .eyebrow{font-size:8px}
+ .branch-programmes .course-grid,.branch-studio .branch-programmes .course-grid{grid-template-columns:minmax(0,1fr)}
+ .branch-hifz .branch-programmes .course-card{grid-template-columns:97px minmax(0,1fr)}
+ .branch-hifz .branch-programmes .course-art{min-height:210px}
+ .collection-card .course-bottom{margin-top:12px;padding-top:8px}
+ .collection-card .course-bottom .meta{font-size:9px}
+ .collection-home{padding-top:18px}
+ .collection-breadcrumb{margin-bottom:18px}
+ .collection-hero{grid-template-columns:minmax(0,1fr);gap:22px}
+ .collection-hero h1{font-size:37px;letter-spacing:-1px}
+ .collection-hero p{font-size:13px}
+ .collection-hero>img{height:200px}
+ .collection-sections{gap:0;justify-content:space-between;margin-bottom:25px}
+ .collection-sections button{font-size:12px}
+ .collection-workspace{grid-template-columns:minmax(0,1fr);gap:28px}
+ .collection-player{min-height:260px;padding:28px 22px}
+ .collection-reflection{padding:27px 23px;margin:32px 0}
+ .collection-reflection h2{font-size:27px}
+}
+@media(max-width:360px){
+ .branch-nav-inner{padding-left:16px;padding-right:16px}
+ .branch-switch a{font-size:11px;gap:5px;padding:8px 7px}
+ .branch-switch a>.branch-number{font-size:8px}
+ .academy-pillars .pillar-branch-byline{font-size:9px}
+ .academy-pillars .pillar-copy>.icon{width:16px;height:16px;margin-bottom:6px}
+ .academy-pillars .pillar-womanhood .pillar-connection{font-size:7.5px}
+ .hifz-branch-link{padding:18px 14px;gap:12px}
+ .hifz-branch-link>.text-button{margin-left:54px}
+ .hifz-branch-link h3{font-size:20px}
+}
+@media(prefers-reduced-motion:reduce){.branch-switch a{transition:none}}
+
+/* A community learning home: destinations, attention and a welcome. */
+.community-welcome{display:flex;align-items:center;justify-content:space-between;gap:30px;padding:35px 0 22px}
+.community-welcome .eyebrow{font-size:10px;margin-bottom:12px}
+.community-welcome h2{font:400 33px/1.3 var(--serif);letter-spacing:-.7px;margin:0 0 12px}
+.welcome-break{display:none}
+.community-welcome p{font-size:12px;margin:0}
+.community-focus{display:flex;gap:4px;padding:5px;border:1px solid #ddc9d0;border-radius:30px;flex-shrink:0}
+.community-focus button{font-size:11px;min-height:44px;border:0;border-radius:25px;padding:10px 21px;background:transparent;color:#9a7a87}
+.community-focus button[aria-pressed=true]{background:#eee1e4;color:#6a4757}
+.community-access{border:1px solid #e0d6c7;border-radius:5px;display:flex;align-items:center;justify-content:space-between;gap:25px;background:#f0ebdf;padding:23px 27px;margin:27px 0 15px}
+.community-access>div{display:flex;align-items:center;gap:18px}
+.community-access>div>.icon{width:26px;height:26px;color:#8e876a}
+.community-access strong,.community-access small{display:block}
+.community-access strong{font:400 23px/1.3 var(--serif);margin-bottom:8px}
+.community-access small{font-size:11px;color:var(--muted)}
+.community-access .text-button{font-size:11px;white-space:nowrap;min-height:44px}
+.community-together{display:grid;grid-template-columns:1fr 1fr;gap:65px;padding:40px 0 55px;margin-bottom:25px;border-top:1px solid var(--line)}
+.community-together h2{font:400 35px/1.3 var(--serif);letter-spacing:-.7px;margin-bottom:20px}
+.community-together p{font-size:13px;line-height:1.9;max-width:480px}
+.community-together .btn{margin-top:10px}
+.community-other-links>a{display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:1px solid var(--line);padding:18px 0}
+.community-other-links>a:first-child{border-top:1px solid var(--line)}
+.community-other-links>a>span{display:grid;grid-template-columns:25px 1fr;gap:3px 13px;align-items:center}
+.community-other-links>a>span>.icon{grid-row:span 2;color:#9d7886}
+.community-other-links strong{font-size:12px;font-weight:500}
+.community-other-links small{font-size:10px;color:var(--muted)}
+.community-dock button{min-height:49px}
+.programme-note{margin-top:20px;padding-top:15px;border-top:1px solid var(--line);font-size:11px!important}
+@media(max-width:820px){
+ .community-home{padding-bottom:85px}
+ .community-welcome{display:block;padding:27px 0 9px;text-align:center}
+ .community-welcome .eyebrow{justify-content:center;font-size:9px}
+ .community-welcome .eyebrow:before{display:none}
+ .community-welcome h2{font-size:28px}
+ .welcome-break{display:block}
+ .community-welcome p{font-size:11px;line-height:1.8;max-width:300px;margin:auto}
+ .community-focus{margin:20px auto 8px;max-width:330px;justify-content:space-between;padding:4px}
+ .community-focus button{flex:1;font-size:12px;padding:8px 13px}
+ .community-access{display:block;padding:22px;margin:22px 0 8px}
+ .community-access>div{gap:13px}
+ .community-access strong{font-size:23px}
+ .community-access small{font-size:11px;line-height:1.8}
+ .community-access .text-button{margin-left:39px;margin-top:10px;font-size:11px}
+ .community-together{gap:30px;grid-template-columns:minmax(0,1fr);padding-top:30px;padding-bottom:30px;margin-bottom:15px}
+ .community-together h2{font-size:30px}
+ .community-together p{font-size:13px}
+ .community-together .btn{min-height:46px;font-size:12px}
+}
+@media(min-width:821px){
+ .circle .community-hub .hub-orb h1{font-size:43px}
+ .circle .community-hub .hub-orb>.btn{font-size:12px;min-height:46px}
+}
+@media(max-width:360px){
+ .community-welcome h2{font-size:26px}
+ .circle .community-hub .hub-orb h1{font-size:26px}
+ .circle .community-hub .hub-orb>.btn{font-size:11px;padding:11px 17px}
+ .community-access{padding:20px 17px}
+ .community-access strong{font-size:22px}
+}
+@media(max-width:600px){
+ .community-welcome{padding-top:18px;padding-bottom:4px}
+ .community-welcome .eyebrow,.community-welcome .welcome-long{display:none}
+ .community-welcome h2{font-size:26px;margin-bottom:8px}
+ .community-welcome p{font-size:10px;line-height:1.7}
+ .community-focus{margin-top:13px;margin-bottom:4px}
+ .community-focus button{min-height:40px}
+ .circle .community-hub .hub-orb h1{font-size:26px;line-height:1.18}
+}
