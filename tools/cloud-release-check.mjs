@@ -97,7 +97,7 @@ await save('source-assets.json',manifests.source);await save('studio-assets.json
 const rollbackManifest=await json(resolve(source,'release/v'+baseline.version+'/manifest.json'));
 const scope={version,source:'work/Academy',studio:'work/AcademyStudio',baseline:{source:{...baseline.source,coordinatorVersion:baseline.coordinatorVersion},studio:baseline.studio},hosting:await json(resolve(source,'config/hosting.json')),baselineBindings:baseline.bindings||{source:43,coordinator:3,studio:17},rollback:{pagesArtifact:resolve(source,'release/v'+baseline.version+'/public'),pagesManifest:{files:Object.keys(rollbackManifest.manifest).length,manifest:rollbackManifest.manifest}},databaseUpdates:[]};
 await save('approval-and-scope.json',scope);
-function run(dir,args,file){
+async function run(dir,args,file){
  const r=spawnSync(process.execPath,args,{cwd:dir,encoding:'utf8',maxBuffer:16*1024*1024,env:{...process.env,ACADEMY_SOURCE:source}});
  await writeFile(resolve(out,file),r.stdout+'\n'+r.stderr);
  const lines=(r.stdout+'\n'+r.stderr).split('\n'),failures=lines.flatMap((line,i)=>/not ok|error:|ERR_|failureType/.test(line)?lines.slice(Math.max(0,i-2),i+28):[]).join('\n');
