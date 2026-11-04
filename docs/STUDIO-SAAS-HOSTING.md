@@ -10,7 +10,7 @@ This is preparation on a GitHub feature branch, not an activated deployment or d
 | Hifz | https://mahadarwa-hifz.ummabbadacademy.app | Proposed ummabbadacademy.hifzhelper.app, existing Hifz account |
 | Studio | https://worshipuponbaseera.ummabbadacademy.app | https://ummabbadacademy.maktab4life.org, Studio account 2b01ca929611669e032703ff19f7098f |
 
-The Studio provider zone maktab4life.org is not yet present in the Studio account. Transfer and DNS activation remain separate prerequisites. Hifz's new host/provider setup is not implemented by this branch.
+With the owner's explicit approval, the Studio provider zone maktab4life.org has been added to the Studio account on its Free plan and is pending (dc5a8932ae64e294ab53090de552324d). The empty pure-static Pages project academy-studio-public is also created (4a369706-6b02-48e9-ad7f-69abb4fd4ec4), without a deployment or Git auto-build. No source registration, nameserver, DNS record or Worker route has been changed. Transfer and DNS activation remain separate prerequisites. Hifz's new host/provider setup is not implemented by this branch.
 
 ## Request path
 

@@ -16,5 +16,8 @@
     "https://www.maktab4life.org"
   ],
   "workerConfig": "wrangler.production.jsonc",
-  "failOpen": false
+  "failOpen": false,
+  "providerZoneId": "dc5a8932ae64e294ab53090de552324d",
+  "providerZoneStatus": "pending",
+  "assetProjectId": "4a369706-6b02-48e9-ad7f-69abb4fd4ec4"
 }
