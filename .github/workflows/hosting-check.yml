@@ -1,6 +1,12 @@
 name: Check configurable Studio hosting
 on:
   workflow_dispatch:
+    inputs:
+      academy_ref:
+        description: Exact reviewed Academy source commit
+        required: true
+        default: studio_dev
+        type: string
 permissions:
   contents: read
 jobs:
@@ -15,7 +21,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: MaktabForlife/Academy
-          ref: studio_dev
+          ref: ${{ inputs.academy_ref }}
           path: Academy
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
