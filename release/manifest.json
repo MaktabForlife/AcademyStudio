@@ -1,16 +1,8 @@
 {
-  "version": "109.17",
+  "version": "109.18",
   "repository": "MaktabForlife/AcademyStudio",
-  "sourceVersionCommit": "ddf29809d61395a9f2c245316183e7db9fbd96fd",
-  "baselineVersion": "109.16",
-  "overlays": [
-    "index.html",
-    "shared/academy-palette.css",
-    "shared/course-media-workflow.mjs",
-    "shared/existing-collection.mjs",
-    "shared/existing-media-view.mjs",
-    "shared/monthly-media-page.mjs"
-  ],
+  "sourceVersionCommit": "5bc5a100c8a566fac4294c5399e53f8b16052449",
+  "canonicalSource": true,
   "publicFiles": 395,
   "prefix": "/_assets/15bcf09e4bde897f57816220d377abc670d0dfd15d1d3c8f7df35999cb64fb55/",
   "manifest": {
@@ -178,7 +170,7 @@
     "_assets/15bcf09e4bde897f57816220d377abc670d0dfd15d1d3c8f7df35999cb64fb55/course-media.mjs": "5113d04f28fe9b504389ab4d00c61cd974eb1f503185eb476635b5c37577f72f",
     "course-notices.css": "8ed9b6961e5eb771bebe77e88183b943e278f5beea2ada60e6ea02fe58b92422",
     "_assets/15bcf09e4bde897f57816220d377abc670d0dfd15d1d3c8f7df35999cb64fb55/course-notices.css": "8ed9b6961e5eb771bebe77e88183b943e278f5beea2ada60e6ea02fe58b92422",
-    "index.html": "537dc2fb23df59a173fb0888c12f9969e872e597102b434bf4c25f62397249d3",
+    "index.html": "b4c2236f260b7d6a7cc715c305fbe2805dc667c05608f654fd69f9ce2cddbaec",
     "prospectus-2027.html": "f35f91fd2b48cd52244d1cc355339c7e3fabf663c15599f55f4247b1902359bf",
     "reader-editing.mjs": "055e4eb2a4c0c62a98ce69a8c05c8acf10f671eee87af0f3b058e31d339c6edc",
     "_assets/15bcf09e4bde897f57816220d377abc670d0dfd15d1d3c8f7df35999cb64fb55/reader-editing.mjs": "055e4eb2a4c0c62a98ce69a8c05c8acf10f671eee87af0f3b058e31d339c6edc",
