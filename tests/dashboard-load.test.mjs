@@ -62,3 +62,15 @@ test('an authority denial during refresh invalidates older cached perspectives b
   const returned=c.dashboard.load('learn');assert.equal(c.calls.length,3,'An explicit return must check Source instead of restoring the older private cache');c.calls[2].resolve(snapshot('learn','current permission'));await returned;assert.equal(c.dashboard.data.label,'current permission');
  }
 });
+
+test('initial sign-in accepts a checked bootstrap with no selected date and reuses it without a second read',async()=>{
+ for(const mode of ['learn','teach','admin']){
+  const c=client(),checked={...snapshot(mode),selectedDate:null},today=localDay(Date.now(),'Africa/Johannesburg');
+  await c.dashboard.load(mode,false,checked.selectedDate,checked);
+  assert.equal(c.dashboard.data.label,mode);assert.equal(c.calls.length,0);
+  await c.dashboard.load(mode);assert.equal(c.calls.length,0,'Returning to the initial week retains the checked display copy');
+  c.dashboard.clear();const pending=c.dashboard.load(mode,false,null);
+  assert.equal(c.calls.length,1);assert.equal(c.calls[0].options.body.date,today);
+  c.calls[0].resolve(snapshot(mode));await pending;assert(c.dashboard.data);
+ }
+});

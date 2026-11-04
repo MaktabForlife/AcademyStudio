@@ -115,3 +115,10 @@ test('rolled-up simultaneous classes open and Join with stable identities regard
  f.click('.week-lesson [data-circle-session]');assert.equal(f.document.querySelectorAll('dialog .circle-session-detail').length,3);assert.equal(JSON.stringify(rows),before);
  f.click('.week-lesson [data-circle-join]');assert.equal(f.calls.at(-1).body.joinKey,'class-a');f.resolveJoin({joinUrl:'https://zoom.test/checked'});await flush();assert.equal(f.navigations.length,1);
 });
+
+test('the actual dashboard renders a blank-date bootstrap after sign-in without another request',async()=>{
+ const f=await fixture({mode:'admin'}),count=f.calls.length;f.dashboard.clear();
+ await f.dashboard.load('admin',false,null,{...summary(),mode:'admin',selectedDate:null});
+ assert(f.dashboard.data);assert(f.document.querySelector('[data-circle-session]'));assert.equal(f.calls.length,count);
+ assert.doesNotMatch(f.document.getElementById('circles-dashboard').textContent,/could not be loaded/);
+});

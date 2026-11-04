@@ -52,7 +52,7 @@ export function circlesDashboard({onUpdate,openAcademy,show=()=>true,onWorkspace
   const loading=api('/api/circles/dashboard?'+query).finally(()=>{if(requests.get(key)===loading)requests.delete(key);});requests.set(key,loading);return loading;
  }
  async function load(selected=mode,force=false,date=localDay(Date.now(),data?.timezone||'Africa/Johannesburg'),checked=null,checkedError=null){
-  if(!identity.account)return;const owner=accountKey();if(cacheOwner!==owner){cache.clear();requests.clear();cacheOwner=owner;}
+  if(!identity.account)return;if(date==null||date==='')date=localDay(Date.now(),data?.timezone||'Africa/Johannesburg');const owner=accountKey();if(cacheOwner!==owner){cache.clear();requests.clear();cacheOwner=owner;}
   const key=JSON.stringify([selected||'default',circleWeekStart(date)]),saved=!force&&cache.get(key),age=saved?Date.now()-Number(saved.checkedAt):NaN,warm=Number.isFinite(age)&&age>=0&&age<43200000;
   resetActions();const currentTicket=++ticket,generation=identity.generation;mode=selected;pending=!warm;error='';status='';if(!warm)refresh();
   try{if(checkedError)throw checkedError;const value=checked||warm&&saved||await request(selected,force,generation,identity.account.accountId,date);if(currentTicket!==ticket||generation!==identity.generation||owner!==accountKey())return;data=value;selectedDate=selectedCircleDay(value,date,Date.now()).date;dataOwner=owner;available=value.availableModes;mode=value.mode;cache.set(JSON.stringify([mode,circleWeekStart(date)]),value);cache.set(key,value);}

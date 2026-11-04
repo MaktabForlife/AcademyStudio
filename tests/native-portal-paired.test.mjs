@@ -44,6 +44,8 @@ test('Global Admin Learn projection preserves raw master authority in signed pro
   await signIn(f,'global');const native=await login('global');
   const boot=await source('/api/academy/hub/read',{kind:'bootstrap',input:{}},native.token);assert.equal(boot.status,200,JSON.stringify(boot.body));
   assert.equal(boot.body.account.globalAdmin,true);assert(boot.body.navigation,JSON.stringify(boot.body.errors));
+  assert(boot.body.dashboard,JSON.stringify(boot.body.errors));
+  const refreshed=await source('/api/academy/hub/read',{kind:'dashboard',input:{mode:'admin',date:boot.body.dashboard.startDate,refresh:true}},native.token);assert.equal(refreshed.status,200,JSON.stringify(refreshed.body));assert.equal(refreshed.body.mode,'admin');
   assert((boot.body.navigation.adminCourses||[]).some(x=>x.href.includes('site-course')));
   const forged=await source('/api/academy/hub/read',{kind:'navigation',input:{}},native.token,'https://untrusted.example');assert.equal(forged.status,403);
   const noToken=await source('/api/academy/hub/read',{kind:'navigation',input:{}});assert.equal(noToken.status,401);
