@@ -5,7 +5,7 @@ on:
       scope:
         description: Check both accounts or Studio only
         type: choice
-        options: [both, studio]
+        options: [both, studio, studio-format]
         default: both
 permissions:
   contents: read
@@ -39,13 +39,14 @@ jobs:
            {label:'Studio Worker',account:studioAccount,token:studio,path:'/workers/scripts/academy-studio-parallel/settings',kind:'worker'}
           ];
           const scope=process.env.CONNECTION_SCOPE||'both';
-          if(!['both','studio'].includes(scope))throw new Error('Unknown verification scope');
-          const tasks=scope==='studio'?allTasks.filter(t=>t.label==='Studio Worker'):allTasks;
+          if(!['both','studio','studio-format'].includes(scope))throw new Error('Unknown verification scope');
+          const tasks=scope.startsWith('studio')?allTasks.filter(t=>t.label==='Studio Worker'):allTasks;
           let attempted=0;
           const results=await Promise.all(tasks.map(async t=>{
            if(!t.token)return {label:t.label,passed:false,status:'not requested',issue:'Saved secret is empty'};
            if(t.token!==t.token.trim())return {label:t.label,passed:false,status:'not requested',issue:'Saved token contains leading or trailing whitespace'};
-           if(!/^[\x21-\x7e]+$/.test(t.token))return {label:t.label,passed:false,status:'not requested',issue:'Saved token contains whitespace, line breaks or non-ASCII characters'};
+           if(!/^[\x21-\x7e]+$/.test(t.token))return {label:t.label,passed:false,status:'not requested',issue:'Saved token contains whitespace, line breaks or non-ASCII characters',format:{spacesOrTabs:/[ \t]/.test(t.token),lineBreaks:/[\r\n]/.test(t.token),nonAscii:/[^\x00-\x7f]/.test(t.token),looksLikeCurl:/^\s*curl\b/i.test(t.token),looksMasked:/[\u2022\u25cf]/.test(t.token)}};
+           if(scope==='studio-format')return {label:t.label,passed:true,status:'format valid; connection not requested'};
            try{
             attempted++;
             const response=await fetch('https://api.cloudflare.com/client/v4/accounts/'+t.account+t.path,{
