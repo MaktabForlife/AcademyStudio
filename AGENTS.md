@@ -1,3 +1,13 @@
+# Current Studio SaaS preparation authorisation — 4 November 2026
+
+The owner authorised continuing the revised hosting preparation, then chose the exact Studio public address https://worshipuponbaseera.ummabbadacademy.app. Academy remains https://ummabbadacademy.app; proposed Hifz is https://mahadarwa-hifz.ummabbadacademy.app. Provider domains/accounts remain separate: Studio's proposed provider is https://ummabbadacademy.maktab4life.org in the Studio account, after that zone's separately authorised transfer.
+
+Prepare and test on a GitHub feature branch, preserving the current canonical/deployed V109.20 release. No merges, history replacement, automatic releases, Mac writes/deletions, hosted SQL/data/rights/media changes, Hifz code changes, domain transfer, DNS activation or live cutover are included in preparation. All builds and tests run only in disposable GitHub runners. Keep all real attachment/publication manual. Current identity/session/epoch/CSRF/scoped Admin/rights/Join gates and 43200/43200/60 remain unchanged.
+
+Use config/studio-saas.json and docs/STUDIO-SAAS-HOSTING.md for this candidate. The current Worker remains the application/SaaS origin; a pure-static Pages project supplies exact reviewed public bytes. Do not add a second login service, move private content into Pages or claim zero Worker invocations for SaaS static traffic. The separately owned JWT design is not implemented here. Keep Circles' isolated Academy homepage review branch untouched.
+
+Older approval notes below record their original scope; this current hosting preparation supersedes their plan-only hold only within this explicit preparation scope.
+
 # AcademyStudio working rules
 
 GitHub is the source of truth: MaktabForlife/AcademyStudio, primary branch studio_dev.

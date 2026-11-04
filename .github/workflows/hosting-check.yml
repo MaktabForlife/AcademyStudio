@@ -1,18 +1,21 @@
-name: Check configurable Studio hosting
+name: Prepare Studio SaaS hosting without activation
 on:
   workflow_dispatch:
     inputs:
       academy_ref:
-        description: Exact reviewed Academy source commit
+        description: Reviewed Academy source commit
         required: true
-        default: studio_dev
+        default: dded14ffbfac5f27e157253e397b3b4e96bf6ecd
         type: string
 permissions:
   contents: read
+concurrency:
+  group: studio-saas-preparation-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       CI: "true"
       WRANGLER_SEND_METRICS: "false"
@@ -32,22 +35,45 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: "24.18.0"
-      - name: Install synthetic test dependencies on GitHub
+      - name: Install pinned dependencies on the disposable runner
         run: |
           npm ci --prefix Academy/backend --no-audit --no-fund
           npm ci --prefix Studio --no-audit --no-fund
-      - name: Build the Academy portal source only on this disposable runner
-        working-directory: Academy
-        env:
-          PORTAL_STUDIO_SOURCE: ${{ github.workspace }}/Studio
-          PORTAL_STUDIO_SHA: ${{ github.sha }}
-        run: node tools/import-academy-portal.mjs
-      - name: Run origin, router and paired cookie tests without live requests
-        working-directory: Studio
-        run: node --test --test-concurrency=1 tests/deployment-origin-config.test.mjs tests/website-routing.test.mjs tests/website-launch.test.mjs tests/academy-origins.test.mjs tests/native-hub-bridge.test.mjs tests/academy-connect.test.mjs tests/native-portal-paired.test.mjs tests/native-portal-browser.test.mjs tests/dashboard-load.test.mjs tests/circles-dashboard-consumer.test.mjs
-      - name: Verify source-only preparation
+      - name: Prepare reviewed static Pages and SaaS Worker candidate without deployment
         working-directory: Studio
         run: |
-          git diff --exit-code
-          git status --porcelain
-          node --input-type=module -e "import {readFile} from 'node:fs/promises'; const r=JSON.parse(await readFile('release/current.json')); console.log(JSON.stringify({reviewedPublicVersion:r.version,sourceTestsOnly:true,cloudflareRequests:0,hostedSQL:0,macWrites:0}));"
+          node --check hosting/saas/assets.mjs
+          node --check hosting/saas/worker.mjs
+          node --check tools/prepare-studio-saas.mjs
+          node --check tests/studio-saas.test.mjs
+          node tools/prepare-studio-saas.mjs
+          node node_modules/wrangler/bin/wrangler.js types .build/studio-saas/worker-env.d.ts --config .build/studio-saas/worker.jsonc
+          node node_modules/wrangler/bin/wrangler.js deploy --dry-run --config .build/studio-saas/worker.jsonc --outdir .build/studio-saas/dry-run
+      - name: Test SaaS, static isolation, read budgets and current permissions using synthetic data
+        working-directory: Studio
+        run: |
+          node --test --test-concurrency=1 tests/studio-saas.test.mjs tests/deployment-origin-config.test.mjs tests/website-routing.test.mjs tests/website-launch.test.mjs tests/academy-origins.test.mjs tests/parallel-access.test.mjs tests/access-catalogue.test.mjs tests/course-policy.test.mjs tests/monthly-media-collection.test.mjs tests/private-playlist-reference-monthly-proxy.test.mjs tests/reader-bootstrap.test.mjs tests/dashboard-studio-join-paired.test.mjs tests/read-budgets.test.mjs 2>&1 | tee .build/studio-saas/studio-tests.log
+      - name: Test unchanged Academy portal and Hifz boundaries without importing Studio UI
+        working-directory: Academy
+        run: |
+          node --test backend/tests/portal-hosting.test.mjs backend/tests/academy-circles-native.test.mjs backend/tests/academy-circles-native-join.test.mjs backend/tests/academy-circles-free-join.test.mjs backend/tests/academy-hifz-handoff.test.mjs backend/tests/academy-hifz-bridge-ui.test.mjs 2>&1 | tee ../Studio/.build/studio-saas/academy-tests.log
+      - name: Verify preparation changed no tracked source
+        run: |
+          git -C Studio diff --exit-code
+          git -C Academy diff --exit-code
+      - name: Store prepared hosting and evidence in GitHub only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: studio-saas-preparation-${{ github.run_id }}
+          include-hidden-files: true
+          retention-days: 30
+          path: |
+            Studio/.build/studio-saas/pages/
+            Studio/.build/studio-saas/worker.jsonc
+            Studio/.build/studio-saas/candidate-worker.mjs
+            Studio/.build/studio-saas/worker-env.d.ts
+            Studio/.build/studio-saas/bundle-meta.json
+            Studio/.build/studio-saas/preparation.json
+            Studio/.build/studio-saas/activation-plan.json
+            Studio/.build/studio-saas/*-tests.log
