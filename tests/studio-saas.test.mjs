@@ -8,7 +8,7 @@ import {saasWebsite} from '../hosting/saas/worker.mjs';
 import {pagesAsset} from '../hosting/saas/assets.mjs';
 import {fixture} from './fixture.mjs';
 import {accessFixture} from './access-fixture.mjs';
-import {random,challenge,sha256} from '../src/protocol.mjs';
+import {random,challenge} from '../src/protocol.mjs';
 const root='https://worshipuponbaseera.ummabbadacademy.app',provider='https://ummabbadacademy.maktab4life.org',backend='https://academy-studio-parallel.naidu-hajira.workers.dev',pages='https://academy-studio-public.pages.dev';
 const env={PUBLIC_ASSET_SOURCE:'pages',WEBSITE_ORIGIN:root,WEBSITE_ALIAS_ORIGINS:'[]',STUDIO_BACKEND_ORIGIN:backend,ACADEMY_ORIGIN:'https://academy-maktab4life.pages.dev',ACADEMY_PORTAL_ORIGIN:'https://ummabbadacademy.app',STUDIO_PROVIDER_ORIGIN:provider,STUDIO_REDIRECT_ORIGINS:'["https://maktab4life.org","https://www.maktab4life.org"]',PUBLIC_ASSET_ORIGIN:pages,RELEASE_VERSION:'109.20'};
 test('static Pages fetch strips credentials and query input, uses a fixed origin and preserves range streams',async()=>{
@@ -71,7 +71,8 @@ test('a different configured public/provider domain works without editing applic
 test('actual SaaS Worker preserves public navigation, unsigned denials and zero-database static serving',async()=>{
  const script=(await build({entryPoints:[new URL('../hosting/saas/worker.mjs',import.meta.url).pathname],bundle:true,write:false,format:'esm',platform:'browser',external:['cloudflare:workers']})).outputFiles[0].text;
  let staticCalls=0;
- const runtime=new Miniflare(convertV4MiniflareOptions({modules:true,script,compatibilityDate:'2026-11-04',compatibilityFlags:['nodejs_compat'],d1Databases:{DB:'empty'},r2Buckets:{CONTENT:'empty',MEDIA:'empty'},bindings:{...env,ENVIRONMENT:'parallel',AUTHORITY_MODE:'ACADEMY',PLATFORM_ENABLED:'1',PARALLEL_ACCESS_ENABLED:'1',ACADEMY_API_ORIGIN:'https://api.academy.test',ACADEMY_TO_WEBSITE_SECRET:'s'.repeat(48),WEBSITE_TO_ACADEMY_SECRET:'r'.repeat(48)},outboundService:request=>{
+ // Match the existing pinned test runtime; deployment keeps its current date.
+ const runtime=new Miniflare(convertV4MiniflareOptions({modules:true,script,compatibilityDate:'2026-09-28',compatibilityFlags:['nodejs_compat'],d1Databases:{DB:'empty'},r2Buckets:{CONTENT:'empty',MEDIA:'empty'},bindings:{...env,ENVIRONMENT:'parallel',AUTHORITY_MODE:'ACADEMY',PLATFORM_ENABLED:'1',PARALLEL_ACCESS_ENABLED:'1',ACADEMY_API_ORIGIN:'https://api.academy.test',ACADEMY_TO_WEBSITE_SECRET:'s'.repeat(48),WEBSITE_TO_ACADEMY_SECRET:'r'.repeat(48)},outboundService:request=>{
   staticCalls++;assert.equal(new URL(request.url).origin,pages);assert.equal(request.headers.get('Cookie'),null);return new Response('<!doctype html><html><head><title>Studio</title></head><body>Current public bytes</body></html>',{headers:{'Content-Type':'text/html','X-Robots-Tag':'noindex'}});
  }}));
  try{
@@ -95,10 +96,17 @@ test('SaaS wrapper retains paired sign-in, permissions, twelve-hour reads and ac
   const exchange=await request('/auth/exchange',{method:'POST',body:{code:login.body.code,state,verifier}});assert.equal(exchange.status,200,JSON.stringify(exchange.body));
   const setCookie=exchange.response.headers.get('Set-Cookie'),cookie=setCookie.split(';')[0];assert(setCookie.includes('Secure; HttpOnly; SameSite=Lax'));assert(!setCookie.includes('Domain='));
   f.source.resetMetrics();for(let n=0;n<2;n++){assert.equal((await request('/api/me',{cookie})).status,200);assert.equal((await request('/api/websites/site-course',{cookie})).status,200);}assert.equal(f.source.metrics.queries,0);
-  const former=await f.login('former');assert.equal((await request('/api/websites/site-surah',{cookie:former.cookie})).status,200);
-  const outsider=await f.login('outsider');assert.equal((await request('/api/websites/site-course',{cookie:outsider.cookie})).status,403);
-  const code=random(),nextVerifier=random(),nextState=random();await f.deliver({type:'handoff',codeHash:await sha256(code),accountId:'former',epoch:1,challenge:await challenge(nextVerifier),state:nextState,expiresAt:Date.now()+60000});
-  assert.equal((await request('/auth/exchange',{method:'POST',cookie,body:{code,verifier:nextVerifier,state:nextState}})).status,200);assert.equal((await request('/api/me',{cookie})).status,401);
+  const loginAs=async(name,previousCookie)=>{
+   const verifier=random(),state=random();
+   const login=await request('/auth/login',{method:'POST',body:{uniqueid:'separation-'+name,pin:'1234',state,challenge:await challenge(verifier)}});assert.equal(login.status,200,JSON.stringify(login.body));
+   const exchanged=await request('/auth/exchange',{method:'POST',cookie:previousCookie,body:{code:login.body.code,state,verifier}});assert.equal(exchanged.status,200,JSON.stringify(exchanged.body));
+   return exchanged.response.headers.get('Set-Cookie').split(';')[0];
+  };
+  // Use real synthetic Academy identities and source rights; standalone legacy
+  // fixture accounts correctly fail current master-account verification.
+  const historic=await loginAs('studentA'),historical=await request('/api/websites/site-surah',{cookie:historic});assert.equal(historical.status,200,JSON.stringify(historical.body));
+  const grant=await loginAs('studentB');assert.equal((await request('/api/websites/site-surah',{cookie:grant})).status,200);assert.equal((await request('/api/websites/site-course',{cookie:grant})).status,403);
+  const switched=await loginAs('studentA',cookie);assert.equal((await request('/api/me',{cookie:switched})).body.accountId,access.student);assert.equal((await request('/api/me',{cookie})).status,401);
   t.diagnostic(JSON.stringify({routineAcademyQueries:0,verificationSeconds:[43200,43200,60],newAuthenticationService:false}));
  }finally{await f.close();}
 });

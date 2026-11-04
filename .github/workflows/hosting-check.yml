@@ -55,7 +55,8 @@ jobs:
       - name: Test SaaS, static isolation, read budgets and current permissions using synthetic data
         working-directory: Studio
         run: |
-          node --test --test-concurrency=1 tests/studio-saas.test.mjs tests/deployment-origin-config.test.mjs tests/website-routing.test.mjs tests/website-launch.test.mjs tests/academy-origins.test.mjs tests/parallel-access.test.mjs tests/access-catalogue.test.mjs tests/course-policy.test.mjs tests/monthly-media-collection.test.mjs tests/private-playlist-reference-monthly-proxy.test.mjs tests/reader-bootstrap.test.mjs tests/dashboard-studio-join-paired.test.mjs tests/read-budgets.test.mjs 2>&1 | tee .build/studio-saas/studio-tests.log
+          node --test --test-concurrency=1 tests/studio-saas.test.mjs 2>&1 | tee .build/studio-saas/saas-tests.log
+          node --test --test-concurrency=1 tests/deployment-origin-config.test.mjs tests/website-routing.test.mjs tests/website-launch.test.mjs tests/academy-origins.test.mjs tests/parallel-access.test.mjs tests/access-catalogue.test.mjs tests/course-policy.test.mjs tests/monthly-media-collection.test.mjs tests/private-playlist-reference-monthly-proxy.test.mjs tests/reader-bootstrap.test.mjs tests/dashboard-studio-join-paired.test.mjs tests/read-budgets.test.mjs 2>&1 | tee .build/studio-saas/studio-tests.log
       - name: Test unchanged Academy portal and Hifz boundaries without importing Studio UI
         working-directory: Academy
         run: |

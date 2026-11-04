@@ -34,6 +34,8 @@ The public Pages project is a file source, not a sign-in or preview entry for us
 
 Run the registered hosting-check.yml workflow against this feature branch, with exact reviewed Academy SHA dded14ffbfac5f27e157253e397b3b4e96bf6ecd. It prepares static Pages bytes and a complete Worker candidate, validates the actual Wrangler config/types and dry-run bundle, and tests the existing Academy/Studio implementation with synthetic data. It does not run the Academy portal importer, use production secrets, deploy, execute hosted SQL or write files to the owner's Mac.
 
+Deployment keeps the existing 2026-10-28 compatibility date. The pinned synthetic test runtime supports 2026-09-28 and is used consistently with the existing paired tests; those tests do not prove newer runtime-specific behaviour. The actual configuration and bundle also receive Wrangler types/dry-run validation.
+
 Source settings: config/studio-saas.json. Current settings remain in wrangler.production.jsonc. The preparation derives unchanged D1/R2 bindings and existing verification limits from that file. It generates ignored artifacts under .build/studio-saas only on the disposable runner; do not commit generated website copies or release-specific Wrangler files.
 
 The generated activation-plan.json is an inactive checklist, not an executable deployment. The production config/main entry are untouched by this branch.
