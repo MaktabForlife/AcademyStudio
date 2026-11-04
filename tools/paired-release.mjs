@@ -14,7 +14,21 @@ const repos={source:resolve(root,scope.source),target:resolve(root,scope.studio)
 const jobs={source:{cwd:resolve(repos.source,'backend'),config:'wrangler.jsonc',account:'c9a3e355b3d7a795880b1d36a1dbe123',profile:'default',worker:'devrebootworker'},target:{cwd:repos.target,config:'wrangler.production.jsonc',account:'2b01ca929611669e032703ff19f7098f',profile:'academy-studio',worker:'academy-studio-parallel'}};
 async function manifest(dir){const rows={};async function walk(folder){for(const e of await readdir(folder,{withFileTypes:true})){assert(!e.isSymbolicLink());const p=resolve(folder,e.name);if(e.isDirectory())await walk(p);else rows[relative(dir,p)]=sha(await readFile(p));}}await walk(dir);return Object.fromEntries(Object.entries(rows).sort(([a],[b])=>a.localeCompare(b)));}
 const tokens={};let managementRequests=0;
-async function api(side,path){tokens[side]??=process.env[side==='source'?'CLOUDFLARE_SOURCE_API_TOKEN':'CLOUDFLARE_STUDIO_API_TOKEN']||(await readFile(resolve(homedir(),'.wrangler/config',jobs[side].profile+'.toml'),'utf8')).match(/oauth_token\s*=\s*"([^"]+)"/)?.[1];assert(tokens[side]);managementRequests++;const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+jobs[side].account+path,{headers:{Authorization:'Bearer '+tokens[side]},signal:AbortSignal.timeout(30000)}),v=await r.json();if(!r.ok||!v.success)throw Error('Cloudflare management '+r.status+' '+JSON.stringify(v.errors));return v.result;}
+async function api(side,path){
+ tokens[side]??=process.env[side==='source'?'CLOUDFLARE_SOURCE_API_TOKEN':'CLOUDFLARE_STUDIO_API_TOKEN']||(await readFile(resolve(homedir(),'.wrangler/config',jobs[side].profile+'.toml'),'utf8')).match(/oauth_token\s*=\s*"([^"]+)"/)?.[1];
+ assert(tokens[side]);
+ for(let attempt=0;attempt<4;attempt++){
+  managementRequests++;
+  const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+jobs[side].account+path,{headers:{Authorization:'Bearer '+tokens[side]},signal:AbortSignal.timeout(30000)}),v=await r.json();
+  if(r.ok&&v.success)return v.result;
+  const delay=[2000,5000,10000][attempt];
+  if(r.status===404&&v.errors?.some(e=>e.code===100146)&&/^\/workers\/scripts\/[^/]+\/versions\/[a-f0-9-]{36}$/.test(path)&&delay){
+   console.log(JSON.stringify({managementRetry:true,side,path,delayMs:delay,reason:'New Worker version not visible yet'}));
+   await new Promise(done=>setTimeout(done,delay));continue;
+  }
+  throw Error('Cloudflare management '+side+' '+path+' '+r.status+' '+JSON.stringify(v.errors));
+ }
+}
 async function run(side,args,label){const j=jobs[side],cloudToken=process.env[side==='source'?'CLOUDFLARE_SOURCE_API_TOKEN':'CLOUDFLARE_STUDIO_API_TOKEN'];if(cloudToken){const clean=[];for(let i=0;i<args.length;i++){if(args[i]==='--profile'){i++;continue;}clean.push(args[i]);}args=clean;}let log='';const code=await new Promise((done,reject)=>{const child=spawn(process.execPath,[resolve(j.cwd,'node_modules/wrangler/bin/wrangler.js'),...args],{cwd:j.cwd,env:{...process.env,...(cloudToken?{CLOUDFLARE_API_TOKEN:cloudToken}:{}),CI:'true',CLOUDFLARE_ACCOUNT_ID:j.account,WRANGLER_SEND_METRICS:'false',WRANGLER_LOG_PATH:resolve(out,'wrangler-'+label+'.log')},stdio:['ignore','pipe','pipe']});child.stdout.on('data',b=>log+=b);child.stderr.on('data',b=>log+=b);child.on('error',reject);child.on('close',done);});for(const [key,value]of Object.entries(process.env))if(/(?:TOKEN|SECRET|PASSWORD)$/.test(key)&&value&&value.length>=8)log=log.split(value).join('[REDACTED]');await writeFile(resolve(out,label+'.log'),log,{mode:0o600});if(code!==0)process.stderr.write(log.slice(-8000)+'\n');assert.equal(code,0,label+' failed; inspect saved redacted log');return log;}
 async function absent(file){try{await readFile(resolve(out,file));throw Error(file+' already exists; inspect before repeating');}catch(e){if(e.code!=='ENOENT')throw e;}}
 async function verifyFreeze(plan){for(const [path,expected]of Object.entries(plan.manifests))assert.deepEqual(await manifest(resolve(root,path)),expected,path+' changed since freeze');for(const [path,expected]of Object.entries(plan.configHashes))assert.equal(sha(await readFile(resolve(root,path))),expected,path+' config changed');for(const [side,repo]of Object.entries(repos)){assert.equal(execFileSync('git',['rev-parse','HEAD'],{cwd:repo,encoding:'utf8'}).trim(),plan.candidates[side].commit);assert.equal(execFileSync('git',['status','--porcelain'],{cwd:repo,encoding:'utf8'}).trim(),'');}}
