@@ -1,4 +1,5 @@
 import {coursePlaylistRead,coursePlaylistSave,coursePlaylistContentSave,coursePlaylistPublish} from './course-playlist-workflow.mjs';
+import {savePlaylistReferences} from './private-playlist-reference.mjs';
 import {cardOptions,uploadCover,previewCover} from './playlist-cards.mjs';
 import {academyAuthority} from './access.mjs';
 import {signedInput,receive} from './integration.mjs';
@@ -10,7 +11,7 @@ import {playlistTable,playlistCorrection,savePlaylist,playlistPublication,playli
 import {monthlyGrid,saveMonthlyGrid,accessTable,saveAccessTable} from './access-tables.mjs';
 
 // Read views retain scoped Admin authority but use the ordinary verification age.
-export const readAccessAction=action=>['read','monthly-grid','access-table','mou-playlists','course-playlists','course-playlist-detail','course-playlist-candidates','course-playlist-recording'].includes(action);
+export const readAccessAction=action=>['read','monthly-grid','access-table','mou-playlists','course-playlists','course-playlist-detail','course-playlist-candidates','course-playlist-recording','existing-playlist-review'].includes(action);
 const revisionSQL='COALESCE((SELECT revision FROM access_revisions WHERE offering_id=?),0)=?';
 const revision=async(store,offer)=>(await store.first('SELECT revision FROM access_revisions WHERE offering_id=?',[offer]))?.revision||0;
 
@@ -29,7 +30,8 @@ export async function studioAccess(request,env,store,fetcher,{coverOnly=false}={
  await store.run('INSERT INTO sessions VALUES(?,?,?,?,0,?) ON CONFLICT(token_hash) DO UPDATE SET expires_at=excluded.expires_at WHERE sessions.revoked=0 AND sessions.epoch=excluded.epoch',[tokenHash,accountId,integer(proof.epoch),proof.expiresAt,proof.sourceRef]);
  const actor=await store.actor(tokenHash);if(actor.account_id!==accountId||actor.epoch!==proof.epoch||actor.source_ref!==proof.sourceRef)throw fail('Your administrator account changed.',401);
  const offer=id(input.offeringId),command=input.command||{};if(!command.action?.startsWith('handover-'))await store.scope(actor,offer,{admin:true,readOnly:readAccessAction(command.action)});let result;
- if(['course-playlists','course-playlist-detail','course-playlist-options','course-playlist-candidates','course-playlist-recording'].includes(command.action))result=await coursePlaylistRead(env,store,actor,offer,command,fetcher);
+ if(['course-playlists','course-playlist-detail','course-playlist-options','course-playlist-candidates','course-playlist-recording','existing-playlist-review'].includes(command.action))result=await coursePlaylistRead(env,store,actor,offer,command,fetcher);
+ else if(command.action==='existing-playlist-save')result=await savePlaylistReferences(env,store,actor,offer,command);
  else if(command.action==='course-playlist-save')result=await coursePlaylistSave(env,store,actor,offer,command,fetcher);
  else if(command.action==='course-playlist-content-save')result=await coursePlaylistContentSave(store,actor,offer,command);
  else if(['course-playlist-publish-card','course-playlist-publish-content'].includes(command.action))result=await coursePlaylistPublish(env,store,actor,offer,command,fetcher);

@@ -1,4 +1,5 @@
 import {fail,id,text,integer} from './protocol.mjs';
+import {reviewPlaylistReferences} from './private-playlist-reference.mjs';
 import {academyCommand} from './academy-client.mjs';
 import {newCourse} from '../public/shared/model.mjs';
 import {saveContent,websiteAccess} from './content.mjs';
@@ -25,6 +26,7 @@ function contentStatements(store,key,stage,values){return [store.statement('DELE
 
 export async function coursePlaylistRead(env,store,actor,offer,input={},fetcher){
  await scope(store,actor,offer,true);const start=await revision(store,offer);
+ if(input.action==='existing-playlist-review')return reviewPlaylistReferences(env,store,actor,offer,input);
  if(input.action==='course-playlist-options')return locations(env,store,actor,offer,{after:input.after||'',...(input.activityKey?{activityKey:input.activityKey}:{})},fetcher,{readOnly:true});
  if(input.action==='course-playlist-detail'){
   if(input.websiteId||input.unassigned){const collection=await existingMediaDetail(env,store,offer,input);if(start!==await revision(store,offer))throw fail('The Course changed. Refresh it.',409,'CHANGE_CONFLICT');return {collection,revision:start};}

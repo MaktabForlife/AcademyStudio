@@ -1,11 +1,22 @@
 // One reviewed user action; bounded existing guarded reference writes underneath.
 export function collectionPlan(review,playlistId){
+ if(review?.schema==='EXISTING_PLAYLIST_REFERENCES_V1'){
+  if(!review.canAttach||review.unresolved?.length||(!review.recordings?.length&&!review.pdfs?.length)||review.recordings.length>50||review.pdfs.length>10||new Set(review.recordings.map(row=>row.attachmentId)).size!==review.recordings.length)throw Error('Resolve every source recording and PDF before attaching this playlist.');
+  return {review:structuredClone(review),playlistId,items:review.recordings.map(row=>({id:row.attachmentId})),pdfs:review.pdfs.map(row=>({id:row.attachmentId,assetId:row.assetId})),batchOperation:crypto.randomUUID(),batchPending:null,complete:false};
+ }
  if(review?.schema!=='EXISTING_MOU_COLLECTION_V1'||!review.canAttach||review.unresolved?.length||!review.recordings?.length||review.recordings.length>50||review.pdfs.length>10||new Set(review.recordings.map(row=>row.attachmentId)).size!==review.recordings.length)throw Error('Resolve every source recording and PDF before attaching this playlist.');
  return {review:structuredClone(review),playlistId,items:review.recordings.map(row=>({id:row.attachmentId,operationId:crypto.randomUUID(),pending:null,complete:false})),pdfs:review.pdfs.map(row=>({id:row.attachmentId,assetId:row.assetId,attachmentId:crypto.randomUUID(),operationId:crypto.randomUUID(),pending:null,complete:false})),complete:false};
 }
 export function attachCollection(options){const {plan}=options;if(plan.running)return plan.running;plan.running=runCollection(options).finally(()=>{plan.running=null;});return plan.running;}
 async function runCollection({plan,api,path,current=()=>{},progress=()=>{}}){
  current();
+ if(plan.batchOperation){
+  if(!plan.batchPending){const table=await api(path+'/playlists?playlist='+encodeURIComponent(plan.playlistId));current();const target=table.playlists.find(row=>row.id===plan.playlistId&&!row.legacy);if(!target||target.enabled)throw Error('Choose a private target playlist.');plan.batchPending={action:'existing-playlist-save',operationId:plan.batchOperation,playlistId:plan.playlistId,websiteId:plan.review.websiteId,reviewHash:plan.review.reviewHash,revision:table.revision,playlistRevision:target.revision,websiteRevision:target.websiteRevision};}
+  await api(path,{body:plan.batchPending});current();
+  const checked=await api(path+'/playlists?playlist='+encodeURIComponent(plan.playlistId));current();
+  if(!checked.playlists.some(row=>row.id===plan.playlistId&&!row.enabled)||!plan.items.every(item=>checked.items?.some(row=>row.attachmentId===item.id))||!plan.pdfs.every(item=>checked.pdfs?.some(row=>row.assetId===item.assetId)))throw Error('The private playlist references need verification. Retry this same save.');
+  plan.complete=true;progress(plan.items.length,plan.items.length);return {recordings:plan.items.length,pdfs:plan.pdfs.length,private:true};
+ }
  // Each group is at most eight references. A failed/uncertain item stops the
  // run; retry keeps its exact command/operation before proceeding.
  for(let offset=0;offset<plan.items.length;offset+=8){
