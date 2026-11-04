@@ -35,6 +35,10 @@ test('Pages clean URLs never redirect the browser to the service address; outage
  for(const fetcher of [async()=>{throw Error('Offline');},async()=>new Response(null,{status:301,headers:{Location:pages+'/unexpected'}})])assert.equal((await pagesAsset(new Request(root+'/studio/'),env,fetcher)).status,503);
  const file=Object.keys(manifest.manifest).find(path=>path.endsWith('.css'));
  const wrong=await pagesAsset(new Request(root+'/'+file),env,async()=>new Response('<html>Fallback</html>',{headers:{'Content-Type':'text/html'}}));assert.equal(wrong.status,404);
+ for(const status of [404,429,500,503]){
+  const unavailable=await pagesAsset(new Request(root+'/'+file),env,async()=>new Response('unavailable',{status}));
+  assert.equal(unavailable.status,status===404?404:503);assert.equal(unavailable.headers.get('Cache-Control'),'no-store');
+ }
  const head=await pagesAsset(new Request(root+'/studio/',{method:'HEAD'}),env,async()=>new Response(null,{headers:{'Content-Type':'text/html'}}));assert.equal(await head.text(),'');
  const unchanged=await pagesAsset(new Request(root+'/'+file),env,async()=>new Response(null,{status:304,headers:{ETag:'"asset"'}}));assert.equal(unchanged.status,304);assert.equal(unchanged.headers.get('ETag'),'"asset"');
 });

@@ -28,6 +28,8 @@ export async function pagesAsset(request,env,fetcher=fetch){
  let source;
  try{source=await fetcher(new Request(target,{method:request.method,headers,redirect:'manual'}));}catch{return failure();}
  if(source.status>=300&&source.status<400&&source.status!==304)return failure();
+ // A missing file or transient origin error must never inherit immutable caching.
+ if(!source.ok&&source.status!==304)return failure(source.status===404?404:503);
  if(source.ok&&!file.endsWith('.html')&&source.headers.get('Content-Type')?.includes('text/html'))return failure(404);
  const response=new Response(request.method==='HEAD'?null:source.body,source);
  response.headers.delete('Set-Cookie');
