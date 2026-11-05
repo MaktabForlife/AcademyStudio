@@ -45,7 +45,7 @@ jobs:
         timeout-minutes: 3
         run: |
           mkdir -p .build/jwt-v110-stage2
-          node --test --test-reporter=tap --test-concurrency=1 tests/jwt-v110-stage2.test.mjs tests/jwt-v110-native-rights.test.mjs 2>&1 | tee .build/jwt-v110-stage2/tests.log
+          node --test --test-reporter=tap --test-concurrency=1 tests/jwt-v110-stage2.test.mjs tests/jwt-v110-native-rights.test.mjs tests/jwt-v110-account-bound.test.mjs 2>&1 | tee .build/jwt-v110-stage2/tests.log
           git diff --exit-code
           node --input-type=module -e "import {writeFileSync} from 'node:fs'; writeFileSync('.build/jwt-v110-stage2/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,run:process.env.GITHUB_RUN_ID,synthetic:true,productionRequests:0,hostedSQL:0,deployed:false})+'\n');"
       - name: Run current release Studio media and identity test groups
@@ -107,7 +107,7 @@ jobs:
         timeout-minutes: 3
         run: |
           mkdir -p .build/jwt-v110-production-date
-          node --test --test-reporter=tap --test-concurrency=1 tests/jwt-v110-stage2.test.mjs tests/jwt-v110-native-rights.test.mjs 2>&1 | tee .build/jwt-v110-production-date/tests.log
+          node --test --test-reporter=tap --test-concurrency=1 tests/jwt-v110-stage2.test.mjs tests/jwt-v110-native-rights.test.mjs tests/jwt-v110-account-bound.test.mjs 2>&1 | tee .build/jwt-v110-production-date/tests.log
           git diff --exit-code
           node --input-type=module -e "import {writeFileSync} from 'node:fs'; writeFileSync('.build/jwt-v110-production-date/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,academy:'9b197fafbdd80859ceb9028203c48480455c843f',run:process.env.GITHUB_RUN_ID,compatibilityDate:'2026-10-28',synthetic:true,completeApplicationParity:false,productionRequests:0,hostedSQL:0,deployed:false})+'\n');"
       - name: Preserve production-date synthetic evidence
