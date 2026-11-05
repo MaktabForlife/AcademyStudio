@@ -34,7 +34,7 @@ async function fixture({last=NOW,expiry=NOW+SESSION_SECONDS}={}){
  try{
  const db=await mf.getD1Database('DB','jwt-stage2');
  const schema=await readFile(new URL('../src/auth/v110/schema.sql',import.meta.url),'utf8');
- for(const sql of schema.split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(sql).run();
+ let statement='';for(const part of schema.replace(/--[^\n]*/g,'').split(';')){statement+=part+';';if(/CREATE TRIGGER/i.test(statement)&&! /\sEND;\s*$/.test(statement))continue;if(statement.trim()!==';')await db.prepare(statement).run();statement='';}
  const raw=randomRefresh(),fp=await fingerprint('studio',raw);
  await db.batch([
   db.prepare('INSERT INTO jwt_v110_accounts VALUES(?,1,1,1)').bind(input().sub),
@@ -281,4 +281,48 @@ test('audit failure rolls back the refresh transaction and leaves the original u
  const result=await f.store().refresh(f.raw,{now:NOW+2,foreground:true});assert.equal(result.kind,'rotated');
  measured.auditFailure={transactionRolledBack:true,originalRefreshStillUsable:true,failedStatementBilling:'not inferred from missing failure metadata'};
 });
+
+test('refresh CAS binds the selected identity floors even under a simulated older schema',async()=>{
+ const cases=[
+  ['credential_epoch','UPDATE jwt_v110_accounts SET credential_epoch=2','UPDATE jwt_v110_families SET credential_epoch=2'],
+  ['browser_generation','UPDATE jwt_v110_browser_heads SET generation=2','UPDATE jwt_v110_families SET browser_generation=2'],
+  ['parent_session','SELECT 1',"UPDATE jwt_v110_families SET parent_session_id='other-parent'"],
+  ['original_deadline','SELECT 1','UPDATE jwt_v110_families SET original_signed_in_at_s=original_signed_in_at_s+1,original_expires_at_s=original_expires_at_s+1']
+ ];
+ const evidence=[];
+ for(const [name,first,second] of cases){
+  const f=await fixture();
+  try{
+   // Isolated failure injection only: production schema must retain its fence.
+   await f.db.prepare('DROP TRIGGER jwt_v110_family_binding_immutable').run();
+   const wrapped=afterRefreshLookup(f.db,()=>f.db.batch([f.db.prepare(first),f.db.prepare(second)]));
+   const st=createPrototypeStore(wrapped,{app:'studio'}),result=await st.refresh(f.raw,{now:NOW+1,foreground:true});
+   assert.ok(result.kind!=='rotated'&&!Object.hasOwn(result,'rawSuccessor'));
+   assert.equal(st.metrics.rowsWritten,0);assert.equal((await f.db.prepare('SELECT count(*) n FROM jwt_v110_security_audit').first()).n,0);
+   evidence.push({case:name,successorIssued:false,refreshOrAuditWrites:0});
+  }finally{await f.mf.dispose();}
+ }
+ measured.selectedFloorCAS=evidence;
+});
+test('schema forbids atomic in-place refresh-family rebinding and rolls back the attempted migration',async()=>{
+ const cases=[
+  ['UPDATE jwt_v110_accounts SET credential_epoch=2','UPDATE jwt_v110_families SET credential_epoch=2'],
+  ['UPDATE jwt_v110_browser_heads SET generation=2','UPDATE jwt_v110_families SET browser_generation=2'],
+  ['SELECT 1',"UPDATE jwt_v110_families SET parent_session_id='other-parent'"],
+  ['SELECT 1',"UPDATE jwt_v110_families SET browser_id='another-browser'"],
+  ['SELECT 1','UPDATE jwt_v110_families SET original_signed_in_at_s=original_signed_in_at_s+1,original_expires_at_s=original_expires_at_s+1']
+ ];
+ for(const statements of cases){
+  const f=await fixture();
+  try{
+   let rejected=false;try{await f.db.batch(statements.map(sql=>f.db.prepare(sql)));}catch{rejected=true;}
+   assert.equal(rejected,true,'A refresh family cannot be rebound in place.');
+   const row=await f.db.prepare('SELECT f.credential_epoch,f.browser_generation,f.parent_session_id,f.original_expires_at_s,a.credential_epoch current_credential,b.generation current_browser FROM jwt_v110_families f JOIN jwt_v110_accounts a USING(account_id) JOIN jwt_v110_browser_heads b USING(browser_id)').first();
+   assert.equal(row.credential_epoch,1);assert.equal(row.current_credential,1);assert.equal(row.browser_generation,1);assert.equal(row.current_browser,1);assert.equal(row.parent_session_id,input().psid);assert.equal(row.original_expires_at_s,NOW+SESSION_SECONDS);
+   await f.store().authorize(claimAt(NOW),NOW);
+  }finally{await f.mf.dispose();}
+ }
+ measured.familyRebinding={immutableSchemaFence:true,atomicFailedMigrationRolledBack:true,rule:'revoke old family and create a new secret/family; no in-place identity/floor/deadline update'};
+});
+
 test('non-credential synthetic evidence summary',t=>t.diagnostic('V110_STAGE2_EVIDENCE='+JSON.stringify(measured)));

@@ -27,3 +27,9 @@ CREATE TABLE jwt_v110_security_audit (
  operation_id TEXT PRIMARY KEY, family_id TEXT NOT NULL,
  event_type TEXT NOT NULL, occurred_at_s INTEGER NOT NULL
 );
+
+-- A renewal/PIN/migration may never rebind an old refresh family to new identity
+-- or authority floors. Revoke it and create a new family with a new secret.
+CREATE TRIGGER jwt_v110_family_binding_immutable BEFORE UPDATE OF account_id,parent_session_id,browser_id,browser_generation,credential_epoch,original_signed_in_at_s,original_expires_at_s ON jwt_v110_families
+WHEN NEW.account_id IS NOT OLD.account_id OR NEW.parent_session_id IS NOT OLD.parent_session_id OR NEW.browser_id IS NOT OLD.browser_id OR NEW.browser_generation IS NOT OLD.browser_generation OR NEW.credential_epoch IS NOT OLD.credential_epoch OR NEW.original_signed_in_at_s IS NOT OLD.original_signed_in_at_s OR NEW.original_expires_at_s IS NOT OLD.original_expires_at_s
+BEGIN SELECT RAISE(ABORT,'IMMUTABLE_REFRESH_FAMILY_BINDING'); END;

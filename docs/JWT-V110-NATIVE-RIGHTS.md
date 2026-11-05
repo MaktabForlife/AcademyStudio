@@ -47,3 +47,9 @@ The standard named paired regression groups remain in the workflow. All tests/bu
 - Prove owning-database outbox atomicity, acknowledgements/retries, replay floors through rollback, and bounded retention/cleanup costs.
 - Compare matched full requests/costs and run exact paired Academy/Studio plus scoped Hifz and real browser checks on the latest canonical baseline.
 - Review concrete staged schema/config/key/hostname cutover and rollback, then deploy the first JWT release as V110.
+
+## Follow-up from optimisation's next-stage review
+
+The source refresh CAS now independently binds the selected account, parent session, browser identity/generation, credential epoch and original sign-in/deadline. A schema trigger forbids rebinding those fields in an existing family: migrations and credential/browser changes must revoke/create a new family and random secret. Tests simulate an older schema by dropping only the isolated fixture trigger and changing both sides before CAS, and separately prove the production-proposed trigger rolls back attempted in-place migration. PIN unlock/admission must not retain an old refresh secret; their adapters are still unimplemented.
+
+The first native run41977691734 passed27of28cases on both runtimes. The remaining test exposed a harness mistake: direct native Store calls were missing their test D1 binding. The next fixture supplies that binding and rethrows unexpected harness errors; no access expectation is relaxed. Historical failed artifacts remain available.

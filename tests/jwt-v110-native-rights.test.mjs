@@ -99,10 +99,10 @@ async function restoreRows(db,account,r){
 async function policyMatrix(f,account){
  const actor=await f.db.prepare('SELECT * FROM accounts WHERE account_id=?').bind(account).first(),out={};
  for(const website of ['site-course','site-surah','site-playlist']){
-  try{await websiteAccess(new Store(f.env),actor,website);out['website:'+website]='allowed';}catch(e){out['website:'+website]=e.code||e.status;}
+  try{await websiteAccess(new Store({...f.env,DB:f.db}),actor,website);out['website:'+website]='allowed';}catch(e){if(!e.code&&!e.status)throw e;out['website:'+website]=e.code||e.status;}
  }
  for(const media of ['record-course','record-historical','record-other-cohort']){
-  try{await mediaGate(new Store(f.env),actor,media);out['media:'+media]='allowed';}catch(e){out['media:'+media]=e.code||e.status;}
+  try{await mediaGate(new Store({...f.env,DB:f.db}),actor,media);out['media:'+media]='allowed';}catch(e){if(!e.code&&!e.status)throw e;out['media:'+media]=e.code||e.status;}
  }
  for(const paidOnly of [true,false]){
   const clause=playlistEntitlementSQL({paidOnly,month:"'2024-03'"});
