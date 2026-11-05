@@ -108,6 +108,21 @@ test('native frontend hooks clear across three real origins and keep suspended/m
  }
  // This models an already completed Master sign-in via the actual control
  // module; it is not a test of the still-pending JWT issuer/PIN/admission.
+ // Empty/blocked contexts must expose only the real Academy credential
+ // dialog. The pre-existing workspace stays masked throughout re-entry.
+ async function publicPinSurface(tab){
+  await masked(tab);
+  await until(()=>c.evaluate(tab,'Boolean(window.M4L_ACADEMY_LOGIN?.openPublicSignIn)&&Boolean(document.querySelector("[data-uaa-open-sign-in]"))'),'Public Academy sign-in action missing.');
+  await c.evaluate(tab,'document.getElementById("academy-header-name").textContent="Synthetic previous account";document.querySelector("[data-uaa-open-sign-in]").click();true');
+  await until(()=>c.evaluate(tab,'document.getElementById("academy-login-dialog").open'),'The actual native PIN dialog did not open.');
+  const ui=await c.evaluate(tab,'({masked:document.documentElement.classList.contains("uaa-v110-masked"),pinVisible:getComputedStyle(document.getElementById("demo-pin")).visibility==="visible",formVisible:!document.getElementById("login-preview").hidden,workspaceHidden:getComputedStyle(document.getElementById("academy-home-card")).visibility==="hidden",nameHidden:getComputedStyle(document.getElementById("academy-header-name")).visibility==="hidden",pinBlank:document.getElementById("demo-pin").value==="",nameBlank:document.getElementById("academy-header-name").textContent===""})');
+  assert.deepEqual(ui,{masked:true,pinVisible:true,formVisible:true,workspaceHidden:true,nameHidden:true,pinBlank:true,nameBlank:true});
+  await c.call('Target.closeTarget',{targetId:tab.id});
+ }
+ sites.state.denied=true;const empty=await page('academy',sites.origins.academy+'/academy/#login');await publicPinSurface(empty);
+ sites.state.denied=false;
+ await c.evaluate(setup,'(async()=>{const{createBrowserControl}=await import("/auth/v110/browser-control-relay.mjs");const control=createBrowserControl({storage:localStorage,exclusive:fn=>navigator.locks.request("uaa-v110-ui-control",fn)});await control.clear("logout");return true;})()');
+ const blocked=await page('academy',sites.origins.academy+'/academy/#login');await publicPinSurface(blocked);
  await establish();
  const a=await page('academy',sites.origins.academy+'/academy/#probe');await ready(a);assert.ok((await c.evaluate(a,"document.getElementById('academy-header-name').textContent")).includes('alice'));
  const b=await page('studio',sites.origins.studio+'/studio/');await ready(b);assert.ok((await c.evaluate(b,"document.getElementById('account-name').textContent")).includes('alice'));
@@ -157,6 +172,6 @@ test('native frontend hooks clear across three real origins and keep suspended/m
  await establish();
  const control=await page('studio',sites.origins.studio+'/studio/');await ready(control);
  const broken=await page('studio',sites.origins.studio+'/studio/',{brokenStorage:true});await sleep(4500);await masked(broken);
- const result={browser:version,origins:3,actualFrontends:{academy:'workspace sign-in controller and real markup; other controllers excluded',studio:'reader app/native API',hifz:'full page/native scripts/API'},nativeResponses:'synthetic, including context; actual native Worker context producer tested separately',masterIssuerOrPINProved:false,HifzLiveReads:2,HifzRevisionsDistinct:true,extraContextOrAcademyAPIReadsForThoseQueries:0,activeStudioCleared:true,oldNativeSessionsRemainValidInFixture:true,lateOldNativeResponsePainted:false,frozenHifzResumeMasked:true,historyReturnMasked:true,providerFrameControlState:partition.result.value,providerMasked:true,positiveControlBeforeStorageFailure:true,brokenStorageMasked:true,forgedMessageCannotReveal:true,hostedSQL:0,liveDBChanges:0,productionRequests:0,completeJWTOrMediaCutover:false};
+ const result={browser:version,origins:3,actualFrontends:{academy:'workspace sign-in controller and real markup; other controllers excluded',studio:'reader app/native API',hifz:'full page/native scripts/API'},nativeResponses:'synthetic, including context; actual native Worker context producer tested separately',masterIssuerOrPINProved:false,emptyContextNativePINUIReachable:true,blockedContextNativePINUIReachable:true,previousWorkspaceRemainsMaskedDuringPINEntry:true,HifzLiveReads:2,HifzRevisionsDistinct:true,extraContextOrAcademyAPIReadsForThoseQueries:0,activeStudioCleared:true,oldNativeSessionsRemainValidInFixture:true,lateOldNativeResponsePainted:false,HifzAlreadyHiddenBeforeFreeze:true,frozenHifzResumeMasked:true,firstResumedPaintOrVisibleFreezeProved:false,historyReturnMasked:true,measuredBFCacheRestoration:false,providerFrameControlState:partition.result.value,providerMasked:true,positiveControlBeforeStorageFailure:true,brokenStorageMasked:true,forgedMessageCannotReveal:true,hostedSQL:0,liveDBChanges:0,productionRequests:0,completeJWTOrMediaCutover:false};
  await mkdir('.build/jwt-v110-native-browser',{recursive:true});await writeFile('.build/jwt-v110-native-browser/browser.json',JSON.stringify(result,null,2)+'\n');t.diagnostic('V110_NATIVE_BROWSER='+JSON.stringify(result));
 });
