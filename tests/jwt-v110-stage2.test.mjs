@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {generateKeyPair,exportJWK,SignJWT} from 'jose';
-import {Miniflare} from 'miniflare';
+import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
 import {createAccessEngine,accessCookie,refreshCookie,cookieSizeReport,parseUniqueCookie,SESSION_SECONDS} from '../src/auth/v110/claims.mjs';
 import {createPrototypeStore,randomRefresh,fingerprint} from '../src/auth/v110/store.mjs';
 assert.equal(process.env.GITHUB_ACTIONS,'true','Run this prototype only on a disposable GitHub runner.');
@@ -28,8 +28,8 @@ async function rejected(promise,code){
  if(code)assert.ok(error.code===code,'Unexpected sanitized error code.');
 }
 async function fixture({last=NOW,expiry=NOW+SESSION_SECONDS}={}){
- const mf=new Miniflare({modules:true,script:'export default {fetch(){return new Response("synthetic")}}',compatibilityDate:'2026-10-28',d1Databases:['DB']});
- const db=await mf.getD1Database('DB');
+ const mf=new Miniflare(convertV4MiniflareOptions({workers:[{name:'jwt-stage2',modules:true,script:'export default {fetch(){return new Response("synthetic")}}',compatibilityDate:'2026-10-28',d1Databases:{DB:'jwt-stage2-synthetic'}}]}));
+ const db=await mf.getD1Database('DB','jwt-stage2');
  const schema=await readFile(new URL('../src/auth/v110/schema.sql',import.meta.url),'utf8');
  for(const sql of schema.split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(sql).run();
  const raw=randomRefresh(),fp=await fingerprint('studio',raw);
