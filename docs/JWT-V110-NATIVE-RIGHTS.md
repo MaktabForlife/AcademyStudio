@@ -1,5 +1,7 @@
 # V110 native-rights and runtime proof — proposed contract
 
+**Current decision:** Studio uses one compact identity/session JWT with current native material checks. This supersedes the full-rights and split-category-cookie alternatives below. The retained native-codec and full-rights tests are historical capacity/preservation research; they are not selected production code. See `JWT-V110-STUDIO-COMPACT.md`. Database/deployment holds remain in force.
+
 This independent candidate starts from Studio `33af7a5a20f7dd90ebd745d223e9398cc0c185c3` and uses Academy `9b197fafbdd80859ceb9028203c48480455c843f` for paired fixtures. These are the canonical V109.23 recovery sources selected by optimisation. The separate release owns their activation and receipt. This candidate does not change a live route, numbered migration, configuration, public asset, canonical branch or deployed app.
 
 The previous accepted crypto/storage proof and its follow-up remain in `docs/JWT-V110-STAGE2-REVIEW.md`. The new modules are independent representation tests, not production authentication integration.

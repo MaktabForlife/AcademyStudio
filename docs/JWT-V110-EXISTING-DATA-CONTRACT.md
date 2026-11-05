@@ -1,5 +1,17 @@
 # V110: existing databases and identity links — read-only contract
 
+## Current Studio decision — 5 November 2026
+
+The owner explicitly selected **one compact Studio access JWT**. This supersedes embedding every Studio grant and the proposed separate Tafseer/MOU/Course-cookie experiment. The split experiment was stopped before any remote commit or test run; there are no split-cookie results to report.
+
+Studio keeps its own signing key, issuer/audience and access/opaque-refresh family. Existing Academy programme/role claims and Hifz's independent identity/live native checks are unchanged by this Studio choice. No live database, identity link, copied profile field, sync, authority, config or deployment change is authorised. The database/deployment holds remain controlling.
+
+The access token contains existing user/family/parent/browser bindings, credential/unlock/policy versions, original sign-in/deadline, issued/expiry times and token ID, plus an exact identity-format marker. It contains **no Tafseer, Surah, MOU or Course grant list**. Studio uses the requested resource's current indexed native rights and metadata in the same Studio Worker flow. Existing Course FREE policy permits eligible signed-in readers without a paid grant; private/unpublished/admin/Source/class/Join checks retain their own rules.
+
+Access remains at most15minutes; refresh ends at the original absolute7days; only that app's qualifying foreground refresh advances its independent90-minute lock. Logout/switch, reset/suspicious cancellation, versioned durable notifications and separate keys keep their agreed semantics. Compact selection does not approve a browser-switch mechanism or storage migration.
+
+
+
 ## Current owner instruction
 
 On 5 November the owner clarified that the remembered name/ID/WhatsApp/role copies explain how the same person is linked across apps. They are not an instruction to restructure databases, remove existing copies, move data ownership or change identity links.
@@ -126,3 +138,5 @@ The source-map stage at `49725157e2c1d7f07d3d349e17c0b661b86bf31c` is accepted w
 3. **Profile delivery count is not a JWT cancellation receipt.** [Hifz's existing receiver](https://github.com/MaktabForlife/Hifz/blob/ba0ea53f23b933b0c175c87fe41788df74afbb2f/worker/src/academy-profile-sync.js#L60) deliberately no-ops stale/equal source revisions and returns `accepted: profiles.length`. That count does not prove each profile was newly applied or that a browser/session was cancelled. A future versioned cancellation ACK must prove the required persisted security floor/version, including idempotent duplicates, while preserving current profile/reset/link compatibility. Do not reinterpret the existing profile ACK or treat it as browser logout.
 
 No new runtime test is claimed for this documentation-only clarification. The accepted prepared-issuer evidence remains `c35f4847edc2f674a03eaf2553095087dfee2b92` / run41994428162. Writer coverage, installed hooks, token capacity/model, real browser/route/lifecycle parity and concrete live effects remain unresolved as recorded above.
+
+The earlier full-rights capacity/model questions in historical proof sections are superseded by the owner’s compact Studio selection above. Historical full-rights code/tests remain retained research, not the selected integration format. Material access follows current native data; no grant-export fanout is installed. Previously agreed subscription-triggered silent token replacement remains a separate event-policy obligation to map, not permission to create a per-person grant-export counter or mutate live writers. Prototype pv remains an isolated security/policy-version binding; its owning event map and actual outbox effects are not installed.
