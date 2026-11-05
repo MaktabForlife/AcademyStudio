@@ -138,3 +138,14 @@ The background refresh test now reads __Host-uas_r from the request Cookie heade
 The outer PLATFORM_ENABLED gate is tested at503 before identity/resource work. Unexpected binding/config failures are caught inside the privacy wrapper and return a sanitized, uncached503. Source writes remain unsupported and fail closed at405 before native Store.guard/mutate; no legacy token_hash is manufactured for a compact actor.
 
 These tests do not establish late/mixed/lost cookie recovery, browser clearing/paint/BFCache/privacy,304/Range, actual security event hooks, Source mode or complete HTTP entry parity. The agreed memory-cache policy remains a policy, not implemented client code. The database/deployment holds remain controlling. New source results will be attached to the next immutable test run; existing330executions remain evidence only for915253dc.
+
+
+### Completed HTTP follow-up evidence
+
+Runtime/test commit `cf5d7289d4e24f51bd318aa46a2b803b27168abc`, [run42023472231](https://github.com/MaktabForlife/AcademyStudio/actions/runs/42023472231), passed59cases in each CI job mode plus212named paired regressions:330case executions,0failure/cancel/skip. The job/runtime qualification above remains: direct Node/setup() fixtures include legacy Miniflare; the bundled Worker uses the selected compatibility-date runtime.
+
+The expanded Worker case checks13HTTP boundary denials, not13new top-level tests. All13 have private,no-store and nosniff, allowlisted bodies and0Set-Cookie headers. Twelve fail before any D1/R2 work; an already-used previous refresh cookie returns409in_progress after1read statement/3rows,0writes. They cover missing/invalid/duplicate/partial credentials, unconfigured request origin, unsupported PATCH, refresh Origin rejection, old refresh reuse, disabled platform and unexpected binding failure. Successful refresh returns only kind/metrics plus2Studio cookies; ordinary matched success/denial/cancelled responses are also asserted uncached and release no cookies.
+
+Production-date job127231775851/artifact13412807604 API-reported SHA256 `3440c81b141d51b8c096c3161c4b66804705e0a8b7df12170732394f2b79b5a9`; prototype job127231776415/artifact13413006955 API-reported SHA256 `2a63ee4b994956442ef090e21222428061ff90927d48d4ac50116207a5676707`.
+
+No application-source handler, schema, real DB/data/link/sync, config/cache resource or deployment changed. This closes only the tested representative HTTP privacy behavior. No browser-cache implementation, session-bound CSRF, foreground admission, Source/writer/304/Range/lifecycle/switch/cutover clearance is claimed.
