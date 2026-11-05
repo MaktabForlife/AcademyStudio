@@ -116,7 +116,8 @@ test('matched native and compact GETs execute the same private website route and
   return {contents:code,loader:'js',resolveDir:new URL('../src/',import.meta.url).pathname};
  });}}]});
  const testRefresh=randomRefresh();
- const mf=new Miniflare(convertV4MiniflareOptions({workers:[{name:'compact-native-route-lab',modules:true,script:bundle.outputFiles[0].text,compatibilityDate,compatibilityFlags:['nodejs_compat'],bindings:{PLATFORM_ENABLED:'1',ENVIRONMENT:'local',AUTHORITY_MODE:'WEBSITE',WEBSITE_ORIGIN:'https://website.test',ACADEMY_ORIGIN:'https://academy.test',ACCOUNT_MAX_AGE_SECONDS:'43200',ADMIN_MAX_AGE_SECONDS:'60',STUDIO_ISSUER:issuer,STUDIO_PUBLIC:pub,STUDIO_PRIVATE:await exportJWK(pair.privateKey),TEST_REFRESH:testRefresh,TEST_NOW:now},d1Databases:{DB:'matched-compact-lab'},r2Buckets:{CONTENT:'matched-compact-content',MEDIA:'matched-compact-media'}}]}));t.after(()=>mf.dispose());
+ const mainConfig={name:'compact-native-route-lab',modules:true,script:bundle.outputFiles[0].text,compatibilityDate,compatibilityFlags:['nodejs_compat'],bindings:{PLATFORM_ENABLED:'1',ENVIRONMENT:'local',AUTHORITY_MODE:'WEBSITE',WEBSITE_ORIGIN:'https://website.test',ACADEMY_ORIGIN:'https://academy.test',ACCOUNT_MAX_AGE_SECONDS:'43200',ADMIN_MAX_AGE_SECONDS:'60',STUDIO_ISSUER:issuer,STUDIO_PUBLIC:pub,STUDIO_PRIVATE:await exportJWK(pair.privateKey),TEST_NOW:now},d1Databases:{DB:'matched-compact-lab'},r2Buckets:{CONTENT:'matched-compact-content',MEDIA:'matched-compact-media'}};
+ const mf=new Miniflare(convertV4MiniflareOptions({workers:[mainConfig,{...mainConfig,name:'compact-disabled-lab',bindings:{...mainConfig.bindings,PLATFORM_ENABLED:'0'}},{...mainConfig,name:'compact-misconfigured-lab',r2Buckets:{}}]}));t.after(()=>mf.dispose());
  const db=await mf.getD1Database('DB','compact-native-route-lab'),content=await mf.getR2Bucket('CONTENT','compact-native-route-lab');await applyTargetSchema(db);await schema(db);
  const keys={},compactCookies={};
  for(const account of ['learner','outsider']){
@@ -126,15 +127,39 @@ test('matched native and compact GETs execute the same private website route and
  }
  await db.batch([db.prepare("INSERT INTO offerings VALUES('course','COURSE','Synthetic',1,0)"),db.prepare("INSERT INTO course_access_models(offering_id,access_model) VALUES('course','PAID')"),db.prepare("INSERT INTO participation VALUES('learner','course',1,0,1,'')"),db.prepare("INSERT INTO websites VALUES('site-course','course','Synthetic',NULL,'seed.json','seed.json',0,1,NULL)")]);
  await content.put('seed.json',JSON.stringify(newCourse()));
- const renewal=await mf.dispatchFetch('https://website.test/compact-refresh',{method:'POST'}),renewed=await renewal.json();assert.equal(renewal.status,200);assert.equal(renewed.kind,'rotated');assert.equal(renewal.headers.getSetCookie().length,2);assert.ok(renewal.headers.getSetCookie().every(x=>!x.includes('Domain=')));
+ const renewal=await mf.dispatchFetch('https://website.test/compact-refresh',{method:'POST',headers:{Origin:'https://website.test',Cookie:'__Host-uas_r='+testRefresh}}),renewed=await renewal.json();assert.equal(renewal.status,200);assert.equal(renewed.kind,'rotated');assert.equal(renewal.headers.getSetCookie().length,2);assert.ok(renewal.headers.getSetCookie().every(x=>!x.includes('Domain=')));assert.equal(renewal.headers.get('Cache-Control'),'private, no-store');assert.equal(renewal.headers.get('X-Content-Type-Options'),'nosniff');assert.deepEqual(Object.keys(renewed).sort(),['kind','metrics']);
  evidence.workerRefresh={topLevelWorkerRequests:1,SetCookieHeaders:2,AcademyRequests:JSON.parse(renewal.headers.get('X-Lab-IO')).academyRequests,D1:JSON.parse(renewal.headers.get('X-Lab-D1')),metrics:renewed.metrics,bodyCredentialAllowlist:true};assert.equal(evidence.workerRefresh.AcademyRequests,0);
  const samples=[];
  async function request(mode,account,expected,phase){
   const response=await mf.dispatchFetch('https://website.test/'+mode+'/api/websites/site-course',{headers:{Cookie:mode==='native'?keys[account]:compactCookies[account]}});
   const body=await response.json();assert.equal(response.status,expected,'Matched resource decision changed.');
+  assert.equal(response.headers.get('Cache-Control'),'private, no-store');assert.equal(response.headers.get('X-Content-Type-Options'),'nosniff');assert.equal(response.headers.getSetCookie().length,0);
   samples.push({phase,mode,account,HTTPStatus:response.status,topLevelWorkerRequests:1,D1:JSON.parse(response.headers.get('X-Lab-D1')),IO:JSON.parse(response.headers.get('X-Lab-IO')),harnessWallMilliseconds:Number(response.headers.get('X-Lab-Wall-Ms'))});
   assert.equal(samples.at(-1).IO.academyRequests,0);assert.equal(samples.at(-1).D1.rowsWritten,0);return body;
  }
+ const denials=[];
+ async function denial(fetcher,url,options,expected,label,{readAllowed=false}={}){
+  const r=await fetcher(url,options),body=await r.json();
+  assert.equal(r.status,expected,'Representative adapter did not reject safely.');assert.equal(r.headers.get('Cache-Control'),'private, no-store');assert.equal(r.headers.get('X-Content-Type-Options'),'nosniff');assert.equal(r.headers.getSetCookie().length,0);
+  assert.ok(Object.keys(body).every(k=>['code','kind','metrics'].includes(k)),'Error body must be allowlisted.');
+  const db=JSON.parse(r.headers.get('X-Lab-D1')),io=JSON.parse(r.headers.get('X-Lab-IO'));assert.equal(db.rowsWritten,0);assert.equal(io.r2Get,0);assert.equal(io.academyRequests,0);if(!readAllowed)assert.equal(db.roundTrips,0);
+  denials.push({label,HTTPStatus:r.status,privateNoStore:true,cookiesReleased:0,D1:db,IO:io});
+ }
+ const send=(url,options)=>mf.dispatchFetch(url,options),path='https://website.test/compact/api/websites/site-course';
+ await denial(send,path,{},400,'missing-access-cookie');
+ await denial(send,path,{headers:{Cookie:'__Host-uas_a=bad'}},401,'invalid-access-token');
+ await denial(send,path,{headers:{Cookie:compactCookies.learner+'; '+compactCookies.learner}},400,'duplicate-access-cookie');
+ await denial(send,path,{headers:{Cookie:'__Host-uas_r='+testRefresh}},400,'refresh-cookie-is-not-access');
+ await denial(send,'https://unexpected.test/compact/api/websites/site-course',{headers:{Cookie:compactCookies.learner}},403,'unconfigured-host');
+ await denial(send,path,{method:'PATCH',headers:{Cookie:compactCookies.learner}},405,'compact-mutation-not-integrated');
+ await denial(send,'https://website.test/compact-refresh',{method:'POST'},403,'refresh-needs-configured-Origin');
+ await denial(send,'https://website.test/compact-refresh',{method:'POST',headers:{Origin:'https://website.test'}},400,'missing-refresh-cookie');
+ await denial(send,'https://website.test/compact-refresh',{method:'POST',headers:{Origin:'https://website.test',Cookie:'__Host-uas_a=bad'}},400,'access-cookie-is-not-refresh');
+ await denial(send,'https://website.test/compact-refresh',{method:'POST',headers:{Origin:'https://website.test',Cookie:'__Host-uas_r='+testRefresh+'; __Host-uas_r='+testRefresh}},400,'duplicate-refresh-cookie');
+ await denial(send,'https://website.test/compact-refresh',{method:'POST',headers:{Origin:'https://website.test',Cookie:'__Host-uas_r='+testRefresh}},409,'previous-refresh-returns-in-progress',{readAllowed:true});
+ const disabled=await mf.getWorker('compact-disabled-lab');await denial((url,options)=>disabled.fetch(url,options),path,{headers:{Cookie:compactCookies.learner}},503,'platform-disabled');
+ const misconfigured=await mf.getWorker('compact-misconfigured-lab');await denial((url,options)=>misconfigured.fetch(url,options),path,{headers:{Cookie:compactCookies.learner}},503,'unexpected-configuration-error');
+ evidence.HTTPBoundaries={denials,refreshUsesRequestCookie:true,refreshExactOriginRequired:true,successErrorsAndDenialsPrivateNoStore:true,unknownErrorsAllowlisted:true,noPlaintextCredentialsInErrorBodies:true,sessionBoundCSRFAndQualifyingForegroundAdmission:'not implemented by this background-refresh lab',allProductionEntryHostAliasParity:'not claimed'};
  const original=await request('native','learner',200,'paid-granted'),current=await request('compact','learner',200,'paid-granted');assert.deepEqual(current,original);
  await request('native','outsider',403,'paid-outsider');await request('compact','outsider',403,'paid-outsider');
  await db.prepare("UPDATE participation SET purchased=0 WHERE account_id='learner' AND offering_id='course'").run();

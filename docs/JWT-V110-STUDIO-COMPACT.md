@@ -23,7 +23,7 @@ No new DDL, numbered migration, native grant writer, config or real handler impo
 
 ## Independent test scope
 
-Tests run only on disposable GitHub runners, including the selected production compatibility-date runtime:
+Tests run only on disposable GitHub runners. The job modes execute the suites; direct Node tests and setup() fixtures still include the older Miniflare imported by tests/fixture.mjs. The bundled matched-route/refresh Worker uses the selected production compatibility-date runtime. A passing production-date job does not mean every fixture ran on that workerd:
 
 - Strict compact shape and app/key/purpose/expiry checks, including rejection of the historical full-rights token format.
 - Normal and maximum-supported identity lengths; exact Studio access/refresh and coexisting Academy-cookie header sizes, plus1024bytes reserved for unresolved browser/CSRF cookies. The parent cookie is tested with0and16 own-programme scopes; its separate capacity remains an Academy obligation. Byte calculation is not a full real-browser/privacy proof.
@@ -52,7 +52,7 @@ Complete the actual writer/security event map, remaining native route/Source/lif
 
 ## Completed isolated results — code915253dc, run42015598431
 
-[GitHub run42015598431](https://github.com/MaktabForlife/AcademyStudio/actions/runs/42015598431) passed59cases on each runtime plus212named paired regressions: **330case executions, zero failure/cancel/skip**. These are not330distinct tests. No live app, hosted SQL, real identity/journal/media, Mac source/build/test or production config/deployment was used.
+[GitHub run42015598431](https://github.com/MaktabForlife/AcademyStudio/actions/runs/42015598431) passed59cases in each CI job mode plus212named paired regressions: **330case executions, zero failure/cancel/skip**. These are not330distinct tests. No live app, hosted SQL, real identity/journal/media, Mac source/build/test or production config/deployment was used.
 
 Production-date measurements for synthetic36-character identity bindings:
 
@@ -126,3 +126,15 @@ The existing optional server-side access-cache assessment remains **unselected a
 Sources: [browser caching](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control), [origin-bound tab messaging](https://developer.mozilla.org/en-US/docs/Web/API/Broadcast_Channel_API), [clearing site data](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Clear-Site-Data).
 
 This records an agreed policy, not a completed implementation/browser proof. No runtime source, database/schema/data/copy/ID/sync, live cache namespace, hosting/config or deployment change is made by this documentation update.
+
+## HTTP privacy follow-up after independent review
+
+Optimisation accepted the selected compact source proof at915253dc/run42015598431 within its stated scope and independently verified both artifacts. It explicitly found that the lab's Response.json errors lacked no-store headers. This follow-up changes only the synthetic adapter/tests and this document, not a live handler or database.
+
+Every lab private/auth response now passes through one finishing path that sets private,no-store and nosniff, including success, resource denial, parent cancellation, malformed/missing/duplicate cookies, method rejection, configured-host mismatch, disabled-platform response and unexpected configuration failure. Errors expose an allowlisted code only; successful refresh exposes kind/metrics and two separate bounded Studio Set-Cookie headers. All non-refresh/failed responses must release no cookies; early errors perform no D1 or R2 work.
+
+The background refresh test now reads __Host-uas_r from the request Cookie header rather than a fixture environment secret, validates the exact configured Origin and exercises duplicate/missing/partial cookies and a previous-raw in_progress response. It remains a BACKGROUND refresh with foreground=false; session-bound CSRF and qualifying-foreground admission are still unimplemented integration gates. Exact public/provider hostname transition behavior is not proved by a synthetic configured-host check.
+
+The outer PLATFORM_ENABLED gate is tested at503 before identity/resource work. Unexpected binding/config failures are caught inside the privacy wrapper and return a sanitized, uncached503. Source writes remain unsupported and fail closed at405 before native Store.guard/mutate; no legacy token_hash is manufactured for a compact actor.
+
+These tests do not establish late/mixed/lost cookie recovery, browser clearing/paint/BFCache/privacy,304/Range, actual security event hooks, Source mode or complete HTTP entry parity. The agreed memory-cache policy remains a policy, not implemented client code. The database/deployment holds remain controlling. New source results will be attached to the next immutable test run; existing330executions remain evidence only for915253dc.
