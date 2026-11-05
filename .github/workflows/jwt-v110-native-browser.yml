@@ -29,13 +29,13 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: MaktabForlife/Academy
-          ref: f3b5373ea0246ecd477a96b946a1d046344d620c
+          ref: 97fee6a673a8afdca62e5423d28b44e6579c2485
           path: work/Academy
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: MaktabForlife/Hifz
-          ref: 79b4b1678a9a40251348d4d7b0fca6e7025e2130
+          ref: 0f383f0b67171b87180ae4a9b523c3343ec647b6
           path: work/Hifz
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -52,6 +52,7 @@ jobs:
           mkdir -p .build/jwt-v110-native-browser
           node tools/check-jwt-browser-sources.mjs
           node --check tests/jwt-v110-native-browser.test.mjs
+          node --test tests/jwt-v110-browser-control.test.mjs 2>&1 | tee .build/jwt-v110-native-browser/protocol.log
           cd "$HIFZ_SOURCE"
           node tests/verify_academy_identity.mjs 2>&1 | tee "$GITHUB_WORKSPACE/work/AcademyStudio/.build/jwt-v110-native-browser/hifz-identity.log"
           node tests/verify_academy_handoff.mjs 2>&1 | tee "$GITHUB_WORKSPACE/work/AcademyStudio/.build/jwt-v110-native-browser/hifz-handoff.log"
@@ -63,7 +64,7 @@ jobs:
           set -o pipefail
           node --test --test-reporter=tap tests/jwt-v110-native-browser.test.mjs 2>&1 | tee .build/jwt-v110-native-browser/browser.log
           git diff --exit-code
-          node --input-type=module -e "import {writeFileSync} from 'node:fs';writeFileSync('.build/jwt-v110-native-browser/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,academy:'f3b5373ea0246ecd477a96b946a1d046344d620c',hifz:'79b4b1678a9a40251348d4d7b0fca6e7025e2130',run:process.env.GITHUB_RUN_ID,syntheticNativeAndContextResponses:true,actualAppCode:true,actualContextProducerRun:42078727303,hostedSQL:0,liveDBChanges:0,productionRequests:0,deployed:false})+'\n');"
+          node --input-type=module -e "import {writeFileSync} from 'node:fs';writeFileSync('.build/jwt-v110-native-browser/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,academy:'97fee6a673a8afdca62e5423d28b44e6579c2485',hifz:'0f383f0b67171b87180ae4a9b523c3343ec647b6',run:process.env.GITHUB_RUN_ID,syntheticNativeAndContextResponses:true,actualAppCode:true,actualContextProducerRun:42078727303,hostedSQL:0,liveDBChanges:0,productionRequests:0,deployed:false})+'\n');"
       - name: Preserve scoped synthetic evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
