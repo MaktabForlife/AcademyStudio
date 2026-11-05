@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {generateKeyPair,exportJWK,SignJWT} from 'jose';
 import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
+import {build} from 'esbuild';
 import {createAccessEngine,accessCookie,refreshCookie,cookieSizeReport,parseUniqueCookie,SESSION_SECONDS} from '../src/auth/v110/claims.mjs';
 import {createPrototypeStore,randomRefresh,fingerprint} from '../src/auth/v110/store.mjs';
 assert.equal(process.env.GITHUB_ACTIONS,'true','Run this prototype only on a disposable GitHub runner.');
@@ -28,7 +29,7 @@ async function rejected(promise,code){
  if(code)assert.ok(error.code===code,'Unexpected sanitized error code.');
 }
 async function fixture({last=NOW,expiry=NOW+SESSION_SECONDS}={}){
- const mf=new Miniflare(convertV4MiniflareOptions({workers:[{name:'jwt-stage2',modules:true,script:'export default {fetch(){return new Response("synthetic")}}',compatibilityDate:'2026-10-28',d1Databases:{DB:'jwt-stage2-synthetic'}}]}));
+ const mf=new Miniflare(convertV4MiniflareOptions({workers:[{name:'jwt-stage2',modules:true,script:'export default {fetch(){return new Response("synthetic")}}',compatibilityDate:'2026-09-28',d1Databases:{DB:'jwt-stage2-synthetic'}}]}));
  try{
  const db=await mf.getD1Database('DB','jwt-stage2');
  const schema=await readFile(new URL('../src/auth/v110/schema.sql',import.meta.url),'utf8');
@@ -42,7 +43,7 @@ async function fixture({last=NOW,expiry=NOW+SESSION_SECONDS}={}){
  return {mf,db,raw,store:()=>createPrototypeStore(db,{app:'studio'})};
  }catch(error){await mf.dispose();throw error;}
 }
-const measured={source:'isolated synthetic workerd/D1',productionRequests:0,macBuilds:0};
+const measured={source:'isolated synthetic workerd/D1',simulationCompatibilityDate:'2026-09-28',productionRuntimeParity:'not yet demonstrated',productionRequests:0,macBuilds:0};
 test('ES256 intended app, exact expiry and fixed parent deadline',async()=>{
  const a=await engine(),h=await engine('hifz'),issued=await a.api.issue(input(),NOW);
  assert.deepEqual((await a.api.verify(issued.token,NOW+899)).r,input().r);
@@ -81,6 +82,15 @@ test('preprovisioned rollover keys work without request-time lookups',async()=>{
  const current=await a.api.issue(input(),NOW),future=await signer.issue(input(),NOW);
  await verify.verify(current.token,NOW);await verify.verify(future.token,NOW);
  await rejected(a.api.verify(future.token,NOW),'INVALID_TOKEN');
+});
+test('bundled JOSE validates access tokens inside the pinned Worker simulator',async t=>{
+ const entry=new URL('../src/auth/v110/claims.mjs',import.meta.url).pathname;
+ const code='import {createAccessEngine} from '+JSON.stringify(entry)+';import {generateKeyPair,exportJWK} from "jose";export default {async fetch(){const pair=await generateKeyPair("ES256");const pub={...await exportJWK(pair.publicKey),kid:"current"};const engine=await createAccessEngine({app:"studio",issuer:'+JSON.stringify(origins.studio)+',publicKeys:[pub],signingKey:pair.privateKey,signingKid:"current",validateRights:r=>r?.v===1});const issued=await engine.issue('+JSON.stringify(input())+','+NOW+');const verified=await engine.verify(issued.token,'+NOW+');return Response.json({verified:verified.sub==='+JSON.stringify(input().sub)+',expiresAt:verified.exp,tokenBytes:issued.token.length});}};';
+ const bundle=await build({stdin:{contents:code,resolveDir:process.cwd()},bundle:true,write:false,format:'esm',platform:'browser'});
+ const mf=new Miniflare(convertV4MiniflareOptions({workers:[{name:'jwt-crypto',modules:true,script:bundle.outputFiles[0].text,compatibilityDate:'2026-09-28'}]}));t.after(()=>mf.dispose());
+ const response=await mf.dispatchFetch('https://synthetic.invalid/');assert.equal(response.status,200);
+ const value=await response.json();assert.equal(value.verified,true);assert.equal(value.expiresAt,NOW+900);
+ measured.workerCrypto={verified:true,simulatorDate:'2026-09-28',requests:1,privateKeysOrTokensReturned:false};
 });
 test('cookie scopes, duplicate rejection and absolute cookie expiry',async()=>{
  for(const app of ['academy','studio','hifz']){
