@@ -6,7 +6,7 @@ const BASE=1790000000000,MINUTE=60000,DAY=86400000;
 const view=(label='Synthetic access',version='v1')=>({version,items:[{id:'one',label,href:'/courses/one'}]});
 function clock(){
  let now=0,next=0;const jobs=new Map();
- return {read:()=>now,set:(fn,ms)=>{const id=++next;jobs.set(id,{at:now+ms,fn});return id;},cancel:id=>jobs.delete(id),advance(ms){now+=ms;for(;;){const due=[...jobs].find(([,v])=>v.at<=now);if(!due)break;jobs.delete(due[0]);due[1].fn();}},size:()=>jobs.size};
+ return {read:()=>now,set:(fn,ms)=>{const id=++next;jobs.set(id,{at:now+ms,fn});return id;},cancel:id=>jobs.delete(id),advance(ms){now+=ms;for(;;){const due=[...jobs].find(([,v])=>v.at<=now);if(!due)break;jobs.delete(due[0]);due[1].fn();}},fireNextEarly(){const first=[...jobs].sort((a,b)=>a[1].at-b[1].at)[0];assert.ok(first,'An expiry timer must be scheduled.');jobs.delete(first[0]);first[1].fn();},size:()=>jobs.size};
 }
 function session(app,time,{account='alice',last=BASE,start=BASE,end=BASE+7*DAY}={}){
  return {app,accountId:account,sessionId:app==='academy'?'parent-'+account:'session-'+account,parentId:'parent-'+account,browserId:'browser-one',browserGeneration:1,credentialEpoch:1,securityVersion:1,unlockGeneration:0,originalSignedAtMs:start,originalExpiresAtMs:end,lastForegroundRefreshMs:last,serverNowMs:BASE+time};
@@ -111,4 +111,26 @@ test('display links cannot normalize into a foreign origin or include URL contro
  assert.equal(validDisplaySession(session('academy',0),'academy'),true);
  assert.equal(validDisplaySession({...session('academy',0),sessionId:'other-session'},'academy'),false);
 });
-test('display-memory evidence is scoped to local UI mechanics',t=>t.diagnostic('V110_DISPLAY_MEMORY_UNIT='+JSON.stringify({cases:14,appImports:0,persistentStorageWrites:0,DBCalls:0,globalCrossOriginCoordinator:false,actualCookiesOrAuthorization:false,limits:'unit mechanics; authoritative session-view adapter and real app DOM/media integration pending'})));
+test('throwing tab transport cannot skip local masking or state notification on logout and timer lock',async t=>{
+ const order=[];let display='';const time=clock();
+ const channel={postMessage(){order.push('notify');throw Error('Synthetic transport unavailable.');},close(){}};
+ const h=harness(t,{time,channelFactory:()=>channel,onClear:why=>{display='';order.push('mask:'+why);},onState:s=>order.push('state:'+s.phase)});
+ await h.cache.recheck();display='Synthetic private display';order.length=0;
+ assert.doesNotThrow(()=>h.cache.clear('logout',{broadcast:true}));
+ assert.equal(display,'');assert.deepEqual(order,['mask:logout','state:masked','notify']);assert.equal(h.cache.state().entryCount,0);
+ await h.cache.recheck();display='Synthetic private display';order.length=0;
+ assert.doesNotThrow(()=>time.advance(90*MINUTE));
+ // Observe hooks before any state()/peek()/load() call can discover expiry.
+ assert.equal(display,'');assert.deepEqual(order,['mask:lock','state:masked','notify']);assert.equal(time.size(),0);
+});
+test('an early expiry callback re-arms and clears at the original deadline without a cache API call',async t=>{
+ const time=clock(),clears=[];let displayed=false;
+ const h=harness(t,{time,onClear:why=>{displayed=false;clears.push(why);}});
+ await h.cache.recheck();displayed=true;clears.length=0;
+ time.advance(90*MINUTE-1);assert.equal(time.size(),1);time.fireNextEarly();
+ assert.equal(displayed,true);assert.deepEqual(clears,[]);assert.equal(time.size(),1,'Early callback must leave another timer armed.');
+ time.advance(1);
+ // This is the autonomous timer result, without invoking cache check methods.
+ assert.equal(displayed,false);assert.deepEqual(clears,['lock']);assert.equal(time.size(),0);
+});
+test('display-memory evidence is scoped to local UI mechanics',t=>t.diagnostic('V110_DISPLAY_MEMORY_UNIT='+JSON.stringify({cases:16,appImports:0,persistentStorageWrites:0,DBCalls:0,globalCrossOriginCoordinator:false,actualCookiesOrAuthorization:false,limits:'unit mechanics; authoritative session-view adapter and real app DOM/media integration pending'})));

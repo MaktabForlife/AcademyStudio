@@ -62,6 +62,14 @@ test('real Chromium clears local display state across tabs, rejects late context
  studio.state.account='bob';await client.evaluate(b,'window.__lab.recheck()');await ready(b);
  await until(()=>client.evaluate(b,'window.__lateDone===true'),'Delayed response did not finish.');
  let snapshot=await client.evaluate(b,'window.__lab.snapshot()');assert.equal(await client.evaluate(b,'window.__lateAccepted'),false);assert.ok(snapshot.text.includes('bob'));assert.ok(!snapshot.text.includes('alice'));assert.equal(snapshot.oldVisibleFrames,0);
+ // Native closed BroadcastChannel must fail independently of local DOM
+ // clearing. The page wrapper records that the mask preceded failed delivery.
+ await client.evaluate(b,'window.__lab.closeChannel()');
+ await client.evaluate(b,"window.__lab.clear('logout')");
+ const transportSnapshot=await client.evaluate(b,'window.__lab.snapshot()');
+ assert.equal(transportSnapshot.channelPostFailures,1);assert.equal(transportSnapshot.maskedBeforePostFailure,true);
+ assert.equal(transportSnapshot.hidden,true);assert.equal(transportSnapshot.text,'');assert.equal(transportSnapshot.state.entryCount,0);
+ await client.evaluate(b,'window.__lab.recheck()');await ready(b);
  // Real history navigation executes pagehide and pageshow. Record whether
  // Chrome used BFCache; a full reload still must begin masked.
  await client.call('Page.navigate',{url:studio.url+'/away'},b.session);await until(()=>client.evaluate(b,'document.title==="Away"'),'Navigation did not complete.');
@@ -70,6 +78,6 @@ test('real Chromium clears local display state across tabs, rejects late context
  await client.call('Page.navigateToHistoryEntry',{entryId:back.id},b.session);await until(()=>client.evaluate(b,"Boolean(window.__lab)&&window.__lab.state().reason==='verification-failed'"),'Restored page did not fail closed on denied context.');
  snapshot=await client.evaluate(b,'window.__lab.snapshot()');assert.equal(snapshot.hidden,true);assert.equal(snapshot.text,'');assert.equal(snapshot.state.entryCount,0);
  const snapshots=await Promise.all([a,b,c].map(tab=>client.evaluate(tab,'window.__lab.snapshot()')));assert.ok(snapshots.every(s=>s.persistentCalls===0));
- const result={browser:version,loopbackOrigins:2,sameOriginTabs:2,cacheHitsAddedNetworkRequests:0,sameOriginClearRemovesRenderedText:true,crossOriginClearAutomatic:false,negativeControlOtherOriginRetainsOwnDisplay:true,lateOldResponseAccepted:false,observedOldAccountFramesAfterSwitch:0,historyReturnDeniedContextMasked:true,actualBFCacheRestore:snapshot.pageshowPersisted,persistentStorageWriteCalls:0,applicationDBCalls:0,realAppImports:0,realCookieOrMasterContextCoordination:false,scope:'Synthetic DOM and authoritative-view stub; no actual app/media/credential/BFCache-universal privacy or activation proof'};
+ const result={browser:version,loopbackOrigins:2,sameOriginTabs:2,cacheHitsAddedNetworkRequests:0,sameOriginClearRemovesRenderedText:true,crossOriginClearAutomatic:false,negativeControlOtherOriginRetainsOwnDisplay:true,lateOldResponseAccepted:false,observedOldAccountFramesAfterSwitch:0,closedChannelLocalDOMCleared:true,closedChannelPostFailures:transportSnapshot.channelPostFailures,localDOMMaskedBeforeFailedPost:transportSnapshot.maskedBeforePostFailure,historyReturnDeniedContextMasked:true,actualBFCacheRestore:snapshot.pageshowPersisted,persistentStorageWriteCalls:0,applicationDBCalls:0,realAppImports:0,realCookieOrMasterContextCoordination:false,scope:'Synthetic DOM and authoritative-view stub; no actual app/media/credential/BFCache-universal privacy or activation proof'};
  await mkdir('.build/jwt-v110-browser-memory',{recursive:true});await writeFile('.build/jwt-v110-browser-memory/browser.json',JSON.stringify(result,null,2)+'\n');t.diagnostic('V110_DISPLAY_MEMORY_BROWSER='+JSON.stringify(result));
 });

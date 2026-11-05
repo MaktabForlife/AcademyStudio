@@ -53,7 +53,7 @@ Sources: [browser caching](https://developer.mozilla.org/en-US/docs/Web/HTTP/Ref
 This records an agreed policy, not a completed implementation/browser proof. No runtime source, database/schema/data/copy/ID/sync, live cache namespace, hosting/config or deployment change is made by this documentation update.
 
 
-## Isolated display-memory component — GitHub proof complete, review pending
+## Isolated display-memory component — targeted review corrections in progress
 
 An unimported component at `src/auth/v110/browser-display-state.mjs` develops the agreed temporary UI-display policy without changing real app entrypoints or database/config/deployment state. It holds only an exact versioned navigation/display DTO in app memory. It never stores credentials, private journals or protected media, and is not a server-side material-permission cache or authorisation decision.
 
@@ -81,3 +81,12 @@ The real browser made no additional loopback request for two hot display hits, r
 Instrumented Storage.setItem, IndexedDB.open and CacheStorage.open calls were0in the synthetic page. This records those instrumented calls plus source review of the helper's memory-only design, not a universal browser-storage/media/privacy audit. No real app entrypoint imports the component; no actual cookies, trusted Master-context endpoint, source DB, hosted SQL, Worker, media, live config or deployment were used or changed. The global switch/late-Set-Cookie and integrated app/media/Range/CSRF/foreground/cancellation gates remain open.
 
 Artifact13416998197 API-reported ZIP SHA256: `ec289ca87197dbf76cb193cfc2eb50ab907c2b6d7d09f22f58a41d7e485cd485`. It contains synthetic browser.json, source.json and TAP log only. No complete app/browser authorization, cross-origin/offline purge, cost saving beyond these display-hit requests, or deployment clearance is claimed.
+
+
+### Review corrections — notification failure and early expiry timer
+
+Optimisation verified the exact a9458b24 artifact/evidence but returned two source issues; it did not accept automatic local masking/expiry. A throwing/closed BroadcastChannel could skip onClear/onState because broadcasting preceded those hooks. An early expiry callback could leave a ready display with no timer armed. The previous16-case evidence remains historical and does not prove these failure paths.
+
+The corrected helper invokes the local mask/clear and state hooks before best-effort tab notification, catches transport failure independently, and makes no peer-delivery guarantee. A current ready expiry callback that fires before the original deadline now re-arms for the remaining time; older epoch callbacks cannot alter a newer timer. The original deadline and own-app acknowledged foreground rules remain unchanged.
+
+New failure-injection units require local clearing/state notification despite throwing transport on both logout and timer lock, and require an early callback to leave a new timer armed followed by autonomous deadline clearing without any state/peek/load call. The Chromium fixture closes its actual native BroadcastChannel, requires the failed post to be recorded only after the actual private DOM is masked/emptied, and then verifies the local page remains usable for recheck/history tests. It does not infer peer clearing from failed delivery. Results/review for this correction are pending a new targeted GitHub run. All real-app/cross-origin/auth/media/source/DB/config/deployment gates remain unchanged.

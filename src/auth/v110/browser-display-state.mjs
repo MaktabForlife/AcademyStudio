@@ -35,12 +35,26 @@ export function createDisplayMemory({app,verifySession,onState=()=>{},onClear=()
   if(timer!==null){cancelTimer(timer);timer=null;}
   for(const controller of pending)controller.abort();pending.clear();
   // Internal state and pending loads are invalidated BEFORE rendering hooks.
-  if(broadcast)channel?.postMessage({type:'CLEAR_DISPLAY',app,reason});
   onClear(reason);onState(report());
+  // Peer delivery is best effort and must never prevent local masking.
+  // A transport failure is not evidence that another tab cleared.
+  if(broadcast){try{channel?.postMessage({type:'CLEAR_DISPLAY',app,reason});}catch{}}
  }
  function check(){
   if(!closed&&phase==='ready'&&clock()>=deadline)clear('lock',{broadcast:true});
   return !closed&&phase==='ready';
+ }
+ function armExpiry(){
+  const mine=epoch;
+  timer=setTimer(()=>{
+   // A cancelled/dequeued older callback must not alter a newer timer.
+   if(closed||mine!==epoch||phase!=='ready')return;
+   timer=null;
+   // Timer scheduling can be early. Keep the original deadline and re-arm
+   // until it has actually been reached, without waiting for a cache API call.
+   if(check())armExpiry();
+  },Math.max(1,Math.ceil(deadline-clock())));
+  timer?.unref?.();
  }
  function save(key,view){
   if(typeof key!=='string'||!ID.test(key)||!validView(view))throw Error('INVALID_DISPLAY_VIEW');
@@ -80,7 +94,7 @@ export function createDisplayMemory({app,verifySession,onState=()=>{},onClear=()
     if(!exact(entry,['key','context','view'])||!envelope({context:entry.context,view:entry.view}))throw Error('INVALID_INITIAL_DISPLAY');
     save(entry.key,entry.view);
    }
-   const wait=Math.max(0,deadline-clock());timer=setTimer(()=>{timer=null;check();},wait);timer?.unref?.();
+   armExpiry();
    onState(report());return true;
   }catch{
    pending.delete(controller);if(!closed&&mine===epoch)clear('verification-failed');return false;
