@@ -15,22 +15,24 @@ jobs:
     defaults:
       run:
         shell: bash
+        working-directory: work/AcademyStudio
     env:
       CI: "true"
       WRANGLER_SEND_METRICS: "false"
-      ACADEMY_SOURCE: ${{ github.workspace }}/.build/source/Academy
-      EVIDENCE_DIR: ${{ github.workspace }}/.build/jwt-v110-stage2
+      ACADEMY_SOURCE: ${{ github.workspace }}/work/Academy
+      EVIDENCE_DIR: ${{ github.workspace }}/work/AcademyStudio/.build/jwt-v110-stage2
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ github.sha }}
+          path: work/AcademyStudio
           persist-credentials: false
       - name: Checkout the exact reviewed Academy source for paired fixtures
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: MaktabForlife/Academy
           ref: 0af01b90b715b95fa272fae639b90200e006924c
-          path: .build/source/Academy
+          path: work/Academy
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
@@ -56,7 +58,7 @@ jobs:
           git diff --exit-code
       - name: Run current release Academy identity, Hifz bridge and homepage test groups
         timeout-minutes: 8
-        working-directory: .build/source/Academy
+        working-directory: work/Academy
         run: |
           node --test --test-reporter=tap backend/tests/academy-workspace-client.test.mjs backend/tests/academy-workspace-destination.test.mjs backend/tests/academy-header-workspaces.test.mjs 2>&1 | tee "$EVIDENCE_DIR/academy-tests.log"
           node --test --test-reporter=tap backend/tests/portal-hosting.test.mjs backend/tests/academy-circles-native.test.mjs backend/tests/academy-circles-native-join.test.mjs backend/tests/academy-circles-free-join.test.mjs backend/tests/academy-hifz-handoff.test.mjs backend/tests/academy-hifz-bridge-ui.test.mjs 2>&1 | tee "$EVIDENCE_DIR/portal-source-tests.log"
@@ -69,4 +71,4 @@ jobs:
           name: jwt-v110-stage2-${{ github.run_id }}
           include-hidden-files: true
           retention-days: 30
-          path: .build/jwt-v110-stage2/
+          path: ${{ env.EVIDENCE_DIR }}/

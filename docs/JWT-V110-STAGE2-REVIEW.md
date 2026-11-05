@@ -16,6 +16,8 @@ The preceding proof is commit `126c82c259d58a9395c99ea56956658abcc026cd`, run [4
 
 [Run 41972799094](https://github.com/MaktabForlife/AcademyStudio/actions/runs/41972799094) on `8bd620cc84aadd702a4ed88766b1e48c56891c55` ran all 20 JWT cases successfully, but its broader `npm test` invocation also selected tests expecting missing historical sibling checkout paths and additional fixture setup. Examples were `library-return.test.mjs` and `media-inventory.test.mjs`; the log also contains other fixture/preview failures. The run later stalled and was cancelled. Its [partial log artifact](https://github.com/MaktabForlife/AcademyStudio/actions/runs/41972799094/artifacts/13390143674) is retained. It is not a passing full-suite result, and the broader failures are not declared fixed by this candidate.
 
+[Run 41974088698](https://github.com/MaktabForlife/AcademyStudio/actions/runs/41974088698) then passed all 20 JWT cases and all 55 paired media tests. The portal group passed 27 cases and failed one file import: `native-portal-paired.test.mjs` uses a fixed sibling `../../Academy` path. This was a runner checkout-layout mismatch; it is not recorded as a passing regression run. The final workflow places both repositories under `work/`, matching the current paired release layout.
+
 The follow-up evidence workflow supplies the exact pinned Academy source and uses the current release's explicit paired regression groups plus the complete 20-case JWT prototype. It does not remove or alter any existing test or weaken a security assertion. A complete historical-suite repair is outside this independent JWT proof.
 
 ## Rights representation remains unresolved
