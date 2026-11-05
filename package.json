@@ -15,5 +15,8 @@
     "linkedom": "0.18.14",
     "miniflare": "5.20260921.0-alpha",
     "wrangler": "4.157.0"
+  },
+  "dependencies": {
+    "jose": "6.2.15"
   }
 }

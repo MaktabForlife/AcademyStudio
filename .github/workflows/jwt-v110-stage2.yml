@@ -1,0 +1,120 @@
+name: V110 native rights and runtime review proofs
+on:
+  create:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: jwt-v110-stage2-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  prototype:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/validation/jwt-v110-stage2-')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+        working-directory: work/AcademyStudio
+    env:
+      CI: "true"
+      WRANGLER_SEND_METRICS: "false"
+      ACADEMY_SOURCE: ${{ github.workspace }}/work/Academy
+      EVIDENCE_DIR: ${{ github.workspace }}/work/AcademyStudio/.build/jwt-v110-stage2
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          path: work/AcademyStudio
+          persist-credentials: false
+      - name: Checkout the exact reviewed Academy source for paired fixtures
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: MaktabForlife/Academy
+          ref: 9b197fafbdd80859ceb9028203c48480455c843f
+          path: work/Academy
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18.0"
+      - name: Install exact reviewed dependencies on GitHub
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix "$ACADEMY_SOURCE/backend" --no-audit --no-fund
+      - name: Run isolated JWT contract tests
+        timeout-minutes: 3
+        run: |
+          mkdir -p .build/jwt-v110-stage2
+          node --test --test-reporter=tap --test-concurrency=1 tests/jwt-v110-stage2.test.mjs tests/jwt-v110-native-rights.test.mjs 2>&1 | tee .build/jwt-v110-stage2/tests.log
+          git diff --exit-code
+          node --input-type=module -e "import {writeFileSync} from 'node:fs'; writeFileSync('.build/jwt-v110-stage2/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,run:process.env.GITHUB_RUN_ID,synthetic:true,productionRequests:0,hostedSQL:0,deployed:false})+'\n');"
+      - name: Run current release Studio media and identity test groups
+        timeout-minutes: 8
+        run: |
+          node --test --test-reporter=tap --test-concurrency=1 tests/source-package.test.mjs tests/private-playlist-reference.test.mjs tests/private-playlist-reference-ui.test.mjs tests/private-playlist-reference-monthly-proxy.test.mjs tests/monthly-media-review-ui.test.mjs tests/course-playlist-workflow.test.mjs tests/monthly-media-collection.test.mjs tests/dashboard-load.test.mjs tests/circles-dashboard-consumer.test.mjs 2>&1 | tee "$EVIDENCE_DIR/paired-media-tests.log"
+          node --test --test-reporter=tap --test-concurrency=1 tests/deployment-origin-config.test.mjs tests/website-routing.test.mjs tests/website-launch.test.mjs tests/academy-origins.test.mjs tests/native-hub-bridge.test.mjs tests/academy-connect.test.mjs tests/native-portal-paired.test.mjs tests/native-portal-browser.test.mjs 2>&1 | tee "$EVIDENCE_DIR/portal-paired-tests.log"
+          node tools/prepare-studio-saas.mjs 2>&1 | tee "$EVIDENCE_DIR/studio-hosting-preparation.log"
+          node --test --test-reporter=tap --test-concurrency=1 tests/studio-saas.test.mjs 2>&1 | tee "$EVIDENCE_DIR/studio-hosting-tests.log"
+          git diff --exit-code
+      - name: Run current release Academy identity, Hifz bridge and homepage test groups
+        timeout-minutes: 8
+        working-directory: work/Academy
+        run: |
+          node --test --test-reporter=tap backend/tests/academy-workspace-client.test.mjs backend/tests/academy-workspace-destination.test.mjs backend/tests/academy-header-workspaces.test.mjs 2>&1 | tee "$EVIDENCE_DIR/academy-tests.log"
+          node --test --test-reporter=tap backend/tests/portal-hosting.test.mjs backend/tests/academy-circles-native.test.mjs backend/tests/academy-circles-native-join.test.mjs backend/tests/academy-circles-free-join.test.mjs backend/tests/academy-hifz-handoff.test.mjs backend/tests/academy-hifz-bridge-ui.test.mjs 2>&1 | tee "$EVIDENCE_DIR/portal-source-tests.log"
+          node --test --test-reporter=tap backend/tests/academy-programme-prospectus.test.mjs backend/tests/academy-announcements-client.test.mjs backend/tests/academy-announcements-split.test.mjs backend/tests/academy-announcements-v2.test.mjs 2>&1 | tee "$EVIDENCE_DIR/homepage-contract-tests.log"
+          git diff --exit-code
+      - name: Preserve synthetic evidence in GitHub
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: jwt-v110-stage2-${{ github.run_id }}
+          include-hidden-files: true
+          retention-days: 30
+          path: ${{ env.EVIDENCE_DIR }}/
+
+  production-date:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/validation/jwt-v110-stage2-')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+        working-directory: work/AcademyStudio
+    env:
+      CI: "true"
+      WRANGLER_SEND_METRICS: "false"
+      JWT_RUNTIME: production-date
+      ACADEMY_SOURCE: ${{ github.workspace }}/work/Academy
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          path: work/AcademyStudio
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: MaktabForlife/Academy
+          ref: 9b197fafbdd80859ceb9028203c48480455c843f
+          path: work/Academy
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18.0"
+      - name: Install exact reviewed dependencies on GitHub
+        run: npm ci --no-audit --no-fund
+      - name: Prove isolated V110 primitives and native encoding at production compatibility date
+        timeout-minutes: 3
+        run: |
+          mkdir -p .build/jwt-v110-production-date
+          node --test --test-reporter=tap --test-concurrency=1 tests/jwt-v110-stage2.test.mjs tests/jwt-v110-native-rights.test.mjs 2>&1 | tee .build/jwt-v110-production-date/tests.log
+          git diff --exit-code
+          node --input-type=module -e "import {writeFileSync} from 'node:fs'; writeFileSync('.build/jwt-v110-production-date/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,academy:'9b197fafbdd80859ceb9028203c48480455c843f',run:process.env.GITHUB_RUN_ID,compatibilityDate:'2026-10-28',synthetic:true,completeApplicationParity:false,productionRequests:0,hostedSQL:0,deployed:false})+'\n');"
+      - name: Preserve production-date synthetic evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: jwt-v110-production-date-${{ github.run_id }}
+          include-hidden-files: true
+          retention-days: 30
+          path: work/AcademyStudio/.build/jwt-v110-production-date/
