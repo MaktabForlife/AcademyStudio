@@ -10,7 +10,13 @@ The preceding proof is commit `126c82c259d58a9395c99ea56956658abcc026cd`, run [4
 - Synthetic transaction tests insert a parent tombstone or change credential epoch, account activity, browser generation, family revocation or unlock generation after lookup and before refresh compare-and-swap. Each must return no successor and perform no refresh or audit write.
 - An injected audit-statement failure must roll back the entire refresh batch, including its fingerprint, generation and foreground timestamp. After the test trigger is removed, the original refresh must still work. Failed-batch billing is not inferred from absent error metadata.
 - A permission-version change between lookup and commit must silently use the committed current version without extending foreground activity.
-- GitHub runs the complete Studio test suite, including this isolated prototype. No Mac build or test, hosted SQL, media publication or deployment is involved.
+- GitHub runs the isolated JWT prototype and the exact named Studio/Academy test groups used by the deployed V109.21 paired release, with the pinned Academy checkout present. These are scoped regression groups, not a claim that every historical repository test passes. No Mac build or test, hosted SQL, media publication or deployment is involved.
+
+## Initial broader run was cancelled, not passed
+
+[Run 41972799094](https://github.com/MaktabForlife/AcademyStudio/actions/runs/41972799094) on `8bd620cc84aadd702a4ed88766b1e48c56891c55` ran all 20 JWT cases successfully, but its broader `npm test` invocation also selected tests expecting missing historical sibling checkout paths and additional fixture setup. Examples were `library-return.test.mjs` and `media-inventory.test.mjs`; the log also contains other fixture/preview failures. The run later stalled and was cancelled. Its [partial log artifact](https://github.com/MaktabForlife/AcademyStudio/actions/runs/41972799094/artifacts/13390143674) is retained. It is not a passing full-suite result, and the broader failures are not declared fixed by this candidate.
+
+The follow-up evidence workflow supplies the exact pinned Academy source and uses the current release's explicit paired regression groups plus the complete 20-case JWT prototype. It does not remove or alter any existing test or weaken a security assertion. A complete historical-suite repair is outside this independent JWT proof.
 
 ## Rights representation remains unresolved
 
