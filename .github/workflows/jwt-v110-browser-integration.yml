@@ -1,0 +1,42 @@
+name: V110 browser integration review
+on:
+  create:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: jwt-v110-browser-integration-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  browser-integration:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/validation/jwt-v110-browser-integration-')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18.0"
+      - name: Check and exercise the isolated cross-origin control protocol
+        timeout-minutes: 3
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p .build/jwt-v110-browser-integration
+          node --check src/auth/v110/browser-control-relay.mjs
+          node --check src/auth/v110/browser-control-client.mjs
+          node --check src/auth/v110/browser-app-privacy.mjs
+          node --test --test-reporter=tap tests/jwt-v110-browser-control.test.mjs 2>&1 | tee .build/jwt-v110-browser-integration/unit.log
+          git diff --exit-code
+          node --input-type=module -e "import {writeFileSync} from 'node:fs';writeFileSync('.build/jwt-v110-browser-integration/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,run:process.env.GITHUB_RUN_ID,phase:'protocol units before native/browser integration',synthetic:true,DBChanges:0,productionRequests:0,deployed:false})+'\n');"
+      - name: Preserve synthetic review evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: jwt-v110-browser-integration-${{ github.run_id }}
+          include-hidden-files: true
+          retention-days: 30
+          path: .build/jwt-v110-browser-integration/
