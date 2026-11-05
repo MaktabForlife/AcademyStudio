@@ -47,8 +47,10 @@ export function createDisplayMemory({app,verifySession,onState=()=>{},onClear=()
   // An optional memory budget is not a material-access/account limit.
   // Large valid views may be rendered once, but are deliberately not cached.
   const value=copy(view);
+  // A replacement must retire the old view even when the new one is not cached.
+  views.delete(key);
   if(new TextEncoder().encode(JSON.stringify(value)).byteLength<=maxViewBytes){
-   if(views.has(key))views.delete(key);views.set(key,value);
+   views.set(key,value);
    while(views.size>maxEntries)views.delete(views.keys().next().value);
   }
   return copy(value);

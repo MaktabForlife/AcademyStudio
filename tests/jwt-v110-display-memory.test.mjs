@@ -96,10 +96,11 @@ test('invalid/foreign session or credential-shaped view fields are rejected with
  h.setVerify(async()=>bundle(session('studio',0)));await h.cache.recheck();
  assert.equal(await h.cache.load('nav',async()=>({context:session('studio',0),view:{...view(),refreshToken:'not-a-real-credential'}}),{force:true}),null);assert.equal(h.cache.state().entryCount,0);
 });
-test('valid oversized views can be used once without caching or truncating access items',async t=>{
- const h=harness(t,{maxViewBytes:8});await h.cache.recheck();assert.equal(h.cache.state().entryCount,0);
- const value=await h.cache.load('nav',async()=>({context:session('studio',0),view:view('ALL ITEMS RETAINED')}));
- assert.equal(value.items[0].label,'ALL ITEMS RETAINED');assert.equal(h.cache.peek('nav'),null);
+test('valid oversized views are not truncated and retire an older cached view for the same key',async t=>{
+ const h=harness(t,{maxViewBytes:128});await h.cache.recheck();assert.ok(h.cache.peek('nav'));
+ const large={version:'large-v2',items:Array.from({length:20},(_,i)=>({id:'item-'+i,label:'ALL ITEMS RETAINED '+i,href:'/courses/'+i}))};
+ const value=await h.cache.load('nav',async()=>({context:session('studio',0),view:large}),{force:true});
+ assert.equal(value.items.length,20);assert.deepEqual(value,large);assert.equal(h.cache.peek('nav'),null);
 });
 test('display links cannot normalize into a foreign origin or include URL control characters',async t=>{
  const h=harness(t);for(const href of ['//example.invalid/','/\\example.invalid/','/\nexample.invalid/','/has space']){
