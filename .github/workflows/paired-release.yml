@@ -84,6 +84,29 @@ jobs:
         env:
           NODE_OPTIONS: --import=${{ github.workspace }}/work/AcademyStudio/tools/preserve-local-files.mjs
         run: node tools/cloud-release-check.mjs check
+      - name: Build the reviewed native homepage for isolated browser checks
+        working-directory: work/Academy
+        run: node backend/tools/academy-pages-build.mjs
+      - name: Install isolated homepage browser on GitHub
+        env:
+          REVIEW_BROWSER_MODULES: ${{ runner.temp }}/academy-homepage-browser
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/academy-homepage-browsers
+        run: |
+          npm install --prefix "$REVIEW_BROWSER_MODULES" --no-save --package-lock=false --no-audit --no-fund playwright@1.56.1
+          node "$REVIEW_BROWSER_MODULES/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Verify the actual native homepage across six viewport widths
+        working-directory: work/Academy
+        env:
+          REVIEW_BROWSER_MODULES: ${{ runner.temp }}/academy-homepage-browser
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/academy-homepage-browsers
+        run: node tools/homepage-native-check.mjs
+      - name: Store native homepage browser evidence in GitHub
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: native-homepage-evidence-${{ github.run_id }}
+          path: ${{ runner.temp }}/homepage-native-evidence/
+          retention-days: 30
       - name: Store review evidence in GitHub
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -104,6 +127,8 @@ jobs:
             ${{ github.workspace }}/.cloud-output/paired-media-tests.log
             ${{ github.workspace }}/.cloud-output/portal-source-tests.log
             ${{ github.workspace }}/.cloud-output/portal-paired-tests.log
+            ${{ github.workspace }}/.cloud-output/homepage-contract-tests.log
+            ${{ github.workspace }}/.cloud-output/studio-hosting-tests.log
   deploy:
     if: github.repository == 'MaktabForlife/AcademyStudio' && github.event_name == 'workflow_dispatch' && inputs.deploy && github.ref == 'refs/heads/studio_dev'
     needs: check

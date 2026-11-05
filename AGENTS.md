@@ -1,3 +1,7 @@
+# Circles V109.21 paired code release authorised — 5 November 2026
+
+The owner requested deployment of the tested Circles update. Build/test/package and deploy matching Academy and Studio V109.21 from canonical GitHub studio_dev with linear commits and no merges/force pushes. Preserve hosting/saas/worker.mjs, all 23 Studio bindings, original ASSETS and hosting settings. JWT V110 stays on its separate feature branch; Hifz and new-domain activation are excluded. No Mac writes/deletions, hosted SQL/schema/rights/DNS changes or real media attachment/content publication. The new prospectus panel remains gated by the checked published snapshot until its separate manual Admin publication. Preserve 43200/43200/60 and existing identity/session/epoch/CSRF, fresh scoped Admin, acquired rights and Join gates. Keep live checks small.
+
 # Approved Studio hosting deployment — 4 November 2026
 
 The owner approved deployment and explicitly selected Studio hosting only. Publish from canonical studio_dev through GitHub. Preserve the current Academy homepage/code/Worker/Pages and Hifz unchanged. Prepare the pending destination zone's reviewed DNS/routes only; registration transfer, nameserver changes and SaaS activation remain separate. Use current maktab4life.org, original public ASSETS, current storage/cookies/permissions and 43200/43200/60. Preserve remote rollback and immutable receipt. No Mac writes/deletions or private media uploads. Attachment/publication remains manual.
