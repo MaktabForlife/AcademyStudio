@@ -1,0 +1,39 @@
+name: V110 isolated browser display-memory proofs
+on:
+  create:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: jwt-v110-browser-memory-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  browser-memory:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/validation/jwt-v110-browser-memory-')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18.0"
+      - name: Test isolated display-memory mechanics and real Chromium on GitHub
+        timeout-minutes: 3
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p .build/jwt-v110-browser-memory
+          node --test --test-reporter=tap --test-concurrency=1 tests/jwt-v110-display-memory.test.mjs tests/jwt-v110-display-memory-browser.test.mjs 2>&1 | tee .build/jwt-v110-browser-memory/tests.log
+          git diff --exit-code
+          node --input-type=module -e "import {writeFileSync} from 'node:fs'; writeFileSync('.build/jwt-v110-browser-memory/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,run:process.env.GITHUB_RUN_ID,node:process.version,synthetic:true,productionRequests:0,hostedSQL:0,realAppImports:0,actualAuthAdapter:false,deployed:false})+'\n');"
+      - name: Preserve synthetic display-memory evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: jwt-v110-browser-memory-${{ github.run_id }}
+          include-hidden-files: true
+          retention-days: 30
+          path: .build/jwt-v110-browser-memory/
