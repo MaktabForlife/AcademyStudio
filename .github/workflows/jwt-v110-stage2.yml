@@ -18,6 +18,7 @@ jobs:
         working-directory: work/AcademyStudio
     env:
       CI: "true"
+      JWT_FAILURE_BASELINE_SOURCE: ${{ github.workspace }}/work/JWTFailureBaseline/src/auth/v110/account-bound-issuer.mjs
       WRANGLER_SEND_METRICS: "false"
       ACADEMY_SOURCE: ${{ github.workspace }}/work/Academy
       EVIDENCE_DIR: ${{ github.workspace }}/work/AcademyStudio/.build/jwt-v110-stage2
@@ -34,6 +35,14 @@ jobs:
           ref: 9b197fafbdd80859ceb9028203c48480455c843f
           path: work/Academy
           persist-credentials: false
+      - name: Read the immutable pre-fix issuer for controlled-failure reproduction
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 7dcf7d034b3fdd70dcb1c7c15da2cfc55f9b0e7d
+          path: work/JWTFailureBaseline
+          persist-credentials: false
+          sparse-checkout: src/auth/v110/account-bound-issuer.mjs
+          sparse-checkout-cone-mode: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: "24.18.0"
@@ -83,6 +92,7 @@ jobs:
         working-directory: work/AcademyStudio
     env:
       CI: "true"
+      JWT_FAILURE_BASELINE_SOURCE: ${{ github.workspace }}/work/JWTFailureBaseline/src/auth/v110/account-bound-issuer.mjs
       WRANGLER_SEND_METRICS: "false"
       JWT_RUNTIME: production-date
       ACADEMY_SOURCE: ${{ github.workspace }}/work/Academy
@@ -98,6 +108,14 @@ jobs:
           ref: 9b197fafbdd80859ceb9028203c48480455c843f
           path: work/Academy
           persist-credentials: false
+      - name: Read the immutable pre-fix issuer for controlled-failure reproduction
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 7dcf7d034b3fdd70dcb1c7c15da2cfc55f9b0e7d
+          path: work/JWTFailureBaseline
+          persist-credentials: false
+          sparse-checkout: src/auth/v110/account-bound-issuer.mjs
+          sparse-checkout-cone-mode: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: "24.18.0"

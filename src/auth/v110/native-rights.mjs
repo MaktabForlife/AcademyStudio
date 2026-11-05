@@ -123,6 +123,7 @@ export async function createNativeCookieEngine(config){
  return Object.freeze({
   async issue(input,rights,now){return base.issue({...input,r:await packNativeRights(app,rights)},now);},
   async verify(token,now){const claims=await base.verify(token,now);return {claims,rights:await unpackNativeRights(app,claims.r)};},
+  accessCookie:(token,expiresAt,now)=>base.accessCookie(token,expiresAt,now),
   refreshCookie:(token,expiresAt,now)=>base.refreshCookie(token,expiresAt,now)
  });
 }

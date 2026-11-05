@@ -107,6 +107,7 @@ export async function createConfiguredAccessEngine(config){
    return {...issued,setCookie:accessCookie(app,issued.token,issued.claims.exp,now,scope)};
   },
   verify:(token,now)=>engine.verify(token,now),
+  accessCookie:(token,expiresAt,now)=>accessCookie(app,token,expiresAt,now,scope),
   refreshCookie:(token,expiresAt,now)=>refreshCookie(app,token,expiresAt,now)
  });
 }
