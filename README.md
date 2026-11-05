@@ -1,3 +1,7 @@
+## V109.25 — paired Academy management fix
+
+Studio application behavior is retained; this paired release includes the reviewed origin test fixture and current version metadata. See [release notes](docs/RELEASE-V109.25.md).
+
 ## V109.18 — reviewed repository housekeeping
 
 One complete public source now replaces retained release copies. Packages are built and tested on GitHub, then deployed together with Academy under explicit approval. Preserve current content, permissions, 43200/43200/60 verification and manual media attachment/publication. The hosting migration remains separate; Hifz and all Mac files stay unchanged.
