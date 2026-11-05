@@ -1,0 +1,76 @@
+name: V110 native browser and Hifz review
+on:
+  create:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: jwt-v110-native-browser-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  native-browser:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/validation/jwt-v110-native-browser-')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    defaults:
+      run:
+        shell: bash
+        working-directory: work/AcademyStudio
+    env:
+      ACADEMY_SOURCE: ${{ github.workspace }}/work/Academy
+      HIFZ_SOURCE: ${{ github.workspace }}/work/Hifz
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          path: work/AcademyStudio
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: MaktabForlife/Academy
+          ref: f3b5373ea0246ecd477a96b946a1d046344d620c
+          path: work/Academy
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: MaktabForlife/Hifz
+          ref: a10d8c5adbb660b53a545b4131661c1d68a65e86
+          path: work/Hifz
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18.0"
+      - name: Install Hifz's existing locked root test and Worker dependencies
+        run: |
+          npm ci --prefix "$HIFZ_SOURCE" --no-audit --no-fund
+          npm ci --prefix "$HIFZ_SOURCE/worker" --no-audit --no-fund
+      - name: Check shared source and run the pending native Hifz verifiers
+        timeout-minutes: 4
+        run: |
+          set -o pipefail
+          mkdir -p .build/jwt-v110-native-browser
+          node tools/check-jwt-browser-sources.mjs
+          node --check tests/jwt-v110-native-browser.test.mjs
+          cd "$HIFZ_SOURCE"
+          node tests/verify_academy_identity.mjs 2>&1 | tee "$GITHUB_WORKSPACE/work/AcademyStudio/.build/jwt-v110-native-browser/hifz-identity.log"
+          node tests/verify_academy_handoff.mjs 2>&1 | tee "$GITHUB_WORKSPACE/work/AcademyStudio/.build/jwt-v110-native-browser/hifz-handoff.log"
+          node tests/verify_v3770_account_separation.mjs 2>&1 | tee "$GITHUB_WORKSPACE/work/AcademyStudio/.build/jwt-v110-native-browser/hifz-separation.log"
+          git diff --exit-code
+      - name: Exercise real Chromium native pages across three origins
+        timeout-minutes: 4
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap tests/jwt-v110-native-browser.test.mjs 2>&1 | tee .build/jwt-v110-native-browser/browser.log
+          git diff --exit-code
+          node --input-type=module -e "import {writeFileSync} from 'node:fs';writeFileSync('.build/jwt-v110-native-browser/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,academy:'f3b5373ea0246ecd477a96b946a1d046344d620c',hifz:'a10d8c5adbb660b53a545b4131661c1d68a65e86',run:process.env.GITHUB_RUN_ID,syntheticNativeAndContextResponses:true,actualAppCode:true,actualContextProducerRun:42078727303,hostedSQL:0,liveDBChanges:0,productionRequests:0,deployed:false})+'\n');"
+      - name: Preserve scoped synthetic evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: jwt-v110-native-browser-${{ github.run_id }}
+          include-hidden-files: true
+          retention-days: 30
+          path: |
+            work/AcademyStudio/.build/jwt-v110-native-browser/
+            work/AcademyStudio/.build/jwt-v110-browser-integration/shared-source.json
