@@ -8,7 +8,7 @@ export function createBrowserControlClient({win,doc,app,origins,onInvalidate=()=
  origins=browserOrigins(origins);
  if(!APPS.includes(app)||win.location.origin!==origins[app]||framePath!=='/auth/v110/browser-control.html'||!Number.isSafeInteger(timeoutMs)||timeoutMs<100||timeoutMs>10000)throw Error('INVALID_BROWSER_CLIENT');
  const nonce=random(),pending=new Map();let closed=false,connected=false,epoch=0,ready=null,knownRevision=null,loaded=false,mounted=false,loading=null;
- const frame=doc.createElement('iframe');frame.hidden=true;frame.title='Academy browser privacy coordination';frame.setAttribute('aria-hidden','true');frame.setAttribute('sandbox','allow-scripts allow-same-origin');frame.src=origins.academy+framePath;
+ const frame=doc.createElement('iframe');frame.hidden=true;frame.setAttribute('data-uaa-control','');frame.title='Academy browser privacy coordination';frame.setAttribute('aria-hidden','true');frame.setAttribute('sandbox','allow-scripts allow-same-origin');frame.src=origins.academy+framePath;
  function rejectAll(){for(const p of pending.values()){clearTimeout(p.timer);p.reject(Error('BROWSER_CONTEXT_CHANGED'));}pending.clear();}
  function invalidate(){if(closed)return;epoch++;rejectAll();onInvalidate();}
  const listener=event=>{

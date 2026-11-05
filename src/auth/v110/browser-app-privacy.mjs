@@ -8,7 +8,7 @@ const deny=()=>{throw new DOMException('Verify your Academy session before openi
 export function installAppPrivacy({win,doc,app,origins,verifySession,onClear=()=>{},onReady=()=>{},channelFactory,clock,setTimer,cancelTimer}){
  origins=browserOrigins(origins);
  if(win.location.origin!==origins[app]||typeof verifySession!=='function')throw Error('INVALID_APP_PRIVACY_CONFIG');
- let generation=0,context=null,verifiedBinding=null,brokerRevision=null,readiness=null,closed=false,signInIntent=null;
+ let generation=0,context=null,verifiedBinding=null,brokerRevision=null,readiness=null,closed=false,signInIntent=null,everRevealed=false,needsNativeReset=false;
  const controllers=new Set(),urls=new Set();let cache,broker;
  const mask=()=>{
   doc.documentElement.classList.add('uaa-v110-masked');
@@ -16,16 +16,16 @@ export function installAppPrivacy({win,doc,app,origins,verifySession,onClear=()=
   for(const el of doc.querySelectorAll('audio,video')){
    try{el.pause();}catch{}el.removeAttribute('src');for(const child of el.querySelectorAll('source'))child.removeAttribute('src');try{el.load();}catch{}
   }
-  for(const el of doc.querySelectorAll('iframe[data-private-media],object[data-private-media],embed[data-private-media]')){el.removeAttribute('src');el.removeAttribute('data');el.remove();}
+  for(const el of doc.querySelectorAll('iframe:not([data-uaa-control]),object,embed')){el.removeAttribute('src');el.removeAttribute('data');el.remove();}
   for(const url of urls)URL.revokeObjectURL(url);urls.clear();
  };
  const clear=reason=>{
-  generation++;context=null;verifiedBinding=null;brokerRevision=null;mask();
+  generation++;context=null;verifiedBinding=null;brokerRevision=null;if(everRevealed)needsNativeReset=true;mask();
   for(const controller of controllers)controller.abort();controllers.clear();
   onClear(reason);
   win.dispatchEvent(new CustomEvent('uaa-v110-private-cleared',{detail:{app,reason}}));
  };
- const invalidate=()=>{cache?.clear('known-cancellation');};
+ const invalidate=()=>{cache?.clear('known-cancellation');if(needsNativeReset)queueMicrotask(()=>win.location.reload());};
  broker=createBrowserControlClient({win,doc,app,origins,onInvalidate:invalidate});
  cache=createDisplayMemory({app,clock,setTimer,cancelTimer,channelFactory,onClear:clear,onState:state=>{
   // A ready context permits native data loading. Native account/render hooks
@@ -43,30 +43,45 @@ export function installAppPrivacy({win,doc,app,origins,verifySession,onClear=()=
   context=structuredClone(current);verifiedBinding=binding;brokerRevision=checked.revision;
   return {session:current,initialViews:result.initialViews||[]};
  }});
- cache.bindLifecycle(win,doc);mask();
+ // Once a private native document has been shown, resumption starts a fresh
+ // document. Old native globals/DOM/media references can never be unmasked.
+ // Public versioned assets remain reusable; only current app data is reloaded.
+ const resume=()=>{
+  if(doc.visibilityState==='hidden')return;
+  if(needsNativeReset){mask();win.location.reload();return;}
+  void ready();
+ };
+ const hide=()=>cache.clear('hidden');
+ const visibility=()=>doc.visibilityState==='hidden'?hide():resume();
+ win.addEventListener('pagehide',hide);win.addEventListener('pageshow',resume);doc.addEventListener('visibilitychange',visibility);
+ mask();
  function ready(){
-  if(closed)return Promise.resolve(false);
+  if(closed||doc.visibilityState==='hidden')return Promise.resolve(false);
+  if(needsNativeReset){mask();return Promise.resolve(false);}
+  if(cache.state().phase==='ready')return Promise.resolve(true);
   if(!readiness){const task=cache.recheck('resume').finally(()=>{if(readiness===task)readiness=null;});readiness=task;}
   return readiness;
  }
  async function capture(){
   if(closed||cache.state().phase!=='ready'||!context)deny();
   const mine=generation,binding=verifiedBinding,revision=brokerRevision;
-  await broker.assert({revision,binding});
+  try{await broker.assert({revision,binding});}catch{cache.clear('known-cancellation');deny();}
   if(mine!==generation||cache.state().phase!=='ready')deny();
   return Object.freeze({generation:mine,binding,revision,accountId:context.accountId});
  }
  async function current(stamp){
   if(!stamp||stamp.generation!==generation||stamp.binding!==verifiedBinding||stamp.revision!==brokerRevision||cache.state().phase!=='ready')deny();
-  await broker.assert({revision:stamp.revision,binding:stamp.binding});
+  try{await broker.assert({revision:stamp.revision,binding:stamp.binding});}catch{cache.clear('known-cancellation');deny();}
   if(stamp.generation!==generation||cache.state().phase!=='ready')deny();
  }
  return Object.freeze({
   ready,capture,current,
   get session(){return context?structuredClone(context):null;},
   async reveal(accountId){
+   if(needsNativeReset){mask();win.location.reload();deny();}
    const stamp=await capture();if(accountId!==stamp.accountId){cache.clear('context-mismatch');deny();}
    await current(stamp);
+   everRevealed=true;
    doc.documentElement.classList.remove('uaa-v110-masked');doc.documentElement.dataset.uaaV110State='ready';
    onReady();return stamp;
   },
@@ -93,6 +108,6 @@ export function installAppPrivacy({win,doc,app,origins,verifySession,onClear=()=
    await broker.establish({expectedRevision:intent.revision,binding,expiresAtMs:session.originalExpiresAtMs});
    signInIntent=null;return ready();
   },
-  close(){if(closed)return;cache.close();closed=true;broker.close();}
+  close(){if(closed)return;cache.close();closed=true;win.removeEventListener('pagehide',hide);win.removeEventListener('pageshow',resume);doc.removeEventListener('visibilitychange',visibility);broker.close();}
  });
 }

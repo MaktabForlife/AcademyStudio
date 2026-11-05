@@ -11,27 +11,88 @@ jobs:
   browser-integration:
     if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/validation/jwt-v110-browser-integration-')
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+        working-directory: work/AcademyStudio
+    env:
+      ACADEMY_SOURCE: ${{ github.workspace }}/work/Academy
+      HIFZ_SOURCE: ${{ github.workspace }}/work/Hifz
+      JWT_RUNTIME: production-date
+      WRANGLER_SEND_METRICS: "false"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ github.sha }}
+          path: work/AcademyStudio
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: MaktabForlife/Academy
+          ref: f3b5373ea0246ecd477a96b946a1d046344d620c
+          path: work/Academy
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: MaktabForlife/Hifz
+          ref: a10d8c5adbb660b53a545b4131661c1d68a65e86
+          path: work/Hifz
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: "24.18.0"
-      - name: Check and exercise the isolated cross-origin control protocol
-        timeout-minutes: 3
-        shell: bash
+      - name: Install locked dependencies only on GitHub
         run: |
-          set -o pipefail
-          mkdir -p .build/jwt-v110-browser-integration
+          npm ci --no-audit --no-fund
+          npm ci --prefix "$ACADEMY_SOURCE/backend" --no-audit --no-fund
+          npm ci --prefix "$HIFZ_SOURCE/worker" --no-audit --no-fund
+      - name: Verify shared source and syntax of the native hooks
+        run: |
+          node tools/check-jwt-browser-sources.mjs
           node --check src/auth/v110/browser-control-relay.mjs
           node --check src/auth/v110/browser-control-client.mjs
           node --check src/auth/v110/browser-app-privacy.mjs
-          node --test --test-reporter=tap tests/jwt-v110-browser-control.test.mjs 2>&1 | tee .build/jwt-v110-browser-integration/unit.log
+          node --check public/auth/v110/browser-entry.mjs
+          node --check public/api.mjs
+          node --check public/app.mjs
+          node --check public/circles-login.mjs
+          node --check "$ACADEMY_SOURCE/js/m4l-academy-login.js"
+          node --check "$ACADEMY_SOURCE/js/m4l-account.js"
+          node --check "$ACADEMY_SOURCE/portal/api.mjs"
+          node --check "$ACADEMY_SOURCE/portal/circles-login.mjs"
+          node --check "$HIFZ_SOURCE/js/api.js"
+          node --check "$HIFZ_SOURCE/js/app.js"
+          node --check "$HIFZ_SOURCE/js/auth.js"
+      - name: Test protocol and real native read-only context entrypoints
+        timeout-minutes: 4
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 tests/jwt-v110-browser-control.test.mjs tests/jwt-v110-native-context.test.mjs 2>&1 | tee .build/jwt-v110-browser-integration/context-tests.log
           git diff --exit-code
-          node --input-type=module -e "import {writeFileSync} from 'node:fs';writeFileSync('.build/jwt-v110-browser-integration/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,run:process.env.GITHUB_RUN_ID,phase:'protocol units before native/browser integration',synthetic:true,DBChanges:0,productionRequests:0,deployed:false})+'\n');"
+          node --input-type=module -e "import {writeFileSync} from 'node:fs';writeFileSync('.build/jwt-v110-browser-integration/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,academy:'f3b5373ea0246ecd477a96b946a1d046344d620c',hifz:'a10d8c5adbb660b53a545b4131661c1d68a65e86',run:process.env.GITHUB_RUN_ID,phase:'protocol and native read-only context; real browser still pending',synthetic:true,hostedSQL:0,liveDBChanges:0,productionRequests:0,deployed:false})+'\n');"
+      - name: Retain current Studio portal and identity regressions with feature disabled
+        timeout-minutes: 5
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 tests/academy-origins.test.mjs tests/native-hub-bridge.test.mjs tests/academy-connect.test.mjs tests/native-portal-paired.test.mjs tests/native-portal-browser.test.mjs tests/dashboard-load.test.mjs tests/circles-dashboard-consumer.test.mjs tests/private-playlist-reference-ui.test.mjs 2>&1 | tee .build/jwt-v110-browser-integration/native-regressions.log
+          git diff --exit-code
+      - name: Retain current Academy identity and workspace client regressions
+        timeout-minutes: 4
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 "$ACADEMY_SOURCE/backend/tests/academy-workspace-client.test.mjs" "$ACADEMY_SOURCE/backend/tests/academy-workspace-destination.test.mjs" "$ACADEMY_SOURCE/backend/tests/academy-header-workspaces.test.mjs" "$ACADEMY_SOURCE/backend/tests/academy-hifz-handoff.test.mjs" "$ACADEMY_SOURCE/backend/tests/academy-hifz-bridge-ui.test.mjs" 2>&1 | tee .build/jwt-v110-browser-integration/academy-regressions.log
+          git -C "$ACADEMY_SOURCE" diff --exit-code
+      - name: Retain current Hifz identity and native API behavior
+        timeout-minutes: 4
+        working-directory: work/Hifz
+        run: |
+          set -o pipefail
+          node tests/verify_syntax.mjs 2>&1 | tee "$GITHUB_WORKSPACE/work/AcademyStudio/.build/jwt-v110-browser-integration/hifz-syntax.log"
+          node tests/verify_academy_identity.mjs 2>&1 | tee "$GITHUB_WORKSPACE/work/AcademyStudio/.build/jwt-v110-browser-integration/hifz-identity.log"
+          node tests/verify_academy_handoff.mjs 2>&1 | tee "$GITHUB_WORKSPACE/work/AcademyStudio/.build/jwt-v110-browser-integration/hifz-handoff.log"
+          node tests/verify_v3770_account_separation.mjs 2>&1 | tee "$GITHUB_WORKSPACE/work/AcademyStudio/.build/jwt-v110-browser-integration/hifz-separation.log"
+          git diff --exit-code
       - name: Preserve synthetic review evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -39,4 +100,4 @@ jobs:
           name: jwt-v110-browser-integration-${{ github.run_id }}
           include-hidden-files: true
           retention-days: 30
-          path: .build/jwt-v110-browser-integration/
+          path: work/AcademyStudio/.build/jwt-v110-browser-integration/

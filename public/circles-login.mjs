@@ -76,7 +76,7 @@ async function loadNavigation(){
 }
 const ready=(async()=>{
  const boot=await takeDashboardBootstrap(initialWorkspace).catch(error=>{if(error.status!==401)throw error;return null;});
- config=boot?.configuration||await api('/api/config');identity.account=boot?.account||null;
+ config=boot?.configuration||await api('/api/config');identity.account=boot?.account||null;if(identity.account&&window.M4L_V110)await window.M4L_V110.reveal(identity.account.accountId);
  if(boot){navigation=boot.navigation;if(boot.errors?.navigation)showHomeMessage('Your programme links could not be loaded. Please try Refresh.');refreshHeader();await dashboard.load(boot.dashboard?.mode||dashboardWorkspace(initialWorkspace)||undefined,false,boot.dashboard?.selectedDate,boot.dashboard,boot.errors?.dashboard);}
  else{clearDashboardView(dashboardViewStorage());refreshHeader();}
  window.AcademyCirclesHomeEntry?.complete();
@@ -107,7 +107,7 @@ function openAcademy(navigationKey,destination){try{handoff?.close();const accou
  if(!accountId||identity.account?.accountId!==accountId||identity.generation!==generation||dashboard.mode!==mode||!dashboard.data||!Number.isFinite(dashboard.data.checkedAt)||Date.now()<dashboard.data.checkedAt||Date.now()-dashboard.data.checkedAt>=43200_000)return false;
  setPublicView(false);window.focus();return true;
 }});}catch(error){showHomeMessage(error.message);}}
-async function signOut(button){button.disabled=true;try{await api('/auth/logout',{body:{}});changed(null);showHomeMessage('You are signed out.');}catch(error){showHomeMessage(error.message);}finally{button.disabled=false;}}
+async function signOut(button){button.disabled=true;const clearing=window.M4L_V110?.clearAll('logout').catch(()=>{});try{await api('/auth/logout',{body:{}});changed(null);showHomeMessage('You are signed out.');}catch(error){showHomeMessage(error.message);}finally{await clearing;button.disabled=false;}}
 // Capture before prototype handlers; the signed-in blocks contain real links.
 document.addEventListener('click',event=>{
  if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
