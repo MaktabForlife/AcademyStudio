@@ -53,3 +53,9 @@ The standard named paired regression groups remain in the workflow. All tests/bu
 The source refresh CAS now independently binds the selected account, parent session, browser identity/generation, credential epoch and original sign-in/deadline. A schema trigger forbids rebinding those fields in an existing family: migrations and credential/browser changes must revoke/create a new family and random secret. Tests simulate an older schema by dropping only the isolated fixture trigger and changing both sides before CAS, and separately prove the production-proposed trigger rolls back attempted in-place migration. PIN unlock/admission must not retain an old refresh secret; their adapters are still unimplemented.
 
 The first native run41977691734 passed27of28cases on both runtimes. The remaining test exposed a harness mistake: direct native Store calls were missing their test D1 binding. The next fixture supplies that binding and rethrows unexpected harness errors; no access expectation is relaxed. Historical failed artifacts remain available.
+
+## Configured production-facing facade
+
+`createConfiguredAccessEngine` derives token issuer, verifier and cookie scope from one reviewed config. Academy's cookie-domain relationship is checked against that exact issuer; children reject Domain configuration. Issuance returns the bounded Set-Cookie header together with the token, so callers do not separately choose a cookie issuer/domain. `createNativeCookieEngine` composes native rights through the same facade. Hifz uses the identity-only configured facade. The lower-level native engine is retained for explicit over-capacity profiling and is not the integration entry point.
+
+Tests cover both Academy roots, mismatch rejection and all three apps' cookie scopes. Real browser cookie acceptance/public-suffix/duplicate/host-transition proof remains separate.

@@ -8,8 +8,8 @@ import {Store} from '../src/database.mjs';
 import {websiteAccess} from '../src/content.mjs';
 import {mediaGate} from '../src/media.mjs';
 import {playlistEntitlementSQL} from '../src/mou-playlists.mjs';
-import {createNativeAccessEngine,projectStudioRights,projectAcademyRights,validateNativeRights,packNativeRights,unpackNativeRights,MAX_NATIVE_BYTES} from '../src/auth/v110/native-rights.mjs';
-import {createAccessEngine,accessCookie,refreshCookie,cookieSizeReport} from '../src/auth/v110/claims.mjs';
+import {createNativeAccessEngine,createNativeCookieEngine,projectStudioRights,projectAcademyRights,validateNativeRights,packNativeRights,unpackNativeRights,MAX_NATIVE_BYTES} from '../src/auth/v110/native-rights.mjs';
+import {createAccessEngine,createConfiguredAccessEngine,accessCookie,refreshCookie,cookieSizeReport} from '../src/auth/v110/claims.mjs';
 import {randomRefresh} from '../src/auth/v110/store.mjs';
 assert.equal(process.env.GITHUB_ACTIONS,'true','Disposable GitHub runners only.');
 const NOW=1793818800;
@@ -193,4 +193,25 @@ test('native codec and JOSE run together inside the selected Worker runtime',asy
  const response=await mf.dispatchFetch('https://synthetic.invalid/');assert.equal(response.status,200);assert.equal((await response.json()).same,true);
  evidence.workerNativeCodec={verified:true,compatibilityDate,privateKeysTokensOrRightsReturned:false};
 });
+
+test('one configured facade binds token issuer, verifier and emitted cookie scope for all apps',async()=>{
+ const pair=await generateKeyPair('ES256'),pub={...await exportJWK(pair.publicKey),kid:'current'};
+ const keys={publicKeys:[pub],signingKey:pair.privateKey,signingKid:'current'};
+ for(const [issuer,domain] of [[origins.academy,'ummabbadacademy.app'],['https://training.example.org','training.example.org']]){
+  const e=await createNativeCookieEngine({app:'academy',issuer,academyCookieDomain:domain,...keys});
+  const x=await e.issue(person('academy'),projectAcademyRights(academyState(),{websiteAdmitted:true}),NOW);
+  assert.equal(x.claims.iss,issuer);assert.ok(x.setCookie.endsWith('; Domain='+domain));
+  assert.equal((await e.verify(x.token,NOW)).claims.iss,issuer);
+  assert.ok(!e.refreshCookie(randomRefresh(),NOW+604800,NOW).includes('Domain='));
+ }
+ await reject(createNativeCookieEngine({app:'academy',issuer:origins.academy,academyCookieDomain:'training.example.org',...keys}),'INVALID_COOKIE_CONFIG');
+ await reject(createNativeCookieEngine({app:'academy',issuer:origins.academy,academyCookieDomain:'ummabbadacademy.app',academyIssuer:'https://other.example.org',...keys}),'INVALID_COOKIE_CONFIG');
+ await reject(createNativeCookieEngine({app:'studio',issuer:origins.studio,academyCookieDomain:'ummabbadacademy.app',...keys}),'HOST_ONLY_COOKIE_CONFIG_REQUIRED');
+ const studio=await createNativeCookieEngine({app:'studio',issuer:origins.studio,...keys}),s=await studio.issue(person(),emptyStudio(),NOW);
+ assert.ok(s.setCookie.startsWith('__Host-uas_a=')&&!s.setCookie.includes('Domain='));
+ const hifz=await createConfiguredAccessEngine({app:'hifz',issuer:origins.hifz,...keys}),h=await hifz.issue(person('hifz'),NOW);
+ assert.ok(h.setCookie.startsWith('__Host-uah_a=')&&!h.setCookie.includes('Domain='));assert.equal((await hifz.verify(h.token,NOW)).iss,origins.hifz);
+ evidence.configuredFacade={academyAndSecondRoot:true,studioAndHifzHostOnly:true,issuerCookieMismatchRejected:true,oneConfigChoosesSignerVerifierAndCookieScope:true,realBrowserAcceptance:'separate gate'};
+});
+
 test('non-credential native evidence',t=>t.diagnostic('V110_NATIVE_EVIDENCE='+JSON.stringify(evidence)));

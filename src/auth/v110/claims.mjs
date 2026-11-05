@@ -89,3 +89,24 @@ export function cookieSizeReport(setCookies,otherRequestCookies=[]){
  const cookieHeader=[...setCookies.map(x=>x.split(';',1)[0]),...otherRequestCookies].join('; ');
  return {setCookieBytes,cookieHeaderBytes:utf8(cookieHeader),fits:setCookieBytes.every(n=>n<=3800)&&utf8(cookieHeader)<=8192};
 }
+
+// Production-facing composition: one reviewed config chooses issuer, verifier,
+// signer and cookie scope. Low-level engines remain useful for size profiling.
+export async function createConfiguredAccessEngine(config){
+ const app=config?.app;
+ let scope;
+ if(app==='academy'){
+  scope={academyIssuer:config.issuer,academyCookieDomain:config.academyCookieDomain};
+  validateAcademyCookieConfig(scope);
+  if(config.academyIssuer!==undefined&&config.academyIssuer!==config.issuer)fail('INVALID_COOKIE_CONFIG');
+ }else if(Object.hasOwn(config||{},'academyCookieDomain'))fail('HOST_ONLY_COOKIE_CONFIG_REQUIRED');
+ const engine=await createAccessEngine(config);
+ return Object.freeze({
+  async issue(input,now){
+   const issued=await engine.issue(input,now);
+   return {...issued,setCookie:accessCookie(app,issued.token,issued.claims.exp,now,scope)};
+  },
+  verify:(token,now)=>engine.verify(token,now),
+  refreshCookie:(token,expiresAt,now)=>refreshCookie(app,token,expiresAt,now)
+ });
+}

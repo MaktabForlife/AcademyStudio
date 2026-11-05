@@ -2,7 +2,7 @@
 // Every authority field is explicit. Current publication/lifecycle/time/ownership
 // and fresh Admin checks remain in their owning application, not in this codec.
 import {base64url} from 'jose';
-import {AuthContractError,createAccessEngine} from './claims.mjs';
+import {AuthContractError,createAccessEngine,createConfiguredAccessEngine} from './claims.mjs';
 const fail=code=>{throw new AuthContractError(code);};
 const plain=o=>Boolean(o&&Object.getPrototypeOf(o)===Object.prototype);
 const exact=(o,keys)=>plain(o)&&Object.keys(o).length===keys.length&&keys.every(k=>Object.hasOwn(o,k));
@@ -114,5 +114,15 @@ export async function createNativeAccessEngine(config){
    const claims=await base.verify(token,now);
    return {claims,rights:await unpackNativeRights(app,claims.r)};
   }
+ });
+}
+
+export async function createNativeCookieEngine(config){
+ const app=config.app;if(!['academy','studio'].includes(app))fail('INVALID_CONFIG');
+ const base=await createConfiguredAccessEngine({...config,validateRights:r=>validatePackedRights(app,r)});
+ return Object.freeze({
+  async issue(input,rights,now){return base.issue({...input,r:await packNativeRights(app,rights)},now);},
+  async verify(token,now){const claims=await base.verify(token,now);return {claims,rights:await unpackNativeRights(app,claims.r)};},
+  refreshCookie:(token,expiresAt,now)=>base.refreshCookie(token,expiresAt,now)
  });
 }
