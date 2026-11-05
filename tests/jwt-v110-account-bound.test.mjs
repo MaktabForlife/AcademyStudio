@@ -151,4 +151,18 @@ test('the account-bound refresh/sign pipeline runs inside the selected Worker an
  evidence.worker={...runtimeEvidence,fullyExecutedLocalPipeline:true,topLevelSyntheticWorkerRequests:1,academyCalls:0,privateKeysOrTokensReturned:false,metrics:value.metrics,completeApplicationParity:false};
 });
 
+
+test('factories retain no database session; each snapshot and final gate starts on primary',async t=>{
+ const s=await setup();t.after(()=>s.f.close());const sessions=[];
+ const binding={withSession(mode){sessions.push(mode);return s.f.db.withSession(mode);}};
+ const api=await createAccountBoundStudioRefresh({binding,clock:()=>s.now,...s.keys});
+ assert.equal(sessions.length,0,'A reusable issuer must not capture a request database session.');
+ const first=await api.refreshAndIssue(s.raws.learner,{foreground:false}),count=sessions.length;
+ assert.ok(count>=3,'Rotation, snapshot and final guard each need a primary-anchored session.');
+ assert.ok(sessions.every(x=>x==='first-primary'));
+ await api.refreshAndIssue(refreshValue(first),{foreground:false});
+ assert.ok(sessions.length>=count+3,'A later request cannot reuse an old read session/bookmark.');
+ evidence.primaryAnchors={noFactorySession:true,eachSnapshotAndFinalGateFresh:true,replicaStalenessNotAssumedAway:true};
+});
+
 test('account-bound issuance evidence',t=>t.diagnostic('V110_BOUND_ISSUER_EVIDENCE='+JSON.stringify(evidence)));

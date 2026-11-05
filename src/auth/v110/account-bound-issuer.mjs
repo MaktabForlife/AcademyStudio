@@ -45,7 +45,7 @@ async function snapshot(db,committed,fp,now){
 }
 export async function createAccountBoundStudioRefresh({binding,clock=()=>Math.floor(Date.now()/1000),...config}){
  if(config.app!=='studio'||!binding?.withSession||typeof clock!=='function')fail('INVALID_CONFIG');
- const engine=await createNativeCookieEngine(config),db=binding.withSession('first-primary');
+ const engine=await createNativeCookieEngine(config);
  return Object.freeze({
   async refreshAndIssue(raw,options={}){
    if(!options||Object.keys(options).some(k=>k!=='foreground')||(options.foreground!==undefined&&typeof options.foreground!=='boolean'))fail('INVALID_REFRESH_MODE');
@@ -54,10 +54,10 @@ export async function createAccountBoundStudioRefresh({binding,clock=()=>Math.fl
    if(committed.kind!=='rotated')return committed;
    const fp=await fingerprint('studio',committed.rawSuccessor),nativeMetrics={statements:0,rowsRead:0,rowsWritten:0};
    for(let attempt=0;attempt<2;attempt++){
-    now=clock();const current=await snapshot(db,committed,fp,now);for(const key of Object.keys(nativeMetrics))nativeMetrics[key]+=current.metrics[key];
+    now=clock();const current=await snapshot(binding.withSession('first-primary'),committed,fp,now);for(const key of Object.keys(nativeMetrics))nativeMetrics[key]+=current.metrics[key];
     // Neither account, app, version nor rights is accepted from the caller.
     const issued=await engine.issue(currentClaims(current.row),current.rights,now);
-    const finalResult=await db.prepare(contextSQL).bind(...parameters(committed,fp,clock())).all(),final=finalResult.results[0];nativeMetrics.statements++;nativeMetrics.rowsRead+=finalResult.meta?.rows_read||0;nativeMetrics.rowsWritten+=finalResult.meta?.rows_written||0;
+    const finalResult=await binding.withSession('first-primary').prepare(contextSQL).bind(...parameters(committed,fp,clock())).all(),final=finalResult.results[0];nativeMetrics.statements++;nativeMetrics.rowsRead+=finalResult.meta?.rows_read||0;nativeMetrics.rowsWritten+=finalResult.meta?.rows_written||0;
     if(!final)fail('SESSION_ENDED');
     const unchanged=final.account_id===current.row.account_id&&final.current_permission_version===current.row.current_permission_version&&final.global_admin===current.row.global_admin&&final.unlock_generation===current.row.unlock_generation&&final.credential_epoch===current.row.credential_epoch&&final.browser_generation===current.row.browser_generation&&final.original_expires_at_s===current.row.original_expires_at_s;
     if(unchanged)return {kind:'rotated',claims:issued.claims,setCookies:[issued.setCookie,engine.refreshCookie(committed.rawSuccessor,committed.originalExpiry,clock())],metrics:{rotation:{...store.metrics},nativeSnapshotAndFinalGate:nativeMetrics},nativeAccountBound:true};
