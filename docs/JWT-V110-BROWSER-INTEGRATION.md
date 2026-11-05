@@ -6,7 +6,7 @@ This is a source-only, default-disabled feature stage for Academy, Studio and Hi
 
 All three repositories use `feature/jwt-v110-browser-integration-20261105`.
 
-| Repository | Tested source |
+| Repository | Browser fixture source |
 | --- | --- |
 | Academy | `97fee6a673a8afdca62e5423d28b44e6579c2485` |
 | Studio | `02f2f782c89e642c52a8223ad50c94fffa2efcad` |
@@ -49,6 +49,14 @@ The browser used Google Chrome 156.0.8078.79, three same-site loopback origins, 
 It verified positive display in all three apps; two Hifz queries with distinct returned revisions and zero additional context/Academy API reads; native Academy sign-out clearing active Studio; a late old Studio response not being accepted; frozen Hifz returning masked after missing a notification; history return remaining masked; forged messages unable to reveal; a positive control followed by disabled-storage masking; and a cross-site provider frame having an empty independent Academy storage partition and staying masked. The cross-site frame was inspected through its separate DevTools target without disabling browser isolation. This is one selected Chromium environment, not a browser-support guarantee.
 
 Development failures remain visible in Actions: missing root test dependencies, the obsolete switch-listener shape assertion (replaced with real callback checks), the initial relay ordering bug and a cross-process frame inspection assumption. No failing run was relabelled successful.
+
+## Academy publication follow-up
+
+Review of the real publisher found that the constant-string iframe HTML was not discovered and was outside the existing page allowlist. Academy source `f1ddbe9d35e1028a78eacd68ef1bafd7385da48c` now shares an exact eight-file public V110 manifest between the asset builder and static site entrypoint. It does not recursively publish the auth folder. The builder includes the relay with a narrow non-Circles-page exception; the actual site serves only these public files without forwarding any browser headers/credentials, with no-store/nosniff. The private context endpoint and neighbouring auth sources are excluded. Default feature configuration remains disabled.
+
+[Package run 42086846188](https://github.com/MaktabForlife/AcademyStudio/actions/runs/42086846188), Studio source `fdcf46a9fa53012ba1fd7c96a826353236f962b2`, Academy `f1ddbe9d35e1028a78eacd68ef1bafd7385da48c`, job 127454152795: SUCCESS, 12/12 cases, zero failed/cancelled/skipped. This includes three new actual package/site checks and nine existing portal-hosting regressions. The actual feature asset builder ran in a disposable GitHub temporary directory. GET/HEAD, credential stripping, default-off bytes, method refusal and non-public neighbours were checked through the real site entrypoint with a local ASSETS fixture. No hosted requests or deployment occurred.
+
+[Package artifact 13443581251](https://github.com/MaktabForlife/AcademyStudio/actions/runs/42086846188/artifacts/13443581251), SHA-256 `5dbffb82ead44bb034845df0e6bfe16cd2743c78d0f628983db7031415415fde`. The browser runtime/common source is unchanged from the successful browser run; its earlier immutable source pins above remain the evidence for those behaviors. Package serving is additional scoped evidence, not proof of real hosting headers, iframe policies, SaaS routing, browser compatibility or Worker billing.
 
 ## Remaining gates
 

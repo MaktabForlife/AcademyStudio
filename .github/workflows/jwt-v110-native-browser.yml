@@ -29,7 +29,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: MaktabForlife/Academy
-          ref: 97fee6a673a8afdca62e5423d28b44e6579c2485
+          ref: f1ddbe9d35e1028a78eacd68ef1bafd7385da48c
           path: work/Academy
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -64,7 +64,7 @@ jobs:
           set -o pipefail
           node --test --test-reporter=tap tests/jwt-v110-native-browser.test.mjs 2>&1 | tee .build/jwt-v110-native-browser/browser.log
           git diff --exit-code
-          node --input-type=module -e "import {writeFileSync} from 'node:fs';writeFileSync('.build/jwt-v110-native-browser/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,academy:'97fee6a673a8afdca62e5423d28b44e6579c2485',hifz:'0f383f0b67171b87180ae4a9b523c3343ec647b6',run:process.env.GITHUB_RUN_ID,syntheticNativeAndContextResponses:true,actualAppCode:true,actualContextProducerRun:42078727303,hostedSQL:0,liveDBChanges:0,productionRequests:0,deployed:false})+'\n');"
+          node --input-type=module -e "import {writeFileSync} from 'node:fs';writeFileSync('.build/jwt-v110-native-browser/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,academy:'f1ddbe9d35e1028a78eacd68ef1bafd7385da48c',hifz:'0f383f0b67171b87180ae4a9b523c3343ec647b6',run:process.env.GITHUB_RUN_ID,syntheticNativeAndContextResponses:true,actualAppCode:true,actualContextProducerRun:42078727303,hostedSQL:0,liveDBChanges:0,productionRequests:0,deployed:false})+'\n');"
       - name: Preserve scoped synthetic evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
