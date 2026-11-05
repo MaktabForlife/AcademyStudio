@@ -1,0 +1,45 @@
+name: V110 isolated JWT foundation prototypes
+on:
+  create:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: jwt-v110-stage2-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  prototype:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/validation/jwt-v110-stage2-')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    env:
+      CI: "true"
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18.0"
+      - name: Install exact reviewed dependencies on GitHub
+        run: npm ci --no-audit --no-fund
+      - name: Run Studio baseline and isolated JWT contract tests
+        timeout-minutes: 15
+        run: |
+          mkdir -p .build/jwt-v110-stage2
+          npm test 2>&1 | tee .build/jwt-v110-stage2/tests.log
+          git diff --exit-code
+          node --input-type=module -e "import {writeFileSync} from 'node:fs'; writeFileSync('.build/jwt-v110-stage2/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,run:process.env.GITHUB_RUN_ID,synthetic:true,productionRequests:0,hostedSQL:0,deployed:false})+'\n');"
+      - name: Preserve synthetic evidence in GitHub
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: jwt-v110-stage2-${{ github.run_id }}
+          include-hidden-files: true
+          retention-days: 30
+          path: .build/jwt-v110-stage2/
