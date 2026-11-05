@@ -1,0 +1,53 @@
+name: V110 Academy public package review
+on:
+  create:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  academy-package:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/validation/jwt-v110-package-')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    defaults:
+      run:
+        shell: bash
+        working-directory: work/AcademyStudio
+    env:
+      ACADEMY_SOURCE: ${{ github.workspace }}/work/Academy
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          path: work/AcademyStudio
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: MaktabForlife/Academy
+          ref: f1ddbe9d35e1028a78eacd68ef1bafd7385da48c
+          path: work/Academy
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18.0"
+      - name: Install Academy's locked existing dependencies
+        run: npm ci --prefix "$ACADEMY_SOURCE/backend" --no-audit --no-fund
+      - name: Check the real public package and static entrypoint
+        run: |
+          set -o pipefail
+          mkdir -p .build/jwt-v110-academy-package
+          node --check "$ACADEMY_SOURCE/backend/tools/academy-assets.mjs"
+          node --check "$ACADEMY_SOURCE/backend/tools/academy-site.mjs"
+          node --test --test-reporter=tap tests/jwt-v110-academy-package.test.mjs "$ACADEMY_SOURCE/backend/tests/portal-hosting.test.mjs" 2>&1 | tee .build/jwt-v110-academy-package/tests.log
+          git diff --exit-code
+          git -C "$ACADEMY_SOURCE" diff --exit-code
+          node --input-type=module -e "import {writeFileSync} from 'node:fs';writeFileSync('.build/jwt-v110-academy-package/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,academy:'f1ddbe9d35e1028a78eacd68ef1bafd7385da48c',run:process.env.GITHUB_RUN_ID,hostedRequests:0,liveDBChanges:0,workerDeployed:false})+'\n');"
+      - name: Preserve public package evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: jwt-v110-academy-package-${{ github.run_id }}
+          include-hidden-files: true
+          retention-days: 30
+          path: work/AcademyStudio/.build/jwt-v110-academy-package/
