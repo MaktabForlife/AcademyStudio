@@ -53,7 +53,7 @@ Sources: [browser caching](https://developer.mozilla.org/en-US/docs/Web/HTTP/Ref
 This records an agreed policy, not a completed implementation/browser proof. No runtime source, database/schema/data/copy/ID/sync, live cache namespace, hosting/config or deployment change is made by this documentation update.
 
 
-## Isolated display-memory component — targeted review corrections in progress
+## Isolated display-memory component — review fixes proved on GitHub, review pending
 
 An unimported component at `src/auth/v110/browser-display-state.mjs` develops the agreed temporary UI-display policy without changing real app entrypoints or database/config/deployment state. It holds only an exact versioned navigation/display DTO in app memory. It never stores credentials, private journals or protected media, and is not a server-side material-permission cache or authorisation decision.
 
@@ -89,4 +89,15 @@ Optimisation verified the exact a9458b24 artifact/evidence but returned two sour
 
 The corrected helper invokes the local mask/clear and state hooks before best-effort tab notification, catches transport failure independently, and makes no peer-delivery guarantee. A current ready expiry callback that fires before the original deadline now re-arms for the remaining time; older epoch callbacks cannot alter a newer timer. The original deadline and own-app acknowledged foreground rules remain unchanged.
 
-New failure-injection units require local clearing/state notification despite throwing transport on both logout and timer lock, and require an early callback to leave a new timer armed followed by autonomous deadline clearing without any state/peek/load call. The Chromium fixture closes its actual native BroadcastChannel, requires the failed post to be recorded only after the actual private DOM is masked/emptied, and then verifies the local page remains usable for recheck/history tests. It does not infer peer clearing from failed delivery. Results/review for this correction are pending a new targeted GitHub run. All real-app/cross-origin/auth/media/source/DB/config/deployment gates remain unchanged.
+New failure-injection units require local clearing/state notification despite throwing transport on both logout and timer lock, and require an early callback to leave a new timer armed followed by autonomous deadline clearing without any state/peek/load call. The Chromium fixture closes its actual native BroadcastChannel, requires the failed post to be recorded only after the actual private DOM is masked/emptied, and then verifies the local page remains usable for recheck/history tests. It does not infer peer clearing from failed delivery. Completed targeted results for this correction are recorded below; optimisation review remains pending. All real-app/cross-origin/auth/media/source/DB/config/deployment gates remain unchanged.
+
+
+### Completed review-fix proof
+
+Corrected source/test commit `d24b1f9dbae08a8f5f0c262f86cf72e37b2373ca`, [run42035878516](https://github.com/MaktabForlife/AcademyStudio/actions/runs/42035878516), job127273771659: **18top-level executions,0failure/cancel/skip** =16behavior unit tests,1scope diagnostic and1real-Chromium test. This replaces a9458b24/run42034115062 for the current helper's scoped masking/expiry evidence; neither run is a330-auth-suite rerun.
+
+The throwing-transport fixture confirms local mask and masked-state hooks complete before attempted notification on both logout and autonomous timer lock. The early-callback fixture observes a replacement timer still armed and then observes the clear hook at its original deadline without invoking state/peek/load to discover expiry. The timer retains the same session/deadline and ignores callbacks from an older epoch.
+
+Chrome156.0.8078.79 closes the actual native BroadcastChannel. The next logout records1failed native post, with the actual private DOM already hidden/empty before that failure; no exception prevents local clear, state notification or subsequent local recheck. This is local behavior only and does not establish delivery or clearing in a peer tab. The retained late-response, same-origin DOM, cross-origin negative control and denied Back/BFCache checks also pass; actualBFCacheRestore=true in this run. The same synthetic storage instrumentation still records0calls. Node24.18.0 and all execution/temp files remain exclusive to the disposable GitHub runner.
+
+Artifact13418042615 API-reported ZIP SHA256: `ce92b6dc4b31efc5a09bca43dea251a90a1147c69f89016130c60f34b3c1a762`. The prior18/16 counts are top-level executions, not distinct authorization scenarios or production guarantees. Actual fresh authoritative context/global browser coordination, real app DOM/media/retained references, delayed cookies, integrated suspension/Range/CSRF/foreground/source/lifecycle and all activation gates remain unimplemented/unproved. No real frontend import, database/data/copies/IDs/sync, hosted SQL, live config, canonical source or deployment changed.
