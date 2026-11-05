@@ -118,9 +118,25 @@ test('native frontend hooks clear across three real origins and keep suspended/m
  // Cross-site provider negative control. Independently inspect its actual
  // Academy-origin frame's storage partition, not just the origin rejection.
  const providerURL=sites.origins.hifz.replace('127.0.0.1','localhost')+'/',provider=await page('hifz',providerURL,{provider:true});await sleep(4500);await masked(provider);
- const tree=await c.call('Page.getFrameTree',{},provider.session),frame=tree.frameTree.childFrames?.find(f=>f.frame.url.startsWith(sites.origins.academy+'/auth/v110/browser-control.html'));assert.ok(frame);
- const world=await c.call('Page.createIsolatedWorld',{frameId:frame.frame.id,worldName:'read-control-partition'},provider.session),partition=await c.call('Runtime.evaluate',{contextId:world.executionContextId,expression:'(()=>{try{return localStorage.getItem("uaa-v110-ui-control-v1")===null?"empty":"present"}catch{return "unavailable"}})()',returnByValue:true},provider.session);
- assert.notEqual(partition.result.value,'present');
+ const relayURL=sites.origins.academy+'/auth/v110/browser-control.html';
+ assert.equal(await c.evaluate(provider,'document.querySelector("iframe[data-uaa-control]")?.src'),relayURL);
+ // Cross-site frames normally have their own renderer/DevTools target.
+ // Inspect that target; the parent's same-process frame tree may omit it.
+ const targets=await c.call('Target.getTargets'),remote=targets.targetInfos.find(target=>target.type==='iframe'&&target.url===relayURL);
+ const storageProbe='(()=>{try{return localStorage.getItem("uaa-v110-ui-control-v1")===null?"empty":"present"}catch{return "unavailable"}})()';
+ let partition;
+ if(remote){
+  const attached=await c.call('Target.attachToTarget',{targetId:remote.targetId,flatten:true});
+  await c.call('Runtime.enable',{},attached.sessionId);
+  partition=await c.call('Runtime.evaluate',{expression:storageProbe,returnByValue:true},attached.sessionId);
+ }else{
+  const tree=await c.call('Page.getFrameTree',{},provider.session),all=[];
+  const visit=node=>{all.push(node.frame);for(const child of node.childFrames||[])visit(child);};visit(tree.frameTree);
+  const frame=all.find(frame=>frame.url===relayURL);assert.ok(frame,'Provider relay frame must be inspectable.');
+  const world=await c.call('Page.createIsolatedWorld',{frameId:frame.id,worldName:'read-control-partition'},provider.session);
+  partition=await c.call('Runtime.evaluate',{contextId:world.executionContextId,expression:storageProbe,returnByValue:true},provider.session);
+ }
+ assert.ok(['empty','unavailable'].includes(partition.result.value),'A cross-site provider must not share the Academy control baseline');
  await c.call('Target.activateTarget',{targetId:b.id});await ready(b);
  await c.call('Page.setWebLifecycleState',{state:'frozen'},h.session);
  const slowBefore=sites.state.slowStarted;await c.evaluate(b,"import('/api.mjs').then(({api})=>{window.__lateAccepted=false;api('/api/me?slow=1').then(()=>{window.__lateAccepted=true;},()=>{});return true;})");
