@@ -150,8 +150,8 @@ test('account-bound snapshot reads stay indexed with 4000 unrelated native entit
  ]);
  const after=await api.refreshAndIssue(refreshValue(before),{foreground:false});
  assert.equal(after.kind,'rotated');
- assert.ok(after.metrics.nativeSnapshot.rowsRead<=before.metrics.nativeSnapshotAndFinalGate.rowsRead+16,'Unrelated grants cannot grow the snapshot scan.');
- assert.equal(after.metrics.nativeSnapshotAndFinalGate.rowsWritten,0);
+ assert.ok(after.metrics.nativeSnapshot.rowsRead<=before.metrics.nativeSnapshot.rowsRead+16,'Unrelated grants cannot grow the snapshot scan.');
+ assert.equal(after.metrics.nativeSnapshot.rowsWritten,0);
  evidence.unrelatedGrowth={unrelatedNativeRetainedRows:4000,before:before.metrics,after:after.metrics,newProductionIndex:false};
 });
 test('the account-bound refresh/sign pipeline runs inside the selected Worker and native D1 schema',async t=>{
