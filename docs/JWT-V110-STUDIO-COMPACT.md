@@ -131,7 +131,7 @@ This records an agreed policy, not a completed implementation/browser proof. No 
 
 Optimisation accepted the selected compact source proof at915253dc/run42015598431 within its stated scope and independently verified both artifacts. It explicitly found that the lab's Response.json errors lacked no-store headers. This follow-up changes only the synthetic adapter/tests and this document, not a live handler or database.
 
-Every lab private/auth response now passes through one finishing path that sets private,no-store and nosniff, including success, resource denial, parent cancellation, malformed/missing/duplicate cookies, method rejection, configured-host mismatch, disabled-platform response and unexpected configuration failure. Errors expose an allowlisted code only; successful refresh exposes kind/metrics and two separate bounded Studio Set-Cookie headers. All non-refresh/failed responses must release no cookies; early errors perform no D1 or R2 work.
+Every lab private/auth response now passes through one finishing path that sets private,no-store and nosniff, including success, resource denial, parent cancellation, malformed/missing/duplicate cookies, method rejection, configured-host mismatch, disabled-platform response and unexpected configuration failure. Compact/caught-adapter errors expose an allowlisted code only; the native handle() branch retains its established failure bodies. This is common no-store coverage, not native/compact error-body parity. Successful refresh exposes kind/metrics and two separate bounded Studio Set-Cookie headers. All non-refresh/failed responses must release no cookies; early errors perform no D1 or R2 work.
 
 The background refresh test now reads __Host-uas_r from the request Cookie header rather than a fixture environment secret, validates the exact configured Origin and exercises duplicate/missing/partial cookies and a previous-raw in_progress response. It remains a BACKGROUND refresh with foreground=false; session-bound CSRF and qualifying-foreground admission are still unimplemented integration gates. Exact public/provider hostname transition behavior is not proved by a synthetic configured-host check.
 
@@ -149,3 +149,11 @@ The expanded Worker case checks13HTTP boundary denials, not13new top-level tests
 Production-date job127231775851/artifact13412807604 API-reported SHA256 `3440c81b141d51b8c096c3161c4b66804705e0a8b7df12170732394f2b79b5a9`; prototype job127231776415/artifact13413006955 API-reported SHA256 `2a63ee4b994956442ef090e21222428061ff90927d48d4ac50116207a5676707`.
 
 No application-source handler, schema, real DB/data/link/sync, config/cache resource or deployment changed. This closes only the tested representative HTTP privacy behavior. No browser-cache implementation, session-bound CSRF, foreground admission, Source/writer/304/Range/lifecycle/switch/cutover clearance is claimed.
+
+### Parser-value scope clarification
+
+Optimisation closed the representative no-store omission atcf5d7289/run42023472231 and accepted the corrected runtime/job qualification. It noted that two earlier HTTP cases sent only the OTHER cookie name. Those demonstrate absence of the required name, not cross-purpose value substitution. Their labels now say so.
+
+The next narrowly targeted parser run adds the actual wrong values under the expected names: raw refresh under __Host-uas_a, a compact access JWT under __Host-uas_r, and a malformed value under __Host-uas_r. The same common assertions require sanitized/uncached responses, no cookies, no DB/R2/Academy work or writes. The matched Worker case emits a standalone safe evidence diagnostic so it can be selected without rerunning unrelated suites.
+
+No application/compact module, lab adapter implementation, DDL, live data/config or browser-cache implementation changes in this clarification. The existing330-case run remains the whole-suite baseline; targeted results must be reported separately, without claiming a new330-case run. Mixed/partial installation, actual session-bound CSRF/foreground, late/lost response recovery and real browser/host/Source/write/lifecycle parity remain open.

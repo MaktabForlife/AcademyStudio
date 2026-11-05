@@ -149,12 +149,15 @@ test('matched native and compact GETs execute the same private website route and
  await denial(send,path,{},400,'missing-access-cookie');
  await denial(send,path,{headers:{Cookie:'__Host-uas_a=bad'}},401,'invalid-access-token');
  await denial(send,path,{headers:{Cookie:compactCookies.learner+'; '+compactCookies.learner}},400,'duplicate-access-cookie');
- await denial(send,path,{headers:{Cookie:'__Host-uas_r='+testRefresh}},400,'refresh-cookie-is-not-access');
+ await denial(send,path,{headers:{Cookie:'__Host-uas_r='+testRefresh}},400,'required-access-name-absent-with-only-refresh-name');
+ await denial(send,path,{headers:{Cookie:'__Host-uas_a='+testRefresh}},401,'raw-refresh-value-under-access-name');
+ await denial(send,'https://website.test/compact-refresh',{method:'POST',headers:{Origin:'https://website.test',Cookie:'__Host-uas_r='+compactCookies.learner.slice('__Host-uas_a='.length)}},400,'access-JWT-value-under-refresh-name');
+ await denial(send,'https://website.test/compact-refresh',{method:'POST',headers:{Origin:'https://website.test',Cookie:'__Host-uas_r=not-a-refresh'}},400,'malformed-value-under-refresh-name');
  await denial(send,'https://unexpected.test/compact/api/websites/site-course',{headers:{Cookie:compactCookies.learner}},403,'unconfigured-host');
  await denial(send,path,{method:'PATCH',headers:{Cookie:compactCookies.learner}},405,'compact-mutation-not-integrated');
  await denial(send,'https://website.test/compact-refresh',{method:'POST'},403,'refresh-needs-configured-Origin');
  await denial(send,'https://website.test/compact-refresh',{method:'POST',headers:{Origin:'https://website.test'}},400,'missing-refresh-cookie');
- await denial(send,'https://website.test/compact-refresh',{method:'POST',headers:{Origin:'https://website.test',Cookie:'__Host-uas_a=bad'}},400,'access-cookie-is-not-refresh');
+ await denial(send,'https://website.test/compact-refresh',{method:'POST',headers:{Origin:'https://website.test',Cookie:'__Host-uas_a=bad'}},400,'required-refresh-name-absent-with-only-access-name');
  await denial(send,'https://website.test/compact-refresh',{method:'POST',headers:{Origin:'https://website.test',Cookie:'__Host-uas_r='+testRefresh+'; __Host-uas_r='+testRefresh}},400,'duplicate-refresh-cookie');
  await denial(send,'https://website.test/compact-refresh',{method:'POST',headers:{Origin:'https://website.test',Cookie:'__Host-uas_r='+testRefresh}},409,'previous-refresh-returns-in-progress',{readAllowed:true});
  const disabled=await mf.getWorker('compact-disabled-lab');await denial((url,options)=>disabled.fetch(url,options),path,{headers:{Cookie:compactCookies.learner}},503,'platform-disabled');
@@ -171,5 +174,6 @@ test('matched native and compact GETs execute the same private website route and
  await db.prepare("INSERT INTO jwt_v110_parent_tombstones VALUES('parent-learner',?)").bind(now+604800).run();
  await request('compact','learner',401,'parent-cancelled');
  evidence.matchedRoutes={samples,sameNativeBusinessRouteAndPublishedR2Body:true,unchangedJWTDuringPurchaseRevokeAndFreePolicyChange:true,accountIsolation:true,noGrantVersionFanoutForNativeDecision:true,ownershipMode:'WEBSITE only',adapter:'test-only exact source auth bridge; no real handler/route imported it in production',ordinaryCurrentAccountAndResourceQueriesExpected:true,rangeWritesSourceModeBrowserCSRFAndBilledCPU:'not proven',preflight:'GET dispatches only; not browser preflight evidence',outboxAndRefreshWrites:'not part of these GET samples'};
+ t.diagnostic('V110_HTTP_BOUNDARIES_EVIDENCE='+JSON.stringify({runtime:runtimeEvidence,HTTPBoundaries:evidence.HTTPBoundaries,workerRefresh:evidence.workerRefresh,matchedRoutes:evidence.matchedRoutes}));
 });
 test('compact synthetic evidence',t=>t.diagnostic('V110_COMPACT_STUDIO_EVIDENCE='+JSON.stringify(evidence)));

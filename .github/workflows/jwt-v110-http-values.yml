@@ -1,0 +1,49 @@
+name: V110 targeted HTTP cookie-value review
+on:
+  create:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: jwt-v110-http-values-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  boundary-values:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/validation/jwt-v110-http-values-')
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime: [legacy, production-date]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CI: "true"
+      WRANGLER_SEND_METRICS: "false"
+      JWT_RUNTIME: ${{ matrix.runtime }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18.0"
+      - name: Install locked dependencies on disposable GitHub runner
+        shell: bash
+        run: npm ci --no-audit --no-fund
+      - name: Exercise the actual HTTP parser and native route boundary
+        shell: bash
+        timeout-minutes: 3
+        run: |
+          mkdir -p .build/jwt-v110-http-values
+          node --test --test-reporter=tap --test-concurrency=1 --test-name-pattern='matched native and compact GETs execute the same private website route' tests/jwt-v110-compact-studio.test.mjs 2>&1 | tee .build/jwt-v110-http-values/tests.log
+          git diff --exit-code
+          node --input-type=module -e "import {writeFileSync} from 'node:fs'; writeFileSync('.build/jwt-v110-http-values/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,run:process.env.GITHUB_RUN_ID,runtimeMode:process.env.JWT_RUNTIME,targetedWorkerBoundaryOnly:true,synthetic:true,hostedSQL:0,deployed:false})+'\n');"
+      - name: Preserve targeted synthetic evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: jwt-v110-http-values-${{ matrix.runtime }}-${{ github.run_id }}
+          include-hidden-files: true
+          retention-days: 30
+          path: .build/jwt-v110-http-values/
