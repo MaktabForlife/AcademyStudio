@@ -84,6 +84,9 @@ jobs:
         env:
           NODE_OPTIONS: --import=${{ github.workspace }}/work/AcademyStudio/tools/preserve-local-files.mjs
         run: node tools/cloud-release-check.mjs check
+      - name: Verify the reported management faults on the exact release source
+        working-directory: work/Academy
+        run: node --test --test-reporter=tap backend/tests/academy-management-origin-regression.test.mjs backend/tests/academy-release-labels.test.mjs > "$M4L_RELEASE_OUTPUT/management-regression-tests.log" 2>&1
       - name: Build the reviewed native homepage for isolated browser checks
         working-directory: work/Academy
         run: node backend/tools/academy-pages-build.mjs
@@ -124,6 +127,7 @@ jobs:
             ${{ github.workspace }}/.cloud-output/static-route-matrix.json
             ${{ github.workspace }}/.cloud-output/bundle-checks.json
             ${{ github.workspace }}/.cloud-output/academy-tests.log
+            ${{ github.workspace }}/.cloud-output/management-regression-tests.log
             ${{ github.workspace }}/.cloud-output/paired-media-tests.log
             ${{ github.workspace }}/.cloud-output/portal-source-tests.log
             ${{ github.workspace }}/.cloud-output/portal-paired-tests.log
