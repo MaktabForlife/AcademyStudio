@@ -29,6 +29,7 @@ jobs:
       - name: Install exact reviewed dependencies on GitHub
         run: npm ci --no-audit --no-fund
       - name: Run isolated synthetic crypto, D1, size and concurrency prototypes
+        timeout-minutes: 3
         run: |
           mkdir -p .build/jwt-v110-stage2
           node --test --test-concurrency=1 tests/jwt-v110-stage2.test.mjs 2>&1 | tee .build/jwt-v110-stage2/tests.log

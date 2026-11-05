@@ -29,6 +29,7 @@ async function rejected(promise,code){
 }
 async function fixture({last=NOW,expiry=NOW+SESSION_SECONDS}={}){
  const mf=new Miniflare(convertV4MiniflareOptions({workers:[{name:'jwt-stage2',modules:true,script:'export default {fetch(){return new Response("synthetic")}}',compatibilityDate:'2026-10-28',d1Databases:{DB:'jwt-stage2-synthetic'}}]}));
+ try{
  const db=await mf.getD1Database('DB','jwt-stage2');
  const schema=await readFile(new URL('../src/auth/v110/schema.sql',import.meta.url),'utf8');
  for(const sql of schema.split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(sql).run();
@@ -39,6 +40,7 @@ async function fixture({last=NOW,expiry=NOW+SESSION_SECONDS}={}){
   db.prepare('INSERT INTO jwt_v110_families(family_id,account_id,parent_session_id,browser_id,browser_generation,credential_epoch,permission_version,refresh_fp,original_signed_in_at_s,original_expires_at_s,last_fg_refresh_s,rotated_at_s) VALUES(?,?,?,?,1,1,1,?,?,?,?,?)').bind(input().sid,input().sub,input().psid,input().bsid,fp,NOW,expiry,last,last)
  ]);
  return {mf,db,raw,store:()=>createPrototypeStore(db,{app:'studio'})};
+ }catch(error){await mf.dispose();throw error;}
 }
 const measured={source:'isolated synthetic workerd/D1',productionRequests:0,macBuilds:0};
 test('ES256 intended app, exact expiry and fixed parent deadline',async()=>{
