@@ -30,13 +30,13 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: MaktabForlife/Academy
-          ref: f1ddbe9d35e1028a78eacd68ef1bafd7385da48c
+          ref: 36c78ca45fc8c268a2c1da712cba709e828aa3d5
           path: work/Academy
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: MaktabForlife/Hifz
-          ref: 0f383f0b67171b87180ae4a9b523c3343ec647b6
+          ref: 3c3338365af0d1cd370067fa66824b5a305852e0
           path: work/Hifz
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -71,7 +71,7 @@ jobs:
           set -o pipefail
           node --test --test-reporter=tap --test-concurrency=1 tests/jwt-v110-browser-control.test.mjs tests/jwt-v110-native-context.test.mjs 2>&1 | tee .build/jwt-v110-browser-integration/context-tests.log
           git diff --exit-code
-          node --input-type=module -e "import {writeFileSync} from 'node:fs';writeFileSync('.build/jwt-v110-browser-integration/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,academy:'f1ddbe9d35e1028a78eacd68ef1bafd7385da48c',hifz:'0f383f0b67171b87180ae4a9b523c3343ec647b6',run:process.env.GITHUB_RUN_ID,phase:'protocol and native read-only context; browser evidence in separate native-browser workflow',synthetic:true,hostedSQL:0,liveDBChanges:0,productionRequests:0,deployed:false})+'\n');"
+          node --input-type=module -e "import {writeFileSync} from 'node:fs';writeFileSync('.build/jwt-v110-browser-integration/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,academy:'36c78ca45fc8c268a2c1da712cba709e828aa3d5',hifz:'3c3338365af0d1cd370067fa66824b5a305852e0',run:process.env.GITHUB_RUN_ID,phase:'protocol and native read-only context; browser evidence in separate native-browser workflow',synthetic:true,hostedSQL:0,liveDBChanges:0,productionRequests:0,deployed:false})+'\n');"
       - name: Retain current Studio portal and identity regressions with feature disabled
         timeout-minutes: 5
         run: |

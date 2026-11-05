@@ -58,6 +58,22 @@ Review of the real publisher found that the constant-string iframe HTML was not 
 
 [Package artifact 13443581251](https://github.com/MaktabForlife/AcademyStudio/actions/runs/42086846188/artifacts/13443581251), SHA-256 `5dbffb82ead44bb034845df0e6bfe16cd2743c78d0f628983db7031415415fde`. The browser runtime/common source is unchanged from the successful browser run; its earlier immutable source pins above remain the evidence for those behaviors. Package serving is additional scoped evidence, not proof of real hosting headers, iframe policies, SaaS routing, browser compatibility or Worker billing.
 
+## Public re-entry and local intent follow-up
+
+Optimisation found two additional gaps: the mask hid Academy's native PIN form, and an older begin reply could capture a newer local generation. The corrected runtime is Academy `36c78ca45fc8c268a2c1da712cba709e828aa3d5`, Studio `3c9f233c851ed4fa8fe7e65df2145d60134f9056`, Hifz `3c3338365af0d1cd370067fa66824b5a305852e0`.
+
+The public gate now links to `/academy/#login`. On the Academy origin only, its Sign in action opens the real native login/PIN dialog through a checked native controller method. Only that marked dialog and descendants receive a visibility exception; the rest of the workspace stays masked. Existing private header/form values are cleared. Other Academy pages can reach the concrete Academy entry route; child apps cannot enable this visibility exception. This is credential-entry UI, not implementation or proof of PIN authentication or issuer/admission.
+
+Every local clear now invalidates any old sign-in intent immediately. Begin stores its originating operation/generation before awaiting the broker; a late success/failure cannot overwrite or null a newer intent. Completion owns a cloned verified context and checks the same operation/generation before and after binding and establishment awaits. A pending begin without a returned revision cannot be completed.
+
+[Re-entry run 42088221045](https://github.com/MaktabForlife/AcademyStudio/actions/runs/42088221045), job 127458982148: SUCCESS, six adapter cases plus one affected real-Chromium browser case, zero failed/cancelled/skipped. The adapter uses the actual app privacy module with a controlled broker: delayed A-clear reply versus B, logout while A is pending, failed old deliveries, cancellation during binding, cancellation while establishment acknowledgement is pending, and pending/missing-revision rejection. These are local UI-operation tests, not server cookie-replay proof.
+
+Chrome 156.0.8078.47 additionally reached the actual native Academy PIN dialog from both empty and blocked contexts, with a synthetic previous account header cleared, the PIN blank and the old workspace still hidden. The affected browser clearing paths were repeated because their shared runtime changed. The browser still uses clearly synthetic HTTP context/native responses and already-established Master fixtures for positive displays. No old crypto, context producer, default regression or publisher suite was repeated without a related source change.
+
+[Re-entry artifact 13443533673](https://github.com/MaktabForlife/AcademyStudio/actions/runs/42088221045/artifacts/13443533673), SHA-256 `c02d60584e8c2e02b9ec5a18436f258f59bb04caa16243fa351d8ed96d0a0852`.
+
+The Hifz browser tab is hidden and locally cleared before it is frozen; the result is not a proof of freezing a still-visible private page before lifecycle delivery or of first resumed paint. History navigation in this fixture is not measured BFCache restoration. The late-response check proves callback rejection and the tested Studio name remaining blank, not a universal render/media audit.
+
 ## Remaining gates
 
 The full JWT cutover still needs the issuer and native Master admission binding; per-app refresh rotation/PIN/unlock/qualifying foreground writers; versioned outbox/retry/committed-ACK delivery and current cancellation writers; native JWT-only resource/write authorization; CSRF and late Set-Cookie/session replay fences; real media/object URL integration; storage migration/rollback approval; and hosted origin/cookie/cache/accounting checks.
