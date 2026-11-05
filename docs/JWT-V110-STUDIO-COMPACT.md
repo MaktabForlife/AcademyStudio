@@ -157,3 +157,20 @@ Optimisation closed the representative no-store omission atcf5d7289/run420234722
 The next narrowly targeted parser run adds the actual wrong values under the expected names: raw refresh under __Host-uas_a, a compact access JWT under __Host-uas_r, and a malformed value under __Host-uas_r. The same common assertions require sanitized/uncached responses, no cookies, no DB/R2/Academy work or writes. The matched Worker case emits a standalone safe evidence diagnostic so it can be selected without rerunning unrelated suites.
 
 No application/compact module, lab adapter implementation, DDL, live data/config or browser-cache implementation changes in this clarification. The existing330-case run remains the whole-suite baseline; targeted results must be reported separately, without claiming a new330-case run. Mixed/partial installation, actual session-bound CSRF/foreground, late/lost response recovery and real browser/host/Source/write/lifecycle parity remain open.
+
+### Completed targeted cookie-value results
+
+Commit `039006bd9aacc22d67c608e07cca16484a28fc8e`, [targeted run 42027436819](https://github.com/MaktabForlife/AcademyStudio/actions/runs/42027436819), passed the single matched HTTP Worker case in each job mode: **2 case executions, zero failure/cancel/skip**. Each execution contains 16 boundary-denial scenarios and the retained matched native resource decisions. This is not a new 330-case suite run; the accepted full-suite baseline remains cf5d7289 / run 42023472231.
+
+| Actual value under expected cookie name | HTTP result | D1 / R2 / Academy calls or writes | Cookies released |
+| --- | --- | --- | --- |
+| Raw refresh value under __Host-uas_a | 401 | 0 | 0 |
+| Access JWT under __Host-uas_r | 400 | 0 | 0 |
+| Malformed value under __Host-uas_r | 400 | 0 | 0 |
+
+All three assert private,no-store, nosniff and safe body keys. They are distinct from the renamed earlier cases that supplied only the wrong cookie NAME. The targeted production Worker uses the selected 2026-10-28 runtime; the legacy mode uses its existing test runtime.
+
+Production job 127245072949 / artifact 13415010377 API-reported SHA256: `be3664ee00a05628aba4d486a6fd8971bd140ed7225b2f202dd430c5b0a8c815`.
+Legacy job 127245072446 / artifact 13413339938 API-reported SHA256: `6d6da47f6db3aa0fe9aebce0cb9e75e433142ad677b8ac64ecb0ffc079fc7dd5`.
+
+Only tests, targeted workflow and documentation changed. No application/compact module, lab-adapter implementation, DDL, live database/config/cache or deployment changed. These results extend the HTTP parser evidence only; the remaining browser/CSRF/Source/write/lifecycle/host/recovery and activation gates remain.
