@@ -174,3 +174,8 @@ Production job 127245072949 / artifact 13415010377 API-reported SHA256: `be3664e
 Legacy job 127245072446 / artifact 13413339938 API-reported SHA256: `6d6da47f6db3aa0fe9aebce0cb9e75e433142ad677b8ac64ecb0ffc079fc7dd5`.
 
 Only tests, targeted workflow and documentation changed. No application/compact module, lab-adapter implementation, DDL, live database/config/cache or deployment changed. These results extend the HTTP parser evidence only; the remaining browser/CSRF/Source/write/lifecycle/host/recovery and activation gates remain.
+
+
+### Browser display-memory follow-on
+
+The owner-agreed policy and isolated implementation/evidence are maintained in [JWT-V110-BROWSER-CONTRACT.md](JWT-V110-BROWSER-CONTRACT.md). Sourcea9458b24/run42034115062 proves only its targeted synthetic UI mechanics. The actual app frontend/auth adapter and global browser-context coordinator remain unimplemented. This does not select a server-side permissions cache or change native resource authority, the compact JWT model, real data/config or deployment holds.

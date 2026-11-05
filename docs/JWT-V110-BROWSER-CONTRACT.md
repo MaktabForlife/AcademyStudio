@@ -53,7 +53,7 @@ Sources: [browser caching](https://developer.mozilla.org/en-US/docs/Web/HTTP/Ref
 This records an agreed policy, not a completed implementation/browser proof. No runtime source, database/schema/data/copy/ID/sync, live cache namespace, hosting/config or deployment change is made by this documentation update.
 
 
-## Isolated display-memory component — pending GitHub proof and review
+## Isolated display-memory component — GitHub proof complete, review pending
 
 An unimported component at `src/auth/v110/browser-display-state.mjs` develops the agreed temporary UI-display policy without changing real app entrypoints or database/config/deployment state. It holds only an exact versioned navigation/display DTO in app memory. It never stores credentials, private journals or protected media, and is not a server-side material-permission cache or authorisation decision.
 
@@ -67,4 +67,17 @@ Lifecycle integration clears on hidden/pagehide and starts verification while ma
 
 Consumer hooks must actually remove/mask the private DOM, stop and detach media, revoke transient URLs and clear other app-owned references. This helper cannot erase copies retained elsewhere or retroactively remove a rendered frame. Its epoch does not stop a delayed HTTP Set-Cookie from reinstalling old credentials. Same-origin messaging, actual global switch/logout enforcement, suspension/BFCache/media/Range behavior in integrated apps, session-bound CSRF, qualifying foreground refresh and all remaining source/writer/recovery/activation gates still require separate proof.
 
-Tests are restricted to disposable GitHub runners. Node fixtures cover local mechanics and independent app clocks. The Chromium harness uses loopback servers, synthetic accounts and actual DOM/tabs/history; it records whether that run used BFCache instead of claiming all Back navigation is BFCache. Persistent-storage calls are instrumented in the synthetic page. No real cookies, native database, Worker, media or app build is used, and no Worker-cost or full privacy result can be inferred. The isolated workflow requires no application dependencies and does not rerun unrelated accepted auth suites. Immutable results will be recorded after the targeted run and reviewed with optimisation.
+Tests are restricted to disposable GitHub runners. Node fixtures cover local mechanics and independent app clocks. The Chromium harness uses loopback servers, synthetic accounts and actual DOM/tabs/history; it records whether that run used BFCache instead of claiming all Back navigation is BFCache. Persistent-storage calls are instrumented in the synthetic page. No real cookies, native database, Worker, media or app build is used, and no Worker-cost or full privacy result can be inferred. The isolated workflow requires no application dependencies and does not rerun unrelated accepted auth suites. Immutable results are recorded below for optimisation review.
+
+
+### Completed isolated display-memory results
+
+Source/test commit `a9458b24f27e6f5c2fcb27c58487af21fa1c4498`, [GitHub run42034115062](https://github.com/MaktabForlife/AcademyStudio/actions/runs/42034115062), job127267683575: **16 top-level executions,0failure/cancel/skip**. This consists of14behavior unit tests,1scope-diagnostic test and1real-Chromium test; these are separate targeted results, not a repeat or expansion of the accepted330auth/paired executions.
+
+The disposable runner used Node24.18.0 and Google Chrome156.0.8078.79. Synthetic tests cover cache cloning/hits, own-app acknowledged foreground clocks, absolute original expiry, delayed verification, logout/switch and late responses ignoring abort, latest same-key response/failure, invalid/unverifiable context, same-origin and different-origin boundaries, hidden/pagehide/restore, oversized replacements and unsafe links. An oversized replacement now retires any older cached entry before deciding whether to cache the new value. Earlier source7af9cd54/run42033905189 also passed but did not assert that replacement case; a9458b24 is the corrected source/evidence.
+
+The real browser made no additional loopback request for two hot display hits, removed actual personal DOM text in the active same-origin second tab, rejected the old person's delayed response after switching the synthetic stub to another person, and recorded0old-account visible animation frames after the test's switch boundary. Back navigation actually used BFCache in this run and stayed masked/empty when fresh stub verification denied the context. The same-app other-origin negative control retained its own display, explicitly demonstrating that this channel does not provide cross-origin clearing.
+
+Instrumented Storage.setItem, IndexedDB.open and CacheStorage.open calls were0in the synthetic page. This records those instrumented calls plus source review of the helper's memory-only design, not a universal browser-storage/media/privacy audit. No real app entrypoint imports the component; no actual cookies, trusted Master-context endpoint, source DB, hosted SQL, Worker, media, live config or deployment were used or changed. The global switch/late-Set-Cookie and integrated app/media/Range/CSRF/foreground/cancellation gates remain open.
+
+Artifact13416998197 API-reported ZIP SHA256: `ec289ca87197dbf76cb193cfc2eb50ab907c2b6d7d09f22f58a41d7e485cd485`. It contains synthetic browser.json, source.json and TAP log only. No complete app/browser authorization, cross-origin/offline purge, cost saving beyond these display-hit requests, or deployment clearance is claimed.
