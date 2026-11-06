@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import https from 'node:https';import {readFileSync,mkdirSync,writeFileSync,appendFileSync} from 'node:fs';import {execFileSync} from 'node:child_process';import {resolve,extname} from 'node:path';import {pathToFileURL} from 'node:url';
-import {setup,response} from '../tests/video-autolink-job-fixture.mjs';import {runProcessingJob} from '../src/video-autolink/jobs.mjs';import {handle} from '../src/worker.mjs';
+import {setup,response} from '../tests/video-autolink-job-fixture.mjs';import {runProcessingJob} from '../src/video-autolink/jobs.mjs';import {handle} from '../src/worker.mjs';import {defaultCard} from '../src/playlist-cards.mjs';
 if(process.env.GITHUB_ACTIONS!=='true')throw Error('Run this disposable host fixture only in GitHub Actions.');appendFileSync('/etc/hosts','\n127.0.0.1 website.test\n');
 const output=process.env.VIDEO_UI_EVIDENCE;if(!output)throw Error('Set a runner-only evidence directory.');mkdirSync(output,{recursive:true});
 const tools=process.env.VIDEO_PLAYWRIGHT_ROOT;if(!tools)throw Error('Use the pinned runner browser package.');
@@ -15,6 +15,7 @@ try{
  env.VIDEO_PROCESSING_WORKFLOW={create:async({params})=>{await runProcessingJob(env,params.jobId,{fetcher:provider});return {id:params.jobId};}};
  const teachers=async(url,options)=>{
   const input=JSON.parse(options.body);
+  if(new URL(url).pathname==='/internal/website/course-playlist-placements'){const place={activityKey:'COURSE:course',offeringId:'course',classId:'',title:'Synthetic Course',className:''};return Response.json({schema:'COURSE_PLAYLIST_PLACEMENTS_V1',offeringId:input.offeringId,ownerActivityKey:'COURSE:course',locations:[{...place,name:place.title}],placements:(input.selected||[]).map(()=>place),classes:[],checkedAt:Date.now()});}
   if(new URL(url).pathname!=='/internal/website/media-teachers')throw Error('No external Source call allowed in this local browser test.');
   return Response.json({schema:'NATIVE_MEDIA_TEACHERS_V1',offeringId:input.offeringId,teachers:[{id:'outsider',name:'Registered synthetic Teacher'}],classes:[],checkedAt:Date.now()});
  };
@@ -47,7 +48,7 @@ try{
   }catch{res.writeHead(503,{'Content-Type':'application/json','Cache-Control':'private, no-store'});res.end('{"error":"Synthetic local boundary unavailable","code":"LOCAL_UNAVAILABLE"}');}
  });
  await new Promise(done=>server.listen(443,'127.0.0.1',done));origin='https://website.test';env.WEBSITE_ORIGIN=origin;
- const table=await localRequest('/api/admin/course/playlists'),playlistId=crypto.randomUUID();await localRequest('/api/admin/course',{action:'mou-playlist-save',operationId:crypto.randomUUID(),playlistId,name:'Actual private processing destination',closeDate:'',revision:table.revision,playlistRevision:0,websiteRevision:0});
+ const table=await localRequest('/api/admin/course/course-playlists?action=course-playlists'),playlistId=crypto.randomUUID();await localRequest('/api/admin/course',{action:'course-playlist-save',operationId:crypto.randomUUID(),playlistId,name:'Actual private processing destination',description:'',revision:table.revision,playlistRevision:0,websiteRevision:0,contentRevision:0,card:defaultCard(),teacherIds:[],placements:[{activityKey:'COURSE:course',classId:''}]});
  for(const row of (await f.db.prepare('SELECT attachment_id,published FROM attachments ORDER BY attachment_id').all()).results)originalPublished.push(row);
  browser=await engine.launch();context=await browser.newContext({ignoreHTTPSErrors:true,viewport:{width:1280,height:1000}});const page=await context.newPage();page.on('pageerror',e=>pageErrors.push(e.message));page.on('dialog',d=>d.accept());page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('503'))errors.push(m.text());});
  await page.goto(origin+'/test');await page.locator('[data-cmw="open"][data-id="'+playlistId+'"]').click();await page.locator('[data-cmw="process-video"]').click();await page.locator('[data-vp="new"]').click();
@@ -60,9 +61,13 @@ try{
  const noPolling=requestCount;await page.waitForTimeout(250);assert.equal(requestCount,noPolling);
  await page.locator('[data-vp="candidate"]').click();await page.locator('[data-vp-review]').waitFor();assert((await page.locator('body').textContent()).includes('PRIVATE uncertain book'));
  await page.locator('[name=summary]').fill('- Explicit Admin-reviewed browser summary.');await page.locator('[name=reviewed]').check();await page.locator('[data-vp-review] button[type=submit]').click();
- await page.locator('[data-vp="publish"]').waitFor();const accepted=await f.db.prepare("SELECT x.attachment_id,x.published,c.draft_key,c.published_key FROM attachments x JOIN recording_companions c USING(attachment_id) WHERE x.title='Browser synthetic source'").first();assert(accepted);assert.equal(accepted.published,0);assert.equal(accepted.published_key,null);const draft=JSON.parse(await (await f.content.get(accepted.draft_key)).text());assert.equal(draft.summary,'- Explicit Admin-reviewed browser summary.');assert(!JSON.stringify(draft).includes('PRIVATE'));assert(!('privateEvidence' in draft));
+ await page.locator('[data-vp="add-course-draft"]').waitFor();const accepted=await f.db.prepare("SELECT x.attachment_id,x.published,c.draft_key,c.published_key FROM attachments x JOIN recording_companions c USING(attachment_id) WHERE x.title='Browser synthetic source'").first();assert(accepted);assert.equal(accepted.published,0);assert.equal(accepted.published_key,null);const draft=JSON.parse(await (await f.content.get(accepted.draft_key)).text());assert.equal(draft.summary,'- Explicit Admin-reviewed browser summary.');assert(!JSON.stringify(draft).includes('PRIVATE'));assert(!('privateEvidence' in draft));
  await page.screenshot({path:resolve(output,'private-reviewed-draft.png'),fullPage:true});
- await page.locator('[data-vp="publish"]').click();await page.getByText('The lesson publication was confirmed. Other saved lessons are unchanged.').waitFor();assert.equal((await f.db.prepare('SELECT published FROM attachments WHERE attachment_id=?').bind(accepted.attachment_id).first()).published,1);
+ await page.locator('[data-vp="add-course-draft"]').click();await page.getByText('This lesson is in the current playlist draft.',{exact:false}).waitFor();
+ assert.equal((await f.db.prepare('SELECT published FROM attachments WHERE attachment_id=?').bind(accepted.attachment_id).first()).published,0);
+ await page.locator('[data-vp="close"]').click();await page.locator('[data-cmw="publish-content"]').click();await page.getByText('Content published with summaries and follow-along.',{exact:true}).waitFor();assert.equal((await f.db.prepare('SELECT published FROM attachments WHERE attachment_id=?').bind(accepted.attachment_id).first()).published,1);
+ assert.equal((await f.db.prepare("SELECT reference_id FROM course_playlist_content WHERE playlist_id=? AND stage='PUBLISHED' AND kind='RECORDING'").bind(playlistId).first()).reference_id,accepted.attachment_id);
+
  for(const row of originalPublished)assert.equal((await f.db.prepare('SELECT published FROM attachments WHERE attachment_id=?').bind(row.attachment_id).first()).published,row.published);
  assert.equal(providerCalls,1);assert.equal(await page.evaluate(()=>window.privateWrites),0);assert.deepEqual(pageErrors,[]);
  // A second isolated browser context exercises an actual delayed candidate body.

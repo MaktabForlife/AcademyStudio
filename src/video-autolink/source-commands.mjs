@@ -1,5 +1,5 @@
 import {fail,id,integer,sha256} from '../protocol.mjs';
-import {mediaAdmin,mediaOptions,mediaDetail,attachMedia,attributionChange} from '../media-attribution.mjs';
+import {mediaAdmin,mediaOptions,mediaDetail,attachMedia} from '../media-attribution.mjs';
 import {change,recording} from '../admin.mjs';
 export const VIDEO_PART_BYTES=5*1024*1024;
 export const VIDEO_ENVELOPE_BYTES=8*1024*1024;
@@ -14,8 +14,7 @@ const shapes={
  'video-source-attach':['action','operationId','attachmentId','assetId','title','teacherIds','playlistId','websiteId','lessonId','lessonDate','cohort'],
  'video-source-upload-start':['action','operationId','assetId','filename'],
  'video-source-upload-part':['action','assetId','partNumber','data','sha256'],
- 'video-source-upload-complete':['action','operationId','assetId','parts'],
- 'video-source-publication':['action','operationId','attachmentId','revision','draftContext','sourceRevision','companionKey','companionRevision','confirm']
+ 'video-source-upload-complete':['action','operationId','assetId','parts']
 };
 export const sourceActions=new Set(Object.keys(shapes));
 export function videoTransportEnabled(env){return env.VIDEO_AUTOLINK_HTTP_ENABLED==='1';}
@@ -61,8 +60,6 @@ export async function sourceCommand(env,store,actor,offer,command,fetcher){
   if(await sha256(decoded)!==command.sha256)throw fail('This recording part changed.',409,'VIDEO_PART_INVALID');
   return recording(env,store,actor,offer,{action:'part',assetId:id(command.assetId),partNumber:part},new Request('https://native.invalid/recording',{method:'PUT',body:decoded}));
  }
- case 'video-source-publication':
-  if(command.confirm!==true)throw fail('Confirm publication of this reviewed lesson.',409,'EXPLICIT_PUBLICATION_REQUIRED');
-  delete native.confirm;return attributionChange(env,store,actor,offer,{...native,action:'media-publication'},fetcher);
+
  }
 }

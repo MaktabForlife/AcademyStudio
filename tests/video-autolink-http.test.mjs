@@ -53,13 +53,13 @@ test('source-only recording commands reuse actual native MP4 writer and exact pr
   assert.equal((await f.nativeRequest('/internal/studio/access',{method:'POST',headers:signed.headers,body:signed.payload})).status,400);
  }finally{await f.close();}
 });
-test('multipart command denies corruption, arbitrary decoder text, excess profile offset and publication without explicit confirmation',async()=>{
+test('multipart command denies corruption, arbitrary decoder text, excess profile offset and all publication commands on the processing surface',async()=>{
  const f=await setup();try{
   const assetId=crypto.randomUUID(),data=btoa('synthetic'),hash=await sha256('synthetic');
   for(const input of [{partNumber:1,data:'@'+data,sha256:hash},{partNumber:1,data,sha256:'0'.repeat(64)},{partNumber:3,data,sha256:hash},{partNumber:1,data:'x'.repeat(7*1024*1024+4),sha256:hash}]){
    const r=await f.request({action:'video-source-upload-part',assetId,...input});assert([400,409,413].includes(r.status));assert(!JSON.stringify(r.body).includes(data));privateReply(r);
   }
-  const p=await f.request({action:'video-source-publication',operationId:crypto.randomUUID(),attachmentId:'invented',revision:0,confirm:false});assert.equal(p.status,409);
+  const p=await f.request({action:'video-source-publication',operationId:crypto.randomUUID(),attachmentId:'invented',revision:0,confirm:false});assert.equal(p.status,400);const explicit=await f.request({action:'video-source-publication',operationId:crypto.randomUUID(),attachmentId:'invented',revision:0,confirm:true});assert.equal(explicit.status,400);
   assert.equal((await f.db.prepare('SELECT count(*) n FROM uploads').first()).n,0);
  }finally{await f.close();}
 });

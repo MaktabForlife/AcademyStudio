@@ -17,16 +17,16 @@ export function processingSourceAPI(request,offeringId){
  };
 }
 function topics(text){return text.split(/\r?\n/).filter(x=>x.trim()).map(line=>{const m=line.trim().match(/^(\d{1,3}:[0-5]\d(?::[0-5]\d)?)\s+(.+)$/);if(!m)throw Error('Use one timestamp and topic per line, such as 00:00 Introduction.');return {time:m[1],title:m[2]};});}
-export function mountVideoProcessing(host,{request,offeringId,playlistId,current=()=>true,onClose=()=>{},onSaved=()=>{},styleHref='/shared/media-attachment.css'}){
- let disposed=false,busy=false,dirty=false,pending=null,attachmentUI=null,capabilities=null,options=null,detail=null,source=null,quote=null,job=null,candidate=null,recordings=[],next=null,publication=null,history=[],historyNext=null;
+export function mountVideoProcessing(host,{request,offeringId,playlistId,courseRequest=null,current=()=>true,onClose=()=>{},onSaved=()=>{},styleHref='/shared/media-attachment.css'}){
+ let disposed=false,busy=false,dirty=false,pending=null,attachmentUI=null,capabilities=null,options=null,detail=null,source=null,quote=null,job=null,candidate=null,recordings=[],next=null,publication=null,courseDraft=null,history=[],historyNext=null;
  const active=()=>!disposed&&host.isConnected&&current();
  const assert=()=>{if(!active())throw new DOMException('The account or Course changed.','AbortError');};
  const canLeave=()=>!busy&&!pending&&!dirty&&attachmentUI?.canLeave?.()!==false;
  const tell=text=>{if(active())host.querySelector('[data-vp-status]')?.replaceChildren(document.createTextNode(text));};
  function frame(html){if(!active())return;attachmentUI?.();attachmentUI=null;host.innerHTML='<section class="studio-media-attachment"><h2>Process video</h2><p role="status" aria-live="polite" data-vp-status></p>'+html+'<p><button type="button" data-vp="close">Back to Course Media</button></p></section>';lock();}
  function lock(){if(!active())return;for(const n of host.querySelectorAll('button,input,textarea,select')){if(n.closest('[data-vp-attachment]'))continue;n.disabled=busy||Boolean(pending&&n.dataset.vp!=='retry')||n.dataset.vpStale==='true';}if(pending&&!host.querySelector('[data-vp="retry"]')){const b=document.createElement('button');b.type='button';b.dataset.vp='retry';b.textContent='Retry this same action';host.querySelector('[data-vp-status]').after(b);b.disabled=busy;}host.setAttribute('aria-busy',String(busy));}
- async function read(action,input={}){assert();const result=await request(action,input);assert();return result;}
- function clearPrivate(){attachmentUI?.();attachmentUI=null;detail=null;source=null;quote=null;job=null;candidate=null;options=null;recordings=[];history=[];historyNext=null;publication=null;pending=null;dirty=false;host.replaceChildren();}
+ async function read(action,input={}){assert();const result=await (['course-playlist-detail','course-playlist-content-save'].includes(action)&&courseRequest?courseRequest(action,input):request(action,input));assert();return result;}
+ function clearPrivate(){attachmentUI?.();attachmentUI=null;detail=null;source=null;quote=null;job=null;candidate=null;options=null;recordings=[];history=[];historyNext=null;publication=null;courseDraft=null;pending=null;dirty=false;host.replaceChildren();}
  async function run(fn){if(busy||!active())return;busy=true;lock();try{await fn();}catch(error){if(!active())return;if([401,403].includes(error.status)){clearPrivate();frame('<p role="alert">Your current Admin access needs to be checked. Reopen Course Media before continuing.</p>');}else tell(error.message||'This action could not be confirmed.');}finally{busy=false;if(active())lock();}}
  async function commit(action,input,after){
   if(!pending)pending={action,input:clone(input),after};
@@ -89,9 +89,14 @@ export function mountVideoProcessing(host,{request,offeringId,playlistId,current
    '<label><input type="checkbox" name="reviewed" required>I reviewed this full companion against this recording.</label><button type="submit"'+(candidate.stale?' disabled data-vp-stale="true"':'')+'>Accept as a private draft</button></form><p><button type="button" data-vp="reprocess">Review limits for a separately authorised run</button></p>');
  }
  async function accepted(){
-  frame('<h3>Saved private draft</h3><p>Checking the current saved lesson…</p><button type="button" data-vp="accepted">Retry saved draft review</button>');
-  detail=await read('video-source-detail',{attachmentId:detail.attachmentId});publication={operationId:crypto.randomUUID(),attachmentId:detail.attachmentId,revision:detail.attributionRevision,draftContext:detail.draftContext,sourceRevision:detail.sourceRevision,companionKey:detail.companionDraftKey,companionRevision:detail.companionRevision,confirm:true};
-  frame('<h3>Saved private draft</h3><p>'+esc(detail.title)+'</p><p style="white-space:pre-wrap">'+esc(detail.companion?.summary||'')+'</p><ol>'+(detail.companion?.topics||[]).map(t=>'<li>'+esc(t.time)+' · '+esc(t.title)+'</li>').join('')+'</ol><p>Existing publication is preserved until you explicitly publish this current reviewed lesson.</p><button type="button" data-vp="publish">Publish this reviewed lesson</button>');
+  frame('<h3>Saved private draft</h3><p>Checking the current saved lesson and playlist draft…</p><button type="button" data-vp="accepted">Retry saved draft review</button>');
+  detail=await read('video-source-detail',{attachmentId:detail.attachmentId});
+  const value=await read('course-playlist-detail',{playlistId}),playlist=value.playlist;
+  const already=playlist.content.some(e=>e.kind==='RECORDING'&&e.referenceId===detail.attachmentId);
+  courseDraft=already?null:{operationId:crypto.randomUUID(),playlistId,revision:value.revision,playlistRevision:playlist.revision,websiteRevision:playlist.websiteRevision,contentRevision:playlist.contentRevision,entries:[...playlist.content.map(e=>({kind:e.kind,referenceId:e.referenceId})),{kind:'RECORDING',referenceId:detail.attachmentId}]};
+  frame('<h3>Saved private draft</h3><p>'+esc(detail.title)+'</p><p style="white-space:pre-wrap">'+esc(detail.companion?.summary||'')+'</p><ol>'+(detail.companion?.topics||[]).map(t=>'<li>'+esc(t.time)+' · '+esc(t.title)+'</li>').join('')+'</ol>'+
+   (already?'<p>This lesson is in the current playlist draft. Return to Content, review the complete current selection, then use its existing Publish content control.</p>':'<p>Add this reviewed lesson to the current playlist draft. Its other entries and existing publication remain. A concurrent edit will require a fresh review.</p><button type="button" data-vp="add-course-draft">Add reviewed lesson to playlist draft</button>')+
+   '<p>Accepting a candidate and linking a draft do not publish. Publication remains a separate action in Course Media → Content.</p>');
  }
  async function click(event){
   const action=event.target.closest('[data-vp]')?.dataset.vp;if(!action)return;event.preventDefault();
@@ -115,7 +120,7 @@ export function mountVideoProcessing(host,{request,offeringId,playlistId,current
    if(action==='accepted')return accepted();
    if(action==='reprocess'){if(!window.confirm('Review limits for a new AI run? It needs separate authorisation and may incur another charge. Saved edits and publication remain.'))return;dirty=false;candidate=null;return showQuote();}
    if(action==='cancel'){if(!window.confirm('Cancel this request? An already-started provider request may still incur a charge.'))return;return commit('video-processing-cancel',{operationId:crypto.randomUUID(),jobId:job.jobId,cancel:true},value=>{job=value;showJob();});}
-   if(action==='publish'){if(!window.confirm('Publish only this current reviewed lesson through its existing publication controls?'))return;return commit('video-source-publication',publication,()=>{onSaved();frame('<p>The lesson publication was confirmed. Other saved lessons are unchanged.</p>');});}
+   if(action==='add-course-draft')return commit('course-playlist-content-save',courseDraft,async()=>{onSaved();await accepted();});
   });
  }
  async function submit(event){
