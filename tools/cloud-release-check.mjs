@@ -6,6 +6,7 @@ import {createHash} from 'node:crypto';
 import {execFileSync,spawnSync} from 'node:child_process';
 import {build} from 'esbuild';
 import {buildStudioPackage} from './build-studio-package.mjs';
+import {recoveredBaseline} from './release-safety.mjs';
 const root=resolve(process.env.GITHUB_WORKSPACE||process.env.M4L_PROJECT_ROOT||'.');
 const source=resolve(root,'work/Academy'),studio=resolve(root,'work/AcademyStudio');
 const out=resolve(process.env.M4L_RELEASE_OUTPUT||process.env.RUNNER_TEMP+'/paired-release');
@@ -59,7 +60,8 @@ if(mode==='verify-deploy'){
 assert.equal(mode,'check');
 const release=gh('/repos/MaktabForlife/AcademyStudio/releases/latest');
 const asset=release.assets.find(a=>a.name==='paired-release.json');assert(asset&&asset.size<32768,'A verified paired GitHub release receipt is required');
-const baseline=JSON.parse(execFileSync('gh',['api','/repos/MaktabForlife/AcademyStudio/releases/assets/'+asset.id,'-H','Accept: application/octet-stream'],{encoding:'utf8'}));
+const receipt=JSON.parse(execFileSync('gh',['api','/repos/MaktabForlife/AcademyStudio/releases/assets/'+asset.id,'-H','Accept: application/octet-stream'],{encoding:'utf8'}));
+const baseline=recoveredBaseline(receipt,await json(resolve(studio,'release/production-baseline-v'+version+'.json')),version);
 assert(/^\d+\.\d+$/.test(baseline.version));for(const side of ['source','studio'])assert(/^[a-f0-9]{40}$/.test(baseline[side].commit));
 await save('baseline.json',baseline);
 const pendingMigrations=[];

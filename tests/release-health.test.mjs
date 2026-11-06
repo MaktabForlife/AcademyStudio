@@ -40,3 +40,13 @@ for(const [name,response]of [
 test('malformed health JSON aborts without a retry',async()=>{
  const f=fixture([{raw:'not json'}]);await assert.rejects(waitForReleaseHealth(f.options));assert.equal(f.calls.length,1);assert.deepEqual(f.delays,[]);
 });
+
+test('baseline health requires the exact previous release with no stale-version retries',async()=>{
+ const f=fixture([{version:'109.24'}]);delete f.options.previousVersion;f.options.expectedVersion='109.24';
+ assert((await waitForReleaseHealth(f.options)).passed);assert.equal(f.calls.length,1);
+});
+test('malformed health is saved as a safe diagnostic without returning the raw body',async()=>{
+ const f=fixture([{raw:'secret-like-unexpected-body'}]);await assert.rejects(waitForReleaseHealth(f.options),/Malformed/);
+ assert.equal(f.samples.length,1);assert.equal(f.samples[0].sample.malformedJSON,true);
+ assert.equal(JSON.stringify(f.samples).includes('secret-like'),false);
+});

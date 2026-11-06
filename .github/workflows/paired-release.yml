@@ -86,7 +86,7 @@ jobs:
         run: node tools/cloud-release-check.mjs check
       - name: Test bounded health propagation and fail-closed release checks
         working-directory: work/AcademyStudio
-        run: node --test --test-reporter=tap tests/release-health.test.mjs > "$M4L_RELEASE_OUTPUT/release-health-tests.log" 2>&1
+        run: node --test --test-reporter=tap tests/release-health.test.mjs tests/release-safety.test.mjs > "$M4L_RELEASE_OUTPUT/release-health-tests.log" 2>&1
       - name: Verify the reported management faults on the exact release source
         working-directory: work/Academy
         run: node --test --test-reporter=tap backend/tests/academy-management-origin-regression.test.mjs backend/tests/academy-release-labels.test.mjs > "$M4L_RELEASE_OUTPUT/management-regression-tests.log" 2>&1
@@ -206,6 +206,12 @@ jobs:
           name: paired-deployment-${{ github.run_id }}
           retention-days: 30
           path: |
+            ${{ github.workspace }}/.cloud-output/release-plan.json
+            ${{ github.workspace }}/.cloud-output/before.json
+            ${{ github.workspace }}/.cloud-output/baseline-health.json
+            ${{ github.workspace }}/.cloud-output/recovery.json
+            ${{ github.workspace }}/.cloud-output/recovery-health.json
+            ${{ github.workspace }}/.cloud-output/management-after.json
             ${{ github.workspace }}/.cloud-output/source-health.json
             ${{ github.workspace }}/.cloud-output/verification.json
             ${{ github.workspace }}/.cloud-output/public-checks.json

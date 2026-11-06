@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "releaseVersion": "109.25",
+  "baselineVersion": "109.24",
+  "sourceCommit": "7873664525a3e58a613056f5a7c061c1ac17162f",
+  "sourceWorkerVersion": "53831114-a556-45c6-bb7d-05b320c84379",
+  "studioCommit": "4874ecf7d6b0efa61174e6a5f2f5c8bc1bff6773",
+  "studioWorkerVersion": "dbe378ee-0360-49ca-9e31-d94c132d8dec",
+  "coordinatorVersion": "d5cc049a-6935-42a9-96bd-ac449b45589f",
+  "receiptPagesId": "2d419eb1-0519-4399-96ac-9429d1732767",
+  "recoveredPagesId": "a27b939e-b9c5-4370-b8d1-d26da95bed4d",
+  "productionBranch": "development",
+  "reason": "V109.24 Pages recovery after run 42063359226; exact live ID, source commit and production status must be rechecked before writes."
+}
