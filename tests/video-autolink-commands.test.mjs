@@ -12,7 +12,7 @@ test('default-disabled command surface performs no new DB/R2/Workflow calls',asy
 test('only narrow bounded commands and the exact current offering are accepted',async()=>{
  const f=await setup();try{
   const env=configured(f);await assert.rejects(processingCommand(env,f.store(),f.actor,'course',{action:'save',change:{action:'staff'}}),e=>e.code==='PROCESSING_COMMAND_INVALID');
-  await assert.rejects(processingCommand(env,f.store(),f.actor,'course',{action:'video-processing-source',operationId:crypto.randomUUID(),attachmentId:'processing-attachment',format:'VTT',durationSeconds:4,transcript:'x'.repeat(128001)}),e=>e.code==='PROCESSING_INPUT_TOO_LARGE'&&e.status===413);
+  await assert.rejects(processingCommand(env,f.store(),f.actor,'course',{action:'video-processing-source',operationId:crypto.randomUUID(),attachmentId:'processing-attachment',format:'VTT',durationSeconds:4,transcript:'x'.repeat(512*1024+1)}),e=>e.code==='PROCESSING_INPUT_TOO_LARGE'&&e.status===413);
   await assert.rejects(processingCommand(env,f.store(),f.actor,'course',{action:'video-processing-source',operationId:crypto.randomUUID(),attachmentId:'processing-attachment',format:'VTT',durationSeconds:4,transcript:raw,actor:{globalAdmin:true}}),e=>e.code==='PROCESSING_COMMAND_INVALID');
   const standalone={...env,AUTHORITY_MODE:'WEBSITE'},store=f.store();store.env.AUTHORITY_MODE='WEBSITE';
   await assert.rejects(processingCommand(standalone,store,f.actor,'tafseer',{action:'video-processing-quote',sourceId:'synthetic-source'}),e=>e.code==='PROCESSING_OFFERING_MISMATCH');

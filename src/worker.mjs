@@ -1,3 +1,5 @@
+import {nativeVideoHTTP} from './video-autolink/http.mjs';
+import {videoTransportEnabled} from './video-autolink/source-commands.mjs';
 import {hubSummary,hubJoin} from './hub-bridge.mjs';
 import {offeringJoin} from './offering-join.mjs';
 import {hostingOrigins} from './deployment-origins.mjs';
@@ -46,6 +48,7 @@ async function route(request,env,store,fetcher,checkedActor=null){
  if((path==='/api/public/academy-announcements'||path.startsWith('/api/public/academy-announcements/'))&&['GET','HEAD'].includes(method))return publishedAnnouncements(request,env,fetcher);
  if(path==='/api/public/header-date'&&method==='GET')return publicHeaderDate(request,env,fetcher);
  if(path==='/api/public/circles'&&method==='GET')return json(await publicCatalogue(env),200,{'Cache-Control':'public, max-age=60'});
+ if(/^\/api\/admin\/[-A-Za-z0-9_:]+\/processing$/.test(path)&&!videoTransportEnabled(env))throw fail('Video processing is not enabled.',404,'PROCESSOR_DISABLED');
  const publicCover=path.match(/^\/api\/public\/circles\/covers\/([a-f0-9]{64})$/);
  if(publicCover&&['GET','HEAD'].includes(method)){const object=await env.CONTENT.get('public/circles/covers/'+publicCover[1]);if(!object||!['image/png','image/jpeg','image/webp'].includes(object.httpMetadata?.contentType))throw fail('This cover is unavailable.',404);return new Response(method==='HEAD'?null:object.body,{headers:{'Content-Type':object.httpMetadata.contentType,'Cache-Control':'public, max-age=31536000, immutable','X-Content-Type-Options':'nosniff'}});}
  if(path==='/api/public/home'&&method==='GET'){
@@ -60,6 +63,11 @@ async function route(request,env,store,fetcher,checkedActor=null){
  if(path==='/internal/studio/hub-join'&&method==='POST')return json(await hubJoin(request,env,store));
  if(path==='/internal/studio/course-publication'&&method==='POST')return json(await coursePublication(request,env,store));
  if(path==='/internal/studio/playlist-cover'&&method==='POST')return json(await studioAccess(request,env,store,fetcher,{coverOnly:true}));
+ if(path==='/internal/studio/video-processing'){
+  if(!videoTransportEnabled(env))throw fail('Video processing is not enabled.',404,'PROCESSOR_DISABLED');
+  if(method!=='POST')throw fail('Use POST for video processing.',405,'METHOD_NOT_ALLOWED');
+  return json(await studioAccess(request,env,store,fetcher,{processingOnly:true}));
+ }
  if(path==='/internal/studio/access'&&method==='POST')return json(await studioAccess(request,env,store,fetcher));
  if(path==='/api/config'&&method==='GET')return json({academyOrigin:env.ACADEMY_ORIGIN,academyPortalOrigin:hostingOrigins(env).academyPortal,localPreview:env.ENVIRONMENT==='local',authorityMode:env.AUTHORITY_MODE||'WEBSITE'});
  if(method==='POST'||method==='PUT'||method==='DELETE')originCheck(request,env);
@@ -171,6 +179,8 @@ async function route(request,env,store,fetcher,checkedActor=null){
  }
  let courseMatch=path.match(/^\/api\/course-playlists\/([^/]+)(?:\/files\/([^/]+))?$/);
  if(courseMatch&&(method==='GET'||courseMatch[2]&&method==='HEAD'))return courseMatch[2]?coursePlaylistFile(env,store,actor,decodeURIComponent(courseMatch[1]),decodeURIComponent(courseMatch[2]),request):json(await publishedCourseContent(store,actor,decodeURIComponent(courseMatch[1])));
+ const processingMatch=path.match(/^\/api\/admin\/([-A-Za-z0-9_:]+)\/processing$/);
+ if(processingMatch)return nativeVideoHTTP(request,env,store,actor,id(processingMatch[1]),fetcher);
  if(path==='/api/admin/offerings'&&method==='GET'){
   const offerings=actor.global_admin?await store.all("SELECT o.offering_id,o.title,o.kind,p.programme_key FROM offerings o LEFT JOIN programme_offerings p USING(offering_id) WHERE o.kind IN('COURSE','TAFSEER') ORDER BY o.offering_id LIMIT 200"):await store.all("SELECT o.offering_id,o.title,o.kind,p.programme_key FROM staff s JOIN offerings o USING(offering_id) LEFT JOIN programme_offerings p USING(offering_id) WHERE s.account_id=? AND s.role='ADMIN' AND o.kind IN('COURSE','TAFSEER') ORDER BY o.offering_id LIMIT 200",[actor.account_id]);return json({offerings});
  }

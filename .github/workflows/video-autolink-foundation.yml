@@ -89,3 +89,29 @@ jobs:
           path: ${{ runner.temp }}/video-attachment-evidence/
           if-no-files-found: error
           retention-days: 14
+
+  transport:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.18.0'
+      - run: npm ci --ignore-scripts
+      - name: Actual default-off native and signed processing entries
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/video-transport-evidence"
+          node --check src/video-autolink/http.mjs
+          node --check src/video-autolink/source-commands.mjs
+          node --test --test-reporter=tap tests/video-autolink-http.test.mjs 2>&1 | tee "$RUNNER_TEMP/video-transport-evidence/tests.log"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: video-transport-${{ github.run_id }}
+          path: ${{ runner.temp }}/video-transport-evidence/
+          if-no-files-found: error
+          retention-days: 14

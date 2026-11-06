@@ -60,10 +60,10 @@ export async function processingCommand(env,store,actor,offer,command){
   if(!processingAvailable(env)){if(command?.action==='video-processing-capabilities')return {available:false};throw fail('Video processing is not enabled.',404,'PROCESSOR_DISABLED');}
   const keys=shapes[command?.action];if(!keys||!command||typeof command!=='object'||Array.isArray(command)||Object.keys(command).some(k=>!keys.includes(k)))throw fail('Choose a supported processing command.',400,'PROCESSING_COMMAND_INVALID');
   let size;try{size=new TextEncoder().encode(JSON.stringify(command)).length;}catch{throw fail('Choose a supported processing command.',400,'PROCESSING_COMMAND_INVALID');}
-  if(size>200000||command.action==='video-processing-source'&&(typeof command.transcript!=='string'||new TextEncoder().encode(command.transcript).length>128000))throw fail('Keep this transcript within the checked upload limit.',413,'PROCESSING_INPUT_TOO_LARGE');
+  if(size>768*1024||command.action==='video-processing-source'&&(typeof command.transcript!=='string'||new TextEncoder().encode(command.transcript).length>512*1024))throw fail('Keep this transcript within the checked upload limit.',413,'PROCESSING_INPUT_TOO_LARGE');
   offer=id(offer);await mediaAdmin(store,actor,offer);await sameOffering(store,offer,command);
   switch(command.action){
-   case 'video-processing-capabilities':return {available:true,transcriptFormats:['VTT','SRT'],maxTranscriptBytes:128000,manualExistingRecordingOnly:true};
+   case 'video-processing-capabilities':return {available:true,transcriptFormats:['VTT','SRT'],maxTranscriptBytes:512*1024,manualExistingRecordingOnly:true};
    case 'video-processing-source':return await saveProcessingSource(env,store,actor,offer,command);
    case 'video-processing-quote':return await processingQuote(env,store,actor,command.sourceId);
    case 'video-processing-authorise':return await dispatch(env,store,await authoriseProcessingJob(env,store,actor,command));
