@@ -1,0 +1,43 @@
+name: JWT V110 native Studio refresh review
+on:
+  create:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-refresh:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/validation/jwt-v110-refresh-')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      JWT_RUNTIME: production-date
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18.0"
+      - name: Install locked test dependencies on GitHub only
+        run: npm ci --no-audit --no-fund
+      - name: Check and exercise the actual native Studio refresh endpoint
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p .build/jwt-v110-native-refresh
+          node --check src/auth/v110/studio-refresh-http.mjs
+          node --check src/auth/v110/compact-studio.mjs
+          node --check src/worker.mjs
+          node --test --test-reporter=tap --test-concurrency=1 tests/jwt-v110-native-refresh.test.mjs 2>&1 | tee .build/jwt-v110-native-refresh/tests.log
+          git diff --exit-code
+          node --input-type=module -e "import {writeFileSync} from 'node:fs';writeFileSync('.build/jwt-v110-native-refresh/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,run:process.env.GITHUB_RUN_ID,liveDBChanges:0,hostedRequests:0,deployed:false})+'\n');"
+      - name: Preserve synthetic native refresh evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: jwt-v110-native-refresh-${{ github.run_id }}
+          include-hidden-files: true
+          retention-days: 30
+          path: .build/jwt-v110-native-refresh/

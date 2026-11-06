@@ -1,3 +1,4 @@
+import {handleStudioRefresh} from './auth/v110/studio-refresh-http.mjs';
 import {readDisplayContext} from './auth/v110/server-context.mjs';
 import {hubSummary,hubJoin} from './hub-bridge.mjs';
 import {offeringJoin} from './offering-join.mjs';
@@ -218,7 +219,8 @@ async function route(request,env,store,fetcher,checkedActor=null){
 }
 export async function handle(request,env,ctx,fetcher=fetch){
  const path=new URL(request.url).pathname;if(!path.startsWith('/api/')&&!path.startsWith('/auth/')&&!path.startsWith('/internal/'))return env.ASSETS.fetch(request);
- if(env.PLATFORM_ENABLED!=='1')return path==='/auth/v110/context'?Response.json({code:'PLATFORM_DISABLED'},{status:503,headers:{'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}}):json({success:false,error:'The website platform is not enabled.'},503);
+ if(env.PLATFORM_ENABLED!=='1')return ['/auth/v110/context','/auth/v110/csrf','/auth/v110/refresh'].includes(path)?Response.json({code:'PLATFORM_DISABLED'},{status:503,headers:{'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}}):json({success:false,error:'The website platform is not enabled.'},503);
+ if(['/auth/v110/csrf','/auth/v110/refresh'].includes(path))return handleStudioRefresh(request,env);
  if(path==='/auth/v110/context')return readDisplayContext(request,env,{app:'studio'});
  const store=new Store(env);let response;try{response=await route(request,env,store,fetcher);}catch(error){response=failure(error);}
  if(env.ENVIRONMENT==='local'){response=new Response(response.body,response);response.headers.set('X-Local-D1-Queries',String(store.metrics.queries));response.headers.set('X-Local-D1-Rows-Read',String(store.metrics.rowsRead));response.headers.set('X-Local-D1-Rows-Written',String(store.metrics.rowsWritten));}
