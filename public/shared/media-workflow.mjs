@@ -34,7 +34,7 @@ export function checkedMediaSelection(options,input){
 function freezeCompanion(value){for(const item of Object.values(value))if(item&&typeof item==='object')freezeCompanion(item);return Object.freeze(value);}
 export function pendingMedia(input){
  if(!nativeId(input.playlistId))throw Error('Choose a playlist before saving this recording.');
- const snapshot=Object.freeze({...input,teacherIds:Object.freeze([...input.teacherIds]),supportingFiles:Object.freeze([...input.supportingFiles]),companion:freezeCompanion(structuredClone(input.companion))});
+ const snapshot=Object.freeze({...input,teacherIds:Object.freeze([...input.teacherIds]),supportingFiles:Object.freeze([...input.supportingFiles]),companion:input.sourceOnly===true?undefined:freezeCompanion(structuredClone(input.companion))});
  return {input:snapshot,assetId:uuid(),attachmentId:uuid(),sourceOperation:uuid(),attachOperation:uuid(),companionOperation:uuid(),uploadStartOperation:uuid(),uploadCompleteOperation:uuid(),parts:[],supports:snapshot.supportingFiles.map(file=>({file,assetId:uuid(),attachmentId:uuid(),operationId:uuid()}))};
 }
 export async function saveMediaDraft({pending:p,api,path,current=()=>{},report=()=>{}}){
@@ -53,6 +53,7 @@ export async function saveMediaDraft({pending:p,api,path,current=()=>{},report=(
  }
  for(const support of p.supports){checked();report('Saving supporting file: '+support.file.name);await api(path+'/files?'+new URLSearchParams({assetId:support.assetId,operationId:support.operationId,filename:support.file.name}),{method:'PUT',body:support.file});checked();}
  await api(path,{body:{action:'media-attach',operationId:p.attachOperation,attachmentId:p.attachmentId,assetId:p.assetId,title:input.title,teacherIds:selected.teacherIds,playlistId:selected.playlist.id,websiteId:selected.websiteId,cohort:input.cohort||'',lessonDate:input.lessonDate||'',supportingFiles:p.supports.map(s=>({assetId:s.assetId,attachmentId:s.attachmentId}))}});checked();
+ if(input.sourceOnly===true){report('Recording attached privately. Add its available timestamped transcript to continue.');return {attachmentId:p.attachmentId,sourceOnly:true};}
  report('Saving the reviewed summary and topic guide…');await api(path,{body:{action:'media-companion-save',operationId:p.companionOperation,attachmentId:p.attachmentId,revision:0,durationSeconds:input.durationSeconds,companion:input.companion}});checked();return {attachmentId:p.attachmentId};
 }
 export async function publishMediaDraft({detail,operations,api,path,current=()=>{}}){
