@@ -273,5 +273,13 @@
     "bindingCaution": "Worker edit authority alone does not restrict runtime binding IDs; fresh strict config/readback must prove only the approved new resources before tests",
     "syntheticPIN": "new random four-digit value only after exact destination/use approval; not generated",
     "providerAPIKey": "private owner-selected OpenAI project key only after approval; absent"
+  },
+  "schemaLimitations": {
+    "emptyDDLBlueprintOnly": true,
+    "nativeMigrationDefaultsAndLedgerParityProved": false,
+    "newOnlyInstallAndPrivateSeedRequiresExactReview": true,
+    "coreAdminAuthoritiesRemainSeparate": true,
+    "studioProcessingTablesMustShareCompleteNativeOwningDB": true,
+    "existingDatabaseModificationAuthorised": false
   }
 }
