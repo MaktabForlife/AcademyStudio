@@ -119,7 +119,7 @@ export async function runProcessingJob(env,jobId,{fetcher=fetch}={}){
   const {source,native}=await execution(env,store,job),bucket=env.VIDEO_PROCESSING_PRIVATE,transcript=await bucket.get(source.transcript_key);
   if(!transcript||transcript.size>512*1024)throw error('PRIVATE_CANDIDATE_UNAVAILABLE');
   const raw=await transcript.arrayBuffer();if(await sha256(raw)!==source.transcript_hash)throw error('PRIVATE_CANDIDATE_UNAVAILABLE');
-  const result=await generatePrivateCandidate({env,transcript:raw,format:source.transcript_format,durationSeconds:source.duration_seconds,style:native.style,fetcher,
+  const result=await generatePrivateCandidate({env,transcript:new Uint8Array(raw),format:source.transcript_format,durationSeconds:source.duration_seconds,style:native.style,fetcher,
    reserve:async prepared=>{const grant=await claimProcessingJob(env,new Store(env),jobId,prepared);attemptId=grant.attemptId;return grant;}});
   if(result.kind!=='private-candidate')return await failedOutcome(store,job,attemptId,result.code,result.receipt);
   await execution(env,new Store(env),job); // No stale Admin/source can stage a candidate.
