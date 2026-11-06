@@ -1,6 +1,7 @@
 import {WorkflowEntrypoint} from 'cloudflare:workers';
 import {runProcessingJob} from './jobs.mjs';
-// Unmounted class. No current Worker export/binding/config activates it.
+// The separate candidate entry exports this class. No current configured
+// Worker entry, Workflow binding or flag activates it.
 // Durable event parameters contain only an opaque owning-job identity.
 export class VideoProcessingWorkflow extends WorkflowEntrypoint {
  async run(event,step){

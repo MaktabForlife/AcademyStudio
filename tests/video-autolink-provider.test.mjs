@@ -17,7 +17,7 @@ test('disabled or unconfigured processor never reserves or calls the provider',a
 test('real adapter constructs one fixed-endpoint non-stored strict-schema request; generated evidence stays private and unverified',async()=>{
  let calls=0,reserved=0;
  const result=await generate({...base,reserve:async snapshot=>{reserved++;assert.equal(snapshot.model,env.VIDEO_AI_MODEL);assert.match(snapshot.requestHash,/^[a-f0-9]{64}$/);return grant(snapshot);},fetcher:async(url,options)=>{
-  calls++;assert.equal(url,'https://api.openai.com/v1/responses');assert.equal(options.method,'POST');assert.equal(options.redirect,'error');assert.equal(options.headers.get('Authorization'),'Bearer '+env.OPENAI_API_KEY);
+  calls++;assert.equal(url,'https://api.openai.com/v1/responses');assert.equal(options.method,'POST');assert.equal(options.redirect,'manual');assert.equal(options.headers.get('Authorization'),'Bearer '+env.OPENAI_API_KEY);
   const body=JSON.parse(options.body);assert.equal(body.store,false);assert.equal(body.model,env.VIDEO_AI_MODEL);assert.equal(body.max_output_tokens,2000);assert.equal(body.text.format.type,'json_schema');assert.equal(body.text.format.strict,true);assert.equal(body.text.format.schema.additionalProperties,false);assert.equal(body.tools,undefined);assert(!options.body.includes(env.OPENAI_API_KEY));assert(!options.signal.aborted);
   return response();
  }});

@@ -1,4 +1,4 @@
 // Candidate entry for an explicitly reviewed isolated processing profile.
-// Existing Wrangler/current Worker entry remains unchanged and default-disabled.
-export {default} from '../worker.mjs';
+// Preserve the actual native host/ASSETS wrapper; current Wrangler remains unchanged.
+export {default} from '../../hosting/saas/worker.mjs';
 export {VideoProcessingWorkflow} from './workflow.mjs';
