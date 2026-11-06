@@ -4,7 +4,7 @@ import {mkdtemp,mkdir,writeFile,readFile,rename} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {validatePlan,evaluateApproval,resolveApproval,freshApproval,githubClient,assertProductionSource,assertFeatureComparison} from '../tools/approved-deployment.mjs';
+import {validatePlan,evaluateApproval,resolveApproval,freshApproval,githubClient,assertProductionSource,assertFeatureComparison,routeApproved} from '../tools/approved-deployment.mjs';
 const repo='MaktabForlife/AcademyStudio',head='a'.repeat(40),mergeSha='b'.repeat(40),tree='c'.repeat(40),old='d'.repeat(40);
 const path='deployment/release-plan.json';
 function fixture(){
@@ -171,4 +171,44 @@ test('actual Git rename cannot hide an existing migration path',async()=>{
   async({dir})=>{await mkdir(resolve(dir,'migrations'));await writeFile(resolve(dir,'migrations/0001.sql'),'CREATE TABLE existing_synthetic(id);\n');}
  );
  assert.throws(()=>assertProductionSource(f),/database/);
+});
+
+function componentFixture(target='development'){
+ const f=fixture();f.plan={schema:1,request:'ui-development-component',kind:'component',target,contains_jwt:false,database_changes:false};
+ f.comment.body=f.comment.body.replace('target: production','target: '+target);
+ f.statuses[0].description='optimisation-record-sha256:'+createHash('sha256').update(f.comment.body).digest('hex');
+ return f;
+}
+test('Development component in either repository records exact approval and routes none with zero dispatch',async()=>{
+ for(const selectedRepo of ['MaktabForlife/Academy','MaktabForlife/AcademyStudio']){
+  const f=componentFixture();f.repo=selectedRepo;f.pr.base.repo.full_name=selectedRepo;
+  f.pr.html_url='https://github.com/'+selectedRepo+'/pull/7';f.statuses[0].target_url=f.pr.html_url+'#issuecomment-42';
+  const proof=evaluateApproval(f);let apiCalls=0;
+  const result=await routeApproved(proof,async()=>{apiCalls++;throw Error('No dispatch allowed');});
+  assert.equal(result.route,'none');assert.equal(result.plan.target,'development');assert.equal(apiCalls,0);
+  assert.equal(result.cloudflareCalls,0);assert.equal(result.hostedDatabaseCalls,0);
+ }
+});
+test('Development release fails closed in validation and routing without production fallback',async()=>{
+ const f=fixture();f.plan.target='development';
+ assert.throws(()=>validatePlan(f.plan,repo,[path]),/Development release routing is not installed/);
+ let calls=0;await assert.rejects(routeApproved({plan:f.plan},async()=>{calls++;}),/Development release routing is not installed/);
+ assert.equal(calls,0);
+});
+test('JWT cannot target Development as component or release',()=>{
+ for(const kind of ['component','release'])assert.throws(()=>validatePlan({...componentFixture().plan,kind,contains_jwt:true},'MaktabForlife/Academy',[path]),/JWT is Feature only/);
+});
+test('Development is not configuration and never weakens the no-DB gate',()=>{
+ const p=componentFixture().plan;
+ assert.throws(()=>validatePlan({...p,kind:'configuration'},repo,[path]));
+ assert.throws(()=>validatePlan({...p,database_changes:true},repo,[path]),/Database changes/);
+ assert.throws(()=>validatePlan(p,repo,[path,'migrations/0001.sql']),/Database/);
+});
+test('established production release and all components retain existing dispatch behavior',async()=>{
+ for(const target of ['production','feature','development']){
+  const f=componentFixture(target);f.plan.contains_jwt=target==='feature';
+  const p=evaluateApproval(f);const result=await routeApproved(p,async()=>{throw Error('No component dispatch');});assert.equal(result.route,'none');
+ }
+ const result=await routeApproved(evaluateApproval(fixture()),async()=>{throw Error('Production dispatch belongs to target-owning workflow');});
+ assert.equal(result.route,'production');assert.equal(result.plan.contains_jwt,false);
 });

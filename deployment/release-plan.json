@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "request": "daily-validation-cleanup-academystudio-20261106",
+  "request": "development-component-routing-20261106",
   "kind": "configuration",
   "target": "none",
   "contains_jwt": false,
