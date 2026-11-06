@@ -123,7 +123,9 @@ export async function runProcessingJob(env,jobId,{fetcher=fetch}={}){
   const result=await generatePrivateCandidate({env,transcript:new Uint8Array(raw),format:source.transcript_format,durationSeconds:source.duration_seconds,style:native.style,fetcher,
    reserve:async prepared=>{const grant=await claimProcessingJob(env,new Store(env),jobId,prepared);attemptId=grant.attemptId;return grant;}});
   if(result.kind!=='private-candidate')return await failedOutcome(store,job,attemptId,result.code,result.receipt);
-  await execution(env,new Store(env),job); // No stale Admin/source can stage a candidate.
+  const current=await new Store(env).first('SELECT * FROM video_processing_jobs WHERE job_id=?',[jobId]);
+  if(!current||current.state!=='RUNNING'||current.attempt_id!==attemptId)return await failedOutcome(store,job,attemptId,'PROCESSING_CONTEXT_CHANGED');
+  await execution(env,new Store(env),current); // No cancelled job/stale Admin/source can stage a candidate.
   const encoded=JSON.stringify(result.candidate);if(encoder.encode(encoded).length>400000)throw error('PRIVATE_CANDIDATE_UNAVAILABLE');
   const hash=await sha256(encoded),key='video-processing-private/'+jobId+'/'+attemptId+'/candidate-'+hash+'.json';
   // Unique owned immutable key, prepared before DB pointer commit. A failed

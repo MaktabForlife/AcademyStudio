@@ -56,7 +56,8 @@ jobs:
           node --check src/video-autolink/review.mjs
           node --check src/video-autolink/cleanup.mjs
           node --check src/video-autolink/workflow.mjs
-          node --test --test-reporter=tap tests/video-autolink-native-source.test.mjs tests/video-autolink-jobs.test.mjs tests/video-autolink-review.test.mjs 2>&1 | tee "$RUNNER_TEMP/video-native-source-evidence/tests.log"
+          node --check src/video-autolink/commands.mjs
+          node --test --test-reporter=tap tests/video-autolink-native-source.test.mjs tests/video-autolink-jobs.test.mjs tests/video-autolink-review.test.mjs tests/video-autolink-commands.test.mjs 2>&1 | tee "$RUNNER_TEMP/video-native-source-evidence/tests.log"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
