@@ -43,12 +43,13 @@ export async function nativeProcessingSource(env,store,actor,offer,input={}){
  if(!native.attributionRevision||!native.attributionDraft||native.websiteId&&native.websiteOffering!==offer)throw fail('Review the exact native recording destination and attribution.',409,'PROCESSING_DESTINATION_REQUIRED');
  if(await store.first('SELECT 1 FROM source_access_master_fences WHERE account_id=? AND offering_id=?',[actor.account_id,offer]))throw fail('Confirm the current native master account.',409,'ACCESS_REFRESH_REQUIRED');
  const sourceRevision=await sha256(JSON.stringify({schema:'RECORDED_MEDIA_SOURCE_V1',assetId:native.assetId,youtubeId:native.youtubeId,objectHash:native.objectNativeHash}));
+ const material={...native};for(const key of ['personGeneration','personVersion','personReady','personVerifiedAt'])delete material[key];
  const value={attachmentId:attachment,offeringId:offer,assetId:native.assetId,websiteId:native.websiteId,lessonId:native.lessonId,lessonDate:native.lessonDate,cohort:native.cohort,sourceRevision,companionRevision:native.companionRevision,attributionRevision:native.attributionRevision,
   style:native.programmeKey==='mothers'?'MOU':'ACADEMIC',
   // Existing native Studio recordings are retained. Never invent an academic
   // TTL or a first-upload timestamp from MIME, URL, attachment date or clock.
   retentionPolicy:'PERMANENT_STUDIO_RETAINED',originalIngestedAt:null,
-  originalIngestionProved:false,nativeDBFingerprint:await sha256(row.native_json)};
+  originalIngestionProved:false,nativeDBFingerprint:await sha256(row.native_json),materialFingerprint:await sha256(JSON.stringify(material))};
  Object.defineProperty(value,'fence',{value:{expectedSQL:'('+snapshotSQL+')=? AND NOT EXISTS(SELECT 1 FROM source_access_master_fences WHERE account_id=? AND offering_id=?)',expectedArgs:[...args,row.native_json,actor.account_id,offer]},enumerable:false});
  return value;
 }

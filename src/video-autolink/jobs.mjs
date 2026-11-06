@@ -40,9 +40,10 @@ export async function authoriseProcessingJob(env,store,actor,input){
  const native=await checkedSource(env,store,actor,source),q=await quote(env,source,native);if(q.quoteHash!==input.quoteHash)throw error('PROCESSING_QUOTE_CHANGED');
  const now=Date.now(),expires=Math.min(now+60000,source.private_expires_at,actor.expires_at,actor.verified_at+boundedAge(env,true));
  if(!Number.isSafeInteger(expires)||expires<=now)throw error('PROCESSING_AUTHORISATION_EXPIRED');
- const statement=store.statement("INSERT INTO video_processing_jobs(job_id,source_id,offering_id,actor_id,actor_token_hash,actor_epoch,actor_source_ref,authorised_at,authorisation_expires_at,private_expires_at,quote_hash,native_fingerprint,base_companion_revision,attribution_revision,style,model,profile,max_output_tokens,max_request_bytes,timeout_ms,state) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'QUEUED')",
- [operationId,source.source_id,source.offering_id,actor.account_id,actor.token_hash,actor.epoch,actor.source_ref??null,now,expires,source.private_expires_at,q.quoteHash,native.nativeDBFingerprint,native.companionRevision,native.attributionRevision,native.style,q.model,q.profile,q.maxOutputTokens,q.maxRequestBytes,q.timeoutMs]);
- return store.mutate(actor,source.offering_id,canonical,[statement],{jobId:operationId,state:'QUEUED',authorisationExpiresAt:expires},{studio:true,...native.fence,
+ const jobId=crypto.randomUUID();
+ const statement=store.statement("INSERT INTO video_processing_jobs(job_id,source_id,offering_id,actor_id,actor_token_hash,actor_epoch,actor_source_ref,authorised_at,authorisation_expires_at,private_expires_at,quote_hash,native_fingerprint,material_fingerprint,base_companion_revision,attribution_revision,style,model,profile,max_output_tokens,max_request_bytes,timeout_ms,state) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'QUEUED')",
+ [jobId,source.source_id,source.offering_id,actor.account_id,actor.token_hash,actor.epoch,actor.source_ref??null,now,expires,source.private_expires_at,q.quoteHash,native.nativeDBFingerprint,native.materialFingerprint,native.companionRevision,native.attributionRevision,native.style,q.model,q.profile,q.maxOutputTokens,q.maxRequestBytes,q.timeoutMs]);
+ return store.mutate(actor,source.offering_id,canonical,[statement],{jobId,state:'QUEUED',authorisationExpiresAt:expires},{studio:true,...native.fence,
   expectedSQL:native.fence.expectedSQL+' AND EXISTS(SELECT 1 FROM video_processing_sources WHERE source_id=? AND private_expires_at=?)',
   expectedArgs:[...native.fence.expectedArgs,source.source_id,source.private_expires_at]});
 }
@@ -97,7 +98,7 @@ export async function completeProcessingJob(env,store,jobId,attemptId,object,rec
  if(!value||value.schema!=='VIDEO_PROCESSING_PRIVATE_CANDIDATE_V1'||value.style!==job.style||value.reviewRequired!==true||Object.keys(value).length!==5||value.learnerPreview?.schema!=='LEARNER_COMPANION_V1')throw error('PRIVATE_CANDIDATE_UNAVAILABLE');
  const now=Date.now(),operationId='candidate-'+attemptId;
  return store.mutate(actor,job.offering_id,{action:'video-processing-candidate',operationId,jobId:job.job_id,attemptId,objectHash:object.hash},
- [store.statement('INSERT INTO video_processing_candidates VALUES(?,?,?,?,?,?)',[job.job_id,attemptId,object.key,object.hash,now,job.private_expires_at]),
+ [store.statement('INSERT INTO video_processing_candidates(job_id,attempt_id,object_key,object_hash,created_at,expires_at) VALUES(?,?,?,?,?,?)',[job.job_id,attemptId,object.key,object.hash,now,job.private_expires_at]),
   store.statement("UPDATE video_processing_jobs SET state='CANDIDATE',outcome_code=NULL,provider_receipt_json=? WHERE job_id=?",[JSON.stringify(safeReceipt(receipt)),job.job_id])],
  {jobId:job.job_id,state:'CANDIDATE'},{studio:true,...native.fence,
  expectedSQL:native.fence.expectedSQL+" AND EXISTS(SELECT 1 FROM video_processing_jobs WHERE job_id=? AND state='RUNNING' AND attempt_id=? AND authorisation_expires_at>? AND private_expires_at>?)",
