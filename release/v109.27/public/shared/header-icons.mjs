@@ -1,0 +1,2 @@
+const paths={home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',refresh:'<path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M6.1 6.1A8 8 0 0 1 20 12M4 12a8 8 0 0 0 13.9 5.9"/>',signout:'<path d="M9 21H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5M9 12h12m-4-4 4 4-4 4"/>'};
+export const headerIcon=name=>`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||''}</svg>`;
