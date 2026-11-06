@@ -18,7 +18,7 @@ function fixture(){
  const proposal={id:11,user:bot,body:proposalBody(m),created_at:'2026-11-06T10:00:00Z',updated_at:'2026-11-06T10:00:00Z',issue_url:issue.url};
  const approval={id:12,user:reviewer,body:approvalBody(m,11,drive),created_at:'2026-11-06T11:00:00Z',updated_at:'2026-11-06T11:00:00Z',issue_url:issue.url,html_url:'https://github.com/'+repo+'/issues/1#issuecomment-12'};
  const status={id:100,context:CONTEXT,state:'success',creator:reviewer,description:'approve:'+digest(m),target_url:approval.html_url,created_at:'2026-11-06T11:00:01Z'};
- const state={m,e,issue,proposal,approval,statuses:{[A]:[status]},events:[],comments:[proposal,approval],pulls:[],busy:[],branchSHA:A,protected:false,anchor:B,active:C,evidence:true,expiry:'2026-12-06T00:00:00Z',fetches:0,claims:0,deletes:0,mutations:[],refs:{['refs/heads/'+e.branch]:A,'refs/heads/studio_dev':B,'refs/tags/synthetic':C}};
+ const state={m,e,issue,proposal,approval,statuses:{[A]:[status]},events:[],comments:[proposal,approval],pulls:[],busy:[],deployments:[],deploymentStatuses:{},branchSHA:A,protected:false,anchor:B,active:C,evidence:true,expiry:'2026-12-06T00:00:00Z',fetches:0,claims:0,deletes:0,mutations:[],refs:{['refs/heads/'+e.branch]:A,'refs/heads/studio_dev':B,'refs/tags/synthetic':C}};
  const ctx={repository:repo,runId:'900',sourceSha:B,integrity,now:()=>now};
  const api={
   async api(method,path,body){
@@ -44,7 +44,8 @@ function fixture(){
    if(path===prefix+'/commits/'+A+'/statuses')return clone(state.statuses[A]);
    if(path.includes('/pulls?'))return path.startsWith(prefix+'/')?clone(state.pulls):[];
    if(/\/actions\/runs\?status=/.test(path))return state.busy.filter(x=>path.includes('status='+x.status));
-   if(path===prefix+'/deployments')return [];
+   if(path===prefix+'/deployments')return clone(state.deployments);
+   const deploymentStatus=path.match(/\/deployments\/(\d+)\/statuses$/);if(deploymentStatus)return clone(state.deploymentStatuses[deploymentStatus[1]]||[]);
    if(path===prefix+'/actions/runs?branch='+encodeURIComponent(e.branch))return [{id:21,head_sha:A,head_branch:e.branch,status:'completed',conclusion:'success'}];
    if(path===prefix+'/actions/runs/21/artifacts')return state.evidence?[{id:31,digest:'sha256:'+'e'.repeat(64),expires_at:state.expiry,expired:false}]:[];
    if(path===prefix+'/branches')return [{name:e.branch,commit:{sha:state.branchSHA},protected:state.protected},{name:'studio_dev',commit:{sha:state.anchor}},{name:policy.activeRefs[0],commit:{sha:state.active}}];
@@ -235,4 +236,26 @@ test('All-skipped workflows and missing evidence for executed failures cannot be
   return list(path,key);
  };
  assert.deepEqual(await discover(f.api,f.ctx,f.policy,new Set(),[]),[]);
+});
+
+test('Active deployment identity blocks the real executor for bare/full branches, SHA refs and resolved tag SHAs',async t=>{
+ const refs=[
+  ['bare branch',e=>({ref:e.branch,sha:A})],
+  ['full branch',e=>({ref:'refs/heads/'+e.branch,sha:A})],
+  ['SHA ref',e=>({ref:A,sha:A})],
+  ['tag resolving to head',e=>({ref:'evidence-tag',sha:A})]
+ ];
+ for(const [name,identity] of refs)for(const state of ['success','in_progress','queued','pending','failure','error']){
+  await t.test(name+' '+state,async()=>{
+   const f=fixture();f.state.deployments=[{id:41,...identity(f.state.e)}];f.state.deploymentStatuses[41]=[{state}];
+   await assert.rejects(f.execute(),/Active deployment dependency/);assert.equal(f.state.claims,0);assert.equal(f.state.deletes,0);
+  });
+ }
+});
+test('Missing deployment status blocks; only explicit latest inactive permits a retired deployment',async()=>{
+ const missing=fixture();missing.state.deployments=[{id:41,ref:missing.state.e.branch,sha:A}];
+ await assert.rejects(missing.execute(),/Active deployment dependency/);assert.equal(missing.state.deletes,0);
+ const retired=fixture();retired.state.deployments=[{id:41,ref:A,sha:A}];
+ retired.state.deploymentStatuses[41]=[{state:'inactive'},{state:'success'}];
+ const result=await retired.execute();assert.equal(result.deleted.length,1);assert.equal(retired.state.deletes,1);
 });

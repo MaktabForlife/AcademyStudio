@@ -159,10 +159,12 @@ export async function activeUses(api,ctx,entries){
    assert(!runs.some(r=>!(repo===own&&String(r.id)===ctx.runId)&&!(r.path==='.github/workflows/validation-cleanup.yml'&&r.head_branch==='studio_dev')),'Active paired workflow');
   }
  }
+ const heads=new Set(entries.map(e=>e.sha));
  const deployments=await api.list('/repos/'+own+'/deployments');
- for(const d of deployments.filter(x=>wanted.has(x.ref))){
+ for(const d of deployments.filter(x=>wanted.has(x.ref)||wanted.has(x.ref?.replace(/^refs\/heads\//,''))||heads.has(x.ref)||heads.has(x.sha))){
   const statuses=await api.list('/repos/'+own+'/deployments/'+d.id+'/statuses');
-  assert(statuses[0]&&['success','failure','error','inactive'].includes(statuses[0].state),'Active deployment dependency');
+  // A successful deployment may still serve an environment. Only explicit inactive retires it.
+  assert(statuses[0]?.state==='inactive','Active deployment dependency');
  }
 }
 export async function evidence(api,repo,e,now,policy){
