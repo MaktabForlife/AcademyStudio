@@ -22,7 +22,7 @@ test('real current workerd Workflow dispatch executes the guarded native paid st
  const f=await configured();try{
   const {jobId,input}=await f.authorise();
   const dispatched=await processingCommand(f.env,f.store(),f.actor,'course',{action:'video-processing-authorise',...input});assert.equal(dispatched.jobId,jobId);assert.equal(dispatched.dispatch,'QUEUED');
-  const instance=await f.workflow.get(jobId),status=await complete(instance);assert.equal(status.output.state,'CANDIDATE');assert.equal(status.output.jobId,jobId);assert.equal(f.providerCalls(),1);
+  const instance=await f.workflow.get(jobId),status=await complete(instance);console.log('SYNTHETIC_STATUS',JSON.stringify(status.output),JSON.stringify(await f.db.prepare('SELECT state,outcome_code FROM video_processing_jobs WHERE job_id=?').bind(jobId).first()));assert.equal(status.output.state,'CANDIDATE');assert.equal(status.output.jobId,jobId);assert.equal(f.providerCalls(),1);
   const serial=JSON.stringify(status);for(const forbidden of ['PRIVATE','Synthetic evidence:','synthetic-key-NOT-REAL','video-processing-private/','learnerPreview','privateEvidence'])assert(!serial.includes(forbidden),forbidden);
   assert.equal((await f.db.prepare('SELECT state FROM video_processing_jobs WHERE job_id=?').bind(jobId).first()).state,'CANDIDATE');
   const retried=await processingCommand(f.env,f.store(),f.actor,'course',{action:'video-processing-authorise',...input});assert.equal(retried.dispatch,'NOT_NEEDED');assert.equal(retried.jobId,jobId);assert.equal(f.providerCalls(),1);
@@ -32,7 +32,7 @@ test('real current workerd Workflow dispatch executes the guarded native paid st
 test('real Workflow provider-503 outcome is review-required without retry or private durable output',async()=>{
  const f=await configured({outcome:'unknown'});try{
   const {jobId,input}=await f.authorise();await processingCommand(f.env,f.store(),f.actor,'course',{action:'video-processing-authorise',...input});
-  const status=await complete(await f.workflow.get(jobId));assert.equal(status.output.state,'REVIEW_REQUIRED');assert.equal(f.providerCalls(),1);assert(!JSON.stringify(status).includes('PRIVATE'));
+  const status=await complete(await f.workflow.get(jobId));console.log('SYNTHETIC_STATUS',JSON.stringify(status.output),JSON.stringify(await f.db.prepare('SELECT state,outcome_code FROM video_processing_jobs WHERE job_id=?').bind(jobId).first()));assert.equal(status.output.state,'REVIEW_REQUIRED');assert.equal(f.providerCalls(),1);assert(!JSON.stringify(status).includes('PRIVATE'));
   await new Promise(done=>setTimeout(done,150));assert.equal(f.providerCalls(),1);const row=await f.db.prepare('SELECT state,outcome_code FROM video_processing_jobs WHERE job_id=?').bind(jobId).first();assert.equal(row.state,'REVIEW_REQUIRED');assert.equal(row.outcome_code,'PROVIDER_OUTCOME_UNKNOWN');
   const retry=await processingCommand(f.env,f.store(),f.actor,'course',{action:'video-processing-authorise',...input});assert.equal(retry.dispatch,'NOT_NEEDED');assert.equal(f.providerCalls(),1);
  }finally{await f.close();}
