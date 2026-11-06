@@ -115,3 +115,41 @@ jobs:
           path: ${{ runner.temp }}/video-transport-evidence/
           if-no-files-found: error
           retention-days: 14
+
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble@sha256:f1e7e01021efd65dd1a2c56064be399f3e4de00fd021ac561325f2bfbb2b837a
+      options: --ipc=host
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.18.0'
+      - run: npm ci --ignore-scripts
+      - name: Pinned local browser harness
+        run: npm install --prefix "$RUNNER_TEMP/video-browser-tools" --ignore-scripts --no-audit --no-fund --package-lock=false playwright@1.56.1
+      - name: Native Course Media upload, explicit authorisation, lost ACK, review, separate publication and late-body privacy
+        env:
+          VIDEO_BROWSER: ${{ matrix.engine }}
+          PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+        run: |
+          set -euo pipefail
+          export VIDEO_PLAYWRIGHT_ROOT="$RUNNER_TEMP/video-browser-tools"
+          export VIDEO_UI_EVIDENCE="$RUNNER_TEMP/video-ui-evidence"
+          mkdir -p "$VIDEO_UI_EVIDENCE"
+          node tools/video-autolink-ui-acceptance.mjs 2>&1 | tee "$VIDEO_UI_EVIDENCE/browser.log"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: video-ui-${{ matrix.engine }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/video-ui-evidence/
+          if-no-files-found: error
+          retention-days: 14

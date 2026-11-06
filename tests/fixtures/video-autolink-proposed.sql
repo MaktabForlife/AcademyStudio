@@ -38,3 +38,5 @@ CREATE TABLE video_processing_committed_objects(
  object_key TEXT PRIMARY KEY,object_hash TEXT NOT NULL,attachment_id TEXT NOT NULL,created_at INTEGER NOT NULL
 );
 CREATE INDEX video_processing_committed_attachment ON video_processing_committed_objects(attachment_id,object_key);
+
+CREATE INDEX video_processing_jobs_attachment ON video_processing_jobs(offering_id,attachment_id,job_id);

@@ -46,3 +46,15 @@ test('manual cancel during a paid mock discards its late output; accepted native
   assert.equal((await f.db.prepare("SELECT count(*) n FROM recording_companions").first()).n,1);
  }finally{await f.close();}
 });
+
+test('private history reopens an existing job by exact attachment; its indexed page is bounded before filtering expired rows',async()=>{
+ const f=await setup();try{
+  const env=configured(f),{jobId}=await f.authorise();await runProcessingJob(env,jobId,{fetcher:async()=>response()});
+  const first=await processingCommand(env,f.store(),f.actor,'course',{action:'video-processing-history',attachmentId:'processing-attachment'});assert.equal(first.jobs[0].jobId,jobId);assert.equal(first.jobs[0].sourceId,'synthetic-source');assert(!JSON.stringify(first).includes(f.actor.token_hash));assert(!JSON.stringify(first).includes('transcript_key'));assert(!JSON.stringify(first).includes('SELECT'));
+  const original=await f.db.prepare('SELECT * FROM video_processing_jobs WHERE job_id=?').bind(jobId).first();
+  const now=Date.now();for(let i=0;i<30;i++){const row={...original,job_id:'expired-history-'+String(i).padStart(3,'0'),state:'REVIEW_REQUIRED',authorised_at:now-7200000,authorisation_expires_at:now-7140000,private_expires_at:now-3600000};const keys=Object.keys(row);await f.run('INSERT INTO video_processing_jobs('+keys.join(',')+') VALUES('+keys.map(()=>'?').join(',')+')',...Object.values(row));}
+  const page=await processingCommand(env,f.store(),f.actor,'course',{action:'video-processing-history',attachmentId:'processing-attachment',after:'expired-history-'});assert.equal(page.jobs.length,0);assert.equal(page.more,true);assert.equal(page.next,'expired-history-024');
+  const last=await processingCommand(env,f.store(),f.actor,'course',{action:'video-processing-history',attachmentId:'processing-attachment',after:page.next});assert.equal(last.more,false);
+  await assert.rejects(processingCommand(env,f.store(),f.actor,'tafseer',{action:'video-processing-history',attachmentId:'processing-attachment'}));
+ }finally{await f.close();}
+});

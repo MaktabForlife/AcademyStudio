@@ -16,7 +16,7 @@ export async function videoCommand(env,store,actor,offer,command,fetcher){
    const result=await sourceCommand(env,store,actor,offer,command,fetcher);
    return command.action==='video-source-capabilities'?{...result,processingAvailable:processingAvailable(env)}:result;
   }
-  if(!['video-processing-capabilities','video-processing-source','video-processing-quote','video-processing-authorise','video-processing-status','video-processing-candidate','video-processing-accept','video-processing-cancel'].includes(command?.action))throw fail('Choose a supported processing command.',400,'PROCESSING_COMMAND_INVALID');
+  if(!['video-processing-capabilities','video-processing-source','video-processing-quote','video-processing-authorise','video-processing-status','video-processing-history','video-processing-candidate','video-processing-accept','video-processing-cancel'].includes(command?.action))throw fail('Choose a supported processing command.',400,'PROCESSING_COMMAND_INVALID');
   return await processingCommand(env,store,actor,offer,command);
  }catch(error){throw videoPublicError(error);}
 }

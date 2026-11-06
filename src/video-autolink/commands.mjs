@@ -9,6 +9,7 @@ const shapes={
  'video-processing-quote':['action','sourceId'],
  'video-processing-authorise':['action','operationId','sourceId','quoteHash','authorise'],
  'video-processing-status':['action','jobId'],
+ 'video-processing-history':['action','attachmentId','after'],
  'video-processing-candidate':['action','jobId'],
  'video-processing-accept':['action','operationId','jobId','candidateHash','revision','reviewed','companion','confirmLessonReference','confirmAssignedHomework','confirmReferences','confirmAudioQuotations'],
  'video-processing-cancel':['action','operationId','jobId','cancel']
@@ -17,9 +18,9 @@ const whole=(value,min,max)=>typeof value==='string'&&/^\d+$/.test(value)&&Numbe
 export function processingAvailable(env){
  return env.VIDEO_AUTOLINK_ENABLED==='1'&&typeof env.OPENAI_API_KEY==='string'&&Boolean(env.OPENAI_API_KEY)&&/^[-A-Za-z0-9_.]{1,120}$/.test(env.VIDEO_AI_MODEL||'')&&/^[-A-Za-z0-9_.]{1,120}$/.test(env.VIDEO_AI_AUTHORISATION_PROFILE||'')&&whole(env.VIDEO_AI_MAX_OUTPUT_TOKENS,1,32000)&&whole(env.VIDEO_AI_MAX_REQUEST_BYTES,1000,1000000)&&whole(env.VIDEO_AI_TIMEOUT_MS,1,50000)&&whole(env.VIDEO_AI_PRIVATE_REVIEW_TTL_HOURS,1,720)&&whole(env.VIDEO_AI_WORKFLOW_RETENTION_HOURS,1,72)&&Boolean(env.VIDEO_PROCESSING_PRIVATE)&&typeof env.VIDEO_PROCESSING_WORKFLOW?.create==='function';
 }
-const publicCodes=new Set(['PROCESSOR_DISABLED','PROCESSOR_UNCONFIGURED','PRIVATE_REVIEW_RETENTION_UNCONFIGURED','PROCESSING_COMMAND_INVALID','PROCESSING_INPUT_TOO_LARGE','PROCESSING_SOURCE_UNAVAILABLE','PROCESSING_SOURCE_CHANGED','PROCESSING_SOURCE_REQUIRED','PROCESSING_DESTINATION_REQUIRED','PROCESSING_QUOTE_CHANGED','PROCESSING_AUTHORISATION_EXPIRED','EXPLICIT_PROCESSING_AUTHORISATION_REQUIRED','PRIVATE_CANDIDATE_UNAVAILABLE','PRIVATE_CANDIDATE_EXPIRED','EXPLICIT_CANDIDATE_REVIEW_REQUIRED','PROCESSING_CANDIDATE_STALE','REVIEWED_COMPANION_INVALID','REVIEWED_COMPANION_TOO_LARGE','CONFIRM_LESSON_REFERENCE','CONFIRM_ASSIGNED_HOMEWORK','CONFIRM_REFERENCES','CONFIRM_AUDIO_QUOTATIONS','CHANGE_CONFLICT','RETRY_CONFLICT','SIGN_IN_REQUIRED','ADMIN_STATUS_EXPIRED','ACCESS_REFRESH_REQUIRED','SOURCE_SCOPE_UNAVAILABLE','HANDOVER_REQUIRED','TRANSCRIPT_INVALID','PROCESSING_JOB_UNAVAILABLE','PROCESSING_OFFERING_MISMATCH','EXPLICIT_PROCESSING_CANCEL_REQUIRED','ACCEPTED_NATIVE_DRAFT_PRESERVED']);
+const publicCodes=new Set(['PROCESSING_FORBIDDEN','PROCESSOR_DISABLED','PROCESSOR_UNCONFIGURED','PRIVATE_REVIEW_RETENTION_UNCONFIGURED','PROCESSING_COMMAND_INVALID','PROCESSING_INPUT_TOO_LARGE','PROCESSING_SOURCE_UNAVAILABLE','PROCESSING_SOURCE_CHANGED','PROCESSING_SOURCE_REQUIRED','PROCESSING_DESTINATION_REQUIRED','PROCESSING_QUOTE_CHANGED','PROCESSING_AUTHORISATION_EXPIRED','EXPLICIT_PROCESSING_AUTHORISATION_REQUIRED','PRIVATE_CANDIDATE_UNAVAILABLE','PRIVATE_CANDIDATE_EXPIRED','EXPLICIT_CANDIDATE_REVIEW_REQUIRED','PROCESSING_CANDIDATE_STALE','REVIEWED_COMPANION_INVALID','REVIEWED_COMPANION_TOO_LARGE','CONFIRM_LESSON_REFERENCE','CONFIRM_ASSIGNED_HOMEWORK','CONFIRM_REFERENCES','CONFIRM_AUDIO_QUOTATIONS','CHANGE_CONFLICT','RETRY_CONFLICT','SIGN_IN_REQUIRED','ADMIN_STATUS_EXPIRED','ACCESS_REFRESH_REQUIRED','SOURCE_SCOPE_UNAVAILABLE','HANDOVER_REQUIRED','TRANSCRIPT_INVALID','PROCESSING_JOB_UNAVAILABLE','PROCESSING_OFFERING_MISMATCH','EXPLICIT_PROCESSING_CANCEL_REQUIRED','ACCEPTED_NATIVE_DRAFT_PRESERVED']);
 function safeError(error){
- const code=publicCodes.has(error?.code)?error.code:'PROCESSING_UNAVAILABLE',status=publicCodes.has(error?.code)&&[400,401,403,404,409,413,429,503].includes(error?.status)?error.status:503;
+ const status=[400,401,403,404,409,413,429,503].includes(error?.status)?error.status:503,code=publicCodes.has(error?.code)?error.code:status===403?'PROCESSING_FORBIDDEN':status===401?'SIGN_IN_REQUIRED':status===400?'PROCESSING_COMMAND_INVALID':'PROCESSING_UNAVAILABLE';
  const message=status===401?'Refresh your Academy sign-in before continuing.':status===403?'Your account cannot process this recording.':status===413?'Choose a smaller timestamped transcript.':status===409?'Reopen the current recording and processing request.':'Video processing is temporarily unavailable.';
  return fail(message,status,code);
 }
@@ -52,6 +53,16 @@ async function cancel(env,store,actor,offer,command){
  return store.mutate(actor,offer,canonical,[store.statement("UPDATE video_processing_jobs SET state='CANCELLED',outcome_code='PROCESSING_CANCELLED' WHERE job_id=?",[job.job_id])],{jobId:job.job_id,state:'CANCELLED'},{studio:true,...native.fence,
  expectedSQL:native.fence.expectedSQL+" AND EXISTS(SELECT 1 FROM video_processing_jobs WHERE job_id=? AND state<>'ACCEPTED')",expectedArgs:[...native.fence.expectedArgs,job.job_id]});
 }
+
+async function processingHistory(env,store,actor,offer,command){
+ const attachment=id(command.attachmentId),after=command.after?id(command.after):'';
+ await nativeProcessingSource(env,store,actor,offer,{attachmentId:attachment});
+ // Limit the indexed page BEFORE filtering expired private metadata. A page of
+ // expired rows never creates an unbounded scan to find 25 live rows.
+ const rows=await store.all('SELECT job_id,source_id,state,outcome_code,authorised_at,private_expires_at FROM video_processing_jobs INDEXED BY video_processing_jobs_attachment WHERE offering_id=? AND attachment_id=? AND job_id>? ORDER BY job_id LIMIT 26',[offer,attachment,after]);
+ return {jobs:rows.slice(0,25).filter(r=>r.private_expires_at>Date.now()).map(r=>({jobId:r.job_id,sourceId:r.source_id,state:r.state,code:r.outcome_code||null,authorisedAt:r.authorised_at,privateExpiresAt:r.private_expires_at})),more:rows.length>25,next:rows.length>25?rows[24].job_id:null};
+}
+
 // Proposed shared handler for existing native-cookie and signed owning proxy
 // entries. Neither entry currently imports/mounts it. Call only after the
 // existing request signature/session/CSRF/host gates; no actor comes from JSON.
@@ -67,6 +78,7 @@ export async function processingCommand(env,store,actor,offer,command){
    case 'video-processing-source':return await saveProcessingSource(env,store,actor,offer,command);
    case 'video-processing-quote':return await processingQuote(env,store,actor,command.sourceId);
    case 'video-processing-authorise':return await dispatch(env,store,await authoriseProcessingJob(env,store,actor,command));
+   case 'video-processing-history':return await processingHistory(env,store,actor,offer,command);
    case 'video-processing-status':return await processingStatus(env,store,actor,command.jobId);
    case 'video-processing-candidate':return await readProcessingCandidate(env,store,actor,command.jobId);
    case 'video-processing-accept':return await acceptProcessingCandidate(env,store,actor,command);
