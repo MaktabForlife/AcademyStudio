@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "state": "SOURCE_AND_BUNDLE_PREPARED_NOT_DEPLOYABLE",
+  "repository": "MaktabForlife/AcademyStudio",
+  "logicalTarget": "development",
+  "candidateVersion": "109.27",
+  "base": "9a8c117e9279a2b67e62eb044be4da989db4a096",
+  "inputs": [
+    {
+      "name": "UI-003 PR5",
+      "base": "9a8c117e9279a2b67e62eb044be4da989db4a096",
+      "head": "18fa24295aebdc4a1ad33a345b741283283056ec"
+    }
+  ],
+  "hostedCalls": 0,
+  "hostedDatabaseCalls": 0,
+  "providerCalls": 0,
+  "resourceMutations": 0,
+  "deployable": false,
+  "sharedReaderComposition": {
+    "source": "6b9237843a6f7fb25d9113c108c15543de912b7b",
+    "defaultStudioReaderUnchanged": true,
+    "strictFullModuleEquality": true
+  },
+  "composedSource": "4c103c350a03a408d197b6fc4c1f565d16dd240e",
+  "bundle": {
+    "files": 400,
+    "prefix": "/_assets/c1c4983c31d0c151ee9715f885798991f8f9a2a9c37fa7921752ac7bc8761165/",
+    "manifestSHA256": "f38a265033d983d1b9069a0a8a9de74ca2e97c399af781fc1098f5674ae477d4"
+  },
+  "schemaBlueprint": {
+    "nativeMigrations": [
+      "0001_platform.sql",
+      "0002_parallel_access.sql",
+      "0003_circles_navigation.sql",
+      "0004_studio_access.sql",
+      "0005_course_publication.sql",
+      "0006_monthly_programmes.sql",
+      "0007_completed_courses.sql",
+      "0008_course_policy_revisions.sql",
+      "0009_recording_companions.sql",
+      "0010_mou_subject_catalogue.sql",
+      "0011_media_attribution.sql",
+      "0012_mou_playlists.sql",
+      "0013_recording_playlists.sql",
+      "0014_playlist_cards.sql",
+      "0015_course_playlist_workflow.sql",
+      "0016_display_revisions.sql",
+      "0017_existing_playlist_sources.sql"
+    ],
+    "objects": 218,
+    "tables": 72,
+    "userRows": 0,
+    "foreignKeyErrors": 0,
+    "quickCheck": "ok",
+    "ddlBytes": 55927,
+    "ddlSHA256": "4b8ca03f913b768166141937aafb1d6cf10e03bacf6f0223982b43332cb69797",
+    "runtime": "Node24 SQLite only; current-workerd import remains required; no hosted installation"
+  }
+}
