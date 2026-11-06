@@ -30,6 +30,13 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm ci --prefix source-academy/backend --ignore-scripts --no-audit --no-fund
       - run: npm install --prefix "$RUNNER_TEMP/ui-current-runtime" --ignore-scripts --no-audit --no-fund --package-lock=false miniflare@5.20261103.0-beta
+      - name: Fetch only the retained comparison baselines and native source link
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin 9a8c117e9279a2b67e62eb044be4da989db4a096
+          git -C source-academy fetch --no-tags --depth=1 origin 1b4dd450a4a59093ae85d891f0277eb480418c30
+          test ! -e "$GITHUB_WORKSPACE/../Academy"
+          ln -s "$GITHUB_WORKSPACE/source-academy" "$GITHUB_WORKSPACE/../Academy"
       - name: Exact paired source, reader/processing overlap and empty local schema
         env:
           ACADEMY_SOURCE: ${{ github.workspace }}/source-academy
