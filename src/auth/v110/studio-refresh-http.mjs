@@ -49,7 +49,7 @@ export async function handleStudioRefresh(request,env,{clock=()=>Math.floor(Date
   let secret;try{secret=csrfBytes(env.JWT_V110_CSRF_SECRET);}catch{deny('REFRESH_UNAVAILABLE');}
   const csrfKey=await crypto.subtle.importKey('raw',secret,{name:'HMAC',hash:'SHA-256'},false,['sign','verify']);
   const ip=request.headers.get('CF-Connecting-IP')||'unavailable';
-  const rateKey=base64url.encode(await crypto.subtle.sign('HMAC',csrfKey,new TextEncoder().encode('uaa-refresh-rate-v1\0'+ip)));
+  const rateKey=base64url.encode(new Uint8Array(await crypto.subtle.sign('HMAC',csrfKey,new TextEncoder().encode('uaa-refresh-rate-v1\0'+ip))));
   if((await env.JWT_V110_RATE_LIMITER.limit({key:'v110-studio-'+rateKey})).success!==true)return reply({code:'RATE_LIMITED'},429,{'Retry-After':'60'});
   const raw=parseUniqueCookie(request.headers.get('Cookie')||'',cookieNames.studio.refresh);
   const config={app:'studio',issuer,publicKeys,signingKey:await importJWK(privateJWK,'ES256'),signingKid:env.JWT_V110_SIGNING_KID};
@@ -63,7 +63,7 @@ export async function handleStudioRefresh(request,env,{clock=()=>Math.floor(Date
    // this same-family CSRF proof after a new tab or lost response.
    const fp=await fingerprint('studio',raw),result=await env.DB.withSession('first-primary').prepare(lookupSQL).bind(fp,now).all(),family=result.results[0];
    if(!family)deny('SESSION_ENDED');currentClock(family,now);
-   const csrf=base64url.encode(await crypto.subtle.sign('HMAC',csrfKey,csrfData(family)));
+   const csrf=base64url.encode(new Uint8Array(await crypto.subtle.sign('HMAC',csrfKey,csrfData(family))));
    return reply({csrf});
   }
   const input=await body(request);proof=csrfBytes(request.headers.get('X-UAA-CSRF'));
