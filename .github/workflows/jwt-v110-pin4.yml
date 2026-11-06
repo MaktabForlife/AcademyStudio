@@ -1,0 +1,65 @@
+name: JWT V110 native PIN fourth digit review
+on:
+  create:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pin-fourth-digit:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/validation/jwt-v110-pin4-')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    defaults:
+      run:
+        shell: bash
+        working-directory: work/AcademyStudio
+    env:
+      ACADEMY_SOURCE: ${{ github.workspace }}/work/Academy
+      HIFZ_SOURCE: ${{ github.workspace }}/work/Hifz
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          path: work/AcademyStudio
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: MaktabForlife/Academy
+          ref: 75c3088408aa9f9b0a22ca8b40c8d4c346951fc2
+          path: work/Academy
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: MaktabForlife/Hifz
+          ref: becb310d18fc899562c1d76cea583cea801af809
+          path: work/Hifz
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18.0"
+      - name: Check identical disabled browser source and native PIN syntax
+        run: |
+          mkdir -p .build/jwt-v110-pin4
+          node tools/check-jwt-browser-sources.mjs
+          node --check "$ACADEMY_SOURCE/js/m4l-academy-login.js"
+          node --check tests/jwt-v110-native-browser.test.mjs
+      - name: Exercise native fourth-digit submit and affected public entry
+        timeout-minutes: 3
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap tests/jwt-v110-native-browser.test.mjs 2>&1 | tee .build/jwt-v110-pin4/tests.log
+          git diff --exit-code
+          git -C "$ACADEMY_SOURCE" diff --exit-code
+          git -C "$HIFZ_SOURCE" diff --exit-code
+          node --input-type=module -e "import {writeFileSync} from 'node:fs';writeFileSync('.build/jwt-v110-pin4/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,academy:'75c3088408aa9f9b0a22ca8b40c8d4c346951fc2',hifz:'becb310d18fc899562c1d76cea583cea801af809',run:process.env.GITHUB_RUN_ID,syntheticHTTP:true,PINVerificationProved:false,hostedRequests:0,liveDBChanges:0,deployed:false})+'\n');"
+      - name: Preserve scoped synthetic native PIN evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: jwt-v110-pin4-${{ github.run_id }}
+          include-hidden-files: true
+          retention-days: 30
+          path: |
+            work/AcademyStudio/.build/jwt-v110-pin4/
+            work/AcademyStudio/.build/jwt-v110-native-browser/browser.json
+            work/AcademyStudio/.build/jwt-v110-browser-integration/shared-source.json
