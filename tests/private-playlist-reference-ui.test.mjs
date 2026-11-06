@@ -22,7 +22,7 @@ test('a denied collection review clears prior private content instead of leaving
  const f=await screen({denied:true});try{assert.match(f.root.textContent,/Current access denied/);assert.doesNotMatch(f.root.textContent,/Original summary/);assert.equal(f.root.querySelector('dialog'),null);assert.equal(f.root.querySelector('a'),null);assert(!f.calls.some(c=>c.action==='existing-playlist-save'));}finally{f.dispose();}
 });
 test('Academy embeds the same Course workflow and helper, with native relative imports',()=>{
- const here=readFileSync(new URL('../public/shared/course-media-workflow.mjs',import.meta.url),'utf8');const root=resolve(process.env.ACADEMY_SOURCE||'../Academy'),source=readFileSync(root+'/js/m4l-course-media-view.mjs','utf8');assert.equal(source,here.replace("'./existing-media-view.mjs'","'./m4l-existing-media-view.mjs'"));assert.match(readFileSync(root+'/js/m4l-existing-media-view.mjs','utf8'),/export function existingMaterialLinks/);
+ const here=readFileSync(new URL('../public/shared/course-media-workflow.mjs',import.meta.url),'utf8');const root=resolve(process.env.ACADEMY_SOURCE||'../Academy'),source=readFileSync(root+'/js/m4l-course-media-view.mjs','utf8');assert.equal(source,here.replace("'./existing-media-view.mjs'","'./m4l-existing-media-view.mjs'").replace("'./video-processing.mjs'","'./m4l-video-processing.mjs'"));assert.match(readFileSync(root+'/js/m4l-existing-media-view.mjs','utf8'),/export function existingMaterialLinks/);
 });
 
 test('Admin original-reading links use exact website identities and hide reader links for private sources',()=>{
