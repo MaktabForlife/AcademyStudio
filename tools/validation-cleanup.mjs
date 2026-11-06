@@ -176,6 +176,9 @@ export async function evidence(api,repo,e,now,policy){
  const all=await api.list('/repos/'+repo+'/actions/runs?branch='+encodeURIComponent(e.branch),'workflow_runs');
  const current=all.filter(r=>r.head_sha===e.sha);
  assert(current.length>0&&current.every(r=>r.status==='completed'),'Unfinished validation');
+ const runKey=r=>({id:r.id,sha:r.sha??r.head_sha,status:r.status,conclusion:r.conclusion});
+ const ordered=runs=>runs.map(runKey).sort((a,b)=>a.id-b.id);
+ assert.deepEqual(ordered(current),ordered(e.runs),'Current-head validation run set changed; new manifest required');
  for(const saved of e.runs){
   const run=await api.api('GET','/repos/'+repo+'/actions/runs/'+saved.id);
   assert(run.head_sha===e.sha&&run.head_branch===e.branch&&run.status==='completed'&&run.conclusion===saved.conclusion,'Run changed');

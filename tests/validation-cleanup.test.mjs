@@ -18,7 +18,7 @@ function fixture(){
  const proposal={id:11,user:bot,body:proposalBody(m),created_at:'2026-11-06T10:00:00Z',updated_at:'2026-11-06T10:00:00Z',issue_url:issue.url};
  const approval={id:12,user:reviewer,body:approvalBody(m,11,drive),created_at:'2026-11-06T11:00:00Z',updated_at:'2026-11-06T11:00:00Z',issue_url:issue.url,html_url:'https://github.com/'+repo+'/issues/1#issuecomment-12'};
  const status={id:100,context:CONTEXT,state:'success',creator:reviewer,description:'approve:'+digest(m),target_url:approval.html_url,created_at:'2026-11-06T11:00:01Z'};
- const state={m,e,issue,proposal,approval,statuses:{[A]:[status]},events:[],comments:[proposal,approval],pulls:[],busy:[],deployments:[],deploymentStatuses:{},branchSHA:A,protected:false,anchor:B,active:C,evidence:true,expiry:'2026-12-06T00:00:00Z',fetches:0,claims:0,deletes:0,mutations:[],refs:{['refs/heads/'+e.branch]:A,'refs/heads/studio_dev':B,'refs/tags/synthetic':C}};
+ const state={m,e,issue,proposal,approval,statuses:{[A]:[status]},events:[],comments:[proposal,approval],pulls:[],busy:[],deployments:[],deploymentStatuses:{},newRuns:[],branchSHA:A,protected:false,anchor:B,active:C,evidence:true,expiry:'2026-12-06T00:00:00Z',fetches:0,claims:0,deletes:0,mutations:[],refs:{['refs/heads/'+e.branch]:A,'refs/heads/studio_dev':B,'refs/tags/synthetic':C}};
  const ctx={repository:repo,runId:'900',sourceSha:B,integrity,now:()=>now};
  const api={
   async api(method,path,body){
@@ -46,7 +46,7 @@ function fixture(){
    if(/\/actions\/runs\?status=/.test(path))return state.busy.filter(x=>path.includes('status='+x.status));
    if(path===prefix+'/deployments')return clone(state.deployments);
    const deploymentStatus=path.match(/\/deployments\/(\d+)\/statuses$/);if(deploymentStatus)return clone(state.deploymentStatuses[deploymentStatus[1]]||[]);
-   if(path===prefix+'/actions/runs?branch='+encodeURIComponent(e.branch))return [{id:21,head_sha:A,head_branch:e.branch,status:'completed',conclusion:'success'}];
+   if(path===prefix+'/actions/runs?branch='+encodeURIComponent(e.branch))return [{id:21,head_sha:A,head_branch:e.branch,status:'completed',conclusion:'success'},...clone(state.newRuns)];
    if(path===prefix+'/actions/runs/21/artifacts')return state.evidence?[{id:31,digest:'sha256:'+'e'.repeat(64),expires_at:state.expiry,expired:false}]:[];
    if(path===prefix+'/branches')return [{name:e.branch,commit:{sha:state.branchSHA},protected:state.protected},{name:'studio_dev',commit:{sha:state.anchor}},{name:policy.activeRefs[0],commit:{sha:state.active}}];
    throw Error('Unexpected list '+path+' '+key);
@@ -258,4 +258,33 @@ test('Missing deployment status blocks; only explicit latest inactive permits a 
  const retired=fixture();retired.state.deployments=[{id:41,ref:A,sha:A}];
  retired.state.deploymentStatuses[41]=[{state:'inactive'},{state:'success'}];
  const result=await retired.execute();assert.equal(result.deleted.length,1);assert.equal(retired.state.deletes,1);
+});
+
+test('A new completed current-head failure before claim invalidates the approved evidence set',async()=>{
+ const f=fixture();f.state.newRuns=[{id:22,head_sha:A,head_branch:f.state.e.branch,status:'completed',conclusion:'failure'}];
+ await assert.rejects(f.execute(),/validation run set changed/);
+ assert.equal(f.state.claims,0);assert.equal(f.state.deletes,0);
+});
+test('A new completed current-head failure after claim blocks Git deletion without replaying the batch',async()=>{
+ const f=fixture();
+ await assert.rejects(f.execute({onClaim:async()=>{
+  f.state.newRuns=[{id:22,head_sha:A,head_branch:f.state.e.branch,status:'completed',conclusion:'failure'}];
+ }}),/validation run set changed/);
+ assert.equal(f.state.claims,1);assert.equal(f.state.deletes,0);
+ await assert.rejects(f.execute(),/consumed/);assert.equal(f.state.deletes,0);
+});
+test('An unchanged fresh current-head run set retains exact approval and one successful transaction',async()=>{
+ const f=fixture();const result=await f.execute();
+ assert.equal(result.deleted.length,1);assert.equal(f.state.claims,1);assert.equal(f.state.deletes,1);
+});
+test('A changed same-ID outcome or a newly skipped run also requires a new manifest',async()=>{
+ for(const variant of ['changed-outcome','new-skipped']){
+  const f=fixture(),list=f.api.list.bind(f.api);
+  f.api.list=async(path,key)=>{
+   const rows=await list(path,key);
+   if(path!==prefix+'/actions/runs?branch='+encodeURIComponent(f.state.e.branch))return rows;
+   return variant==='changed-outcome'?[{...rows[0],conclusion:'failure'}]:[...rows,{id:22,head_sha:A,head_branch:f.state.e.branch,status:'completed',conclusion:'skipped'}];
+  };
+  await assert.rejects(f.execute(),/validation run set changed/);assert.equal(f.state.claims,0);assert.equal(f.state.deletes,0);
+ }
 });
