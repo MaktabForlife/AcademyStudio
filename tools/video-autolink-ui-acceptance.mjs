@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
-import https from 'node:https';import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';import {execFileSync} from 'node:child_process';import {resolve,extname} from 'node:path';import {pathToFileURL} from 'node:url';
+import https from 'node:https';import {readFileSync,mkdirSync,writeFileSync,appendFileSync} from 'node:fs';import {execFileSync} from 'node:child_process';import {resolve,extname} from 'node:path';import {pathToFileURL} from 'node:url';
 import {setup,response} from '../tests/video-autolink-job-fixture.mjs';import {runProcessingJob} from '../src/video-autolink/jobs.mjs';import {handle} from '../src/worker.mjs';
+if(process.env.GITHUB_ACTIONS!=='true')throw Error('Run this disposable host fixture only in GitHub Actions.');appendFileSync('/etc/hosts','\n127.0.0.1 website.test\n');
 const output=process.env.VIDEO_UI_EVIDENCE;if(!output)throw Error('Set a runner-only evidence directory.');mkdirSync(output,{recursive:true});
 const tools=process.env.VIDEO_PLAYWRIGHT_ROOT;if(!tools)throw Error('Use the pinned runner browser package.');
 const {chromium,webkit}=await import(pathToFileURL(resolve(tools,'node_modules/playwright/index.mjs')));
 const browserName=process.env.VIDEO_BROWSER||'chromium',engine={chromium,webkit}[browserName];if(!engine)throw Error('Choose a pinned test browser.');
-const tls=resolve(process.env.RUNNER_TEMP||'/tmp','video-ui-tls-'+browserName);mkdirSync(tls,{recursive:true});execFileSync('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-keyout',tls+'/key.pem','-out',tls+'/cert.pem','-days','1','-subj','/CN=localhost'],{stdio:'ignore'});
+const tls=resolve(process.env.RUNNER_TEMP||'/tmp','video-ui-tls-'+browserName);mkdirSync(tls,{recursive:true});execFileSync('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-keyout',tls+'/key.pem','-out',tls+'/cert.pem','-days','1','-subj','/CN=website.test'],{stdio:'ignore'});
 let providerCalls=0,loseAuthorise=true,origin,server,browser,context,secondContext,f,requestCount=0,holdCandidate=false,releaseCandidate=null,candidateWaiting=null;const authorisations=[],statuses=[],errors=[],pageErrors=[];const originalPublished=[];
 try{
  f=await setup();
@@ -45,7 +46,7 @@ try{
    const file=resolve(publicRoot,'.'+url.pathname);if(!file.startsWith(publicRoot+'/')||!['.mjs','.css','.svg','.png'].includes(extname(file))){res.writeHead(404);res.end();return;}res.writeHead(200,{'Content-Type':extname(file)==='.mjs'?'text/javascript':extname(file)==='.css'?'text/css':'image/svg+xml','Cache-Control':'no-store'});res.end(readFileSync(file));
   }catch{res.writeHead(503,{'Content-Type':'application/json','Cache-Control':'private, no-store'});res.end('{"error":"Synthetic local boundary unavailable","code":"LOCAL_UNAVAILABLE"}');}
  });
- await new Promise(done=>server.listen(0,'127.0.0.1',done));origin='https://127.0.0.1:'+server.address().port;env.WEBSITE_ORIGIN=origin;
+ await new Promise(done=>server.listen(443,'127.0.0.1',done));origin='https://website.test';env.WEBSITE_ORIGIN=origin;
  const table=await localRequest('/api/admin/course/playlists'),playlistId=crypto.randomUUID();await localRequest('/api/admin/course',{action:'mou-playlist-save',operationId:crypto.randomUUID(),playlistId,name:'Actual private processing destination',closeDate:'',revision:table.revision,playlistRevision:0,websiteRevision:0});
  for(const row of (await f.db.prepare('SELECT attachment_id,published FROM attachments ORDER BY attachment_id').all()).results)originalPublished.push(row);
  browser=await engine.launch();context=await browser.newContext({ignoreHTTPSErrors:true,viewport:{width:1280,height:1000}});const page=await context.newPage();page.on('pageerror',e=>pageErrors.push(e.message));page.on('dialog',d=>d.accept());page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('503'))errors.push(m.text());});
