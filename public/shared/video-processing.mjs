@@ -19,7 +19,8 @@ export function processingSourceAPI(request,offeringId){
 function topics(text){return text.split(/\r?\n/).filter(x=>x.trim()).map(line=>{const m=line.trim().match(/^(\d{1,3}:[0-5]\d(?::[0-5]\d)?)\s+(.+)$/);if(!m)throw Error('Use one timestamp and topic per line, such as 00:00 Introduction.');return {time:m[1],title:m[2]};});}
 export function mountVideoProcessing(host,{request,offeringId,playlistId,courseRequest=null,current=()=>true,onClose=()=>{},onSaved=()=>{},styleHref='/shared/media-attachment.css'}){
  let disposed=false,busy=false,dirty=false,pending=null,attachmentUI=null,capabilities=null,options=null,detail=null,source=null,quote=null,job=null,candidate=null,recordings=[],next=null,publication=null,courseDraft=null,history=[],historyNext=null;
- const active=()=>!disposed&&host.isConnected&&current();
+ const sameContext=()=>{try{return current()===true;}catch{return false;}};
+ const active=()=>!disposed&&host.isConnected&&sameContext();
  const assert=()=>{if(!active())throw new DOMException('The account or Course changed.','AbortError');};
  const canLeave=()=>!busy&&!pending&&!dirty&&attachmentUI?.canLeave?.()!==false;
  const tell=text=>{if(active())host.querySelector('[data-vp-status]')?.replaceChildren(document.createTextNode(text));};
@@ -27,7 +28,7 @@ export function mountVideoProcessing(host,{request,offeringId,playlistId,courseR
  function lock(){if(!active())return;for(const n of host.querySelectorAll('button,input,textarea,select')){if(n.closest('[data-vp-attachment]'))continue;n.disabled=busy||Boolean(pending&&n.dataset.vp!=='retry')||n.dataset.vpStale==='true';}if(pending&&!host.querySelector('[data-vp="retry"]')){const b=document.createElement('button');b.type='button';b.dataset.vp='retry';b.textContent='Retry this same action';host.querySelector('[data-vp-status]').after(b);b.disabled=busy;}host.setAttribute('aria-busy',String(busy));}
  async function read(action,input={}){assert();const result=await (['course-playlist-detail','course-playlist-content-save'].includes(action)&&courseRequest?courseRequest(action,input):request(action,input));assert();return result;}
  function clearPrivate(){attachmentUI?.();attachmentUI=null;detail=null;source=null;quote=null;job=null;candidate=null;options=null;recordings=[];history=[];historyNext=null;publication=null;courseDraft=null;pending=null;dirty=false;host.replaceChildren();}
- async function run(fn){if(busy||!active())return;busy=true;lock();try{await fn();}catch(error){if(!active())return;if([401,403].includes(error.status)){clearPrivate();frame('<p role="alert">Your current Admin access needs to be checked. Reopen Course Media before continuing.</p>');}else tell(error.message||'This action could not be confirmed.');}finally{busy=false;if(active())lock();}}
+ async function run(fn){if(busy||!active())return;busy=true;lock();try{await fn();}catch(error){if(!active()){dispose();return;}if([401,403].includes(error.status)){clearPrivate();frame('<p role="alert">Your current Admin access needs to be checked. Reopen Course Media before continuing.</p>');}else tell(error.message||'This action could not be confirmed.');}finally{busy=false;if(active())lock();}}
  async function commit(action,input,after){
   if(!pending)pending={action,input:clone(input),after};
   const operation=pending;lock();
@@ -141,7 +142,7 @@ export function mountVideoProcessing(host,{request,offeringId,playlistId,courseR
  }
  const input=event=>{if(!event.target.closest('[data-vp-attachment]'))dirty=true;};
  const beforeUnload=e=>{if(!canLeave()){e.preventDefault();e.returnValue='';}};
- const contextCheck=()=>{if(!current())dispose();};
+ const contextCheck=()=>{if(!sameContext())dispose();};
  function dispose(){if(disposed)return;disposed=true;clearPrivate();host.innerHTML='<p>Reopen Course Media to check current access.</p>';host.removeEventListener('click',click);host.removeEventListener('submit',submit);host.removeEventListener('input',input);host.removeEventListener('change',change);window.removeEventListener('beforeunload',beforeUnload);window.removeEventListener('pageshow',contextCheck);window.removeEventListener('storage',contextCheck);window.removeEventListener('pagehide',dispose);for(const name of ['website-account-changed','website-session-ended','m4l-academy-session','m4l-academy-workspace'])window.removeEventListener(name,contextCheck);}
  host.addEventListener('click',click);host.addEventListener('submit',submit);host.addEventListener('input',input);host.addEventListener('change',change);window.addEventListener('beforeunload',beforeUnload);window.addEventListener('pageshow',contextCheck);window.addEventListener('storage',contextCheck);window.addEventListener('pagehide',dispose);for(const name of ['website-account-changed','website-session-ended','m4l-academy-session','m4l-academy-workspace'])window.addEventListener(name,contextCheck);
  frame('<p>Checking current processing availability…</p>');const ready=run(async()=>{capabilities=await read('video-source-capabilities');if(!capabilities.sourceAvailable)throw Error('Processing is not enabled for this Course.');start();});
