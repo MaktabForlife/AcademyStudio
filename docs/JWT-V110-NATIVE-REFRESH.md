@@ -15,3 +15,25 @@ Activation requires JWT_V110_REFRESH=1 plus exact JWT_V110_REQUEST_ORIGIN when p
 The owner has now authorised liaison with optimisation for isolated Feature databases and feature deployment when tested/reviewed/ready. Existing app databases remain untouched; optimisation owns the separate Feature isolation/setup. This source does not install schema or activate a Worker. All execution/temporary files are confined to disposable GitHub runners; no Mac writes/builds/tests. Synthetic fixture tables are not a migration or a complete native database.
 
 Focused workflow uses the real Studio outer handle with a local D1 metrics wrapper, generated in-memory CI keys/refresh secrets and synthetic native identity rows. Results will be recorded by exact source/run/artifact after completion. It does not rerun the already accepted earlier browser/context/crypto/regression suites or infer complete-flow savings from refresh-only measurements.
+
+## Completed native transport proof
+
+Source `3d547d6970148cebabfb9e0f6dbf2dd19c1e126d`, [run42141085233](https://github.com/MaktabForlife/AcademyStudio/actions/runs/42141085233), job127641270649: SUCCESS, 36 case executions (10 top-level including grouped parents and26 nested cases), zero failures/cancellations/skips. Runtime selected compatibility date2026-10-28, Miniflare5.20261103.0-beta / workerd1.20261103.1. This is a selected native refresh transport fixture, not complete application/runtime/browser parity.
+
+Actual outer Studio handle was bundled without source transformations. The only wrapper supplies isolated D1 counters/race injection and a synthetic rate-limiter. It has no hosted binding. Generated signing/CSRF keys and raw refresh values remain in CI memory, not artifacts. A real rotated cookie is accepted by the separate genuine native display-context endpoint.
+
+Checks include exact Origin/Fetch Metadata, missing/cross-family request proof, bounded/malformed input, own cookie name/duplicates/foreign refresh, disabled/missing config/rate limits, active/admitted/native epoch, browser/parent/revoked family, own90-minute/future activity, native epoch race, bounded policy re-preparation, failed-audit atomic rollback,12 concurrent requests with exactly one cookie winner, and clipping to original expiry. No Master call occurs. A foreground boolean here is still a transport contract, not human-activity proof or a completed UI adapter.
+
+Measured refresh-only fixture costs:
+| Operation | Worker requests in the fixture | D1 statements | D1 rows read | D1 rows written |
+| --- | --- | --- | --- | --- |
+| Initial own CSRF bootstrap | 1 local dispatch | 1 | not recorded in this result | 0 |
+| Background native refresh | 1 local dispatch | 4 | 14 | 5 |
+
+These counts include the local family/identity/CAS/audit path. Initial proof acquisition is a separate own-app request; the same proof remains valid for that fixed family across ordinary rotations. There are zero remote Academy calls and zero hosted requests/SQL. These are not total-page, complete-flow or hosted billing measurements.
+
+[Artifact13467104395](https://github.com/MaktabForlife/AcademyStudio/actions/runs/42141085233/artifacts/13467104395), SHA-256 `253347fcdba02e1052a650ccf401d09ec622f11c77a128eb2d509e896d04ee51`, was downloaded/hash-verified entirely in RAM. It contains scoped source/result/TAP evidence only. Initial run42140890926 at19eaa7d6 FAILED before CSRF bootstrap because ArrayBuffer results needed explicit Uint8Array conversion for base64url encoding. The correction was tested by the successful follow-up; the failed run is retained.
+
+The optional pre-rotation callback addition is copied identically to Academy `a589130f205b962f0151a6064b9bb40fcc19b6a0` and Hifz `a0aebe7c6de9c328c05a06b7e23acabeec788672`. The shared compact module Git blob is `a3f7e18ea2facd9de2ad2ceec944979acf38e9d2` in all three repositories. Neither app gains a refresh route or changes its current native authorization in this stage. These branches remain independent from current canonical management/Feature work and need deliberate composition before activation.
+
+Optimisation is coordinating the new isolated Feature databases. Its owner-approved testing approach uses disposable GitHub databases and a dedicated Drive fixture/report folder, no hosted synthetic/concurrency/growth suite. A final hosted check needs a concrete small Worker/read budget beforehand. Credentials stay in the approved GitHub environment; none belong in Drive or artifacts.
