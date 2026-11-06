@@ -5,7 +5,7 @@ async function configured({outcome='candidate'}={}){
  const version=JSON.parse(readFileSync(new URL('../../package.json',pathToFileURL(modulePath)),'utf8'));assert.equal(version.version,'5.20261103.0-beta');
  let providerCalls=0;
  const bindings={VIDEO_AUTOLINK_HTTP_ENABLED:'1',VIDEO_AUTOLINK_ENABLED:'1',OPENAI_API_KEY:'synthetic-key-NOT-REAL',VIDEO_AI_MODEL:'synthetic-reviewed-model',VIDEO_AI_AUTHORISATION_PROFILE:'synthetic-reviewed-profile',VIDEO_AI_MAX_OUTPUT_TOKENS:'2000',VIDEO_AI_MAX_REQUEST_BYTES:'64000',VIDEO_AI_TIMEOUT_MS:'5000',VIDEO_AI_PRIVATE_REVIEW_TTL_HOURS:'1',VIDEO_AI_WORKFLOW_RETENTION_HOURS:'1'};
- const outboundService=async request=>{
+ const outboundService=async request=>{console.log('SYNTHETIC_OUTBOUND',JSON.stringify({url:request.url,method:request.method}));
   assert.equal(request.url,'https://api.openai.com/v1/responses');assert.equal(request.method,'POST');const body=await request.json();assert.equal(body.store,false);assert.equal(body.model,bindings.VIDEO_AI_MODEL);providerCalls++;
   return outcome==='candidate'?response():new Response('PRIVATE synthetic provider failure: transcript/key must not enter history',{status:503});
  };
