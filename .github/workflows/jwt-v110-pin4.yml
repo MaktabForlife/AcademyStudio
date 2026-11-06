@@ -25,13 +25,13 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: MaktabForlife/Academy
-          ref: 1cb531521ebb2e5f712a9fe7958e0bb87618bbc2
+          ref: 9bf7ea1a1a5104e4182d428c78949ccbc48be0c5
           path: work/Academy
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: MaktabForlife/Hifz
-          ref: 5aef293390057fd74bff7c31b7e63189f53becde
+          ref: 3d32de86ea03c120d1cb6cbe0ee39913a8c5cd26
           path: work/Hifz
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -51,7 +51,7 @@ jobs:
           git diff --exit-code
           git -C "$ACADEMY_SOURCE" diff --exit-code
           git -C "$HIFZ_SOURCE" diff --exit-code
-          node --input-type=module -e "import {writeFileSync} from 'node:fs';writeFileSync('.build/jwt-v110-pin4/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,academy:'1cb531521ebb2e5f712a9fe7958e0bb87618bbc2',hifz:'5aef293390057fd74bff7c31b7e63189f53becde',run:process.env.GITHUB_RUN_ID,syntheticHTTP:true,PINVerificationProved:false,hostedRequests:0,liveDBChanges:0,deployed:false})+'\n');"
+          node --input-type=module -e "import {writeFileSync} from 'node:fs';writeFileSync('.build/jwt-v110-pin4/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,academy:'9bf7ea1a1a5104e4182d428c78949ccbc48be0c5',hifz:'3d32de86ea03c120d1cb6cbe0ee39913a8c5cd26',run:process.env.GITHUB_RUN_ID,syntheticHTTP:true,PINVerificationProved:false,hostedRequests:0,liveDBChanges:0,deployed:false})+'\n');"
       - name: Preserve scoped synthetic native PIN evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
