@@ -1,0 +1,30 @@
+{
+  "state": "PROPOSED_ONLY_UNSELECTED_NO_API_KEY_OR_CALL",
+  "model": "gpt-5.4-mini-2026-03-17",
+  "endpoint": "https://api.openai.com/v1/responses",
+  "store": false,
+  "strictSchema": true,
+  "tools": [],
+  "maxRequestBytes": 16000,
+  "maxOutputTokens": 1000,
+  "timeoutMs": 10000,
+  "privateReviewTTLHours": 1,
+  "workflowRetentionHours": 1,
+  "automaticRetries": 0,
+  "maxRealGenerations": 1,
+  "planningAllowanceUSD": 0.05,
+  "planningAllowanceIsHardBillingCap": false,
+  "tokenPricePerMillion": {
+    "inputUSD": 0.75,
+    "outputUSD": 4.5
+  },
+  "illustration": {
+    "inputTokens": 20000,
+    "outputTokens": 1000,
+    "costUSD": 0.0195
+  },
+  "accountModelAccess": "UNVERIFIED",
+  "modalities": "text transcript only; no audio/video transcription",
+  "officialDocs": "https://developers.openai.com/api/docs/models/gpt-5.4-mini",
+  "notRuntimeSelection": true
+}

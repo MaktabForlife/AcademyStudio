@@ -1,0 +1,277 @@
+{
+  "state": "PROPOSED_UNALLOCATED_NOT_WRANGLER_INPUT",
+  "academy": {
+    "name": "academy-ui-development",
+    "account_id": "c9a3e355b3d7a795880b1d36a1dbe123",
+    "main": "src/academy-development-runtime.js",
+    "compatibility_date": "2026-10-23",
+    "compatibility_flags": [
+      "nodejs_compat"
+    ],
+    "keep_vars": false,
+    "workers_dev": true,
+    "preview_urls": false,
+    "triggers": {
+      "crons": []
+    },
+    "d1_databases": [
+      {
+        "binding": "ACADEMY_DB",
+        "database_name": "academy-ui-development-core-20261106a",
+        "database_id": null
+      },
+      {
+        "binding": "ACADEMY_ADMIN_DB",
+        "database_name": "academy-ui-development-admin-20261106a",
+        "database_id": null
+      }
+    ],
+    "r2_buckets": [
+      {
+        "binding": "LESSON_MEDIA_BUCKET",
+        "bucket_name": "academy-ui-development-lessons"
+      },
+      {
+        "binding": "ASSESSMENT_BUCKET",
+        "bucket_name": "academy-ui-development-assessments"
+      },
+      {
+        "binding": "MEDIA_BUCKET",
+        "bucket_name": "academy-ui-development-media"
+      }
+    ],
+    "durable_objects": {
+      "bindings": [
+        {
+          "name": "PROGRAM_TIMETABLE_COORDINATOR",
+          "class_name": "ProgramTimetableCoordinator"
+        },
+        {
+          "name": "ACADEMY_SPLIT_COORDINATOR",
+          "class_name": "AcademySplitCoordinator",
+          "script_name": "academy-ui-development-coordinator"
+        }
+      ]
+    },
+    "migrations": [
+      {
+        "tag": "ui-development-20261106a",
+        "new_sqlite_classes": [
+          "ProgramTimetableCoordinator"
+        ]
+      }
+    ],
+    "ratelimits": [
+      {
+        "name": "AUTH_LOGIN_RATE_LIMITER",
+        "namespace_id": "20261106",
+        "simple": {
+          "limit": 5,
+          "period": 60
+        }
+      }
+    ],
+    "observability": {
+      "enabled": false
+    },
+    "vars": {
+      "ENVIRONMENT": "development",
+      "ACADEMY_DEPLOYMENT_KIND": "DEVELOPMENT_SPLIT",
+      "ACADEMY_DB_GENERATION": "SPLIT_V1",
+      "ACADEMY_D1_MODE": "PAUSED",
+      "ACADEMY_D1_RUN_ID": null,
+      "ACADEMY_OBJECT_NAMESPACE": "ui-development-20261106a/",
+      "ACADEMY_ACCEPTED_SETUP": "1",
+      "ACADEMY_LIBRARY_MODE": "PUBLIC_ONLY",
+      "ACADEMY_MEDIA_SEPARATION": "1",
+      "ACADEMY_MESSAGING": "0",
+      "ACADEMY_NOTE_RETENTION": "0",
+      "ACADEMY_WEEKLY_ABSENTEES": "0",
+      "HIFZ_HANDOFF_ENABLED": "0",
+      "API_ORIGIN": "https://academy-ui-development.maktab4life.workers.dev",
+      "ALLOWED_ORIGINS": "https://academy-ui-development.pages.dev,https://studio-ui-development.naidu-hajira.workers.dev",
+      "VIDEO_AUTOLINK_HTTP_ENABLED": "0"
+    },
+    "secrets_required": [
+      "PIN_SECRET",
+      "SESSION_SECRET",
+      "SHARED_PIN_SECRET",
+      "ACADEMY_OPEN_LIBRARY_STORAGE_KEY",
+      "ACADEMY_TO_WEBSITE_SECRET",
+      "WEBSITE_TO_ACADEMY_SECRET"
+    ]
+  },
+  "coordinator": {
+    "name": "academy-ui-development-coordinator",
+    "account_id": "c9a3e355b3d7a795880b1d36a1dbe123",
+    "main": "src/academy-split-coordinator.js",
+    "compatibility_date": "2026-10-23",
+    "compatibility_flags": [
+      "nodejs_compat"
+    ],
+    "workers_dev": false,
+    "preview_urls": false,
+    "triggers": {
+      "crons": []
+    },
+    "d1_databases": [
+      {
+        "binding": "ACADEMY_DB",
+        "database_name": "academy-ui-development-core-20261106a",
+        "database_id": null
+      },
+      {
+        "binding": "ACADEMY_ADMIN_DB",
+        "database_name": "academy-ui-development-admin-20261106a",
+        "database_id": null
+      }
+    ],
+    "durable_objects": {
+      "bindings": [
+        {
+          "name": "ACADEMY_SPLIT_COORDINATOR",
+          "class_name": "AcademySplitCoordinator"
+        }
+      ]
+    },
+    "migrations": [
+      {
+        "tag": "ui-development-20261106a",
+        "new_sqlite_classes": [
+          "AcademySplitCoordinator"
+        ]
+      }
+    ],
+    "observability": {
+      "enabled": false
+    },
+    "vars": {
+      "ENVIRONMENT": "development",
+      "ACADEMY_D1_MODE": "PAUSED",
+      "ACADEMY_D1_RUN_ID": null,
+      "ACADEMY_DEPLOYMENT_KIND": "DEVELOPMENT_SPLIT",
+      "ACADEMY_DB_GENERATION": "SPLIT_V1"
+    },
+    "keep_vars": false
+  },
+  "studio": {
+    "name": "studio-ui-development",
+    "account_id": "2b01ca929611669e032703ff19f7098f",
+    "main": "src/video-autolink/runtime.mjs",
+    "compatibility_date": "2026-10-28",
+    "compatibility_flags": [
+      "nodejs_compat"
+    ],
+    "keep_vars": false,
+    "workers_dev": true,
+    "preview_urls": false,
+    "assets": {
+      "directory": "./release/v109.27/public",
+      "binding": "ASSETS",
+      "run_worker_first": [
+        "/*"
+      ]
+    },
+    "d1_databases": [
+      {
+        "binding": "DB",
+        "database_name": "studio-ui-development-20261106a",
+        "database_id": null
+      }
+    ],
+    "r2_buckets": [
+      {
+        "binding": "CONTENT",
+        "bucket_name": "studio-ui-development-content"
+      },
+      {
+        "binding": "MEDIA",
+        "bucket_name": "studio-ui-development-media"
+      },
+      {
+        "binding": "VIDEO_PROCESSING_PRIVATE",
+        "bucket_name": "studio-ui-development-processing"
+      }
+    ],
+    "workflows": [
+      {
+        "name": "studio-ui-development-video-processing",
+        "binding": "VIDEO_PROCESSING_WORKFLOW",
+        "class_name": "VideoProcessingWorkflow"
+      }
+    ],
+    "triggers": {
+      "crons": []
+    },
+    "observability": {
+      "enabled": false
+    },
+    "vars": {
+      "PLATFORM_ENABLED": "0",
+      "PARALLEL_ACCESS_ENABLED": "1",
+      "ENVIRONMENT": "development",
+      "AUTHORITY_MODE": "ACADEMY",
+      "WEBSITE_ORIGIN": "https://studio-ui-development.naidu-hajira.workers.dev",
+      "ACADEMY_ORIGIN": "https://academy-ui-development.pages.dev",
+      "ACADEMY_PORTAL_ORIGIN": "https://academy-ui-development.pages.dev",
+      "ACADEMY_API_ORIGIN": "https://academy-ui-development.maktab4life.workers.dev",
+      "STUDIO_BACKEND_ORIGIN": "https://studio-ui-development.naidu-hajira.workers.dev",
+      "STUDIO_PROVIDER_ORIGIN": "https://studio-provider-unavailable.invalid",
+      "STUDIO_REDIRECT_ORIGINS": "[]",
+      "WEBSITE_ALIAS_ORIGINS": "[]",
+      "PUBLIC_ASSET_SOURCE": "worker",
+      "ACCOUNT_MAX_AGE_SECONDS": "43200",
+      "LIVE_ACCESS_MAX_AGE_SECONDS": "43200",
+      "ADMIN_MAX_AGE_SECONDS": "60",
+      "RELEASE_VERSION": "109.27",
+      "VIDEO_AUTOLINK_HTTP_ENABLED": "0",
+      "VIDEO_AUTOLINK_ENABLED": "0",
+      "VIDEO_AI_CLEANUP_ENABLED": "0",
+      "VIDEO_UPLOAD_MAX_BYTES": null,
+      "VIDEO_AI_MODEL": null,
+      "VIDEO_AI_AUTHORISATION_PROFILE": null,
+      "VIDEO_AI_MAX_REQUEST_BYTES": null,
+      "VIDEO_AI_MAX_OUTPUT_TOKENS": null,
+      "VIDEO_AI_TIMEOUT_MS": null,
+      "VIDEO_AI_PRIVATE_REVIEW_TTL_HOURS": null,
+      "VIDEO_AI_WORKFLOW_RETENTION_HOURS": null
+    },
+    "secrets_required": [
+      "ACADEMY_TO_WEBSITE_SECRET",
+      "WEBSITE_TO_ACADEMY_SECRET",
+      "OPENAI_API_KEY"
+    ]
+  },
+  "credentialPolicy": {
+    "state": "PROPOSED_ONLY_NOT_GRANTED",
+    "newPrivateEnvironments": [
+      "MaktabForlife/Academy:ui-development",
+      "MaktabForlife/AcademyStudio:ui-development"
+    ],
+    "permittedBranch": "ui-development",
+    "reuseOrExportExistingCredentials": false,
+    "academyDeployToken": {
+      "individualWorkersEditor": [
+        "academy-ui-development",
+        "academy-ui-development-coordinator"
+      ],
+      "pagesWrite": "account-wide in c9; must be explicitly reviewed",
+      "directD1": false,
+      "dns": false,
+      "tokenAdministration": false
+    },
+    "studioDeployToken": {
+      "individualWorkersEditor": [
+        "studio-ui-development"
+      ],
+      "workflowsWrite": "owning-account permission; exact selector availability still to be verified",
+      "directD1": false,
+      "dns": false,
+      "tokenAdministration": false
+    },
+    "provisioning": "new D1/R2/project creation requires separate exact resource authority; deployment tokens are not provisioners",
+    "bindingCaution": "Worker edit authority alone does not restrict runtime binding IDs; fresh strict config/readback must prove only the approved new resources before tests",
+    "syntheticPIN": "new random four-digit value only after exact destination/use approval; not generated",
+    "providerAPIKey": "private owner-selected OpenAI project key only after approval; absent"
+  }
+}
