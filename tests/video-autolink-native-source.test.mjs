@@ -49,3 +49,11 @@ test('unchanged tuple uses real owning mutation/audit and scoped source still ca
   assert.equal(source.r2Version,undefined);assert.equal(source.audioVerified,undefined);
  }finally{await f.close();}
 });
+
+test('native verification never binds a new PDF/association snapshot after validating the old video',async()=>{
+ const f=await setup();try{
+  await f.run("INSERT INTO objects VALUES('race-pdf','synthetic.pdf','application/pdf','Synthetic PDF',20,?,NULL)",'e'.repeat(64));await f.run("INSERT INTO asset_owners VALUES('race-pdf','course')");
+  const store=f.store(),first=store.first.bind(store);let changed=false;store.first=async(sql,args)=>{if(!changed&&sql.startsWith('SELECT json_object(')){changed=true;await f.run("UPDATE attachments SET asset_id='race-pdf' WHERE attachment_id='processing-attachment'");}return first(sql,args);};
+  await assert.rejects(nativeProcessingSource(f.env,store,f.actor,'course',{attachmentId:'processing-attachment'}),e=>e.code==='PROCESSING_SOURCE_CHANGED');
+ }finally{await f.close();}
+});

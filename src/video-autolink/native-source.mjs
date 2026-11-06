@@ -35,11 +35,12 @@ const snapshotSQL=`SELECT json_object(
 export async function nativeProcessingSource(env,store,actor,offer,input={}){
  if(env.VIDEO_AUTOLINK_ENABLED!=='1')throw fail('Video processing is not enabled.',404,'PROCESSOR_DISABLED');
  offer=id(offer);const attachment=id(input.attachmentId);
- await mediaAdmin(store,actor,offer);const media=await mediaGate(store,actor,attachment,{admin:true});
+ const scope=await mediaAdmin(store,actor,offer);const media=await mediaGate(store,actor,attachment,{admin:true});
  if(media.offering_id!==offer||media.audience!=='RECORDING'||!['video/youtube','video/mp4'].includes(media.mime_type))throw fail('Choose this programme’s existing recording.',403,'PROCESSING_SOURCE_REQUIRED');
  const args=[actor.account_id,attachment,offer],row=await store.first(snapshotSQL,args);
  if(!row)throw fail('The saved recording owner changed.',409,'PROCESSING_SOURCE_CHANGED');
  const native=JSON.parse(row.native_json);
+ if(native.offeringActive!==1||native.offeringKind!==scope.kind||!['video/youtube','video/mp4'].includes(native.mime)||native.audience!=='RECORDING'||native.assetId!==media.asset_id||native.websiteId!==media.website_id||native.lessonId!==media.lesson_id||native.lessonDate!==media.lesson_date||native.cohort!==media.cohort||native.title!==media.title||native.published!==media.published||native.mime!==media.mime_type||native.objectKey!==media.object_key||native.size!==media.byte_size||native.youtubeId!==media.youtube_id)throw fail('The selected recording changed during verification.',409,'PROCESSING_SOURCE_CHANGED');
  if(!native.attributionRevision||!native.attributionDraft||native.websiteId&&native.websiteOffering!==offer)throw fail('Review the exact native recording destination and attribution.',409,'PROCESSING_DESTINATION_REQUIRED');
  if(await store.first('SELECT 1 FROM source_access_master_fences WHERE account_id=? AND offering_id=?',[actor.account_id,offer]))throw fail('Confirm the current native master account.',409,'ACCESS_REFRESH_REQUIRED');
  const sourceRevision=await sha256(JSON.stringify({schema:'RECORDED_MEDIA_SOURCE_V1',assetId:native.assetId,youtubeId:native.youtubeId,objectHash:native.objectNativeHash}));

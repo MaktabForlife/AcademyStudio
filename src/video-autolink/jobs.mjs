@@ -24,7 +24,7 @@ async function checkedSource(env,store,actor,source){
  return native;
 }
 async function quote(env,source,native){
- const limits=settings(env),quoteHash=await sha256(JSON.stringify({schema:'VIDEO_PROCESSING_QUOTE_V1',sourceId:source.source_id,sourceRevision:source.source_revision,transcriptHash:source.transcript_hash,privateExpiresAt:source.private_expires_at,nativeFingerprint:native.nativeDBFingerprint,...limits}));
+ const limits=settings(env),quoteHash=await sha256(JSON.stringify({schema:'VIDEO_PROCESSING_QUOTE_V1',sourceId:source.source_id,sourceRevision:source.source_revision,transcriptHash:source.transcript_hash,privateExpiresAt:source.private_expires_at,materialFingerprint:native.materialFingerprint,...limits}));
  return {...limits,quoteHash};
 }
 export async function processingQuote(env,store,actor,sourceId){
@@ -41,9 +41,9 @@ export async function authoriseProcessingJob(env,store,actor,input){
  const now=Date.now(),expires=Math.min(now+60000,source.private_expires_at,actor.expires_at,actor.verified_at+boundedAge(env,true));
  if(!Number.isSafeInteger(expires)||expires<=now)throw error('PROCESSING_AUTHORISATION_EXPIRED');
  const jobId=crypto.randomUUID();
- const statement=store.statement("INSERT INTO video_processing_jobs(job_id,source_id,offering_id,actor_id,actor_token_hash,actor_epoch,actor_source_ref,authorised_at,authorisation_expires_at,private_expires_at,quote_hash,native_fingerprint,material_fingerprint,base_companion_revision,attribution_revision,style,model,profile,max_output_tokens,max_request_bytes,timeout_ms,state) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'QUEUED')",
- [jobId,source.source_id,source.offering_id,actor.account_id,actor.token_hash,actor.epoch,actor.source_ref??null,now,expires,source.private_expires_at,q.quoteHash,native.nativeDBFingerprint,native.materialFingerprint,native.companionRevision,native.attributionRevision,native.style,q.model,q.profile,q.maxOutputTokens,q.maxRequestBytes,q.timeoutMs]);
- return store.mutate(actor,source.offering_id,canonical,[statement],{jobId,state:'QUEUED',authorisationExpiresAt:expires},{studio:true,...native.fence,
+ const statement=store.statement("INSERT INTO video_processing_jobs(job_id,source_id,attachment_id,source_revision,offering_id,actor_id,actor_token_hash,actor_epoch,actor_source_ref,authorised_at,authorisation_expires_at,private_expires_at,quote_hash,native_fingerprint,material_fingerprint,base_companion_revision,attribution_revision,style,model,profile,max_output_tokens,max_request_bytes,timeout_ms,state) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'QUEUED')",
+ [jobId,source.source_id,source.attachment_id,source.source_revision,source.offering_id,actor.account_id,actor.token_hash,actor.epoch,actor.source_ref??null,now,expires,source.private_expires_at,q.quoteHash,native.nativeDBFingerprint,native.materialFingerprint,native.companionRevision,native.attributionRevision,native.style,q.model,q.profile,q.maxOutputTokens,q.maxRequestBytes,q.timeoutMs]);
+ return store.mutate(actor,source.offering_id,canonical,[store.statement("UPDATE video_processing_jobs SET state='REVIEW_REQUIRED',outcome_code='AUTHORISATION_EXPIRED' WHERE offering_id=? AND attachment_id=? AND source_revision=? AND state IN('QUEUED','RUNNING') AND authorisation_expires_at<=?",[source.offering_id,source.attachment_id,source.source_revision,now]),statement],{jobId,state:'QUEUED',authorisationExpiresAt:expires},{studio:true,...native.fence,
   expectedSQL:native.fence.expectedSQL+' AND EXISTS(SELECT 1 FROM video_processing_sources WHERE source_id=? AND private_expires_at=?)',
   expectedArgs:[...native.fence.expectedArgs,source.source_id,source.private_expires_at]});
 }
@@ -52,7 +52,7 @@ async function execution(env,store,job){
  const actor=await store.actor(job.actor_token_hash,now);
  if(actor.account_id!==job.actor_id||actor.epoch!==job.actor_epoch||(actor.source_ref??null)!==job.actor_source_ref)throw error('PROCESSING_ACTOR_CHANGED');
  const source=await sourceRow(store,job.source_id,now),native=await checkedSource(env,store,actor,source),q=await quote(env,source,native);
- if(q.quoteHash!==job.quote_hash||native.nativeDBFingerprint!==job.native_fingerprint)throw error('PROCESSING_SOURCE_OR_DRAFT_CHANGED');
+ if(q.quoteHash!==job.quote_hash||native.materialFingerprint!==job.material_fingerprint)throw error('PROCESSING_SOURCE_OR_DRAFT_CHANGED');
  return {actor,source,native};
 }
 export async function claimProcessingJob(env,store,jobId,prepared){

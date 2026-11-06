@@ -79,3 +79,27 @@ test('provider unknown outcome and changed current Admin after paid claim never 
   }finally{await f.close();}});
  }
 });
+
+test('renewing a current native proof during the paid mock keeps its original deadline and never discards an unchanged source or grants another spend',async()=>{
+ const f=await setup();try{
+  const a=await f.authorise(),before=await row(f,a.jobId);let calls=0;
+  const result=await runProcessingJob(f.env,a.jobId,{fetcher:async()=>{calls++;await f.run("UPDATE accounts SET verified_at=? WHERE account_id='admin'",Date.now());await f.run("UPDATE source_access_people SET verified_at=verified_at+1,version=version+1 WHERE account_id='admin' AND offering_id='course'");return response();}});
+  assert.equal(result.state,'CANDIDATE');assert.equal(calls,1);assert.equal((await row(f,a.jobId)).authorisation_expires_at,before.authorisation_expires_at);
+  await runProcessingJob(f.env,a.jobId,{fetcher:async()=>{calls++;return response();}});assert.equal(calls,1);
+ }finally{await f.close();}
+});
+
+test('independent concurrent explicit authorisations share one active native attachment slot',async()=>{
+ const f=await setup();try{
+  const grants=await Promise.allSettled([f.authorise(),f.authorise()]);assert.equal(grants.filter(g=>g.status==='fulfilled').length,1);assert.equal(grants.filter(g=>g.status==='rejected').length,1);
+  assert.equal((await f.db.prepare("SELECT count(*) n FROM video_processing_jobs WHERE state IN('QUEUED','RUNNING')").first()).n,1);
+ }finally{await f.close();}
+});
+
+test('a new explicit authorisation closes only the expired active slot and cannot extend the previous grant',async()=>{
+ const f=await setup();let originalNow;try{
+  const first=await f.authorise(),old=await row(f,first.jobId);originalNow=Date.now;Date.now=()=>old.authorisation_expires_at;
+  const next=await f.authorise();assert.notEqual(next.jobId,first.jobId);assert.equal((await row(f,first.jobId)).state,'REVIEW_REQUIRED');assert.equal((await row(f,first.jobId)).authorisation_expires_at,old.authorisation_expires_at);assert.equal((await row(f,next.jobId)).state,'QUEUED');
+  let calls=0;await runProcessingJob(f.env,first.jobId,{fetcher:async()=>{calls++;return response();}});assert.equal(calls,0);
+ }finally{if(originalNow)Date.now=originalNow;await f.close();}
+});
