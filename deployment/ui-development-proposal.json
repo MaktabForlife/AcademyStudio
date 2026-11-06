@@ -1,0 +1,218 @@
+{
+  "schema": {
+    "academyCoreSourceSHA256": "d7eb88199269195a20b44dad26b1663792e493631fa26690bc915af416772464",
+    "academyAdminSourceSHA256": "0cebae64a69e62a235b3828eb39d1001e3d23b992ffeb391920239096018a830",
+    "studioBlueprint": "to be derived in disposable GitHub; no hosted schema",
+    "newTables": [
+      "video_processing_sources",
+      "video_processing_jobs",
+      "video_processing_candidates",
+      "video_processing_committed_objects"
+    ],
+    "seed": "synthetic only; exact payload/ingress not yet prepared or approved"
+  },
+  "state": "SOURCE_PREPARATION_ONLY_NOT_DEPLOYABLE",
+  "logicalTarget": "development",
+  "candidateVersion": "109.26",
+  "containsJWT": false,
+  "routineDatabaseChanges": false,
+  "existingStoresChanged": false,
+  "activationAllowed": false,
+  "sourceInputs": {
+    "Academy": {
+      "canonical": "1b4dd450a4a59093ae85d891f0277eb480418c30",
+      "components": [
+        {
+          "name": "UI-002 PR6",
+          "base": "38e66a57f0e094089718dd9dce6ff632f6247d68",
+          "head": "779dc5659eddc2044a4e4e81044f78b8902ee421"
+        },
+        {
+          "name": "BUG-002 PR7",
+          "base": "38e66a57f0e094089718dd9dce6ff632f6247d68",
+          "head": "6b9237843a6f7fb25d9113c108c15543de912b7b"
+        },
+        {
+          "name": "UI-001 PR8",
+          "base": "38e66a57f0e094089718dd9dce6ff632f6247d68",
+          "head": "667bb12a9135aa6a1b5df60a8696d384ae5bdf93"
+        },
+        {
+          "name": "UI-003 PR12",
+          "base": "1b4dd450a4a59093ae85d891f0277eb480418c30",
+          "head": "8624eede5a7757898992c01e73d6b09dfed1f4b5"
+        }
+      ]
+    },
+    "AcademyStudio": {
+      "canonical": "9a8c117e9279a2b67e62eb044be4da989db4a096",
+      "components": [
+        {
+          "name": "UI-003 PR5",
+          "base": "9a8c117e9279a2b67e62eb044be4da989db4a096",
+          "head": "18fa24295aebdc4a1ad33a345b741283283056ec"
+        }
+      ]
+    }
+  },
+  "hosting": {
+    "academyPortalOrigin": "https://academy-ui-development.pages.dev",
+    "academyLegacyOrigins": [],
+    "academyApiOrigin": "https://academy-ui-development.maktab4life.workers.dev",
+    "studioOrigin": "https://studio-ui-development.naidu-hajira.workers.dev",
+    "studioBackendOrigin": "https://studio-ui-development.naidu-hajira.workers.dev",
+    "hifzOrigin": "https://hifz-unavailable.invalid"
+  },
+  "newResources": {
+    "academy": {
+      "accountId": "c9a3e355b3d7a795880b1d36a1dbe123",
+      "workers": [
+        "academy-ui-development",
+        "academy-ui-development-coordinator"
+      ],
+      "pagesProject": "academy-ui-development",
+      "databases": [
+        {
+          "name": "academy-ui-development-core-20261106a",
+          "id": null,
+          "contents": "complete empty native Core"
+        },
+        {
+          "name": "academy-ui-development-admin-20261106a",
+          "id": null,
+          "contents": "complete empty native Admin"
+        }
+      ],
+      "privateR2": [
+        "academy-ui-development-lessons",
+        "academy-ui-development-assessments",
+        "academy-ui-development-media"
+      ],
+      "newDurableObjectClasses": [
+        "ProgramTimetableCoordinator",
+        "AcademySplitCoordinator"
+      ],
+      "newNamespaces": 2
+    },
+    "studio": {
+      "accountId": "2b01ca929611669e032703ff19f7098f",
+      "workers": [
+        "studio-ui-development"
+      ],
+      "databases": [
+        {
+          "name": "studio-ui-development-20261106a",
+          "id": null,
+          "contents": "complete native Studio plus four proposed tables, same owning DB"
+        }
+      ],
+      "privateR2": [
+        "studio-ui-development-content",
+        "studio-ui-development-media",
+        "studio-ui-development-processing"
+      ],
+      "workflow": {
+        "name": "studio-ui-development-video-processing",
+        "className": "VideoProcessingWorkflow",
+        "binding": "VIDEO_PROCESSING_WORKFLOW"
+      }
+    }
+  },
+  "resourceCounts": {
+    "workers": 3,
+    "pagesProjects": 1,
+    "databases": 3,
+    "privateR2Buckets": 6,
+    "newDONamespaces": 2,
+    "workflows": 1,
+    "newDNS": 0
+  },
+  "isolation": {
+    "allowExistingResourceReuse": false,
+    "keepVars": false,
+    "cronSchedules": [],
+    "hifzOutbound": false,
+    "previewURLs": false,
+    "privateObjectPublicAccess": false,
+    "publicAssetSource": "worker for Studio; new dedicated Pages for Academy",
+    "nativeSharedSecrets": "new synthetic bridge only; no existing secret export/reuse",
+    "workflowParams": "jobId only",
+    "wholeFeaturePromotion": false
+  },
+  "controls": {
+    "VIDEO_AUTOLINK_HTTP_ENABLED": "0",
+    "VIDEO_AUTOLINK_ENABLED": "0",
+    "VIDEO_AI_CLEANUP_ENABLED": "0",
+    "JWT_V110_MASTER": "0",
+    "JWT_V110_REFRESH": "0"
+  },
+  "credentialDestination": {
+    "repositoryEnvironments": [
+      "MaktabForlife/Academy:ui-development",
+      "MaktabForlife/AcademyStudio:ui-development"
+    ],
+    "branch": "ui-development",
+    "created": false,
+    "existingJWTFeatureTokenUse": false,
+    "providerKey": null,
+    "newSyntheticPIN": null,
+    "approvalPending": true
+  },
+  "provider": {
+    "model": null,
+    "authorisationProfile": null,
+    "maxOutputTokens": null,
+    "maxRequestBytes": null,
+    "timeoutMs": null,
+    "privateReviewTTLHours": null,
+    "workflowRetentionHours": null,
+    "moneyCap": null,
+    "selected": false
+  },
+  "verification": {
+    "broadSuites": "GitHub/local DB/R2/provider mocks only",
+    "realGenerationMaximum": 1,
+    "automaticProviderRetries": 0,
+    "hostedRequestsPerformed": 0,
+    "proposedHostedSequence": [
+      "OPTIONS/native sign-in",
+      "native sign-in",
+      "Academy health",
+      "Studio configuration",
+      "source capabilities",
+      "save tiny synthetic timestamped transcript against seeded private recording",
+      "quote",
+      "explicit authorise exactly once",
+      "one delayed status read without polling",
+      "private candidate if complete",
+      "cancel unaccepted job",
+      "native logout",
+      "revoked native session denial"
+    ],
+    "proposedMaximumTopLevelAPI": 13,
+    "staticMarkerMaximum": 2,
+    "signedBridgeAndWorkflowCounts": "must be instrumented in exact local paired projection before approval",
+    "d1RowPlanningLimit": null,
+    "r2Budget": null,
+    "hostedBudgetApproved": false
+  },
+  "rollback": {
+    "beforeAnyWrite": "fresh exact source/profile/approval/owned version and resource identity gates",
+    "pause": "disable new HTTP and authorisations, retain original job/source/operation/expiry floors",
+    "inFlight": "cancel/drain owned Workflow instances; never replay a paid grant or hide an unknown outcome",
+    "nativeContent": "retain accepted native drafts, current publication, IDs/rights/copies/sync",
+    "deletion": "no DB/table/resource drop and no legacy prefix deletion",
+    "automaticRecovery": "only a separately reviewed owned paused profile; foreign/unknown state stops without overwrite"
+  },
+  "remainingGates": [
+    "compose source and new versioned paired assets",
+    "derive and locally import exact full empty Studio schema",
+    "measure matched local complete native paired flow and set finite actual verification budget",
+    "finish exact private schema/seed ingress without public credential-derived payloads",
+    "review resource identities/least-privilege credential policies and ownership-specific atomicity",
+    "owner selects provider/model/spend/TTL and approves exact new-only resources/credentials/storage effects",
+    "install isolated Development routing/health/owned recovery through optimisation review",
+    "Root whole UI-001 cross-app protocol gate",
+    "no production or existing-DB changes"
+  ]
+}
