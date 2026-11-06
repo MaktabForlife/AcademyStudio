@@ -1,0 +1,48 @@
+name: Paired isolated UI source and empty-schema checks
+on:
+  push:
+    branches: [validation/ui-development-composition-20261106-r2]
+    paths:
+      - .github/workflows/ui-development-composition-check.yml
+      - tests/ui-development-composition.test.mjs
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  paired:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: MaktabForlife/Academy
+          ref: c04f81eabe4ce2773196b08ba48b46e97a34e28e
+          path: source-academy
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18.0"
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm ci --prefix source-academy/backend --ignore-scripts --no-audit --no-fund
+      - run: npm install --prefix "$RUNNER_TEMP/ui-current-runtime" --ignore-scripts --no-audit --no-fund --package-lock=false miniflare@5.20261103.0-beta
+      - name: Exact paired source, reader/processing overlap and empty local schema
+        env:
+          ACADEMY_SOURCE: ${{ github.workspace }}/source-academy
+        run: |
+          set -euo pipefail
+          export UI_DEV_CURRENT_MINIFLARE="$RUNNER_TEMP/ui-current-runtime/node_modules/miniflare/dist/src/index.js"
+          mkdir -p "$RUNNER_TEMP/ui-development-paired-evidence"
+          node --test --test-reporter=tap --test-concurrency=1 tests/ui-development-composition.test.mjs tests/course-reader-entry.test.mjs tests/private-playlist-reference-ui.test.mjs tests/video-autolink-commands.test.mjs 2>&1 | tee "$RUNNER_TEMP/ui-development-paired-evidence/paired-tests.tap"
+          node --test --test-reporter=tap source-academy/backend/tests/course-reader-entry.test.mjs source-academy/backend/tests/academy-course-management-ui.test.mjs source-academy/backend/tests/academy-studio-access-ui.test.mjs source-academy/backend/tests/circles-app-same-tab.test.mjs 2>&1 | tee "$RUNNER_TEMP/ui-development-paired-evidence/academy-tests.tap"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: ui-development-paired-${{ github.run_id }}
+          path: ${{ runner.temp }}/ui-development-paired-evidence/
+          if-no-files-found: error
+          retention-days: 30
