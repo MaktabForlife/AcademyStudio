@@ -199,3 +199,40 @@ test('Daily execution records and closes one result; recreated old head cannot r
  const fresh=f.state.comments.find(c=>c.body.startsWith(PROPOSAL)&&c.id!==11);
  const m=JSON.parse(fresh.body.slice(PROPOSAL.length+1));assert.notEqual(m.batch,f.m.batch);assert.notEqual(digest(m),digest(f.m));
 });
+
+test('Skipped non-test runs preserve their terminal record without suppressing evidenced validation',async()=>{
+ const f=fixture();const skipped={id:22,sha:A,status:'completed',conclusion:'skipped',artifacts:[]};
+ f.m.entries[0].runs.push(skipped);
+ f.proposal.body=proposalBody(f.m);f.approval.body=approvalBody(f.m,11,drive);
+ f.statuses[A][0].description='approve:'+digest(f.m);
+ const list=f.api.list.bind(f.api),api=f.api.api.bind(f.api);
+ f.api.list=async(path,key)=>{
+  if(path===prefix+'/actions/runs?branch='+encodeURIComponent(f.state.e.branch))return [
+   {id:21,head_sha:A,head_branch:f.state.e.branch,status:'completed',conclusion:'success'},
+   {id:22,head_sha:A,head_branch:f.state.e.branch,status:'completed',conclusion:'skipped'}
+  ];
+  if(path===prefix+'/actions/runs/22/artifacts')return [];
+  return list(path,key);
+ };
+ f.api.api=async(method,path,body)=>{
+  if(path===prefix+'/actions/runs/22')return {id:22,head_sha:A,head_branch:f.state.e.branch,status:'completed',conclusion:'skipped'};
+  return api(method,path,body);
+ };
+ const entries=await discover(f.api,f.ctx,f.policy,new Set(),[]);
+ assert.equal(entries.length,1);assert.deepEqual(entries[0].runs[1],skipped);
+ validateManifest(f.m,f.policy,integrity);
+ const result=await f.execute();assert.equal(result.deleted.length,1);assert.equal(f.state.deletes,1);
+});
+test('All-skipped workflows and missing evidence for executed failures cannot become deletion authority',async()=>{
+ const f=fixture();f.m.entries[0].runs=[{id:22,sha:A,status:'completed',conclusion:'skipped',artifacts:[]}];
+ assert.throws(()=>validateManifest(f.m,f.policy,integrity),/evidenced validation/);
+ f.m.entries[0].runs[0].conclusion='failure';
+ assert.throws(()=>validateManifest(f.m,f.policy,integrity),/Evidence required/);
+ const list=f.api.list.bind(f.api);
+ f.api.list=async(path,key)=>{
+  if(path===prefix+'/actions/runs?branch='+encodeURIComponent(f.state.e.branch))return [{id:22,head_sha:A,head_branch:f.state.e.branch,status:'completed',conclusion:'skipped'}];
+  if(path===prefix+'/actions/runs/22/artifacts')return [];
+  return list(path,key);
+ };
+ assert.deepEqual(await discover(f.api,f.ctx,f.policy,new Set(),[]),[]);
+});

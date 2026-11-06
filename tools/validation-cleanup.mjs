@@ -54,9 +54,10 @@ export function validateManifest(m,p,integrity){
   for(const r of e.runs){
    assert(exact(r,['id','sha','status','conclusion','artifacts']));
    assert(Number.isSafeInteger(r.id)&&r.id>0&&r.sha===e.sha&&r.status==='completed'&&typeof r.conclusion==='string');
-   assert(Array.isArray(r.artifacts)&&r.artifacts.length>0,'Test evidence required');
+   assert(Array.isArray(r.artifacts)&&(r.artifacts.length>0||r.conclusion==='skipped'),'Evidence required for every non-skipped run');
    for(const a of r.artifacts)assert(exact(a,['id','digest','expiresAt'])&&Number.isSafeInteger(a.id)&&/^sha256:[a-f0-9]{64}$/.test(a.digest)&&Number.isFinite(Date.parse(a.expiresAt)));
   }
+  assert(e.runs.some(r=>r.conclusion!=='skipped'&&r.artifacts.length>0),'At least one evidenced validation run required');
  }
  return m;
 }
@@ -242,10 +243,10 @@ export async function discover(api,ctx,p,excluded,staticRefs){
   for(const r of runs){
    const artifacts=await api.list('/repos/'+ctx.repository+'/actions/runs/'+r.id+'/artifacts','artifacts');
    const available=artifacts.filter(a=>!a.expired&&Date.parse(a.expires_at)>ctx.now()&&/^sha256:[a-f0-9]{64}$/.test(a.digest||''));
-   if(!available.length){complete=false;break;}
+   if(!available.length&&r.conclusion!=='skipped'){complete=false;break;}
    saved.push({id:r.id,sha:r.head_sha,status:r.status,conclusion:r.conclusion,artifacts:available.map(a=>({id:a.id,digest:a.digest,expiresAt:a.expires_at}))});
   }
-  if(complete)entries.push({branch:b.name,sha:b.commit.sha,anchor:anchor.name,anchorSha:anchor.commit.sha,runs:saved});
+  if(complete&&saved.some(r=>r.conclusion!=='skipped'&&r.artifacts.length>0))entries.push({branch:b.name,sha:b.commit.sha,anchor:anchor.name,anchorSha:anchor.commit.sha,runs:saved});
  }
  if(entries.length)await activeUses(api,ctx,entries);
  return entries;
