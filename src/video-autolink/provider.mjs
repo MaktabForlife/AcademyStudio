@@ -14,7 +14,7 @@ function receipt(value,response){
 // Unmounted source adapter. reserve must be an ACTUAL owning-DB CAS supplied by
 // the authenticated server job controller, not a browser flag. This module
 // alone does not implement admission, jobs, freshness, cancellation or outbox.
-export async function generatePrivateCandidate({env={},transcript:raw,format,durationSeconds,style,reserve,fetcher=fetch,clock=Date.now}={}){
+export async function generatePrivateCandidate({env={},transcript:raw,format,durationSeconds,style,reserve,fetcher=(...args)=>globalThis.fetch(...args),clock=Date.now}={}){
  if(env.VIDEO_AUTOLINK_ENABLED!=='1')return failure('PROCESSOR_DISABLED');
  const maxOutput=whole(env.VIDEO_AI_MAX_OUTPUT_TOKENS,1,32000),maxBytes=whole(env.VIDEO_AI_MAX_REQUEST_BYTES,1000,1000000),timeout=whole(env.VIDEO_AI_TIMEOUT_MS,1,50000);
  if(typeof env.OPENAI_API_KEY!=='string'||!env.OPENAI_API_KEY||!/^[-A-Za-z0-9_.]{1,120}$/.test(env.VIDEO_AI_MODEL||'')||!maxOutput||!maxBytes||!timeout||typeof reserve!=='function'||!['ACADEMIC','MOU'].includes(style))return failure('PROCESSOR_UNCONFIGURED');

@@ -111,7 +111,7 @@ export async function processingStatus(env,store,actor,jobId){
  await nativeProcessingSource(env,store,actor,job.offering_id,{attachmentId:(await sourceRow(store,job.source_id)).attachment_id});
  return publicJob(job);
 }
-export async function runProcessingJob(env,jobId,{fetcher=fetch}={}){
+export async function runProcessingJob(env,jobId,{fetcher=(...args)=>globalThis.fetch(...args)}={}){
  let store,job,attemptId;
  try{
   enabled(env);id(jobId);store=new Store(env);job=await store.first('SELECT * FROM video_processing_jobs WHERE job_id=?',[jobId]);
