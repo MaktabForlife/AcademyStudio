@@ -12,7 +12,6 @@ on:
         description: Closed proposal number to reconsider as a NEW manifest; requires NEW approval
         type: number
         default: 0
-  create:
   push:
     branches: ['feature/daily-validation-cleanup-*']
   pull_request:
@@ -32,7 +31,6 @@ defaults:
     shell: bash
 jobs:
   test:
-    if: github.event_name != 'create' || startsWith(github.ref_name, 'feature/daily-validation-cleanup-')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

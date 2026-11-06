@@ -4,7 +4,7 @@ import {mkdtemp,readFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync,spawnSync} from 'node:child_process';
-import {CONTEXT,PROPOSAL,APPROVAL,CLAIM,RECEIPT,digest,proposalBody,approvalBody,validatePolicy,validateManifest,validateApproval,executeApproved,discover,GitHub,GitTransport,packLines,deletionPayload,main} from '../tools/validation-cleanup.mjs';
+import {CONTEXT,PROPOSAL,APPROVAL,CLAIM,RECEIPT,digest,proposalBody,approvalBody,validatePolicy,validateManifest,validateApproval,executeApproved,discover,GitHub,GitTransport,packLines,deletionPayload,main,daily,TITLE} from '../tools/validation-cleanup.mjs';
 const A='a'.repeat(40),B='b'.repeat(40),C='c'.repeat(40),integrity='d'.repeat(64);
 const repo='MaktabForlife/Academy',prefix='/repos/'+repo,now=Date.parse('2026-11-06T12:00:00Z');
 const drive='https://docs.google.com/document/d/approved-report/edit';
@@ -13,7 +13,7 @@ const clone=x=>structuredClone(x);
 function fixture(){
  const e={branch:'validation/synthetic-complete',sha:A,anchor:'studio_dev',anchorSha:B,runs:[{id:21,sha:A,status:'completed',conclusion:'success',artifacts:[{id:31,digest:'sha256:'+'e'.repeat(64),expiresAt:'2026-12-06T00:00:00Z'}]}]};
  const m={schema:1,batch:'11111111-1111-4111-8111-111111111111',repository:repo,createdAt:'2026-11-06T10:00:00Z',integrity,entries:[e]};
- const issue={number:1,state:'open',url:'https://api.github.com'+prefix+'/issues/1'};
+ const issue={number:1,state:'open',title:TITLE+'synthetic',user:{id:41898282,login:'github-actions[bot]'},url:'https://api.github.com'+prefix+'/issues/1'};
  const bot={id:41898282,login:'github-actions[bot]'},reviewer={id:285054382,login:'MaktabForlife'};
  const proposal={id:11,user:bot,body:proposalBody(m),created_at:'2026-11-06T10:00:00Z',updated_at:'2026-11-06T10:00:00Z',issue_url:issue.url};
  const approval={id:12,user:reviewer,body:approvalBody(m,11,drive),created_at:'2026-11-06T11:00:00Z',updated_at:'2026-11-06T11:00:00Z',issue_url:issue.url,html_url:'https://github.com/'+repo+'/issues/1#issuecomment-12'};
@@ -23,9 +23,11 @@ function fixture(){
  const api={
   async api(method,path,body){
    state.fetches++;
+   if(method==='PATCH'){Object.assign(state.issue,body);return clone(state.issue);}
    if(method==='POST'){
     state.mutations.push({method,path,body});
     const comment={id:1000+state.mutations.length,user:bot,body:body.body,created_at:'2026-11-06T12:00:00Z',updated_at:'2026-11-06T12:00:00Z'};
+    if(path===prefix+'/issues')return {number:2,user:bot,state:'open'};
     state.comments.push(comment);if(body.body.startsWith(CLAIM))state.claims++;return comment;
    }
    if(path===prefix+'/issues/1')return clone(state.issue);
@@ -36,6 +38,7 @@ function fixture(){
   },
   async list(path,key){
    state.fetches++;
+   if(path===prefix+'/issues?state=all')return [clone(state.issue)];
    if(path===prefix+'/issues/1/comments')return clone(state.comments);
    if(path===prefix+'/issues/1/events')return clone(state.events);
    if(path===prefix+'/commits/'+A+'/statuses')return clone(state.statuses[A]);
@@ -169,4 +172,30 @@ test('Real disposable atomic Git race preserves every candidate if one expected 
  const sent=spawnSync('git',['receive-pack','--stateless-rpc',dir],{input:deletionPayload([{branch:'validation/one',sha:one},{branch:'validation/two',sha:one}]),env});
  const report=packLines(sent.stdout).filter(Boolean).map(x=>x.toString().trim());assert(report.some(x=>x.startsWith('ng ')));
  assert.equal(git('rev-parse','refs/heads/validation/one').trim(),two);assert.equal(git('rev-parse','refs/heads/validation/two').trim(),one);assert.equal(git('rev-parse','refs/heads/studio_dev').trim(),two);
+});
+
+test('Daily execution leaves an incomplete approval open and sends no mutation',async()=>{
+ const f=fixture();f.state.statuses[A]=[];
+ const result=await daily(f.api,f.git,f.ctx,f.policy,process.cwd(),false,0);
+ assert(result.some(x=>x.mode==='awaiting-valid-dedicated-approval'));assert.equal(f.state.issue.state,'open');assert.equal(f.state.mutations.length,0);assert.equal(f.state.deletes,0);
+});
+test('Repeated daily checks deduplicate one pending proposal without new comments or issues',async()=>{
+ const f=fixture();f.state.comments=[f.proposal];
+ for(let i=0;i<2;i++){const result=await daily(f.api,f.git,f.ctx,f.policy,process.cwd(),false,0);assert(result.some(x=>x.mode==='awaiting-existing-review'));}
+ assert.equal(f.state.mutations.length,0);assert.equal(f.state.deletes,0);
+});
+test('Manual dry-run cannot consume an already approved batch',async()=>{
+ const f=fixture();const result=await daily(f.api,f.git,f.ctx,f.policy,process.cwd(),true,0);
+ assert(result.some(x=>x.mode==='dry-run-approved-pending'));assert.equal(f.state.claims,0);assert.equal(f.state.deletes,0);assert.equal(f.state.mutations.length,0);
+});
+test('Daily execution records and closes one result; recreated old head cannot replay that approval',async()=>{
+ const f=fixture();let result=await daily(f.api,f.git,f.ctx,f.policy,process.cwd(),false,0);
+ assert.equal(result[0].outcome,'verified');assert.equal(f.state.issue.state,'closed');assert.equal(f.state.deletes,1);assert(f.state.comments.some(c=>c.body.startsWith(RECEIPT)));
+ f.state.refs['refs/heads/'+f.state.e.branch]=A;
+ result=await daily(f.api,f.git,f.ctx,f.policy,process.cwd(),false,0);
+ assert(result.some(x=>x.mode==='nothing-eligible'));assert.equal(f.state.deletes,1);
+ result=await daily(f.api,f.git,f.ctx,f.policy,process.cwd(),false,1);
+ assert(result.some(x=>x.mode==='proposal-created'));assert.equal(f.state.deletes,1);
+ const fresh=f.state.comments.find(c=>c.body.startsWith(PROPOSAL)&&c.id!==11);
+ const m=JSON.parse(fresh.body.slice(PROPOSAL.length+1));assert.notEqual(m.batch,f.m.batch);assert.notEqual(digest(m),digest(f.m));
 });

@@ -300,7 +300,7 @@ export async function main(env=process.env){
  const repo=await api.api('GET','/repos/'+ctx.repository);assert.equal(repo.default_branch,'studio_dev');assert.equal(repo.full_name,ctx.repository);
  const head=await api.getRef(ctx.repository,'studio_dev');assert.equal(head.object.sha,env.GITHUB_SHA,'New default head exists');
  const result=await daily(api,git,ctx,policy,root,env.CLEANUP_DRY_RUN==='true',retryIssue);
- if(env.RUNNER_TEMP){const dir=join(env.RUNNER_TEMP,'validation-cleanup-evidence');await mkdir(dir,{recursive:true});await writeFile(join(dir,'receipt.json'),JSON.stringify({repository:ctx.repository,runId:ctx.runId,cloudflareCalls:0,hostedDatabaseCalls:0,result},null,2));}
+ if(env.RUNNER_TEMP){const dir=join(env.RUNNER_TEMP,'validation-cleanup-evidence');await mkdir(dir,{recursive:true});await writeFile(join(dir,'receipt.json'),JSON.stringify({repository:ctx.repository,runId:ctx.runId,scope:{network:'GitHub only',noCloudflareOrDatabaseClient:true},result},null,2));}
  console.log(JSON.stringify({repository:ctx.repository,result}));
  if(result.some(r=>r.outcome==='blocked-or-unknown'))throw Error('Cleanup stopped; inspect preserved GitHub receipt before retry');
  return result;
