@@ -1,0 +1,96 @@
+name: Daily approved validation cleanup
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Read-only discovery/approval check; creates no proposal and deletes no ref
+        type: boolean
+        default: true
+      retry_issue:
+        description: Closed proposal number to reconsider as a NEW manifest; requires NEW approval
+        type: number
+        default: 0
+  push:
+    branches: ['feature/daily-validation-cleanup-*']
+  pull_request:
+    branches: [studio_dev]
+    paths:
+      - '.github/workflows/validation-cleanup.yml'
+      - 'tools/validation-cleanup*'
+      - 'tests/validation-cleanup.test.mjs'
+      - 'docs/VALIDATION-CLEANUP.md'
+permissions:
+  contents: read
+concurrency:
+  group: validation-cleanup-${{ github.repository }}-${{ github.event_name == 'schedule' && 'daily' || github.ref }}
+  cancel-in-progress: false
+defaults:
+  run:
+    shell: bash
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18.0"
+      - name: Synthetic approval, preservation, race and real disposable Git transaction checks
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/validation-cleanup-tests"
+          node --check tools/validation-cleanup.mjs
+          node --test --test-reporter=tap tests/validation-cleanup.test.mjs > "$RUNNER_TEMP/validation-cleanup-tests/tests.log" 2>&1
+          git diff --check
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: validation-cleanup-tests-${{ github.run_id }}
+          path: ${{ runner.temp }}/validation-cleanup-tests/
+          retention-days: 30
+          if-no-files-found: error
+  cleanup:
+    if: github.ref == 'refs/heads/studio_dev' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && (github.repository == 'MaktabForlife/Academy' || github.repository == 'MaktabForlife/AcademyStudio')
+    needs: test
+    concurrency:
+      group: validation-cleanup-writer-${{ github.repository }}
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      issues: write
+      actions: read
+      checks: read
+      statuses: read
+      pull-requests: read
+      deployments: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18.0"
+      - name: Propose a new list or consume an exact optimisation-approved manifest
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CLEANUP_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          CLEANUP_RETRY_ISSUE: ${{ inputs.retry_issue || '0' }}
+        run: node tools/validation-cleanup.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: validation-cleanup-receipt-${{ github.run_id }}
+          path: ${{ runner.temp }}/validation-cleanup-evidence/
+          retention-days: 90
+          if-no-files-found: warn
