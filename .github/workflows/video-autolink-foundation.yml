@@ -25,7 +25,9 @@ jobs:
           mkdir -p "$RUNNER_TEMP/video-foundation-evidence"
           node --check src/video-autolink/transcript.mjs
           node --check src/video-autolink/retention.mjs
-          node --test --test-reporter=tap tests/video-autolink-foundation.test.mjs 2>&1 | tee "$RUNNER_TEMP/video-foundation-evidence/tests.log"
+          node --check src/video-autolink/provider.mjs
+          node --check src/video-autolink/candidate.mjs
+          node --test --test-reporter=tap tests/video-autolink-foundation.test.mjs tests/video-autolink-provider.test.mjs 2>&1 | tee "$RUNNER_TEMP/video-foundation-evidence/tests.log"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
