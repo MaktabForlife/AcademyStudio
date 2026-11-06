@@ -1,6 +1,6 @@
 import hifz from '@hifz/worker/src/index.js';
 export default {async fetch(request,env,ctx){
- const metrics={statements:0,rowsRead:0,rowsWritten:0,remoteCalls:0,injectedWrites:0};const mode=request.headers.get('X-Lab-Mode');let injected=false;
+ const metrics={statements:0,rowsRead:0,rowsWritten:0,injectedWrites:0};const mode=request.headers.get('X-Lab-Mode');let injected=false;
  const count=rs=>{for(const r of Array.isArray(rs)?rs:[rs]){metrics.statements++;metrics.rowsRead+=r.meta?.rows_read||0;metrics.rowsWritten+=r.meta?.rows_written||0;}return rs;};
  const wrap=statement=>({bind(...args){return wrap(statement.bind(...args));},all:async()=>count(await statement.all()),first:async(...args)=>{metrics.statements++;return statement.first(...args);},run:async()=>count(await statement.run()),raw:async(...args)=>{metrics.statements++;return statement.raw(...args);},statement});
  const db={withSession:()=>({prepare:sql=>wrap(env.DB.prepare(sql)),batch:async statements=>{

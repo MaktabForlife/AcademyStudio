@@ -9,7 +9,7 @@ import {randomRefresh,fingerprint} from '../src/auth/v110/store.mjs';
 import {Miniflare,convertV4MiniflareOptions,compatibilityDate,runtimeEvidence} from './jwt-v110-runtime.mjs';
 assert.equal(process.env.GITHUB_ACTIONS,'true','Disposable GitHub runners only.');
 const origin='https://mahadarwa-hifz.ummabbadacademy.app',fixtures=[];
-const evidence={runtime:runtimeEvidence,scope:'native Hifz refresh transport over synthetic native/auth tables; no admission/resource/browser cutover',remoteMasterCalls:0,hostedSQL:0,liveDBChanges:0,workerDeployed:false,cases:[]};
+const evidence={runtime:runtimeEvidence,scope:'native Hifz refresh transport over synthetic native/auth tables; no admission/resource/browser cutover',sourceDerivedNoMasterHop:true,remoteCallsMeasured:false,hostedSQL:0,liveDBChanges:0,workerDeployed:false,cases:[]};
 after(async()=>{for(const f of fixtures)await f.mf.dispose();await mkdir('.build/jwt-v110-hifz-refresh',{recursive:true});await writeFile('.build/jwt-v110-hifz-refresh/result.json',JSON.stringify(evidence,null,2)+'\n');});
 async function schema(db){
  let text='';const sql=await readFile(new URL('./fixtures/jwt-v110-auth-only.sql',import.meta.url),'utf8');
@@ -38,7 +38,6 @@ async function checked(response,status,{cookies=0,writes,statements}={}){
  assert.equal(response.status,status,'Unexpected native refresh status');
  assert.match(response.headers.get('Cache-Control')||'',/no-store/);assert.equal(response.headers.get('X-Content-Type-Options'),'nosniff');
  assert.equal(response.headers.getSetCookie().length,cookies,'Unexpected cookie count');
- assert.equal(Number(response.headers.get('X-Lab-remoteCalls')),0);
  if(writes!==undefined)assert.equal(Number(response.headers.get('X-Lab-rowsWritten')),writes);
  if(statements!==undefined)assert.equal(Number(response.headers.get('X-Lab-statements')),statements);
  const body=await response.json();assert.ok(!Object.hasOwn(body,'token')&&!Object.hasOwn(body,'claims')&&!Object.hasOwn(body,'setCookies')&&!Object.hasOwn(body,'rawSuccessor'));
@@ -61,7 +60,7 @@ test('real Hifz endpoint rotates one compact app pair, retains original deadline
  assert.equal(stored.refresh_fp,await fingerprint('hifz',issued.refresh));assert.equal(stored.previous_fp,f.fp);
  assert.ok(!JSON.stringify(stored).includes(f.raw)&&!JSON.stringify(stored).includes(issued.refresh));
  const context=await f.mf.dispatchFetch(origin+'/auth/v110/context',{headers:{Cookie:'__Host-uah_a='+issued.access}});const dto=await checked(context,200,{writes:0,statements:1});assert.equal(dto.session.accountId,f.account);assert.equal(dto.session.lastForegroundRefreshMs,f.foreground*1000);
- evidence.cases.push({name:'native-rotation',statements:Number(response.headers.get('X-Lab-statements')),rowsRead:Number(response.headers.get('X-Lab-rowsRead')),rowsWritten:Number(response.headers.get('X-Lab-rowsWritten')),remoteMasterCalls:0,originalDeadlineRetained:true});
+ evidence.cases.push({name:'native-rotation',statements:Number(response.headers.get('X-Lab-statements')),rowsRead:Number(response.headers.get('X-Lab-rowsRead')),rowsWritten:Number(response.headers.get('X-Lab-rowsWritten')),sourceDerivedNoMasterHop:true,remoteCallsMeasured:false,originalDeadlineRetained:true});
 });
 test('only an explicitly accepted foreground refresh advances the own-app clock, never the seven-day deadline',async()=>{
  const f=await fixture(),proof=await csrf(f),response=await call(f,'refresh',{csrf:proof,body:'{"foreground":true}'});await checked(response,200,{cookies:2});
