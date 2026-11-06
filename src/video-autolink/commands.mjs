@@ -63,9 +63,9 @@ async function processingHistory(env,store,actor,offer,command){
  return {jobs:rows.slice(0,25).filter(r=>r.private_expires_at>Date.now()).map(r=>({jobId:r.job_id,sourceId:r.source_id,state:r.state,code:r.outcome_code||null,authorisedAt:r.authorised_at,privateExpiresAt:r.private_expires_at})),more:rows.length>25,next:rows.length>25?rows[24].job_id:null};
 }
 
-// Proposed shared handler for existing native-cookie and signed owning proxy
-// entries. Neither entry currently imports/mounts it. Call only after the
-// existing request signature/session/CSRF/host gates; no actor comes from JSON.
+// Shared default-disabled handler mounted only by the native-cookie and signed
+// owning processing entries after existing signature/session/CSRF/host gates.
+// No actor comes from JSON; no resource/schema/binding is installed here.
 export async function processingCommand(env,store,actor,offer,command){
  try{
   if(!processingAvailable(env)){if(command?.action==='video-processing-capabilities')return {available:false};throw fail('Video processing is not enabled.',404,'PROCESSOR_DISABLED');}

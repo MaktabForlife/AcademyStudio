@@ -81,7 +81,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/video-attachment-evidence"
-          node --test --test-reporter=tap tests/video-autolink-source-attachment.test.mjs tests/media-workflow.test.mjs 2>&1 | tee "$RUNNER_TEMP/video-attachment-evidence/tests.log"
+          node --test --test-reporter=tap tests/video-autolink-source-attachment.test.mjs tests/media-workflow.test.mjs tests/media-attribution.test.mjs 2>&1 | tee "$RUNNER_TEMP/video-attachment-evidence/tests.log"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

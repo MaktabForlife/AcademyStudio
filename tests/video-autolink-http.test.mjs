@@ -1,11 +1,11 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {fixture} from './fixture.mjs';import {signedHeaders,sha256} from '../src/protocol.mjs';
+import {fixture} from './fixture.mjs';import {signedHeaders,sha256} from '../src/protocol.mjs';import {defaultCard} from '../src/playlist-cards.mjs';
 async function setup(){
- const f=await fixture({videoProcessing:true,nativeTeacherChoices:[{id:'outsider',name:'Registered synthetic Teacher'}],verification:{accountSeconds:43200,adminSeconds:60}});
+ const f=await fixture({videoProcessing:true,nativePlacementChoices:[{activityKey:'COURSE:course',offeringId:'course',classId:'',title:'Synthetic Course',className:''}],nativeTeacherChoices:[{id:'outsider',name:'Registered synthetic Teacher'}],verification:{accountSeconds:43200,adminSeconds:60}});
  const cookie=(await f.login('admin')).cookie;await f.run("UPDATE sessions SET source_ref='native-synthetic-admin' WHERE account_id='admin'");
  const request=async(command,{offer='course',...options}={})=>f.request('/api/admin/'+offer+'/processing',{cookie,method:'POST',body:command,...options});
- const table=await f.request('/api/admin/course/playlists',{cookie}),playlistId=crypto.randomUUID();
- const p=await f.request('/api/admin/course',{cookie,method:'POST',body:{action:'mou-playlist-save',operationId:crypto.randomUUID(),playlistId,name:'Private processing destination',closeDate:'',revision:table.body.revision,playlistRevision:0,websiteRevision:0}});assert.equal(p.status,200,JSON.stringify(p.body));
+ const table=await f.request('/api/admin/course/course-playlists?action=course-playlists',{cookie}),playlistId=crypto.randomUUID();
+ const p=await f.request('/api/admin/course',{cookie,method:'POST',body:{action:'course-playlist-save',operationId:crypto.randomUUID(),playlistId,name:'Private processing destination',description:'',revision:table.body.revision,playlistRevision:0,websiteRevision:0,contentRevision:0,card:defaultCard(),teacherIds:[],placements:[{activityKey:'COURSE:course',classId:''}]}});assert.equal(p.status,200,JSON.stringify(p.body));
  return {...f,cookie,request,playlistId,nativeRequest:f.request};
 }
 function privateReply(r){assert.equal(r.response.headers.get('Cache-Control'),'private, no-store');assert.equal(r.response.headers.get('X-Content-Type-Options'),'nosniff');assert(!r.response.headers.has('Set-Cookie'));}
@@ -45,8 +45,9 @@ test('source-only recording commands reuse actual native MP4 writer and exact pr
   const part=await f.request({action:'video-source-upload-part',assetId,partNumber:1,sha256:hash,data:btoa(String.fromCharCode(...data))});assert.equal(part.status,200,JSON.stringify(part.body));complete.parts=[part.body];assert.equal((await f.request(complete)).status,200);
   const original=await f.db.prepare('SELECT created_at,state FROM uploads WHERE asset_id=?').bind(assetId).first();assert.equal((await f.request(start)).status,200);assert.deepEqual(await f.db.prepare('SELECT created_at,state FROM uploads WHERE asset_id=?').bind(assetId).first(),original);
   const attach={action:'video-source-attach',operationId:crypto.randomUUID(),assetId,attachmentId,title:'Exact private Course source',teacherIds:['outsider'],playlistId:f.playlistId};
+  const bypass=await f.nativeRequest('/api/admin/course',{cookie:f.cookie,method:'POST',body:{...attach,action:'media-attach',privateCourseSource:true}});assert.equal(bypass.status,409);assert.equal((await f.db.prepare('SELECT count(*) n FROM attachments WHERE attachment_id=?').bind(attachmentId).first()).n,0);
   const a=await f.request(attach);assert.equal(a.status,200,JSON.stringify(a.body));assert.equal((await f.request(attach)).status,200);
-  assert.equal((await f.db.prepare('SELECT count(*) n FROM recording_companions').first()).n,0);assert.equal((await f.db.prepare('SELECT published FROM attachments WHERE attachment_id=?').bind(attachmentId).first()).published,0);
+  assert.equal((await f.db.prepare('SELECT count(*) n FROM mou_playlist_items WHERE playlist_id=?').bind(f.playlistId).first()).n,0);assert.equal((await f.db.prepare('SELECT count(*) n FROM course_playlist_release_guards').first()).n,0);assert.equal((await f.db.prepare('SELECT count(*) n FROM recording_companions').first()).n,0);assert.equal((await f.db.prepare('SELECT published FROM attachments WHERE attachment_id=?').bind(attachmentId).first()).published,0);
   const detail=await f.request({action:'video-source-detail',attachmentId});assert.equal(detail.status,200);assert.equal(detail.body.companion,null);privateReply(detail);
   const list=await f.request({action:'video-source-recordings',playlistId:f.playlistId});assert.equal(list.body.recordings[0].id,attachmentId);
   const signed=await signedHeaders(f.env.ACADEMY_TO_WEBSITE_SECRET,'/internal/studio/access',{issuedAt:Date.now(),proof:{sourceRef:'signed-native-source',accountId:'admin',epoch:1,verifiedAt:Date.now(),expiresAt:Date.now()+55000,globalAdmin:true},offeringId:'course',command:{action:'video-source-capabilities'},deliveries:[],more:false});

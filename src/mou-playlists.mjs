@@ -188,8 +188,8 @@ export async function playlistReadingLessons(store,actor,website){
  if(rows.length>400)throw fail('This website needs a narrower playlist support view.',409,'RECORDING_SCOPE_LIMIT');
  return [...new Set(rows.map(r=>r.lesson_id))];
 }
-export function assignPlaylist(store,playlist,row,{exclusive=false,supportIds=[],protectPrivateParent=false}={}){
- const statements=[store.statement('INSERT INTO mou_playlist_items VALUES(?,?) ON CONFLICT DO NOTHING',[playlist.playlist_id,row.attachment_id])];
+export function assignPlaylist(store,playlist,row,{exclusive=false,supportIds=[],protectPrivateParent=false,deferMembership=false}={}){
+ const statements=deferMembership?[]:[store.statement('INSERT INTO mou_playlist_items VALUES(?,?) ON CONFLICT DO NOTHING',[playlist.playlist_id,row.attachment_id])];
  if(exclusive)for(const attachment of [row.attachment_id,...supportIds])statements.push(store.statement('INSERT INTO mou_playlist_only_media VALUES(?) ON CONFLICT DO NOTHING',[attachment]));
  if(protectPrivateParent)statements.push(store.statement('INSERT INTO mou_playlist_only_websites SELECT w.website_id FROM websites w WHERE w.website_id=? AND (w.enabled=0 OR w.published_key IS NULL) AND NOT EXISTS(SELECT 1 FROM attachments a WHERE a.website_id=w.website_id AND a.published=1) ON CONFLICT DO NOTHING',[row.website_id]));
  return statements;

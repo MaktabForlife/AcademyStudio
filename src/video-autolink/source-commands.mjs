@@ -31,7 +31,7 @@ export function checkSourceCommand(command){
 }
 export async function sourceCommand(env,store,actor,offer,command,fetcher){
  if(!videoTransportEnabled(env))throw fail('Video processing is not enabled.',404,'PROCESSOR_DISABLED');
- checkSourceCommand(command);offer=id(offer);await mediaAdmin(store,actor,offer,{readOnly:['video-source-capabilities','video-source-options','video-source-recordings','video-source-detail'].includes(command.action)});
+ checkSourceCommand(command);offer=id(offer);const scope=await mediaAdmin(store,actor,offer,{readOnly:['video-source-capabilities','video-source-options','video-source-recordings','video-source-detail'].includes(command.action)});
  const native={...command};delete native.action;
  switch(command.action){
  case 'video-source-capabilities':{
@@ -42,12 +42,15 @@ export async function sourceCommand(env,store,actor,offer,command,fetcher){
  case 'video-source-recordings':{
   const playlist=id(command.playlistId),after=command.after?id(command.after):'';
   if(!await store.first('SELECT 1 FROM mou_playlists WHERE playlist_id=? AND offering_id=?',[playlist,offer]))throw fail('Choose the current Course playlist.',403);
-  const rows=await store.all("SELECT x.attachment_id id,x.title,x.lesson_date recordedDate,x.published,o.mime_type mime FROM mou_playlist_items p JOIN attachments x USING(attachment_id) JOIN objects o USING(asset_id) WHERE p.playlist_id=? AND x.offering_id=? AND x.audience='RECORDING' AND o.mime_type IN('video/mp4','video/youtube') AND x.attachment_id>? ORDER BY x.attachment_id LIMIT 26",[playlist,offer,after]);
-  return {recordings:rows.slice(0,25),more:rows.length>25,next:rows.length>25?rows[24].id:null};
+  // Page the native owning offering first. Private Course source attribution
+  // records its exact destination without entering published mou membership.
+  const rows=await store.all("SELECT x.attachment_id id,x.title,x.lesson_date recordedDate,x.published,o.mime_type mime,t.draft_json attribution,EXISTS(SELECT 1 FROM mou_playlist_items p WHERE p.attachment_id=x.attachment_id AND p.playlist_id=?) member FROM attachments x JOIN objects o USING(asset_id) LEFT JOIN media_attributions t USING(attachment_id) WHERE x.offering_id=? AND x.audience='RECORDING' AND o.mime_type IN('video/mp4','video/youtube') AND x.attachment_id>? ORDER BY x.attachment_id LIMIT 26",[playlist,offer,after]);
+  const selected=rows.slice(0,25).filter(r=>{try{return r.member===1||JSON.parse(r.attribution).playlist?.id===playlist;}catch{return r.member===1;}});
+  return {recordings:selected.map(({attribution,member,...r})=>r),more:rows.length>25,next:rows.length>25?rows[24].id:null};
  }
  case 'video-source-detail':return mediaDetail(env,store,actor,offer,id(command.attachmentId));
  case 'video-source-youtube':return change(env,store,actor,offer,{...native,action:'youtube'});
- case 'video-source-attach':return attachMedia(env,store,actor,offer,{...native,action:'media-attach'},fetcher,change);
+ case 'video-source-attach':return attachMedia(env,store,actor,offer,{...native,action:'media-attach'},fetcher,change,{privateCourseSource:scope.kind==='COURSE'});
  case 'video-source-upload-start':uploadMaximum(env);return recording(env,store,actor,offer,{...native,action:'start'});
  case 'video-source-upload-complete':{
   uploadMaximum(env);return recording(env,store,actor,offer,{...native,action:'complete'});
