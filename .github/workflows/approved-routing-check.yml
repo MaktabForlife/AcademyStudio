@@ -29,6 +29,9 @@ jobs:
           mkdir -p "$RUNNER_TEMP/approved-routing-evidence"
           node --check tools/approved-deployment.mjs
           node --test --test-reporter=tap tests/approved-deployment.test.mjs > "$RUNNER_TEMP/approved-routing-evidence/tests.log" 2>&1
+          if test -f tests/approved-deployment-retry.test.mjs; then
+            node --test --test-reporter=tap tests/approved-deployment-retry.test.mjs > "$RUNNER_TEMP/approved-routing-evidence/retries.log" 2>&1
+          fi
           git diff --check
       - name: Check workflow syntax on the disposable runner
         run: |

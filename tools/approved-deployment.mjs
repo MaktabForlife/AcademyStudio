@@ -9,7 +9,23 @@ export const PLAN_PATH='deployment/release-plan.json',APPROVAL_CONTEXT='optimisa
 const sha=value=>typeof value==='string'&&/^[a-f0-9]{40}$/.test(value);
 const automationPath=path=>/^(?:\.github\/|tools\/|backend\/tools\/|tests\/|backend\/tests\/|docs\/)/.test(path)||path===PLAN_PATH;
 const databasePath=path=>!/(^|\/)(?:tests?|fixtures)\//.test(path)&&(/(^|\/)(?:migrations?|schema|seeds?|backfills?)(?:\/|[.-])/i.test(path)||/\.(?:sql|sqlite|db)$/i.test(path));
-const jwtRuntime=path=>/^(?:src|backend\/src|public|portal|hosting)\//.test(path)&&/(?:v110|jwt-v110)/i.test(path);
+const controlPath=path=>new Set(['tools/approved-deployment.mjs','tools/cloud-release-check.mjs','tools/paired-release.mjs','tools/release-health.mjs','tools/release-safety.mjs','tools/archive-v10925-evidence.mjs']).has(path)||/^(?:\.github\/|docs\/|tests\/|backend\/tests\/|deployment\/)/.test(path);
+export const activeRuntime=(path,version)=>!controlPath(path)&&(!path.startsWith('release/')||path.startsWith('release/v'+version+'/public/'));
+const jwtRuntime=(path,version)=>activeRuntime(path,version)&&/(?:v110|jwt-v110)/i.test(path);
+export function changedPaths(rows){
+ return rows.flatMap(row=>{
+  assert(typeof row.filename==='string'&&row.filename);
+  return row.previous_filename?[row.previous_filename,row.filename]:[row.filename];
+ });
+}
+export function assertFeatureComparison(comparison,plan){
+ assert(['ahead','identical'].includes(comparison.status)&&comparison.behind_by===0,'Feature promotion must be a fast-forward');
+ assert(comparison.files.length<300,'Feature comparison must be complete');
+ const paths=changedPaths(comparison.files);
+ assert(!paths.some(databasePath),'Feature database changes are prohibited, including renames');
+ if(plan.kind==='configuration')assert(paths.every(automationPath),'Feature pipeline update includes application changes');
+ return true;
+}
 export function validatePlan(plan,repo,files){
  assert([ACADEMY,STUDIO].includes(repo));assert(plan&&typeof plan==='object'&&!Array.isArray(plan));
  const keys=['schema','request','kind','target','contains_jwt','database_changes','version','source_sha','studio_sha','feature_sha','feature_base_sha'];
@@ -21,7 +37,7 @@ export function validatePlan(plan,repo,files){
  assert.equal(typeof plan.contains_jwt,'boolean');
  assert(files.length>0&&files.includes(PLAN_PATH),'Each release PR must include a fresh reviewed plan');
  assert(!files.some(databasePath),'Database/schema/seed/backfill files require separate authorisation');
- if(files.some(jwtRuntime))assert.equal(plan.contains_jwt,true,'Known V110 runtime paths cannot be classified non-JWT');
+ if(files.some(path=>jwtRuntime(path,plan.version)))assert.equal(plan.contains_jwt,true,'Known V110 runtime paths cannot be classified non-JWT');
  if(plan.kind==='configuration'){
   assert.equal(plan.target,'none');assert.equal(plan.contains_jwt,false);
   assert(files.every(automationPath),'Configuration-only route includes application files');
@@ -54,10 +70,16 @@ export function evaluateApproval({repo,mergeSha,currentSha,pr,merge,head,statuse
  assert.equal(approval.creator.login,OWNER,'Approval must be recorded by MaktabForlife');
  assert(Date.parse(approval.created_at)<=Date.parse(pr.merged_at),'Approval must predate the merge');
  const expected=pr.html_url+'#issuecomment-'+comment.id;assert.equal(approval.target_url,expected);
- assert.equal(comment.user.login,OWNER);assert(Date.parse(comment.created_at)<=Date.parse(pr.merged_at));assert(Date.parse(comment.updated_at||comment.created_at)<=Date.parse(pr.merged_at),'Approval comment changed after the merge');
+ assert.equal(comment.user.login,OWNER);
+ const revised=Date.parse(comment.updated_at||comment.created_at),issued=Date.parse(approval.created_at);
+ assert(Date.parse(comment.created_at)<=issued&&revised<=issued,'Approval record changed after its successful status');
+ const recordHash=createHash('sha256').update(comment.body).digest('hex');
+ assert.equal(approval.description,'optimisation-record-sha256:'+recordHash,'Status is not bound to this exact approval record');
  const selected=validatePlan(plan,repo,files);
+ const lines=comment.body.split(/\r?\n/).map(line=>line.trim());
  for(const line of ['Optimisation approval','head: '+pr.head.sha,'target: '+selected.target,'db-changes: none'])
-  assert(comment.body.includes(line),'Approval record is not bound to reviewed head/target/no-DB policy');
+  assert(lines.includes(line),'Approval record requires exact head/target/no-DB lines');
+ for(const prefix of ['head:','target:','db-changes:'])assert.equal(lines.filter(line=>line.startsWith(prefix)).length,1,'Ambiguous approval field');
  return {schema:1,repo,mergeSha,pr:pr.number,headSha:pr.head.sha,approvalStatusId:approval.id,approvalURL:approval.target_url,commentId:comment.id,commentHash:createHash('sha256').update(comment.body).digest('hex'),plan:selected};
 }
 export function githubClient(token,fetcher=fetch){
@@ -77,12 +99,12 @@ export async function resolveApproval({repo,mergeSha,api}){
  assert.equal(matched.length,1,'Exactly one merged release PR must match the pushed commit');
  const pr=await api('/repos/'+repo+'/pulls/'+matched[0].number);
  assert(pr.changed_files<=1000,'Use a small release-plan PR for prepared immutable sources');
- const files=[];
- for(let page=1;files.length<pr.changed_files;page++){
+ const changes=[];
+ for(let page=1;changes.length<pr.changed_files;page++){
   assert(page<=10);const rows=await api('/repos/'+repo+'/pulls/'+pr.number+'/files?per_page=100&page='+page);
-  assert(rows.length,'Incomplete PR file list');files.push(...rows.map(f=>f.filename));
+  assert(rows.length,'Incomplete PR file list');changes.push(...rows);
  }
- assert.equal(files.length,pr.changed_files);
+ assert.equal(changes.length,pr.changed_files);const files=changedPaths(changes);
  const statuses=await api('/repos/'+repo+'/commits/'+pr.head.sha+'/statuses?per_page=100');
  const approval=statuses.find(s=>s.context===APPROVAL_CONTEXT);assert(approval);
  const match=approval.target_url?.match(new RegExp('^https://github\\.com/'+repo+'/pull/'+pr.number+'#issuecomment-(\\d+)$'));assert(match,'Link approval status to the exact PR approval comment');
@@ -103,7 +125,7 @@ export async function freshApproval(proof,api){
  assert.equal(current.object.sha,proof.mergeSha,'New canonical work superseded this release');
  assert.equal(createHash('sha256').update(comment.body).digest('hex'),proof.commentHash,'Approval record changed');assert.equal(comment.user.login,OWNER);
  const status=statuses.find(s=>s.context===APPROVAL_CONTEXT);
- assert(status&&status.state==='success'&&status.id===proof.approvalStatusId&&status.creator.login===OWNER,'Approval changed or was withdrawn');
+ assert(status&&status.state==='success'&&status.id===proof.approvalStatusId&&status.creator.login===OWNER&&status.description==='optimisation-record-sha256:'+proof.commentHash,'Approval changed or was withdrawn');
  return true;
 }
 export function assertProductionSource({root,baseline,plan}){
@@ -113,12 +135,17 @@ export function assertProductionSource({root,baseline,plan}){
   ['Studio',resolve(root,'work/AcademyStudio'),plan.studio_sha,baseline.studio.commit]
  ]){
   assert.equal(git(repo,'rev-parse','HEAD'),commit);
-  const paths=git(repo,'ls-tree','-r','--name-only','HEAD').split('\n');
-  const activeRuntime=p=>/^(?:src|backend\/src|public|portal|hosting)\//.test(p)||p.startsWith('release/v'+plan.version+'/public/');
-  assert(!paths.filter(activeRuntime).some(p=>jwtRuntime(p)||/(?:auth\/v110|jwt-v110)/i.test(p)),side+' contains V110 runtime code; production is prohibited');
-  const changes=git(repo,'diff','--name-only',base+'..HEAD').split('\n').filter(Boolean);
+  const names=(...args)=>execFileSync('git',args,{cwd:repo,encoding:'utf8'}).split('\0').filter(Boolean);
+  const paths=names('ls-tree','-r','-z','--name-only','HEAD');
+  assert(!paths.some(p=>jwtRuntime(p,plan.version)),side+' contains V110 runtime code; production is prohibited');
+  const entries=names('diff','--name-status','--find-renames','-z',base+'..HEAD'),changes=[];
+  for(let index=0;index<entries.length;){
+   const status=entries[index++];assert(/^[ACDMRTUXB][0-9]*$/.test(status),'Unknown Git change status');
+   const count=/^[RC]/.test(status)?2:1;
+   for(let n=0;n<count;n++){assert(index<entries.length);changes.push(entries[index++]);}
+  }
   assert(!changes.some(databasePath),side+' contains database changes');
-  for(const path of changes.filter(p=>activeRuntime(p)&&/\.[cm]?js$/.test(p))){
+  for(const path of changes.filter(p=>activeRuntime(p,plan.version)&&/\.[cm]?js$/.test(p))){
    const diff=git(repo,'diff','--unified=0',base+'..HEAD','--',path).split('\n').filter(l=>l.startsWith('+')&&!l.startsWith('+++')).join('\n');
    assert(!/\b(?:CREATE|ALTER|DROP)\s+(?:TABLE|INDEX|VIEW|TRIGGER)\b|\bJWT_V110_|\bauth\/v110\b/i.test(diff),'Unapproved runtime schema/V110 change: '+path);
   }
@@ -136,10 +163,7 @@ async function promoteFeature(proof,api){
  const current=(await api('/repos/'+ACADEMY+'/git/ref/heads/feature-preview')).object.sha;
  assert([plan.feature_base_sha,plan.feature_sha].includes(current),'Feature branch changed');
  const comparison=await api('/repos/'+ACADEMY+'/compare/'+plan.feature_base_sha+'...'+plan.feature_sha);
- assert(['ahead','identical'].includes(comparison.status)&&comparison.behind_by===0,'Feature promotion must be a fast-forward');
- assert(comparison.files.length<300,'Feature comparison must be complete');
- assert(!comparison.files.some(f=>databasePath(f.filename)),'Feature database changes are prohibited');
- if(plan.kind==='configuration')assert(comparison.files.every(f=>automationPath(f.filename)),'Feature pipeline update includes application changes');
+ assertFeatureComparison(comparison,plan);
  await freshApproval(proof,api);
  if(current!==plan.feature_sha)await api(ref,{method:'PATCH',body:{sha:plan.feature_sha,force:false}});
  const dispatchName='Approved Feature '+proof.mergeSha;

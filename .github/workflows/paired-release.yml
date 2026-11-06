@@ -111,7 +111,7 @@ jobs:
         run: node tools/cloud-release-check.mjs check
       - name: Test bounded health propagation and fail-closed release checks
         working-directory: work/AcademyStudio
-        run: node --test --test-reporter=tap tests/release-health.test.mjs tests/release-safety.test.mjs tests/approved-deployment.test.mjs > "$M4L_RELEASE_OUTPUT/release-health-tests.log" 2>&1
+        run: node --test --test-reporter=tap tests/release-health.test.mjs tests/release-safety.test.mjs tests/approved-deployment.test.mjs tests/approved-deployment-retry.test.mjs > "$M4L_RELEASE_OUTPUT/release-health-tests.log" 2>&1
       - name: Verify the reported management faults on the exact release source
         working-directory: work/Academy
         run: node --test --test-reporter=tap backend/tests/academy-management-origin-regression.test.mjs backend/tests/academy-release-labels.test.mjs > "$M4L_RELEASE_OUTPUT/management-regression-tests.log" 2>&1
@@ -248,6 +248,7 @@ jobs:
             ${{ github.workspace }}/.cloud-output/activation.json
             ${{ github.workspace }}/.cloud-output/portal-domain.json
             ${{ github.workspace }}/.cloud-output/staged-verification.json
-            ${{ github.workspace }}/.cloud-output/stage-source.log
-            ${{ github.workspace }}/.cloud-output/stage-target.log
+            ${{ github.workspace }}/.cloud-output/stage-source*.log
+            ${{ github.workspace }}/.cloud-output/stage-target*.log
+            ${{ github.workspace }}/.cloud-output/recovery-*.log
             ${{ github.workspace }}/.cloud-output/activate-*.log

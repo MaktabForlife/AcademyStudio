@@ -1,16 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,mkdir,writeFile,readFile} from 'node:fs/promises';
+import {mkdtemp,mkdir,writeFile,readFile,rename} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {validatePlan,evaluateApproval,resolveApproval,freshApproval,githubClient,assertProductionSource} from '../tools/approved-deployment.mjs';
+import {createHash} from 'node:crypto';
+import {validatePlan,evaluateApproval,resolveApproval,freshApproval,githubClient,assertProductionSource,assertFeatureComparison} from '../tools/approved-deployment.mjs';
 const repo='MaktabForlife/AcademyStudio',head='a'.repeat(40),mergeSha='b'.repeat(40),tree='c'.repeat(40),old='d'.repeat(40);
 const path='deployment/release-plan.json';
 function fixture(){
  const plan={schema:1,request:'synthetic-release',kind:'release',target:'production',contains_jwt:false,database_changes:false,version:'109.26',source_sha:'e'.repeat(40),studio_sha:'f'.repeat(40)};
  const pr={number:7,changed_files:1,state:'closed',merged:true,merged_at:'2026-11-06T01:00:00Z',merge_commit_sha:mergeSha,base:{ref:'studio_dev',repo:{full_name:repo}},head:{sha:head},merged_by:{login:'MaktabForlife'},html_url:'https://github.com/'+repo+'/pull/7'};
  const comment={id:42,user:{login:'MaktabForlife'},created_at:'2026-11-06T00:59:00Z',body:'Optimisation approval\nhead: '+head+'\ntarget: production\ndb-changes: none\nSynthetic evidence.'};
- const statuses=[{id:12,context:'optimisation/approval',state:'success',creator:{login:'MaktabForlife'},created_at:'2026-11-06T00:59:30Z',target_url:pr.html_url+'#issuecomment-42'}];
+ const statuses=[{id:12,context:'optimisation/approval',state:'success',creator:{login:'MaktabForlife'},created_at:'2026-11-06T00:59:30Z',description:'optimisation-record-sha256:'+createHash('sha256').update(comment.body).digest('hex'),target_url:pr.html_url+'#issuecomment-42'}];
  return {repo,mergeSha,currentSha:mergeSha,pr,merge:{sha:mergeSha,tree:{sha:tree}},head:{sha:head,tree:{sha:tree}},statuses,plan,files:[path],comment};
 }
 test('approved merged exact tree selects pinned non-JWT production pair',()=>{
@@ -63,7 +64,7 @@ function apiFixture(f=fixture()){
   calls.push(p);
   if(p.includes('/commits/'+mergeSha+'/pulls'))return [f.pr];
   if(p.endsWith('/pulls/7'))return f.pr;
-  if(p.includes('/pulls/7/files'))return f.files.map(filename=>({filename}));
+  if(p.includes('/pulls/7/files'))return f.fileChanges||f.files.map(filename=>({filename}));
   if(p.includes('/statuses?'))return f.statuses;
   if(p.endsWith('/git/ref/heads/studio_dev'))return {object:{sha:f.currentSha}};
   if(p.endsWith('/git/commits/'+mergeSha))return f.merge;
@@ -96,7 +97,7 @@ test('GitHub client is restricted to repository API and safe bounded diagnostics
  await assert.rejects(api('/accounts/anything/d1/query'));assert.equal(requests.length,1);
  assert(requests[0].url.startsWith('https://api.github.com/repos/MaktabForlife/'));
 });
-async function productionFixture(change){
+async function productionFixture(change,beforeBase){
  assert.equal(process.env.GITHUB_ACTIONS,'true');
  const root=await mkdtemp(resolve(process.env.RUNNER_TEMP,'approved-production-'));
  const git=(dir,...args)=>execFileSync('git',args,{cwd:dir,encoding:'utf8',env:{...process.env,GIT_CONFIG_GLOBAL:'/dev/null',GIT_CONFIG_NOSYSTEM:'1'}}).trim();
@@ -107,6 +108,7 @@ async function productionFixture(change){
   await mkdir(resolve(dir,'backend'),{recursive:true});await mkdir(resolve(dir,'src'),{recursive:true});
   const binding={vars:{RELEASE_VERSION:'109.25',MODE:'same'},d1_databases:[{binding:'DB',database_id:'synthetic-db'}]};
   await writeFile(resolve(dir,config),JSON.stringify(binding));await writeFile(resolve(dir,'src/worker.mjs'),'export default {fetch(){return new Response("same")}};\n');
+  if(beforeBase)await beforeBase({side,dir,config,binding});
   git(dir,'add','.');git(dir,'commit','-qm','synthetic baseline');const base=git(dir,'rev-parse','HEAD');
   if(change)await change({side,dir,config,binding});
   else {binding.vars.RELEASE_VERSION='109.26';await writeFile(resolve(dir,config),JSON.stringify(binding));}
@@ -120,6 +122,10 @@ test('production guard checks actual pinned Git trees and permits version-only m
 });
 for(const [name,change]of [
  ['new migration',async({dir})=>{await mkdir(resolve(dir,'migrations'));await writeFile(resolve(dir,'migrations/0002.sql'),'CREATE TABLE synthetic_only(id);');}],
+ ['root Academy auth/v110',async({dir})=>{await mkdir(resolve(dir,'auth/v110'),{recursive:true});await writeFile(resolve(dir,'auth/v110/browser-entry.mjs'),'export const enabled=false;');}],
+ ['root js V110 import',async({dir})=>{await mkdir(resolve(dir,'js'),{recursive:true});await writeFile(resolve(dir,'js/start.mjs'),"import '../auth/v110/session.mjs';");}],
+ ['root functions runtime DDL',async({dir})=>{await mkdir(resolve(dir,'functions'),{recursive:true});await writeFile(resolve(dir,'functions/api.mjs'),'const ddl="CREATE TABLE synthetic_only(id)";');}],
+ ['publisher runtime DDL',async({dir})=>{await mkdir(resolve(dir,'backend/tools'),{recursive:true});await writeFile(resolve(dir,'backend/tools/academy-site.mjs'),'const ddl="CREATE TABLE synthetic_only(id)";');}],
  ['V110 runtime anywhere in candidate',async({dir})=>{await mkdir(resolve(dir,'src/auth/v110'),{recursive:true});await writeFile(resolve(dir,'src/auth/v110/read.mjs'),'export const enabled=false;');}],
  ['runtime DDL',async({dir})=>writeFile(resolve(dir,'src/worker.mjs'),'const ddl="CREATE TABLE synthetic_only(id)";\n')],
  ['storage rebind',async({dir,config,binding})=>{binding.d1_databases[0].database_id='different';await writeFile(resolve(dir,config),JSON.stringify(binding));}],
@@ -129,4 +135,40 @@ for(const [name,change]of [
 test('historical inactive release assets do not become a production runtime gate',async()=>{
  const f=await productionFixture(async({dir})=>{await mkdir(resolve(dir,'release/v110.0/public/auth/v110'),{recursive:true});await writeFile(resolve(dir,'release/v110.0/public/auth/v110/old.mjs'),'archived');});
  assert(assertProductionSource(f));
+});
+
+test('approval record edited after success but before merge is rejected',()=>{
+ const f=fixture();f.comment.updated_at='2026-11-06T00:59:45Z';f.comment.body+='\nWithdrawal';
+ assert.throws(()=>evaluateApproval(f),/changed after its successful status/);
+});
+test('same-second changed approval body is rejected by the immutable status hash',()=>{
+ const f=fixture();f.comment.updated_at=f.statuses[0].created_at;f.comment.body+='\nChanged within timestamp granularity';
+ assert.throws(()=>evaluateApproval(f),/not bound to this exact approval record/);
+});
+for(const [name,change]of [
+ ['embedded head line',s=>s.replace('head: '+head,'not-head: '+head)],
+ ['embedded target line',s=>s.replace('target: production','not-target: production')],
+ ['duplicate target',s=>s+'\ntarget: feature'],
+ ['duplicate head',s=>s+'\nhead: '+old]
+])test('approval record rejects '+name+' even with a matching hash',()=>{
+ const f=fixture();f.comment.body=change(f.comment.body);
+ f.statuses[0].description='optimisation-record-sha256:'+createHash('sha256').update(f.comment.body).digest('hex');
+ assert.throws(()=>evaluateApproval(f));
+});
+test('actual API resolver preserves previous filename and rejects renamed migration',async()=>{
+ const f=apiFixture();f.f.pr.changed_files=2;
+ f.f.fileChanges=[{filename:path},{filename:'docs/retained.txt',previous_filename:'backend/migrations/0024.sql',status:'renamed'}];
+ await assert.rejects(resolveApproval({repo,mergeSha,api:f.api}),/Database/);
+});
+test('Feature comparison rejects renamed migration and active runtime renamed as configuration',()=>{
+ const base={status:'ahead',behind_by:0};
+ assert.throws(()=>assertFeatureComparison({...base,files:[{filename:'docs/retained.txt',previous_filename:'migrations/0024.sql'}]},{kind:'release'}),/database/);
+ assert.throws(()=>assertFeatureComparison({...base,files:[{filename:'tools/retained.mjs',previous_filename:'js/active.mjs'}]},{kind:'configuration'}),/application/);
+});
+test('actual Git rename cannot hide an existing migration path',async()=>{
+ const f=await productionFixture(
+  async({dir})=>{await mkdir(resolve(dir,'docs'));await rename(resolve(dir,'migrations/0001.sql'),resolve(dir,'docs/retained.txt'));},
+  async({dir})=>{await mkdir(resolve(dir,'migrations'));await writeFile(resolve(dir,'migrations/0001.sql'),'CREATE TABLE existing_synthetic(id);\n');}
+ );
+ assert.throws(()=>assertProductionSource(f),/database/);
 });

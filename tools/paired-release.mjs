@@ -32,11 +32,31 @@ async function api(side,path,method='GET'){
   throw Error('Cloudflare management '+side+' '+path+' '+r.status+' '+JSON.stringify(v.errors));
  }
 }
-async function run(side,args,label,attempt=0){const j=jobs[side],cloudToken=process.env[side==='source'?'CLOUDFLARE_SOURCE_API_TOKEN':'CLOUDFLARE_STUDIO_API_TOKEN'];if(cloudToken){const clean=[];for(let i=0;i<args.length;i++){if(args[i]==='--profile'){i++;continue;}clean.push(args[i]);}args=clean;}let log='';const code=await new Promise((done,reject)=>{const child=spawn(process.execPath,[resolve(j.cwd,'node_modules/wrangler/bin/wrangler.js'),...args],{cwd:j.cwd,env:{...process.env,...(cloudToken?{CLOUDFLARE_API_TOKEN:cloudToken}:{}),CI:'true',CLOUDFLARE_ACCOUNT_ID:j.account,WRANGLER_SEND_METRICS:'false',WRANGLER_LOG_PATH:resolve(out,'wrangler-'+label+'.log')},stdio:['ignore','pipe','pipe']});child.stdout.on('data',b=>log+=b);child.stderr.on('data',b=>log+=b);child.on('error',reject);child.on('close',done);});for(const [key,value]of Object.entries(process.env))if(/(?:TOKEN|SECRET|PASSWORD)$/.test(key)&&value&&value.length>=8)log=log.split(value).join('[REDACTED]');await writeFile(resolve(out,label+'.log'),log,{mode:0o600});if(code!==0&&args[0]==='versions'&&args[1]==='deploy'&&/code:\s*100146/.test(log)&&attempt<2){const delay=[10000,20000][attempt];console.log(JSON.stringify({deploymentRetry:true,side,label,delayMs:delay,reason:'New version temporarily unavailable to deployment API'}));await new Promise(done=>setTimeout(done,delay));return run(side,args,label,attempt+1);}if(code!==0)process.stderr.write(log.slice(-8000)+'\n');assert.equal(code,0,label+' failed; inspect saved redacted log');return log;}
+async function run(side,args,label,attempt=0,guard=null){
+ // Every physical Wrangler attempt, including retries, renews its own authority.
+ await (guard||verifyRemoteHeads)();
+ const j=jobs[side],cloudToken=process.env[side==='source'?'CLOUDFLARE_SOURCE_API_TOKEN':'CLOUDFLARE_STUDIO_API_TOKEN'];
+ if(cloudToken){const clean=[];for(let i=0;i<args.length;i++){if(args[i]==='--profile'){i++;continue;}clean.push(args[i]);}args=clean;}
+ let log='';
+ const code=await new Promise((done,reject)=>{
+  const child=spawn(process.execPath,[resolve(j.cwd,'node_modules/wrangler/bin/wrangler.js'),...args],{cwd:j.cwd,env:{...process.env,...(cloudToken?{CLOUDFLARE_API_TOKEN:cloudToken}:{}),CI:'true',CLOUDFLARE_ACCOUNT_ID:j.account,WRANGLER_SEND_METRICS:'false',WRANGLER_LOG_PATH:resolve(out,'wrangler-'+label+'-attempt-'+attempt+'.log')},stdio:['ignore','pipe','pipe']});
+  child.stdout.on('data',b=>log+=b);child.stderr.on('data',b=>log+=b);child.on('error',reject);child.on('close',done);
+ });
+ for(const [key,value]of Object.entries(process.env))if(/(?:TOKEN|SECRET|PASSWORD)$/.test(key)&&value&&value.length>=8)log=log.split(value).join('[REDACTED]');
+ await writeFile(resolve(out,label+'-attempt-'+attempt+'.log'),log,{mode:0o600});
+ if(code!==0&&args[0]==='versions'&&args[1]==='deploy'&&/code:\s*100146/.test(log)&&attempt<2){
+  const delay=[10000,20000][attempt];console.log(JSON.stringify({deploymentRetry:true,side,label,delayMs:delay,reason:'New version temporarily unavailable to deployment API'}));
+  await new Promise(done=>setTimeout(done,delay));
+  return run(side,args,label,attempt+1,guard);
+ }
+ if(code!==0)process.stderr.write(log.slice(-8000)+'\n');
+ assert.equal(code,0,label+' failed; inspect saved redacted log');return log;
+}
 async function absent(file){try{await readFile(resolve(out,file));throw Error(file+' already exists; inspect before repeating');}catch(e){if(e.code!=='ENOENT')throw e;}}
 async function verifyFreeze(plan){for(const [path,expected]of Object.entries(plan.manifests))assert.deepEqual(await manifest(resolve(root,path)),expected,path+' changed since freeze');for(const [path,expected]of Object.entries(plan.configHashes))assert.equal(sha(await readFile(resolve(root,path))),expected,path+' config changed');for(const [side,repo]of Object.entries(repos)){assert.equal(execFileSync('git',['rev-parse','HEAD'],{cwd:repo,encoding:'utf8'}).trim(),plan.candidates[side].commit);assert.equal(execFileSync('git',['status','--porcelain'],{cwd:repo,encoding:'utf8'}).trim(),'');}}
 
 async function verifyRemoteHeads(){
+ await verifyFreeze(await read('release-plan.json'));
  const proof=await loadProductionApproval();
  assert.equal(proof.plan.version,version);
  for(const [side,repo]of Object.entries(repos)){
@@ -56,7 +76,7 @@ async function recover(error){
  const result=await recoverPair({
   restoreWorker:async(side)=>{
    if(await ownedWorker(side))return;
-   const j=jobs[side];await run(side,['versions','deploy',before.workers[side].version+'@100','--config',j.config,'--profile',j.profile,...(side==='source'?['--env','development']:[]),'--yes','--message','Restore verified V'+(await read('baseline.json')).version+' after failed V'+version],'recovery-'+side);
+   const j=jobs[side];await run(side,['versions','deploy',before.workers[side].version+'@100','--config',j.config,'--profile',j.profile,...(side==='source'?['--env','development']:[]),'--yes','--message','Restore verified V'+(await read('baseline.json')).version+' after failed V'+version],'recovery-'+side,0,async()=>{await ownedWorker(side);});
   },
   restorePages:async()=>{
    const current=await api('source','/pages/projects/academy-maktab4life'),page=current.canonical_deployment;
@@ -111,7 +131,7 @@ if(mode==='plan'){
  await readyDomain();await waitForReleaseHealth({url:hosting.academyApiOrigin+'/api/health',expectedVersion:(await read('baseline.json')).version,onSample:async(sample,samples)=>save('baseline-health.json',{...sample,samples})});await save('before.json',{at:new Date().toISOString(),workers,pages:{canonical_deployment:pages.canonical_deployment,production_branch:pages.production_branch},schedules,managementRequests});await save('before-summary.json',{at:new Date().toISOString(),workers:Object.fromEntries(Object.entries(workers).map(([key,w])=>[key,{versionId:w.version,bindings:w.count}])),pages:{id:pages.canonical_deployment.id,commit:pages.canonical_deployment.deployment_trigger.metadata.commit_hash,branch:pages.production_branch},managementRequests,applicationHealthRequests:1,explicitSQL:0});console.log(JSON.stringify({captured:true,managementRequests,bindings:Object.values(workers).map(w=>w.count),schedules:4,applicationRequests:0,sql:0}));
 }else if(mode==='stage'){
  await read('before.json');const plan=await read('release-plan.json');await verifyFreeze(plan);let staged;try{staged=await read('staged.json');}catch(e){if(e.code!=='ENOENT')throw e;staged={version,versions:{},startedAt:new Date().toISOString()};}
- for(const [side,j]of Object.entries(jobs)){if(staged.versions[side])continue;await verifyRemoteHeads();console.log('Staging '+side+' without traffic');const log=await run(side,['versions','upload','--config',j.config,'--profile',j.profile,'--tag','v'+version.replaceAll('.','')+'-paired-release','--message','V'+version+' tested paired application release; media publication stays manual',...(side==='source'?['--env','development','--keep-vars']:[])],'stage-'+side);const id=log.match(/(?:Worker )?Version ID:\s*([a-f0-9-]{36})/i)?.[1];assert(id);staged.versions[side]=id;await save('staged.json',staged);console.log(JSON.stringify({staged:side,versionId:id}));}staged.status='STAGED_WITHOUT_TRAFFIC';staged.completedAt=new Date().toISOString();await save('staged.json',staged);
+ for(const [side,j]of Object.entries(jobs)){if(staged.versions[side])continue;console.log('Staging '+side+' without traffic');const log=await run(side,['versions','upload','--config',j.config,'--profile',j.profile,'--tag','v'+version.replaceAll('.','')+'-paired-release','--message','V'+version+' tested paired application release; media publication stays manual',...(side==='source'?['--env','development','--keep-vars']:[])],'stage-'+side);const id=log.match(/(?:Worker )?Version ID:\s*([a-f0-9-]{36})/i)?.[1];assert(id);staged.versions[side]=id;await save('staged.json',staged);console.log(JSON.stringify({staged:side,versionId:id}));}staged.status='STAGED_WITHOUT_TRAFFIC';staged.completedAt=new Date().toISOString();await save('staged.json',staged);
 }else if(mode==='verify-stage'){
  const before=await read('before.json'),staged=await read('staged.json'),results={};const settle=Math.max(0,20000-(Date.now()-Date.parse(staged.completedAt||staged.startedAt)));if(settle>0){console.log(JSON.stringify({waitingForVersionVisibilityMs:settle}));await new Promise(done=>setTimeout(done,settle));}
  const normal=rows=>rows.map(row=>row.name==='RELEASE_VERSION'?{...row,text:'VERSION'}:row).sort((a,b)=>a.name.localeCompare(b.name));
@@ -121,8 +141,8 @@ if(mode==='plan'){
  await absent('activation.json');const plan=await read('release-plan.json'),before=await read('before.json'),staged=await read('staged.json');assert((await read('staged-verification.json')).passed);if(plan.databaseUpdates.length){const schema=await read('database-updates.json');assert(schema.passed);assert.deepEqual(schema.updates,plan.databaseUpdates,'Verify only the reviewed database updates before activation');}await verifyFreeze(plan);assert.deepEqual(await manifest(plan.rollback.pagesArtifact),plan.rollback.pagesManifest.manifest);
  for(const [key,j]of Object.entries(before.workers)){const current=await api(j.side,'/workers/scripts/'+j.worker+'/deployments');assert.deepEqual(current.deployments[0].versions,j.active.versions,key+' changed before activation');}assert.equal((await api('source','/pages/projects/academy-maktab4life')).canonical_deployment.id,before.pages.canonical_deployment.id);
  const state={version,status:'ACTIVATING',startedAt:new Date().toISOString(),steps:[],metadataPreflightRequests:managementRequests};const checkpoint=()=>save('activation.json',state);await checkpoint();
- async function activateWorker(side,id,label){await verifyRemoteHeads();const j=jobs[side];await run(side,['versions','deploy',id+'@100','--config',j.config,'--profile',j.profile,...(side==='source'?['--env','development']:[]),'--yes','--message','V'+version+' '+label+' paired dashboard and media release'],'activate-'+label+'-'+side);state.steps.push({side,label,versionId:id});await checkpoint();}
- async function pages(path,commit,label){await verifyRemoteHeads();await run('source',['pages','deploy',path,'--project-name','academy-maktab4life','--branch','development','--profile','default','--commit-hash',commit,'--commit-message','V'+version+' '+label+' coordinated release','--commit-dirty=false'],'activate-'+label+'-pages');state.steps.push({side:'pages',label,commit});await checkpoint();}
+ async function activateWorker(side,id,label){const j=jobs[side];await run(side,['versions','deploy',id+'@100','--config',j.config,'--profile',j.profile,...(side==='source'?['--env','development']:[]),'--yes','--message','V'+version+' '+label+' paired dashboard and media release'],'activate-'+label+'-'+side);state.steps.push({side,label,versionId:id});await checkpoint();}
+ async function pages(path,commit,label){await run('source',['pages','deploy',path,'--project-name','academy-maktab4life','--branch','development','--profile','default','--commit-hash',commit,'--commit-message','V'+version+' '+label+' coordinated release','--commit-dirty=false'],'activate-'+label+'-pages');state.steps.push({side:'pages',label,commit});await checkpoint();}
  try{console.log('Activating Academy API');await activateWorker('source',staged.versions.source,'candidate');const priorVersion=(await read('baseline.json')).version;await waitForReleaseHealth({url:'https://devrebootworker.maktab4life.workers.dev/api/health',expectedVersion:version,previousVersion:priorVersion,onSample:async(sample,samples)=>{await save('source-health.json',{...sample,samples});console.log(JSON.stringify({academyHealthSample:sample}));}});console.log('Activating Academy website before moving Studio Home');await pages(resolve(repos.source,'release/v'+version+'/public'),plan.candidates.source.commit,'candidate');console.log('Activating Studio');await activateWorker('target',staged.versions.target,'candidate');state.status='PAIR_ACTIVATED_PENDING_VERIFICATION';await checkpoint();console.log(JSON.stringify({status:state.status,steps:state.steps}));}
  catch(error){await recover(error);throw error;}
 }else if(mode==='verify-live'){
