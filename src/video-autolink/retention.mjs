@@ -8,11 +8,16 @@ export function calendarMonthAfter(originalIngestedAt){
  if(!Number.isFinite(end)||end<=originalIngestedAt)throw new TypeError('Review the original ingestion time.');
  return end;
 }
-export function processingRetention({policy,originalIngestedAt}={}){
+export function processingRetention({policy,originalIngestedAt=null}={}){
+ if(policy==='PERMANENT_STUDIO_RETAINED'){
+  if(originalIngestedAt!==null)original(originalIngestedAt);
+  const native=recordingRetention(undefined,{permanent:true});
+  return {originalIngestedAt,videoExpiresAt:native.recordingExpiresAt,companionExpiresAt:native.companionExpiresAt};
+ }
+ if(policy!=='TEMPORARY_ACADEMIC')throw new TypeError('Use the reviewed native destination retention policy.');
  original(originalIngestedAt);
- if(!['PERMANENT_STUDIO_YOUTUBE','TEMPORARY_ACADEMIC'].includes(policy))throw new TypeError('Use the reviewed native destination retention policy.');
- const native=recordingRetention(new Date(originalIngestedAt).toISOString(),{permanent:policy==='PERMANENT_STUDIO_YOUTUBE',now:originalIngestedAt});
- return {originalIngestedAt,videoExpiresAt:native.recordingExpiresAt===null?null:Date.parse(native.recordingExpiresAt),companionExpiresAt:native.companionExpiresAt===null?null:Date.parse(native.companionExpiresAt)};
+ const native=recordingRetention(new Date(originalIngestedAt).toISOString(),{now:originalIngestedAt});
+ return {originalIngestedAt,videoExpiresAt:Date.parse(native.recordingExpiresAt),companionExpiresAt:Date.parse(native.companionExpiresAt)};
 }
 export function processingObjectReadable(deadline,now){
  if(!Number.isSafeInteger(now)||now<0)throw new TypeError('Use the server clock.');
