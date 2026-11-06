@@ -40,7 +40,12 @@ test('complete 72-table empty Studio+processing blueprint imports into current l
   const all=async sql=>{bindingCalls++;statements++;return count(await db.prepare(sql).all()).results;};
   const foreign=await all('PRAGMA foreign_key_check');assert.equal(foreign.length,0);
   assert.equal(Object.values((await all('PRAGMA quick_check'))[0])[0],'ok');
-  let userRows=0;for(let at=0;at<tables.length;at+=24){const part=tables.slice(at,at+24),rows=await all('SELECT SUM(n) n FROM ('+part.map(t=>'SELECT count(*) n FROM "'+t.name.replaceAll('"','""')+'"').join(' UNION ALL ')+')');userRows+=rows[0].n;}assert.equal(userRows,0);
+  let userRows=0;
+  for(let at=0;at<tables.length;at+=24){
+   const part=tables.slice(at,at+24);bindingCalls++;statements+=part.length;
+   const results=count(await db.batch(part.map(t=>db.prepare('SELECT count(*) n FROM "'+t.name.replaceAll('"','""')+'"'))));
+   for(const r of results){assert(Number.isSafeInteger(r.results[0].n));userRows+=r.results[0].n;}
+  }assert.equal(userRows,0);
   const objects=await all("SELECT name FROM sqlite_schema WHERE sql IS NOT NULL"),expected=new Set(definitions.map(x=>x.name));assert.equal(objects.filter(x=>expected.has(x.name)).length,218);
   console.log(JSON.stringify({compatibilityDate:'2026-10-28',miniflare:pkg.version,workerd:pkg.dependencies.workerd,objects:218,tables:72,userRows:0,foreignKeyErrors:0,quickCheck:'ok',nodeD1BindingCalls:bindingCalls,statements,reportedRowsRead:rowsRead,reportedRowsWritten:rowsWritten,scope:'disposable LOCAL schema import only; not hosted billing or application flow',hostedCalls:0}));
  }finally{await mf.dispose();}

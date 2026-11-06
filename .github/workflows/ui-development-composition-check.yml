@@ -6,7 +6,7 @@ on:
       - .github/workflows/ui-development-composition-check.yml
       - tests/ui-development-composition.test.mjs
 permissions:
-  contents: read
+  contents: write
 defaults:
   run:
     shell: bash
@@ -37,6 +37,10 @@ jobs:
           git -C source-academy fetch --no-tags --depth=1 origin 1b4dd450a4a59093ae85d891f0277eb480418c30
           test ! -e "$GITHUB_WORKSPACE/../Academy"
           ln -s "$GITHUB_WORKSPACE/source-academy" "$GITHUB_WORKSPACE/../Academy"
+      - name: Retain exactly the frozen candidate bytes excluded by the generated-file ignore rule
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node tools/retain-ui-development-package.mjs
       - name: Exact paired source, reader/processing overlap and empty local schema
         env:
           ACADEMY_SOURCE: ${{ github.workspace }}/source-academy
