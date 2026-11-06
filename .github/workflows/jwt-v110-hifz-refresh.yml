@@ -1,0 +1,67 @@
+name: JWT V110 native Hifz refresh review
+on:
+  create:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  hifz-refresh:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/validation/jwt-v110-hifz-refresh-')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      JWT_RUNTIME: production-date
+      WRANGLER_SEND_METRICS: "false"
+      ACADEMY_SOURCE: ${{ github.workspace }}/.build/sources/Academy
+      HIFZ_SOURCE: ${{ github.workspace }}/.build/sources/Hifz
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: MaktabForlife/Academy
+          ref: d744086413110386a44167a6bfc0c01008dc6558
+          path: .build/sources/Academy
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: MaktabForlife/Hifz
+          ref: c38f256f6b79112844ddb45ea1e3fb9ecaf134b8
+          path: .build/sources/Hifz
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18.0"
+      - name: Install locked local fixture dependencies only
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix "$HIFZ_SOURCE/worker" --no-audit --no-fund
+      - name: Check shared source and actual Hifz native refresh routing
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p .build/jwt-v110-hifz-refresh
+          node tools/check-jwt-browser-sources.mjs
+          node --check "$HIFZ_SOURCE/worker/src/auth/v110/store.mjs"
+          node --check "$HIFZ_SOURCE/worker/src/auth/v110/hifz-refresh.mjs"
+          node --check "$HIFZ_SOURCE/worker/src/auth/v110/hifz-refresh-http.mjs"
+          node --check "$HIFZ_SOURCE/worker/src/index.js"
+          node --check tests/jwt-v110-hifz-refresh.test.mjs
+          node --test --test-reporter=tap --test-concurrency=1 tests/jwt-v110-native-refresh.test.mjs tests/jwt-v110-hifz-refresh.test.mjs 2>&1 | tee .build/jwt-v110-hifz-refresh/tests.log
+          git diff --exit-code
+          git -C "$HIFZ_SOURCE" diff --exit-code
+          git -C "$ACADEMY_SOURCE" diff --exit-code
+          node --input-type=module -e "import {writeFileSync} from 'node:fs';writeFileSync('.build/jwt-v110-hifz-refresh/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,academy:'d744086413110386a44167a6bfc0c01008dc6558',hifz:'c38f256f6b79112844ddb45ea1e3fb9ecaf134b8',run:process.env.GITHUB_RUN_ID,hostedRequests:0,liveDBChanges:0,deployed:false})+'\n');"
+      - name: Preserve scoped synthetic native transport evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: jwt-v110-hifz-refresh-${{ github.run_id }}
+          include-hidden-files: true
+          retention-days: 30
+          path: |
+            .build/jwt-v110-hifz-refresh/
+            .build/jwt-v110-native-refresh/
+            .build/jwt-v110-browser-integration/shared-source.json
