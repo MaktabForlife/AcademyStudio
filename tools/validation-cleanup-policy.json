@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "repository": "MaktabForlife/AcademyStudio",
+  "anchors": [
+    "studio_dev",
+    "feature/jwt-v110-browser-integration-20261105",
+    "feature/jwt-v110-20261104",
+    "feature/jwt-v110-review-20261105",
+    "feature/jwt-v110-native-20261105"
+  ],
+  "heldPrefixes": [
+    "validation/approved-deployment-"
+  ],
+  "activeRefs": [
+    "feature/jwt-v110-browser-integration-20261105",
+    "feature/approved-automatic-deployment-20261106"
+  ],
+  "reviewerId": 285054382,
+  "reviewerLogin": "MaktabForlife",
+  "approvalContext": "optimisation/validation-cleanup"
+}

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "request": "automatic-routing-studio-20261106",
+  "request": "daily-validation-cleanup-academystudio-20261106",
   "kind": "configuration",
   "target": "none",
   "contains_jwt": false,
