@@ -7,6 +7,7 @@ import {execFileSync,spawn} from 'node:child_process';
 import assert from 'node:assert/strict';
 import {waitForReleaseHealth} from './release-health.mjs';
 import {assertProductionPages,recoverPair} from './release-safety.mjs';
+import {loadProductionApproval} from './approved-deployment.mjs';
 const root=resolve(process.env.M4L_PROJECT_ROOT||resolve(import.meta.dirname,'../../..')),version=process.argv[2],out=resolve(process.env.M4L_RELEASE_OUTPUT||resolve(import.meta.dirname,'../.build/release-'+version));
 assert(/^\d+\.\d+$/.test(version||''),'Choose a reviewed paired release version');
 const read=async file=>JSON.parse(await readFile(resolve(out,file),'utf8'));
@@ -36,10 +37,11 @@ async function absent(file){try{await readFile(resolve(out,file));throw Error(fi
 async function verifyFreeze(plan){for(const [path,expected]of Object.entries(plan.manifests))assert.deepEqual(await manifest(resolve(root,path)),expected,path+' changed since freeze');for(const [path,expected]of Object.entries(plan.configHashes))assert.equal(sha(await readFile(resolve(root,path))),expected,path+' config changed');for(const [side,repo]of Object.entries(repos)){assert.equal(execFileSync('git',['rev-parse','HEAD'],{cwd:repo,encoding:'utf8'}).trim(),plan.candidates[side].commit);assert.equal(execFileSync('git',['status','--porcelain'],{cwd:repo,encoding:'utf8'}).trim(),'');}}
 
 async function verifyRemoteHeads(){
+ const proof=await loadProductionApproval();
+ assert.equal(proof.plan.version,version);
  for(const [side,repo]of Object.entries(repos)){
   const expected=execFileSync('git',['rev-parse','HEAD'],{cwd:repo,encoding:'utf8'}).trim();
-  const remote=execFileSync('git',['ls-remote','--exit-code','origin','refs/heads/studio_dev'],{cwd:repo,encoding:'utf8'}).trim().split(/\s+/)[0];
-  assert.equal(remote,expected,side+' canonical source changed before release write');
+  assert.equal(expected,proof.plan[side==='source'?'source_sha':'studio_sha'],'Reviewed release source changed');
  }
 }
 async function recover(error){

@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "request": "automatic-routing-studio-20261106",
+  "kind": "configuration",
+  "target": "none",
+  "contains_jwt": false,
+  "database_changes": false
+}

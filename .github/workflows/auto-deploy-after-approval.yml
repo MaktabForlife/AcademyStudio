@@ -1,0 +1,58 @@
+name: Deploy optimisation-approved merged PR
+on:
+  push:
+    branches: [studio_dev]
+permissions:
+  contents: read
+  statuses: read
+  pull-requests: read
+concurrency:
+  group: approved-deployment-router
+  cancel-in-progress: false
+jobs:
+  route:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      statuses: read
+      pull-requests: read
+    outputs:
+      route: ${{ steps.route.outputs.route }}
+      source_sha: ${{ steps.route.outputs.source_sha }}
+      studio_sha: ${{ steps.route.outputs.studio_sha }}
+      approval_merge_sha: ${{ steps.route.outputs.approval_merge_sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18.0"
+      - name: Validate approved PR and exact target without deployment credentials
+        id: route
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tools/approved-deployment.mjs route
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: approved-route-${{ github.run_id }}
+          path: ${{ runner.temp }}/approved-route/
+          if-no-files-found: warn
+          retention-days: 30
+  production:
+    if: needs.route.outputs.route == 'production'
+    needs: route
+    permissions:
+      contents: write
+      statuses: read
+      pull-requests: read
+    uses: ./.github/workflows/paired-release.yml
+    with:
+      source_ref: ${{ needs.route.outputs.source_sha }}
+      studio_ref: ${{ needs.route.outputs.studio_sha }}
+      approval_merge_sha: ${{ needs.route.outputs.approval_merge_sha }}
+      deploy: true
