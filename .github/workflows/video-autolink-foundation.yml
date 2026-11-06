@@ -153,3 +153,38 @@ jobs:
           path: ${{ runner.temp }}/video-ui-evidence/
           if-no-files-found: error
           retention-days: 14
+
+  paired-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: MaktabForlife/Academy
+          ref: 7278fa636d0d712091be2f42bf0d2dd382ad1764
+          path: source-academy
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.18.0'
+      - run: npm ci --ignore-scripts
+      - run: npm ci --ignore-scripts
+        working-directory: source-academy/backend
+      - name: Actual paired native PIN/Source and signed private recording path
+        run: |
+          set -euo pipefail
+          test ! -e "$GITHUB_WORKSPACE/../Academy"
+          ln -s "$GITHUB_WORKSPACE/source-academy" "$GITHUB_WORKSPACE/../Academy"
+          export ACADEMY_SOURCE="$GITHUB_WORKSPACE/source-academy"
+          mkdir -p "$RUNNER_TEMP/video-paired-source-evidence"
+          node --test --test-reporter=tap tests/video-autolink-paired-source.test.mjs 2>&1 | tee "$RUNNER_TEMP/video-paired-source-evidence/tests.log"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: video-paired-source-${{ github.run_id }}
+          path: ${{ runner.temp }}/video-paired-source-evidence/
+          if-no-files-found: error
+          retention-days: 14
