@@ -188,3 +188,32 @@ jobs:
           path: ${{ runner.temp }}/video-paired-source-evidence/
           if-no-files-found: error
           retention-days: 14
+
+  workflow-runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.18.0'
+      - run: npm ci --ignore-scripts
+      - name: Pinned current local runtime, installed only in the disposable runner
+        run: npm install --prefix "$RUNNER_TEMP/video-current-runtime" --ignore-scripts --no-audit --no-fund --package-lock=false miniflare@5.20261103.0-beta
+      - name: Actual local Workflow SDK and durable engine; private paid-claim metadata only
+        run: |
+          set -euo pipefail
+          export VIDEO_CURRENT_MINIFLARE="$RUNNER_TEMP/video-current-runtime/node_modules/miniflare/dist/src/index.js"
+          mkdir -p "$RUNNER_TEMP/video-workflow-runtime-evidence"
+          node --check src/video-autolink/runtime.mjs
+          node --check src/video-autolink/workflow.mjs
+          node --test --test-reporter=tap tests/video-autolink-workflow-runtime.test.mjs 2>&1 | tee "$RUNNER_TEMP/video-workflow-runtime-evidence/tests.log"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: video-workflow-runtime-${{ github.run_id }}
+          path: ${{ runner.temp }}/video-workflow-runtime-evidence/
+          if-no-files-found: error
+          retention-days: 14

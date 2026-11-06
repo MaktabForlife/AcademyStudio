@@ -5,8 +5,8 @@ import {processingQuote,authoriseProcessingJob} from '../src/video-autolink/jobs
 const raw='WEBVTT\n\n00:00.000 --> 00:02.000\nSynthetic evidence: read the assigned page.\n\n00:02.000 --> 00:04.000\nA source-grounded second point.';
 const generated=()=>({summary:'- A synthetic point.',lessonReference:'PRIVATE uncertain book',application:'',taskAssigned:false,topics:[{time:'00:00',title:'Synthetic topic',sourceCueIndex:0}],topicNotes:[],referenceCandidates:[],quotationCandidates:[],assignmentEvidence:[],reviewNotes:['PRIVATE review marker']});
 const response=()=>Response.json({id:'resp_synthetic',status:'completed',output:[{type:'message',role:'assistant',content:[{type:'output_text',text:JSON.stringify(generated())}]}],usage:{input_tokens:100,output_tokens:50,total_tokens:150}},{headers:{'x-request-id':'req_synthetic'}});
-async function setup(){
- const f=await fixture();
+async function setup({fixtureOptions={}}={}){
+ const f=await fixture(fixtureOptions);
  await f.run("INSERT INTO objects VALUES('processing-asset',NULL,'video/youtube','Synthetic recording',0,NULL,'abcdefghijk')");
  await f.run("INSERT INTO asset_owners VALUES('processing-asset','course')");
  await f.run("INSERT INTO attachments VALUES('processing-attachment','course','site-course','processing-asset','processing-lesson','2026-11-06','','Synthetic recording','RECORDING',0)");
