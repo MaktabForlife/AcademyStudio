@@ -1,0 +1,38 @@
+name: Development component routing checks
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [studio_dev]
+    paths:
+      - tools/approved-deployment.mjs
+      - tests/approved-deployment.test.mjs
+      - .github/workflows/development-component-checks.yml
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  routing:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18.0"
+      - name: Approval and target routing with disposable local Git fixtures
+        run: |
+          mkdir -p "$RUNNER_TEMP/development-component-evidence"
+          node --test --test-reporter=tap tests/approved-deployment.test.mjs 2>&1 | tee "$RUNNER_TEMP/development-component-evidence/routing.log"
+          git diff --check
+          git diff --exit-code
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: development-component-routing-${{ github.run_id }}
+          path: ${{ runner.temp }}/development-component-evidence/
+          if-no-files-found: error
+          retention-days: 30

@@ -32,7 +32,7 @@ export function validatePlan(plan,repo,files){
  assert(Object.keys(plan).every(k=>keys.includes(k)),'Unknown deployment plan field');
  for(const key of ['source_sha','studio_sha','feature_sha','feature_base_sha'])if(plan[key]!==undefined)assert(sha(plan[key]),'Invalid pinned commit: '+key);
  assert.equal(plan.schema,1);assert.match(plan.request||'',/^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/);
- assert(['configuration','component','release'].includes(plan.kind));assert(['none','feature','production'].includes(plan.target));
+ assert(['configuration','component','release'].includes(plan.kind));assert(['none','feature','production','development'].includes(plan.target));
  assert.equal(plan.database_changes,false,'Database changes are prohibited');
  assert.equal(typeof plan.contains_jwt,'boolean');
  assert(files.length>0&&files.includes(PLAN_PATH),'Each release PR must include a fresh reviewed plan');
@@ -43,7 +43,9 @@ export function validatePlan(plan,repo,files){
   assert(files.every(automationPath),'Configuration-only route includes application files');
   if(plan.feature_sha){assert.equal(repo,ACADEMY);assert(sha(plan.feature_sha)&&sha(plan.feature_base_sha));}
  }else{
-  assert.equal(plan.target,plan.contains_jwt?'feature':'production','JWT is Feature only; other releases are production');
+  if(plan.contains_jwt)assert.equal(plan.target,'feature','JWT is Feature only');
+  else if(plan.target==='development')assert.equal(plan.kind,'component','Development release routing is not installed; review the exact physical target first');
+  else assert.equal(plan.target,'production','Non-JWT releases require the reviewed production route');
   if(plan.kind==='release'){
    assert.match(plan.version||'',/^\d+(?:\.\d+)?$/);
    if(plan.target==='feature'){
@@ -186,6 +188,13 @@ export async function loadFeatureApproval(){
  assert.equal(proof.plan.feature_sha,process.env.GITHUB_SHA);assert.equal(proof.plan.version,String(JSON.parse(await readFile(resolve(process.cwd(),'version.json'),'utf8')).version));
  return proof;
 }
+export async function routeApproved(proof,api){
+ assert(!(proof.plan.kind==='release'&&proof.plan.target==='development'),'Development release routing is not installed');
+ const evidence={...proof,hostedDatabaseCalls:0,cloudflareCalls:0};
+ if(proof.plan.feature_sha&&(proof.plan.kind==='configuration'||(proof.plan.kind==='release'&&proof.plan.target==='feature')))Object.assign(evidence,await promoteFeature(proof,api));
+ const route=proof.plan.kind==='release'&&proof.plan.target==='production'?'production':'none';
+ return {...evidence,route};
+}
 async function main(){
  assert.equal(process.env.GITHUB_ACTIONS,'true');const mode=process.argv[2];
  if(mode==='select'){
@@ -201,9 +210,7 @@ async function main(){
  const api=githubClient(process.env.GITHUB_TOKEN||process.env.GH_TOKEN),proof=await resolveApproval({repo,mergeSha,api});
  if(mode==='feature-check'){assert.equal(proof.repo,ACADEMY);assert.equal(proof.plan.feature_sha,process.env.GITHUB_SHA);assert.equal(proof.pr,Number(process.env.APPROVAL_PR));return;}
  assert.equal(mode,'route');assert.equal(process.env.GITHUB_REF,'refs/heads/studio_dev');
- const evidence={...proof,hostedDatabaseCalls:0,cloudflareCalls:0};
- if(proof.plan.feature_sha&&(proof.plan.kind==='configuration'||(proof.plan.kind==='release'&&proof.plan.target==='feature')))Object.assign(evidence,await promoteFeature(proof,api));
- const route=proof.plan.kind==='release'&&proof.plan.target==='production'?'production':'none';
+ const evidence=await routeApproved(proof,api),route=evidence.route;
  if(process.env.GITHUB_OUTPUT)for(const [key,value]of Object.entries({route,source_sha:proof.plan.source_sha||'',studio_sha:proof.plan.studio_sha||'',approval_merge_sha:proof.mergeSha}))await appendFile(process.env.GITHUB_OUTPUT,key+'='+value+'\n');
  if(process.env.RUNNER_TEMP){await mkdir(resolve(process.env.RUNNER_TEMP,'approved-route'),{recursive:true});await writeFile(resolve(process.env.RUNNER_TEMP,'approved-route','route.json'),JSON.stringify(evidence,null,2)+'\n');}
  console.log(JSON.stringify({route,kind:proof.plan.kind,target:proof.plan.target,request:proof.plan.request,promotion:evidence.promotion||null,cloudflareCalls:0,hostedDatabaseCalls:0,componentWaitingForPairedRelease:proof.plan.kind==='component'}));
