@@ -34,7 +34,7 @@ for(const broken of ['source','target','pages','verify'])test('recovery continue
  assert.deepEqual(calls,['source','target','pages','verify']);assert.equal(result.status,'RECOVERY_NEEDS_ATTENTION');assert.equal(result.errors.length,1);
 });
 
-async function cliFixture(failRecovery){
+async function cliFixture(failRecovery,concurrent=false){
  assert.equal(process.env.GITHUB_ACTIONS,'true','Synthetic release execution belongs only in GitHub');
  const dir=await mkdtemp(resolve(process.env.RUNNER_TEMP,'release-recovery-')),out=resolve(dir,'out');
  await mkdir(out);
@@ -43,7 +43,7 @@ async function cliFixture(failRecovery){
  const candidate={source:'11111111-1111-4111-8111-111111111111',target:'22222222-2222-4222-8222-222222222222'};
  const sourceCommit='a'.repeat(40),oldPage=project().canonical_deployment;
  const workers=Object.fromEntries(Object.entries(old).map(([side,version])=>[side,{side:side==='coordinator'?'source':side,worker:side==='source'?'devrebootworker':side==='target'?'academy-studio-parallel':'academy_split_coordinator',version,count:1,settings:{bindings},active:{versions:[{version_id:version,percentage:100}]}}]));
- const state={active:{...candidate,coordinator:old.coordinator},bindings:{source:[...bindings,{name:'BROKEN',type:'plain_text',text:'injected'}],target:bindings,coordinator:bindings},page:{...oldPage,id:'33333333-3333-4333-8333-333333333333',deployment_trigger:{metadata:{commit_hash:sourceCommit}}},calls:[],failRecovery,old,bindingsBefore:bindings,oldPage,sql:0};
+ const state={active:{...candidate,...(concurrent?{source:'44444444-4444-4444-8444-444444444444'}:{}),coordinator:old.coordinator},bindings:{source:[...bindings,{name:'BROKEN',type:'plain_text',text:'injected'}],target:bindings,coordinator:bindings},page:{...oldPage,id:'33333333-3333-4333-8333-333333333333',deployment_trigger:{metadata:{commit_hash:sourceCommit}}},calls:[],failRecovery,old,bindingsBefore:bindings,oldPage,sql:0};
  const statePath=resolve(dir,'state.json');await writeFile(statePath,JSON.stringify(state));
  const save=async(name,value)=>writeFile(resolve(out,name),JSON.stringify(value));
  const scope={source:'Academy',studio:'AcademyStudio',hosting:{academyPortalOrigin:'https://portal.test',academyApiOrigin:'https://academy.test'}};
@@ -64,7 +64,9 @@ await writeFile(path,JSON.stringify(s));
  }
  const preloader=resolve(dir,'mock-cloudflare.mjs');
  await writeFile(preloader,String.raw`import {readFile,writeFile} from 'node:fs/promises';
-globalThis.fetch=async(url,options={})=>{
+let pending=Promise.resolve();
+globalThis.fetch=(...args)=>{const next=pending.then(()=>mockFetch(...args));pending=next.catch(()=>{});return next;};
+async function mockFetch(url,options={}){
  const path=process.env.M4L_MOCK_STATE,s=JSON.parse(await readFile(path)),u=new URL(url);
  s.calls.push({kind:'http',path:u.pathname,method:options.method||'GET'});let result;
  const side=u.pathname.includes('academy-studio-parallel')?'target':u.pathname.includes('academy_split_coordinator')?'coordinator':'source';
@@ -85,7 +87,7 @@ globalThis.fetch=async(url,options={})=>{
  assert.notEqual(child.status,0,'Original final verification failure must still fail the release');
  const after=JSON.parse(await readFile(statePath)),recovery=JSON.parse(await readFile(resolve(out,'recovery.json')));
  assert.equal(after.sql,0);assert.equal(after.calls.filter(c=>c.path?.includes('/d1/')).length,0);
- assert.equal(after.calls.filter(c=>c.kind==='wrangler').length,2,'Both Worker recovery operations attempted');
+ assert.equal(after.calls.filter(c=>c.kind==='wrangler').length,concurrent?1:2,'Both Worker recovery operations attempted');
  assert.equal(after.calls.filter(c=>c.method==='POST'&&c.path.endsWith('/rollback')).length,1);
  assert.equal(after.page.id,record.recoveredPagesId);
  assert.equal(after.active.target,old.target);
@@ -98,4 +100,11 @@ test('actual release CLI recovers and verifies Workers and exact Pages rollback 
 });
 test('actual release CLI records recovery failure and still attempts Studio and Pages',async()=>{
  const {recovery}=await cliFixture(true);assert.equal(recovery.status,'RECOVERY_NEEDS_ATTENTION');assert.equal(recovery.verified,false);
+});
+
+test('actual release CLI refuses to overwrite a concurrent foreign Worker version',async()=>{
+ const {after,recovery}=await cliFixture(false,true);
+ assert.equal(recovery.status,'RECOVERY_NEEDS_ATTENTION');
+ assert.equal(after.active.source,'44444444-4444-4444-8444-444444444444');
+ assert.equal(after.calls.some(c=>c.kind==='wrangler'&&c.side==='source'),false);
 });
