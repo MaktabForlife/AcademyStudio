@@ -7,7 +7,7 @@ const tools=process.env.VIDEO_PLAYWRIGHT_ROOT;if(!tools)throw Error('Use the pin
 const {chromium,webkit}=await import(pathToFileURL(resolve(tools,'node_modules/playwright/index.mjs')));
 const browserName=process.env.VIDEO_BROWSER||'chromium',engine={chromium,webkit}[browserName];if(!engine)throw Error('Choose a pinned test browser.');
 const tls=resolve(process.env.RUNNER_TEMP||'/tmp','video-ui-tls-'+browserName);mkdirSync(tls,{recursive:true});execFileSync('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-keyout',tls+'/key.pem','-out',tls+'/cert.pem','-days','1','-subj','/CN=website.test'],{stdio:'ignore'});
-let providerCalls=0,loseAuthorise=true,origin,server,browser,context,secondContext,mainPage,f,requestCount=0,holdCandidate=false,releaseCandidate=null,candidateWaiting=null;const authorisations=[],statuses=[],errors=[],pageErrors=[];const originalPublished=[];
+let providerCalls=0,loseAuthorise=true,lastAttachmentId=null,origin,server,browser,context,secondContext,mainPage,f,requestCount=0,holdCandidate=false,releaseCandidate=null,candidateWaiting=null;const authorisations=[],statuses=[],errors=[],pageErrors=[];const originalPublished=[];
 try{
  f=await setup();
  const env={...f.env,VIDEO_AUTOLINK_HTTP_ENABLED:'1',VIDEO_UPLOAD_MAX_BYTES:String(10*1024*1024),VIDEO_AI_WORKFLOW_RETENTION_HOURS:'1'};
@@ -40,6 +40,7 @@ try{
     requestCount++;let length=0;const chunks=[];for await(const chunk of req){length+=chunk.length;if(length>9*1024*1024)throw Error('Local request limit');chunks.push(chunk);}const bytes=Buffer.concat(chunks),headers=new Headers();for(const [k,v]of Object.entries(req.headers))if(v!==undefined)headers.set(k,Array.isArray(v)?v.join(','):v);
     const request=new Request(url,{method:req.method,headers,...(bytes.length?{body:bytes}:{})});const reply=await handle(request,env,{},teachers);
     let action;try{action=JSON.parse(bytes.toString()).action;}catch{}
+    if(action==='video-source-attach'&&reply.ok)lastAttachmentId=JSON.parse(bytes.toString()).attachmentId;
     if(action==='video-processing-authorise'){const value=JSON.parse(bytes.toString());authorisations.push(value.operationId);if(loseAuthorise){loseAuthorise=false;statuses.push({path:url.pathname,action,status:503,simulatedLostAcknowledgement:true});res.writeHead(503,{'Content-Type':'application/json','Cache-Control':'private, no-store'});res.end('{"error":"Synthetic lost authorisation acknowledgement","code":"PROCESSING_UNAVAILABLE"}');return;}}
     if(action==='video-processing-candidate'&&holdCandidate){holdCandidate=false;candidateWaiting?.();await new Promise(resolve=>{releaseCandidate=resolve;});}
     let publicError=null;if(reply.status>=400){try{const e=await reply.clone().json();publicError={code:e.code,error:e.error};}catch{}}statuses.push({path:url.pathname,action:action||null,status:reply.status,...(publicError?{publicError}:{})});res.writeHead(reply.status,Object.fromEntries(reply.headers));res.end(Buffer.from(await reply.arrayBuffer()));return;
@@ -55,9 +56,11 @@ try{
  await page.locator('[data-media-attach]').waitFor();assert.equal(await page.locator('[name=summary]').count(),0);assert.equal(await page.locator('[name=topics]').count(),0);
  await page.locator('[name=title]').fill('Browser synthetic source');await page.locator('[name=teacherIds][value=outsider]').check();await page.locator('[name=sourceURL]').fill('https://www.youtube.com/watch?v=ABCdef12345');await page.locator('[data-media-attach] button[type=submit]').click();
  await page.locator('[data-vp-transcript]').waitFor();assert.equal(providerCalls,0);
+ await page.locator('[name=transcript]').fill('Unsaved local transcript edits');await page.locator('[data-vp="close"]').click();await page.locator('[data-cmw="process-video"]').click();await page.locator('[data-vp="existing"]').click();await page.locator('[data-vp="select"][data-id="'+lastAttachmentId+'"]').click();await page.locator('[data-vp-transcript]').waitFor();assert.equal(await page.locator('[name=transcript]').inputValue(),'');assert.equal(providerCalls,0);
+
  await page.locator('[name=transcript]').fill('WEBVTT\n\n00:00.000 --> 00:02.000\nSynthetic evidence: read the assigned page.\n\n00:02.000 --> 00:04.000\nA source-grounded second point.');await page.locator('[name=durationSeconds]').fill('4');await page.locator('[data-vp-transcript] button[type=submit]').click();
  await page.locator('[data-vp-authorise]').waitFor();assert.equal(providerCalls,0);await page.locator('[name=authorise]').check();await page.locator('[data-vp-authorise] button[type=submit]').click();
- await page.locator('[data-vp="retry"]').waitFor();assert.equal(providerCalls,1);await page.locator('[data-vp="retry"]').click();await page.locator('[data-vp="candidate"]').waitFor();assert.equal(providerCalls,1);assert.equal(new Set(authorisations).size,1);assert.equal(authorisations.length,2);
+ await page.waitForFunction(()=>{const button=document.querySelector('[data-vp="retry"]');return button&&!button.disabled;});assert.equal(providerCalls,1);await page.locator('[data-vp="retry"]').click();await page.locator('[data-vp="candidate"]').waitFor();assert.equal(providerCalls,1);assert.equal(new Set(authorisations).size,1);assert.equal(authorisations.length,2);
  const noPolling=requestCount;await page.waitForTimeout(250);assert.equal(requestCount,noPolling);
  await page.locator('[data-vp="candidate"]').click();await page.locator('[data-vp-review]').waitFor();assert((await page.locator('body').textContent()).includes('PRIVATE uncertain book'));
  const responsive=[];for(const width of [390,768,1280]){await page.setViewportSize({width,height:1000});const measured=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth}));responsive.push(measured);assert(measured.scroll<=measured.width+2,JSON.stringify(measured));await page.screenshot({path:resolve(output,'private-candidate-'+width+'.png'),fullPage:true});}

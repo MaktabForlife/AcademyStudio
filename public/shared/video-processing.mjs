@@ -101,7 +101,7 @@ export function mountVideoProcessing(host,{request,offeringId,playlistId,courseR
  }
  async function click(event){
   const action=event.target.closest('[data-vp]')?.dataset.vp;if(!action)return;event.preventDefault();
-  if(action==='close'){if(!canLeave()){tell('Save, cancel or retry the current work before leaving.');return;}onClose();return;}
+  if(action==='close'){if(busy||pending){tell('Finish or retry the pending action before leaving.');return;}if(attachmentUI?.confirmLeave&&attachmentUI.confirmLeave()===false)return;if(dirty&&!window.confirm('Discard unsaved transcript or private review changes? Any confirmed saves remain private.'))return;dirty=false;onClose();return;}
   if(action==='retry'){await run(()=>commit(pending.action,pending.input,pending.after));return;}
   if(busy||pending)return;
   if(action==='add-reference'){const rows=host.querySelector('[data-vp-references]');if(rows.children.length>=100){tell('Keep at most 100 references.');return;}rows.insertAdjacentHTML('beforeend',referenceRow({},rows.children.length));dirty=true;return;}

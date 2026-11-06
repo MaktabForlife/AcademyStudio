@@ -69,5 +69,5 @@ export function mountMediaAdmin(host,{api,mutate,offeringId,current,initialRecor
  };
  const beforeUnload=event=>{if(dirty||pending||busy){event.preventDefault();event.returnValue='';}};window.addEventListener('beforeunload',beforeUnload);
  host.innerHTML='<p role="status">Loading checked recording choices…</p>';void load().catch(error=>{if(active())host.innerHTML='<p role="alert">'+esc(error.message)+'</p>';});
- const dispose=()=>{disposed=true;record=null;options=null;pending=null;imported=null;detail=null;publishOperations=null;host.onsubmit=null;host.onclick=null;host.oninput=null;host.onchange=null;window.removeEventListener('beforeunload',beforeUnload);host.replaceChildren();};dispose.canLeave=canLeave;return dispose;
+ const dispose=()=>{disposed=true;record=null;options=null;pending=null;imported=null;detail=null;publishOperations=null;host.onsubmit=null;host.onclick=null;host.oninput=null;host.onchange=null;window.removeEventListener('beforeunload',beforeUnload);host.replaceChildren();};dispose.canLeave=sourceOnly===true?()=>!dirty&&!pending&&!busy:canLeave;dispose.confirmLeave=canLeave;return dispose;
 }
