@@ -205,6 +205,8 @@ jobs:
         with:
           name: paired-deployment-${{ github.run_id }}
           retention-days: 30
+          include-hidden-files: true
+          if-no-files-found: error
           path: |
             ${{ github.workspace }}/.cloud-output/release-plan.json
             ${{ github.workspace }}/.cloud-output/before-summary.json
