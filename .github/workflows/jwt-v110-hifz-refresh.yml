@@ -22,13 +22,13 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: MaktabForlife/Academy
-          ref: d744086413110386a44167a6bfc0c01008dc6558
+          ref: 0c0dd570a11486b420517d1e40389e4789f9de9a
           path: .build/sources/Academy
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: MaktabForlife/Hifz
-          ref: c38f256f6b79112844ddb45ea1e3fb9ecaf134b8
+          ref: becb310d18fc899562c1d76cea583cea801af809
           path: .build/sources/Hifz
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -53,7 +53,7 @@ jobs:
           git diff --exit-code
           git -C "$HIFZ_SOURCE" diff --exit-code
           git -C "$ACADEMY_SOURCE" diff --exit-code
-          node --input-type=module -e "import {writeFileSync} from 'node:fs';writeFileSync('.build/jwt-v110-hifz-refresh/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,academy:'d744086413110386a44167a6bfc0c01008dc6558',hifz:'c38f256f6b79112844ddb45ea1e3fb9ecaf134b8',run:process.env.GITHUB_RUN_ID,hostedRequests:0,liveDBChanges:0,deployed:false})+'\n');"
+          node --input-type=module -e "import {writeFileSync} from 'node:fs';writeFileSync('.build/jwt-v110-hifz-refresh/source.json',JSON.stringify({commit:process.env.GITHUB_SHA,academy:'0c0dd570a11486b420517d1e40389e4789f9de9a',hifz:'becb310d18fc899562c1d76cea583cea801af809',run:process.env.GITHUB_RUN_ID,hostedRequests:0,liveDBChanges:0,deployed:false})+'\n');"
       - name: Preserve scoped synthetic native transport evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
