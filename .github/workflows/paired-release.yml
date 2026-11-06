@@ -207,7 +207,7 @@ jobs:
           retention-days: 30
           path: |
             ${{ github.workspace }}/.cloud-output/release-plan.json
-            ${{ github.workspace }}/.cloud-output/before.json
+            ${{ github.workspace }}/.cloud-output/before-summary.json
             ${{ github.workspace }}/.cloud-output/baseline-health.json
             ${{ github.workspace }}/.cloud-output/recovery.json
             ${{ github.workspace }}/.cloud-output/recovery-health.json
