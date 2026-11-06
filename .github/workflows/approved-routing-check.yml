@@ -1,0 +1,53 @@
+name: Approved deployment routing checks
+on:
+  create:
+  push:
+    branches: ['validation/approved-deployment-*']
+  pull_request:
+    branches: [studio_dev]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: approved-routing-check-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  routing:
+    if: github.event_name != 'create' || startsWith(github.ref_name, 'validation/approved-deployment-')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18.0"
+      - name: Test approval, merged tree, routing and no-DB guards using synthetic GitHub responses
+        run: |
+          mkdir -p "$RUNNER_TEMP/approved-routing-evidence"
+          node --check tools/approved-deployment.mjs
+          node --test --test-reporter=tap tests/approved-deployment.test.mjs > "$RUNNER_TEMP/approved-routing-evidence/tests.log" 2>&1
+          if test -f tests/approved-deployment-retry.test.mjs; then
+            node --test --test-reporter=tap tests/approved-deployment-retry.test.mjs > "$RUNNER_TEMP/approved-routing-evidence/retries.log" 2>&1
+          fi
+          git diff --check
+      - name: Check workflow syntax on the disposable runner
+        run: |
+          mkdir -p "$RUNNER_TEMP/approved-routing-lint"
+          npm install --prefix "$RUNNER_TEMP/approved-routing-lint" --no-save --package-lock=false --ignore-scripts --no-audit --no-fund yaml@2.8.2
+          NODE_PATH="$RUNNER_TEMP/approved-routing-lint/node_modules" node --input-type=commonjs <<'NODE'
+          const fs=require('node:fs'),yaml=require('yaml');
+          for(const name of fs.readdirSync('.github/workflows').filter(n=>n.endsWith('.yml'))){
+            const parsed=yaml.parse(fs.readFileSync('.github/workflows/'+name,'utf8'),{uniqueKeys:true});
+            if(!parsed.on||!parsed.jobs)throw Error('Invalid workflow '+name);
+          }
+          NODE
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: approved-routing-${{ github.run_id }}
+          path: ${{ runner.temp }}/approved-routing-evidence/
+          if-no-files-found: error
+          retention-days: 30

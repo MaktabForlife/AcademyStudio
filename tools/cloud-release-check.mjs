@@ -7,6 +7,7 @@ import {execFileSync,spawnSync} from 'node:child_process';
 import {build} from 'esbuild';
 import {buildStudioPackage} from './build-studio-package.mjs';
 import {recoveredBaseline} from './release-safety.mjs';
+import {loadProductionApproval,assertProductionSource} from './approved-deployment.mjs';
 const root=resolve(process.env.GITHUB_WORKSPACE||process.env.M4L_PROJECT_ROOT||'.');
 const source=resolve(root,'work/Academy'),studio=resolve(root,'work/AcademyStudio');
 const out=resolve(process.env.M4L_RELEASE_OUTPUT||process.env.RUNNER_TEMP+'/paired-release');
@@ -50,7 +51,9 @@ if(mode==='publish-receipt'){
 if(mode==='verify-deploy'){
  const check=await json(resolve(out,'checks.json'));
  assert(check.passed);assert.deepEqual(check.commits,commits);
- for(const [side,dir]of Object.entries(dirs))assert.equal(git(dir,'ls-remote','--exit-code','origin','refs/heads/studio_dev').split(/\s+/)[0],commits[side],'Deploy only the current canonical GitHub source');
+ const approved=await loadProductionApproval();
+ assert.equal(commits.source,approved.plan.source_sha);assert.equal(commits.target,approved.plan.studio_sha);
+ assert.equal(version,approved.plan.version);assertProductionSource({root,baseline:await json(resolve(out,'baseline.json')),plan:approved.plan});
  assert.equal(check.pendingMigrations.length,0,'New database migrations require a separate reviewed upgrade; this job never silently applies hosted SQL');
  assert.notEqual(version,check.baselineVersion,'Already deployed version; prepare a new frozen release first');
  for(const name of ['CLOUDFLARE_SOURCE_API_TOKEN','CLOUDFLARE_STUDIO_API_TOKEN'])assert(process.env[name],name+' must be saved in the production GitHub environment');
@@ -61,7 +64,11 @@ assert.equal(mode,'check');
 const release=gh('/repos/MaktabForlife/AcademyStudio/releases/latest');
 const asset=release.assets.find(a=>a.name==='paired-release.json');assert(asset&&asset.size<32768,'A verified paired GitHub release receipt is required');
 const receipt=JSON.parse(execFileSync('gh',['api','/repos/MaktabForlife/AcademyStudio/releases/assets/'+asset.id,'-H','Accept: application/octet-stream'],{encoding:'utf8'}));
-const baseline=recoveredBaseline(receipt,await json(resolve(studio,'release/production-baseline-v'+version+'.json')),version);
+let baseline=receipt;
+ if(receipt.version!==version){
+  try{const record=await json(resolve(studio,'release/production-baseline-v'+version+'.json'));baseline=recoveredBaseline(receipt,record,version);}
+  catch(error){if(error.code!=='ENOENT')throw error;}
+ }
 assert(/^\d+\.\d+$/.test(baseline.version));for(const side of ['source','studio'])assert(/^[a-f0-9]{40}$/.test(baseline[side].commit));
 await save('baseline.json',baseline);
 const pendingMigrations=[];
