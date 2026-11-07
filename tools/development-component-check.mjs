@@ -6,6 +6,7 @@ import {pathToFileURL} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {registry,digest,selectComponent,assertContext,assertSafeEnvironment,preflightPair} from './development-component-selection.mjs';
 import {githubClient} from './approved-deployment.mjs';
+const control=resolve(new URL('..',import.meta.url).pathname);
 const root=resolve(process.env.GITHUB_WORKSPACE||'.'),out=resolve(process.env.RUNNER_TEMP||'/invalid','development-component-check');
 const statePath=join(out,'component.json'),api=()=>githubClient(process.env.GH_TOKEN);
 const git=(dir,...args)=>execFileSync('git',args,{cwd:dir,encoding:'utf8',maxBuffer:32*1024*1024,stdio:['ignore','pipe','pipe']}).trim();
@@ -25,9 +26,16 @@ async function fresh(selected){
 function roleRefs(selected){
  return Object.fromEntries(['Academy','AcademyStudio'].map(side=>[side,selected.repository===repoFor(side)?selected.actualSourceSha:selected.counterpart.sha]));
 }
+function controlGuard(){
+ const expected=context().proposalOnly?process.env.GITHUB_SHA:process.env.COMPONENT_CONTROL_REF;
+ assert.match(expected||'',/^[a-f0-9]{40}$/,'IMMUTABLE_CONTROL_REQUIRED');assert.equal(git(control,'rev-parse','HEAD'),expected,'CONTROL_SOURCE_CHANGED');
+ assert.equal(git(control,'status','--porcelain'),'','CONTROL_DIRTY');
+ return {repository:'MaktabForlife/AcademyStudio',sha:expected,tree:git(control,'rev-parse','HEAD^{tree}')};
+}
 function guards(selected){
- assertContext(context());assertSafeEnvironment(process.env);
+ assertContext(context());assertSafeEnvironment(process.env);controlGuard();
  assert.equal(git(resolve(root,'checker'),'rev-parse','HEAD'),selected.checker.sha,'CHECKER_SOURCE_CHANGED');
+ assert.equal(git(resolve(root,'checker'),'status','--porcelain'),'','CHECKER_DIRTY');
  const refs=roleRefs(selected);
  for(const side of Object.keys(refs)){
   assert.equal(git(input(side),'rev-parse','HEAD'),refs[side],'INPUT_SOURCE_CHANGED');
@@ -85,8 +93,8 @@ async function freeze(side,selected){
  return {repository:repoFor(side),actualInputSha:original,actualInputTree:git(input(side),'rev-parse','HEAD^{tree}'),generated,generatedPackageSha:git(dir,'rev-parse','HEAD'),generatedPackageTree:git(dir,'rev-parse','HEAD^{tree}'),manifestPath,manifestSHA256:digest(readFileSync(join(dir,manifestPath))),manifestSourceVersionCommit:manifest.sourceVersionCommit,publicFiles:Object.keys(manifest.manifest).length,retainedV10925Tree:priorTree,transformations:transforms};
 }
 async function main(){
- const phase=process.argv[2];assert(['select','stage','package','verify'].includes(phase),'CHECK_ONLY_PHASE');
- assertContext(context());
+ const phase=process.argv[2];assert(['select','stage','package','check','verify'].includes(phase),'CHECK_ONLY_PHASE');
+ assertContext(context());const adapter=controlGuard();
  if(phase==='select'){
   const repository=process.env.COMPONENT_REPO,prNumber=Number(process.env.COMPONENT_PR);
   assert(registry.components.some(x=>x.repository===repository&&x.pr===prNumber),'UNSELECTED_COMPONENT');const client=api();
@@ -99,7 +107,7 @@ async function main(){
   const value=await client('/repos/'+repository+'/contents/deployment/release-plan.json?ref='+sourceSha);
   assert(value.encoding==='base64'&&value.size<16384,'PLAN_FORMAT');
   const selected=selectComponent({repository,prNumber,sourceSha,pr,plan:JSON.parse(Buffer.from(value.content,'base64').toString('utf8')),files});
-  await fresh(selected);save({state:'SELECTED_SOURCE_ONLY',selected,proposalOnly:context().proposalOnly,approval:false,deployable:false});
+  await fresh(selected);save({state:'SELECTED_SOURCE_ONLY',selected,adapter,proposalOnly:context().proposalOnly,approval:false,deployable:false});
   if(process.env.GITHUB_OUTPUT)for(const [side,ref]of Object.entries(roleRefs(selected)))writeFileSync(process.env.GITHUB_OUTPUT,side.toLowerCase()+'_sha='+ref+'\n',{flag:'a'});
   console.log(JSON.stringify({state:'SELECTED_SOURCE_ONLY',actualSource:{repository,pr:prNumber,sha:sourceSha},counterpart:selected.counterpart,checker:selected.checker,proposalOnly:context().proposalOnly,approval:false}));return;
  }
@@ -117,6 +125,11 @@ async function main(){
   state.state='FROZEN_CHECK_PACKAGES_NOT_SOURCE_COMMITS';save(state);return;
  }
  assert.equal(state.state,'FROZEN_CHECK_PACKAGES_NOT_SOURCE_COMMITS','PACKAGE_REQUIRED');
+ for(const side of ['Academy','AcademyStudio']){assert.equal(git(work(side),'rev-parse','HEAD'),state.packages[side].generatedPackageSha,'PACKAGE_SOURCE_CHANGED');assert.equal(git(work(side),'status','--porcelain'),'','PACKAGE_DIRTY');}
+ if(phase==='check'){
+  execFileSync(process.execPath,[resolve(root,'checker/tools/cloud-release-check.mjs'),'check'],{cwd:root,env:process.env,stdio:'inherit'});
+  return;
+ }
  const checked=read(resolve(process.env.M4L_RELEASE_OUTPUT,'checks.json'));
  assert.equal(checked.passed,true,'FULL_CHECK_REQUIRED');assert.equal(checked.version,selected.version,'VERSION_CHANGED');
  assert.deepEqual(checked.commits,{source:state.packages.Academy.generatedPackageSha,target:state.packages.AcademyStudio.generatedPackageSha},'CHECKED_PACKAGE_CHANGED');

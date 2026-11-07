@@ -48,7 +48,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       WRANGLER_SEND_METRICS: "false"
       M4L_RELEASE_OUTPUT: ${{ github.workspace }}/.component-check-output
-      GITLEAKS_BIN: ${{ runner.temp }}/component-scanner/gitleaks
+      GITLEAKS_BIN: ${{ github.workspace }}/.component-tools/scanner/gitleaks
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -105,7 +105,7 @@ jobs:
         name: Full unchanged paired checker in check mode only
         env:
           NODE_OPTIONS: --import=${{ github.workspace }}/checker/tools/preserve-local-files.mjs
-        run: node checker/tools/cloud-release-check.mjs check
+        run: node control/tools/development-component-check.mjs check
       - name: Bind passing checker to generated package IDs and recheck actual PR source
         if: always() && steps.package.outcome == 'success'
         run: node control/tools/development-component-check.mjs verify
