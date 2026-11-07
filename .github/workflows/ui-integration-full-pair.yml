@@ -64,7 +64,9 @@ jobs:
         working-directory: work/AcademyStudio
         env:
           NODE_OPTIONS: --import=${{ github.workspace }}/work/AcademyStudio/tools/preserve-local-files.mjs
-        run: node tools/cloud-release-check.mjs check
+        run: |
+          node --test --test-reporter=tap tests/reviewed-sql-integrity.test.mjs
+          node tools/cloud-release-check.mjs check
       - name: Test bounded health propagation and fail-closed release checks
         working-directory: work/AcademyStudio
         run: node --test --test-reporter=tap tests/release-health.test.mjs tests/release-safety.test.mjs tests/approved-deployment.test.mjs tests/approved-deployment-retry.test.mjs > "$M4L_RELEASE_OUTPUT/release-health-tests.log" 2>&1
