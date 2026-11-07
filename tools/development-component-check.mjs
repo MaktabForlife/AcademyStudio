@@ -136,7 +136,7 @@ async function main(){
  for(const side of ['Academy','AcademyStudio']){
   const dir=work(side),original=roleRefs(selected)[side];assert.equal(git(dir,'rev-parse','HEAD'),state.packages[side].generatedPackageSha,'PACKAGE_SOURCE_CHANGED');assert.equal(git(dir,'status','--porcelain'),'','PACKAGE_DIRTY');
   const changes=git(dir,'diff','--name-only',original+'..HEAD').split('\n').filter(Boolean);
-  assertSourcePreservation({side,changes,readOriginal:path=>git(dir,'show',original+':'+path)+'\n',readCurrent:path=>readFileSync(join(dir,path),'utf8')});
+  assertSourcePreservation({side,changes,readOriginal:path=>execFileSync('git',['show',original+':'+path],{cwd:dir,encoding:'utf8',stdio:['ignore','pipe','pipe']}),readCurrent:path=>readFileSync(join(dir,path),'utf8')});
  }
  if(phase==='check'){
   execFileSync(process.execPath,[resolve(root,'checker/tools/cloud-release-check.mjs'),'check'],{cwd:root,env:process.env,stdio:'inherit'});
