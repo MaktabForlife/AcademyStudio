@@ -1,0 +1,127 @@
+name: Development component check-only adapter proposal
+on:
+  push:
+    branches: [validation/development-component-pair-check-20261107]
+permissions:
+  contents: read
+  statuses: read
+  pull-requests: read
+defaults:
+  run:
+    shell: bash
+concurrency:
+  group: development-component-adapter-proposal
+  cancel-in-progress: false
+jobs:
+  guard-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18.0"
+      - name: Reject release, production, JWT, DB, changed-source and floating-counterpart cases
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/component-guard-evidence"
+          node --check tools/development-component-selection.mjs
+          node --check tools/development-component-check.mjs
+          node --test --test-reporter=tap tests/development-component-selection.test.mjs | tee "$RUNNER_TEMP/component-guard-evidence/tests.tap"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: component-guard-proposal-${{ github.run_id }}
+          path: ${{ runner.temp }}/component-guard-evidence/
+          retention-days: 30
+  studio5-proposal-proof:
+    needs: guard-tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      COMPONENT_REPO: MaktabForlife/AcademyStudio
+      COMPONENT_PR: "5"
+      COMPONENT_EXPECTED_SOURCE: d302670e2b70d9d8c98b8c0ed837e2a4b6b3ed18
+      COMPONENT_PROPOSAL_ONLY: "true"
+      GH_TOKEN: ${{ github.token }}
+      WRANGLER_SEND_METRICS: "false"
+      M4L_RELEASE_OUTPUT: ${{ github.workspace }}/.component-check-output
+      GITLEAKS_BIN: ${{ runner.temp }}/component-scanner/gitleaks
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          path: control
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: MaktabForlife/AcademyStudio
+          ref: 28314ca73c31168f3efb8fce65e2be730b3abd29
+          path: checker
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18.0"
+      - id: select
+        name: Select the actual open PR source and immutable counterpart
+        run: node control/tools/development-component-check.mjs select
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: MaktabForlife/Academy
+          ref: ${{ steps.select.outputs.academy_sha }}
+          path: input/Academy
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: MaktabForlife/AcademyStudio
+          ref: ${{ steps.select.outputs.academystudio_sha }}
+          path: input/AcademyStudio
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require exact source identity, shared module parity and selected same-tab dependency
+        run: node control/tools/development-component-check.mjs stage
+      - name: Dependencies in disposable runner only
+        run: |
+          set -euo pipefail
+          npm ci --prefix checker --no-audit --no-fund
+          npm ci --prefix work/Academy/backend --no-audit --no-fund
+          npm ci --prefix work/AcademyStudio --no-audit --no-fund
+      - id: package
+        name: Generate separately identified unreleased frozen packages; keep input PR checkout unchanged
+        run: node control/tools/development-component-check.mjs package
+      - name: Install checksum-pinned credential scanner
+        env:
+          SCANNER_DIGEST: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$GITLEAKS_BIN")"
+          curl --fail --location --silent --show-error https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz -o "$(dirname "$GITLEAKS_BIN")/package.tgz"
+          printf '%s  %s\n' "$SCANNER_DIGEST" "$(dirname "$GITLEAKS_BIN")/package.tgz" | sha256sum --check
+          tar -xzf "$(dirname "$GITLEAKS_BIN")/package.tgz" -C "$(dirname "$GITLEAKS_BIN")" gitleaks
+      - id: full-check
+        name: Full unchanged paired checker in check mode only
+        env:
+          NODE_OPTIONS: --import=${{ github.workspace }}/checker/tools/preserve-local-files.mjs
+        run: node checker/tools/cloud-release-check.mjs check
+      - name: Bind passing checker to generated package IDs and recheck actual PR source
+        if: always() && steps.package.outcome == 'success'
+        run: node control/tools/development-component-check.mjs verify
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: studio5-component-proposal-proof-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/development-component-check/component.json
+            ${{ github.workspace }}/.component-check-output/checks.json
+            ${{ github.workspace }}/.component-check-output/local-acceptance.json
+            ${{ github.workspace }}/.component-check-output/academy-tests.log
+            ${{ github.workspace }}/.component-check-output/paired-media-tests.log
+            ${{ github.workspace }}/.component-check-output/portal-source-tests.log
+            ${{ github.workspace }}/.component-check-output/portal-paired-tests.log
+            ${{ github.workspace }}/.component-check-output/homepage-contract-tests.log
+            ${{ github.workspace }}/.component-check-output/studio-hosting-tests.log
+          if-no-files-found: warn
+          retention-days: 30

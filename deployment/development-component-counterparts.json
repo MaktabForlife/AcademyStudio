@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "version": "109.27",
+  "checker": {
+    "repository": "MaktabForlife/AcademyStudio",
+    "sha": "28314ca73c31168f3efb8fce65e2be730b3abd29"
+  },
+  "components": [
+    {
+      "repository": "MaktabForlife/AcademyStudio",
+      "pr": 5,
+      "request": "ui-bugs-20261106-ui003-video-processing-development",
+      "counterpart": {
+        "repository": "MaktabForlife/Academy",
+        "sha": "87bf3daa54bd82773b62a5a71f67d28e2aea654d"
+      },
+      "requiresSameTab": true
+    },
+    {
+      "repository": "MaktabForlife/Academy",
+      "pr": 6,
+      "request": "ui-bugs-20261106d-course-list-development",
+      "counterpart": {
+        "repository": "MaktabForlife/AcademyStudio",
+        "sha": "9a8c117e9279a2b67e62eb044be4da989db4a096"
+      },
+      "requiresSameTab": false
+    },
+    {
+      "repository": "MaktabForlife/Academy",
+      "pr": 8,
+      "request": "ui-bugs-20261106d-native-navigation-development",
+      "counterpart": {
+        "repository": "MaktabForlife/AcademyStudio",
+        "sha": "cec139b220290e3e4b4d7563a87d8d996f0c73a2"
+      },
+      "requiresSameTab": true
+    },
+    {
+      "repository": "MaktabForlife/Academy",
+      "pr": 7,
+      "request": "ui-bugs-20261106c-original-reader-development",
+      "counterpart": {
+        "repository": "MaktabForlife/AcademyStudio",
+        "sha": "3f45d0ba423ba3e94e00374296f7aedc0d63fb80"
+      },
+      "requiresSameTab": true
+    },
+    {
+      "repository": "MaktabForlife/Academy",
+      "pr": 12,
+      "request": "ui-bugs-20261106-ui003-video-processing-development",
+      "counterpart": {
+        "repository": "MaktabForlife/AcademyStudio",
+        "sha": "d302670e2b70d9d8c98b8c0ed837e2a4b6b3ed18"
+      },
+      "requiresSameTab": true
+    }
+  ]
+}
