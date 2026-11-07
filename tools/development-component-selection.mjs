@@ -31,6 +31,7 @@ export function selectComponent({repository,prNumber,sourceSha,pr,plan,files,sel
  if(classifier)assert.equal(classifier.sha,'5e7067a2701bfaf4f3cb4511efbcd62c46161978','EXACT_REVIEWED_CHECKER_DELTA');
  assert.equal(checked.request,selected.request,'REQUEST_MISMATCH');assert.equal(checked.kind,'component','COMPONENT_ONLY');
  assert.equal(checked.target,'development','DEVELOPMENT_ONLY');assert.equal(checked.contains_jwt,false,'NO_JWT');
+ if(checked.version!==undefined)assert.equal(checked.version,selectionRegistry.version,'COMPONENT_VERSION_MISMATCH');
  assert.equal(checked.database_changes,false,'NO_DB_EFFECTS');assert(!paths.some(x=>/jwt|v110/i.test(x)),'NO_JWT_PATHS');
  assert(!paths.some(x=>/^(?:config\/hosting\.json|(?:backend\/)?wrangler[^/]*|tools\/(?:approved-deployment|paired-release|release-health|release-safety)\.mjs|\.github\/workflows\/(?:paired-release|approved-deployment)[^/]*)$/.test(x)),'NO_RELEASE_CONTROLS');
  return {schema:1,repository,pr:Number(prNumber),actualSourceSha:sourceSha,sourcePlan:checked,counterpart:structuredClone(selected.counterpart),checker:structuredClone(selectionRegistry.checker),version:selectionRegistry.version,requiresSameTab:selected.requiresSameTab,registrySHA256:digest(JSON.stringify(selectionRegistry)),approval:false,deployable:false};

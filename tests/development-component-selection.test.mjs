@@ -7,6 +7,7 @@ test('selected Development component records actual source and literal counterpa
  const value=selectComponent(fixture());assert.equal(value.actualSourceSha,sha);assert.deepEqual(value.counterpart,item.counterpart);assert.equal(value.approval,false);assert.equal(value.deployable,false);
 });
 for(const [name,change]of [
+ ['wrong explicit version',x=>x.plan.version='109.28'],
  ['production',x=>x.plan.target='production'],['release',x=>x.plan.kind='release'],['JWT',x=>{x.plan.contains_jwt=true;x.plan.target='feature';}],['DB effects',x=>x.plan.database_changes=true],
  ['unknown request',x=>x.plan.request='unreviewed'],['unknown PR',x=>x.prNumber=50],['changed source',x=>x.pr.head.sha='b'.repeat(40)],['foreign fork',x=>x.pr.head.repo.full_name='foreign/AcademyStudio'],
  ['wrong base',x=>x.pr.base.ref='main'],['closed PR',x=>x.pr.state='closed'],['already merged',x=>x.pr.merged=true],
