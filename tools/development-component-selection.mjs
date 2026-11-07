@@ -56,3 +56,5 @@ export function preflightPair({academyView,studioView,academyNative,requiresSame
  assert.equal(academyView,translated,'DEPENDENCY_EXACT_SHARED_MODULE');
  return true;
 }
+
+export function assertRetainedVersionState(before,after){assert.deepEqual(after,before,'RETAINED_V10925_STATE_CHANGED');return true;}

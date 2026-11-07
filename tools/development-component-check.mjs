@@ -4,7 +4,7 @@ import {readFileSync,writeFileSync,mkdirSync,existsSync} from 'node:fs';
 import {resolve,join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {execFileSync} from 'node:child_process';
-import {registry,digest,selectComponent,assertContext,assertSafeEnvironment,preflightPair} from './development-component-selection.mjs';
+import {registry,digest,selectComponent,assertContext,assertSafeEnvironment,preflightPair,assertRetainedVersionState} from './development-component-selection.mjs';
 import {githubClient} from './approved-deployment.mjs';
 const control=resolve(new URL('..',import.meta.url).pathname);
 const root=resolve(process.env.GITHUB_WORKSPACE||'.'),out=resolve(process.env.RUNNER_TEMP||'/invalid','development-component-check');
@@ -44,6 +44,7 @@ function guards(selected){
  }
 }
 function blob(dir,path){return git(dir,'rev-parse','HEAD:'+path);}
+function retainedTree(dir){const row=git(dir,'ls-tree','-d','HEAD','--','release/v109.25');return row?row.split(/\s+/)[2]:null;}
 function changedBytes(dir,path,bytes,transforms,kind){
  const before=readFileSync(join(dir,path)),beforeBlob=blob(dir,path);writeFileSync(join(dir,path),bytes);
  transforms.push({path,kind,beforeBlob,beforeSHA256:digest(before),afterSHA256:digest(bytes)});
@@ -57,15 +58,19 @@ function versionCode(dir,path,from,to,transforms){
  const old=readFileSync(join(dir,path),'utf8');assert.equal(old.split(from).length,2,'EXACT_VERSION_STAMP_REQUIRED');
  changedBytes(dir,path,old.replace(from,to),transforms,'EXACT_VERSION_LITERAL_ONLY');
 }
-async function freeze(side,selected){
- const dir=work(side),original=git(dir,'rev-parse','HEAD'),priorTree=git(dir,'rev-parse','HEAD:release/v109.25'),transforms=[];
+async function freeze(side,selected,progress=()=>{}){
+ progress('READ_RETAINED_METADATA');
+ const dir=work(side),original=git(dir,'rev-parse','HEAD'),priorTree=retainedTree(dir),transforms=[];
  const current=read(join(dir,'release/current.json')),version=selected.version;
+ const priorManifestPath=existsSync(join(dir,'release/v109.25/manifest.json'))?'release/v109.25/manifest.json':current.version==='109.25'?'release/manifest.json':null;
+ const priorManifest=priorManifestPath?{path:priorManifestPath,blob:blob(dir,priorManifestPath),sha256:digest(readFileSync(join(dir,priorManifestPath))),version:read(join(dir,priorManifestPath)).version}:null;
  let generated=false;
  if(current.version===version){
   assert(existsSync(join(dir,'release/v'+version+'/manifest.json')),'EXISTING_PACKAGE_REQUIRED');
  }else{
   assert.equal(current.version,'109.25','EXPECTED_RETAINED_VERSION');
   assert(!existsSync(join(dir,'release/v'+version)),'NEVER_OVERWRITE_FROZEN_CANDIDATE');
+  progress('GENERATE_FROZEN_PACKAGE');
   if(side==='Academy'){
    versionJson(dir,'version.json',transforms);versionJson(dir,'js/version.json',transforms);
    versionCode(dir,'backend/tools/academy-site.mjs',"siteVersion='109.25'","siteVersion='109.27'",transforms);
@@ -77,6 +82,7 @@ async function freeze(side,selected){
    writeFileSync(join(dir,'release/manifest.json'),JSON.stringify(built.manifest,null,2)+'\n');
    writeFileSync(join(dir,'release/current.json'),JSON.stringify({version,manifest:'release/manifest.json'},null,2)+'\n');
   }
+  progress('VALIDATE_AND_COMMIT_GENERATED_PACKAGE');
   const allowed=path=>path.startsWith('release/v'+version+'/')||['release/current.json',...(side==='AcademyStudio'?['release/manifest.json']:transforms.map(x=>x.path))].includes(path);
   const changes=git(dir,'diff','--name-only').split('\n').filter(Boolean);assert(changes.every(allowed),'UNEXPECTED_PACKAGE_CHANGE');
   assert.equal(git(dir,'diff','--name-only','--','release/v109.25'),'','V10925_CHANGED');
@@ -85,12 +91,12 @@ async function freeze(side,selected){
   assert.equal(git(dir,'rev-parse','HEAD^'),original,'PACKAGE_PARENT_CHANGED');generated=true;
  }
  assert.equal(git(dir,'status','--porcelain'),'','PACKAGE_TREE_DIRTY');
- assert.equal(git(dir,'rev-parse','HEAD:release/v109.25'),priorTree,'V10925_TREE_CHANGED');
+ assertRetainedVersionState(priorTree,retainedTree(dir));
  const manifestPath='release/v'+version+'/manifest.json',manifest=read(join(dir,manifestPath));
  assert.equal(manifest.version,version);assert.equal(manifest.repository,repoFor(side));
  const names=git(dir,'diff','--name-only',original+'..HEAD').split('\n').filter(Boolean);
  assert(names.every(p=>p.startsWith('release/v'+version+'/')||['release/current.json','release/manifest.json',...transforms.map(x=>x.path)].includes(p)),'NONPACKAGE_TREE_CHANGED');
- return {repository:repoFor(side),actualInputSha:original,actualInputTree:git(input(side),'rev-parse','HEAD^{tree}'),generated,generatedPackageSha:git(dir,'rev-parse','HEAD'),generatedPackageTree:git(dir,'rev-parse','HEAD^{tree}'),manifestPath,manifestSHA256:digest(readFileSync(join(dir,manifestPath))),manifestSourceVersionCommit:manifest.sourceVersionCommit,publicFiles:Object.keys(manifest.manifest).length,retainedV10925Tree:priorTree,transformations:transforms};
+ return {repository:repoFor(side),actualInputSha:original,actualInputTree:git(input(side),'rev-parse','HEAD^{tree}'),generated,generatedPackageSha:git(dir,'rev-parse','HEAD'),generatedPackageTree:git(dir,'rev-parse','HEAD^{tree}'),manifestPath,manifestSHA256:digest(readFileSync(join(dir,manifestPath))),manifestSourceVersionCommit:manifest.sourceVersionCommit,publicFiles:Object.keys(manifest.manifest).length,retainedV10925Tree:priorTree,retainedV10925TreePresent:priorTree!==null,priorVersionManifest:priorManifest,transformations:transforms};
 }
 async function main(){
  const phase=process.argv[2];assert(['select','stage','package','check','verify'].includes(phase),'CHECK_ONLY_PHASE');
@@ -121,7 +127,7 @@ async function main(){
  }
  if(phase==='package'){
   assert.equal(state.state,'EXACT_INPUTS_STAGED','STAGE_REQUIRED');state.packages={};
-  for(const side of ['Academy','AcademyStudio']){state.packages[side]=await freeze(side,selected);save(state);}
+  for(const side of ['Academy','AcademyStudio']){state.packages[side]=await freeze(side,selected,stage=>{state.packageSide=side;state.packageStage=stage;save(state);});save(state);}
   state.state='FROZEN_CHECK_PACKAGES_NOT_SOURCE_COMMITS';save(state);return;
  }
  assert.equal(state.state,'FROZEN_CHECK_PACKAGES_NOT_SOURCE_COMMITS','PACKAGE_REQUIRED');

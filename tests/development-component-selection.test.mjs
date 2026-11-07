@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {registry,assertRegistry,selectComponent,assertContext,assertSafeEnvironment,preflightPair} from '../tools/development-component-selection.mjs';
+import {registry,assertRegistry,selectComponent,assertContext,assertSafeEnvironment,preflightPair,assertRetainedVersionState} from '../tools/development-component-selection.mjs';
 const item=registry.components[0],sha='a'.repeat(40),repo=item.repository;
 const fixture=()=>({repository:repo,prNumber:5,sourceSha:sha,pr:{number:5,state:'open',merged:false,base:{ref:'studio_dev',repo:{full_name:repo}},head:{sha,repo:{full_name:repo}}},plan:{schema:1,request:item.request,kind:'component',target:'development',contains_jwt:false,database_changes:false},files:[{filename:'deployment/release-plan.json'},{filename:'public/course-media.mjs'}]});
 test('selected Development component records actual source and literal counterpart without approval',()=>{
@@ -29,4 +29,9 @@ test('missing same-tab dependency fails, while exact relative-import translation
  assert.throws(()=>preflightPair({academyView,studioView,academyNative:'old opener',requiresSameTab:true}),/DEPENDENCY_ACADEMY_SAME_TAB/);
  assert(preflightPair({academyView,studioView,academyNative:'sameTab:true',requiresSameTab:true}));
  assert.throws(()=>preflightPair({academyView:academyView+' changed',studioView,academyNative:'sameTab:true',requiresSameTab:true}),/DEPENDENCY_EXACT_SHARED_MODULE/);
+});
+
+test('historical package preservation records absence and rejects fabricated or changed old trees',()=>{
+ assertRetainedVersionState(null,null);assertRetainedVersionState('a'.repeat(40),'a'.repeat(40));
+ for(const [before,after]of [[null,'a'.repeat(40)],['a'.repeat(40),null],['a'.repeat(40),'b'.repeat(40)]])assert.throws(()=>assertRetainedVersionState(before,after),/RETAINED_V10925_STATE_CHANGED/);
 });

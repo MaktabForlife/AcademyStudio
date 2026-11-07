@@ -106,15 +106,28 @@ jobs:
         env:
           NODE_OPTIONS: --import=${{ github.workspace }}/checker/tools/preserve-local-files.mjs
         run: node control/tools/development-component-check.mjs check
-      - name: Bind passing checker to generated package IDs and recheck actual PR source
+      - id: verify
+        name: Bind passing checker to generated package IDs and recheck actual PR source
         if: always() && steps.package.outcome == 'success'
         run: node control/tools/development-component-check.mjs verify
+      - name: Retain exact generated public bytes for independent manifest verification
+        if: steps.verify.outcome == 'success'
+        run: |
+          set -euo pipefail
+          tar -czf "$RUNNER_TEMP/development-component-check/academy-v109.27-public.tgz" -C work/Academy release/v109.27
+          tar -czf "$RUNNER_TEMP/development-component-check/studio-v109.27-public.tgz" -C work/AcademyStudio release/v109.27
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: studio5-component-proposal-proof-${{ github.run_id }}
           path: |
             ${{ runner.temp }}/development-component-check/component.json
+            ${{ runner.temp }}/development-component-check/academy-v109.27-public.tgz
+            ${{ runner.temp }}/development-component-check/studio-v109.27-public.tgz
+            ${{ github.workspace }}/.component-check-output/source-assets.json
+            ${{ github.workspace }}/.component-check-output/studio-assets.json
+            ${{ github.workspace }}/.component-check-output/static-route-matrix.json
+            ${{ github.workspace }}/.component-check-output/bundle-checks.json
             ${{ github.workspace }}/.component-check-output/checks.json
             ${{ github.workspace }}/.component-check-output/local-acceptance.json
             ${{ github.workspace }}/.component-check-output/academy-tests.log
