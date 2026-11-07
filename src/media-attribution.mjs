@@ -109,7 +109,7 @@ export async function mediaOptions(env,store,actor,offer,fetcher){
  const ids=source?JSON.parse(source.classes_json):[];
  return {...choices,kind:scope.kind,programmeKey:scope.programme_key||null,accessModel:scope.kind==='COURSE'?'COURSE':'MONTHLY',subjects,playlists,classIds:ids,classes:choices.classes.filter(c=>ids.includes(c.id))};
 }
-export async function attachMedia(env,store,actor,offer,input,fetcher,planner){
+export async function attachMedia(env,store,actor,offer,input,fetcher,planner,{privateCourseSource=false}={}){
  const selected=teacherIds(input.teacherIds);
  const scope=await mediaAdmin(store,actor,offer),checked=await mediaTeachers(env,store,actor,offer,selected,fetcher);
  const replay=await store.replay(actor.account_id,input.operationId,await store.requestHash(offer,input));if(replay)return replay;
@@ -119,6 +119,7 @@ export async function attachMedia(env,store,actor,offer,input,fetcher,planner){
  // MOU keeps the reviewed cross-parent support/legacy binding path.
  if(playlist&&scope.programme_key!=='mothers'&&website!==playlist.website_id)throw fail('Use the selected playlist’s native website.',409);
  const row={asset_id:id(input.assetId),lesson_id:input.lessonId?id(input.lessonId):attachment,offering_id:offer,website_id:website,lesson_date:scope.kind==='COURSE'?(input.lessonDate?date(input.lessonDate):''):date(input.lessonDate),cohort:scope.kind==='COURSE'?'':text(input.cohort,180),...(playlist?{playlist_id:playlist.playlist_id}:scope.programme_key==='mothers'?{playlist_id:id(input.playlistId)}:{})};
+ if(privateCourseSource&&(scope.kind!=='COURSE'||!playlist||!await store.first('SELECT 1 FROM course_playlist_workflows WHERE playlist_id=?',[playlist.playlist_id])||(input.supportingFiles||[]).length))throw fail('Choose the exact native Course playlist for this private source.',409,'PLAYLIST_REQUIRED');
  const context=await contextFor(store,scope,row,checked.teachers.filter(t=>checked.selectedTeacherIds.includes(t.id)),checked.classes);
  const native={...input,action:'attachment',websiteId:website,lessonId:row.lesson_id,lessonDate:row.lesson_date,cohort:row.cohort,audience:'RECORDING',published:false,createOnly:true};
  const source=await store.first('SELECT mime_type FROM objects WHERE asset_id=?',[row.asset_id]);if(!source||!['video/mp4','video/youtube'].includes(source.mime_type))throw fail('Choose one recording source, and keep PDFs/images as supporting files.');
@@ -131,9 +132,9 @@ export async function attachMedia(env,store,actor,offer,input,fetcher,planner){
    const support=id(file.attachmentId);statements.push(...await planner(env,store,actor,offer,{action:'attachment',createOnly:true,assetId:file.assetId,attachmentId:support,websiteId:website,lessonId:row.lesson_id,lessonDate:row.lesson_date,cohort:row.cohort,title:asset.filename,audience:'RECORDING',published:false},{collect:true,scope,playlistChecked:Boolean(playlist)||scope.programme_key==='mothers'}));statements.push(store.statement('INSERT INTO media_supporting_files VALUES(?,?)',[attachment,support]));
   }
  }
- if(context.playlist)statements.push(...assignPlaylist(store,{playlist_id:context.playlist.id},{...row,attachment_id:attachment},{exclusive:true,supportIds:attachmentIds.slice(1),protectPrivateParent:true}));
+ if(context.playlist)statements.push(...assignPlaylist(store,{playlist_id:context.playlist.id},{...row,attachment_id:attachment},{exclusive:true,supportIds:attachmentIds.slice(1),protectPrivateParent:true,deferMembership:privateCourseSource}));
  statements.push(store.statement('INSERT INTO media_attributions VALUES(?,1,?,NULL)',[attachment,JSON.stringify(context)]));
- return store.mutate(actor,offer,input,statements,{attachmentId:attachment,revision:1,recordedContext:context,attached:true,published:false},{studio:true,expectedSQL:parent.sql+' AND NOT EXISTS(SELECT 1 FROM attachments WHERE attachment_id IN(SELECT value FROM json_each(?))) AND NOT EXISTS(SELECT 1 FROM json_each(?) j WHERE NOT EXISTS(SELECT 1 FROM asset_owners WHERE asset_id=j.value AND offering_id=?))',expectedArgs:[...parent.args,JSON.stringify(attachmentIds),JSON.stringify((input.supportingFiles||[]).map(f=>f.assetId)),offer]});
+ return store.mutate(actor,offer,input,statements,{attachmentId:attachment,revision:1,recordedContext:context,attached:true,published:false},{studio:true,expectedSQL:parent.sql+(privateCourseSource?' AND EXISTS(SELECT 1 FROM course_playlist_workflows WHERE playlist_id=?)':'')+' AND NOT EXISTS(SELECT 1 FROM attachments WHERE attachment_id IN(SELECT value FROM json_each(?))) AND NOT EXISTS(SELECT 1 FROM json_each(?) j WHERE NOT EXISTS(SELECT 1 FROM asset_owners WHERE asset_id=j.value AND offering_id=?))',expectedArgs:[...parent.args,...(privateCourseSource?[playlist.playlist_id]:[]),JSON.stringify(attachmentIds),JSON.stringify((input.supportingFiles||[]).map(f=>f.assetId)),offer]});
 }
 
 export async function mediaCompanionSave(env,store,actor,offer,input,fetcher){

@@ -12,5 +12,15 @@ export function mountNativeCourseMedia(host,{offeringId,courseName,current=()=>t
   if(courseMediaReadActions.has(action))return api('/api/admin/'+encodeURIComponent(offeringId)+'/course-playlists?'+new URLSearchParams({action,...input}));
   return mutate('/api/admin/'+encodeURIComponent(offeringId),{action,...input});
  };
- return mountCourseMedia(host,{request,cardTools,courseName,initialPlaylistId:new URLSearchParams(location.search).get('playlist'),current:()=>generation===identity.generation&&current()});
+ const processingRequest=async(action,input={})=>{
+  if(generation!==identity.generation||!current())throw new DOMException('The account or Course changed.','AbortError');
+  if(action==='video-source-upload-part'){
+   const {file,...fields}=input;if(!(file instanceof Blob)||file.size>5*1024*1024)throw Error('Choose a valid recording part.');
+   const bytes=new Uint8Array(await file.arrayBuffer());if(generation!==identity.generation||!current())throw new DOMException('The account or Course changed.','AbortError');
+   const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(x=>x.toString(16).padStart(2,'0')).join('');let raw='';for(let i=0;i<bytes.length;i+=8192)raw+=String.fromCharCode(...bytes.subarray(i,i+8192));input={...fields,data:btoa(raw),sha256:hash};
+  }
+  const value=await api('/api/admin/'+encodeURIComponent(offeringId)+'/processing',{body:{action,...input}});
+  if(generation!==identity.generation||!current())throw new DOMException('The account or Course changed.','AbortError');return value;
+ };
+ return mountCourseMedia(host,{request,processingRequest,offeringId,cardTools,courseName,initialPlaylistId:new URLSearchParams(location.search).get('playlist'),current:()=>generation===identity.generation&&current()});
 }

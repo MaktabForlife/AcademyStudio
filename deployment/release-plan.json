@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "request": "jwt-feature-deployment-controls-20261106",
-  "kind": "configuration",
-  "target": "none",
+  "request": "ui-bugs-20261106-ui003-video-processing-development",
+  "kind": "component",
+  "target": "development",
   "contains_jwt": false,
   "database_changes": false
 }
