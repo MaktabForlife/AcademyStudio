@@ -1,0 +1,8 @@
+.free-library-card.course-coming-soon{cursor:default;color:#624b58}
+.free-library-card.course-coming-soon>.course-notice-cover{box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:44px 22px 24px;border:1px solid #dfd1cb;background:#efe7e2;text-align:center}
+.course-coming-soon:nth-child(even)>.course-notice-cover{background:#e8ebdf;color:#52604b}
+.course-coming-soon .course-notice-ornament{font:400 32px/1 var(--serif,Georgia,serif);opacity:.6}
+.free-library-card.course-coming-soon h2{margin:8px 0;font:400 clamp(23px,2.3vw,29px)/1.25 var(--serif,Georgia,serif);letter-spacing:-.3px}
+.free-library-card.course-coming-soon .course-notice-status{margin:0;font:500 12px/1.8 var(--sans,Arial,sans-serif)}
+.course-notice-status [lang=ar]{display:inline-block;font:400 17px/1.5 Amiri,serif}
+@media(max-width:680px){.free-library-card.course-coming-soon>.course-notice-cover{min-height:250px}.free-library-card.course-coming-soon h2{font-size:29px}}
