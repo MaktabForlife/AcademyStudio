@@ -60,33 +60,33 @@ test('native GET conditional read preserves private owner, fresh clock and denie
  });
  assert.equal(calls.length,3);
 });
-test('native opener return retains token-hashed context and only acknowledges exact live child/origin/mode',async()=>{
- await browser(async({local,win})=>{
+test('native same-tab return keeps token-hashed context and never opens, closes or acknowledges an opener',async()=>{
+ await browser(async({local,session,win})=>{
   const content=await readFile(root+'/portal-adapter/circles-sign-in.mjs','utf8'),mod=await import('data:text/javascript;base64,'+Buffer.from(content+'\n// '+crypto.randomUUID()).toString('base64'));
-  const messages=[],moves=[],child={closed:false,sessionStorage:storage(),postMessage:(data,origin)=>messages.push({data,origin}),close(){this.closed=true;}};
-  let opened,failed;const ready=new Promise((resolve,reject)=>{opened=resolve;failed=reject;});
-  child.location={replace:url=>{moves.push(url);opened();}};win.location=location;win.localStorage=local;win.open=()=>child;
-  let calls=0,returns=0,current=true;const before=Date.now(),mode='teach',token='new-native-context-token';
+  const moves=[],messages=[];let opened,failed;const ready=new Promise((resolve,reject)=>{opened=resolve;failed=reject;});
+  win.closed=false;win.location={...location,replace:url=>{moves.push(url);opened();}};win.localStorage=local;win.sessionStorage=session;
+  win.open=()=>{throw Error('Native same-tab opening must not create a child.');};win.close=()=>{throw Error('Native same-tab return must not close the page.');};
+  win.postMessage=(data,origin)=>messages.push({data,origin});session.setItem('m4l_website_library_return','old-library-opener-hint');
+  let calls=0,returns=0;const before=Date.now(),mode='teach',token='new-native-context-token';
   const link=mod.openAcademyFromCircles({window:win,dashboard:{mode,tool:'activity',activityKey:'PROGRAM:synthetic'},request:async(path)=>{
    calls++;assert.equal(path,'/auth/native-open');return {token,destination:location.origin+'/academy/',circles:{mode,returnUrl:location.origin+'/?workspace='+mode}};
-  },onReturn:received=>{assert.equal(received,mode);if(!current)return false;returns++;return true;},onError:failed});
-  await ready;const saved=JSON.parse(child.sessionStorage.getItem('m4l_circles_return')),owner=Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token))).toString('hex');
-  assert.equal(saved.owner,owner);assert.equal(saved.websiteOrigin,location.origin);assert.equal(saved.returnUrl,location.origin+'/?workspace=teach');assert(saved.expiresAt>=before+43200000&&saved.expiresAt<=Date.now()+43200000);assert.equal(local.getItem('m4l_account_token'),token);assert.equal(moves.length,1);
-  const requestId=crypto.randomUUID(),post=(extra={},origin=location.origin,source=child)=>{const e=new Event('message');Object.assign(e,{source,origin,data:{type:'ACADEMY_CIRCLES_RETURN',mode,requestId,...extra}});win.dispatchEvent(e);};
-  post({},'https://evil.test');post({},location.origin,{});post({mode:'admin'});post({requestId:'bad'});assert.equal(returns,0);assert.equal(messages.length,0);
-  current=false;local.setItem('m4l_account_token','another-account');post();assert.equal(messages.length,0);
-  current=true;local.setItem('m4l_account_token',token);post();assert.equal(returns,1);assert.deepEqual(messages,[{data:{type:'CIRCLES_DASHBOARD_RETURNED',requestId,mode},origin:location.origin}]);post();assert.equal(returns,1);assert.equal(calls,1);
-  link.close();
- },async()=>{throw Error('Returning to an open dashboard must not make an API request.');});
+  },onReturn:()=>{returns++;return true;},onError:failed});
+  await ready;const saved=JSON.parse(session.getItem('m4l_circles_return')),owner=Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token))).toString('hex');
+  assert.equal(link.child,win);assert.equal(saved.sameTab,true);assert.equal(saved.owner,owner);assert.equal(saved.websiteOrigin,location.origin);assert.equal(saved.returnUrl,location.origin+'/?workspace=teach');assert(saved.expiresAt>=before+43200000&&saved.expiresAt<=Date.now()+43200000);assert.equal(local.getItem('m4l_account_token'),token);assert.deepEqual(moves,[location.origin+'/academy/']);assert.equal(session.getItem('m4l_website_library_return'),null);
+  const requestId=crypto.randomUUID(),post=(extra={},origin=location.origin,source=win)=>{const e=new Event('message');Object.assign(e,{source,origin,data:{type:'ACADEMY_CIRCLES_RETURN',mode,requestId,...extra}});win.dispatchEvent(e);};
+  post({},'https://evil.test');post({},location.origin,{});post({mode:'admin'});post({requestId:'bad'});post();local.setItem('m4l_account_token','another-account');post();
+  assert.equal(returns,0);assert.deepEqual(messages,[]);assert.equal(calls,1);assert.equal(win.closed,false);link.close();assert.equal(win.closed,false);
+ },async()=>{throw Error('Return hints must not make an API request.');});
 });
-test('a late native opener cannot replace the newly selected account or leave return metadata',async()=>{
- await browser(async({local,win})=>{
-  const content=await readFile(root+'/portal-adapter/circles-sign-in.mjs','utf8'),mod=await import('data:text/javascript;base64,'+Buffer.from(content+'\n// '+crypto.randomUUID()).toString('base64')),child={closed:false,sessionStorage:storage(),location:{replace(){throw Error('A stale opener must not navigate.');}},close(){this.closed=true;}};
-  win.location=location;win.localStorage=local;win.open=()=>child;let answer,stopped;const done=new Promise(r=>stopped=r);
-  mod.openAcademyFromCircles({window:win,request:()=>new Promise(r=>answer=r),dashboard:{mode:'learn',tool:'home'},onError:stopped});
+test('a late native same-tab result cannot replace the selected account, navigate or leave return metadata',async()=>{
+ await browser(async({local,session,win})=>{
+  const content=await readFile(root+'/portal-adapter/circles-sign-in.mjs','utf8'),mod=await import('data:text/javascript;base64,'+Buffer.from(content+'\n// '+crypto.randomUUID()).toString('base64'));
+  const moves=[];win.closed=false;win.location={...location,replace:url=>moves.push(url)};win.localStorage=local;win.sessionStorage=session;
+  win.open=()=>{throw Error('No child may open.');};win.close=()=>{throw Error('No current tab may close.');};let answer,stopped;const done=new Promise(r=>stopped=r);
+  const link=mod.openAcademyFromCircles({window:win,request:()=>new Promise(r=>answer=r),dashboard:{mode:'learn',tool:'home'},onError:stopped});
   local.setItem('m4l_account_token','switched-account-token');answer({token:'stale-token',destination:location.origin+'/academy/',circles:{mode:'learn',returnUrl:location.origin+'/?workspace=learn'}});
-  await done;assert.equal(local.getItem('m4l_account_token'),'switched-account-token');assert.equal(child.sessionStorage.getItem('m4l_circles_return'),null);assert(child.closed);
- },async()=>{throw Error('No API request is expected by the isolated opener helper.');});
+  await done;assert.equal(link.child,win);assert.equal(local.getItem('m4l_account_token'),'switched-account-token');assert.equal(session.getItem('m4l_circles_return'),null);assert.equal(win.closed,false);assert.deepEqual(moves,[]);
+ },async()=>{throw Error('No API request is expected by the isolated native helper.');});
 });
 
 test('anonymous bootstrap cannot reveal a stored display copy and makes zero upstream requests',async()=>{

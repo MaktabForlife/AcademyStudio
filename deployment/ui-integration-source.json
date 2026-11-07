@@ -1,0 +1,320 @@
+{
+  "schema": 1,
+  "repository": "MaktabForlife/AcademyStudio",
+  "canonical": "9a8c117e9279a2b67e62eb044be4da989db4a096",
+  "canonicals": {
+    "MaktabForlife/Academy": "d36a52f59a1bed45c56d4e7d98400273905fecef",
+    "MaktabForlife/AcademyStudio": "9a8c117e9279a2b67e62eb044be4da989db4a096"
+  },
+  "components": [
+    {
+      "pr": 5,
+      "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e"
+    }
+  ],
+  "pathInputs": {
+    "public/course-media.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "90028bf533e12864ec2c5b6f3d1cb07162695d1b"
+      }
+    ],
+    "public/shared/course-media-workflow.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "a48e7ea55c8fcc348a059682a31f0b7f21bceb58"
+      }
+    ],
+    "public/shared/existing-media-view.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "209076ccd97ca16f00a2ff60daf42fb88969b179"
+      }
+    ],
+    "public/shared/media-admin-panel.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "2e97727ed60852798577fea06d8324b7eb084159"
+      }
+    ],
+    "public/shared/media-workflow.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "678f2dd22f99aff29496ff702c775d94b01c609a"
+      }
+    ],
+    "public/shared/video-processing.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "2dbfa2986721fce6c57b58edf75748c53f71bf4b"
+      }
+    ],
+    "src/media-attribution.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "393fe548e91458f4ef39371c56f3624afbd089e2"
+      }
+    ],
+    "src/mou-playlists.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "9a6e0d6c89fc06a06b74e4d8b5b88dedfed17e65"
+      }
+    ],
+    "src/studio-access.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "c46672ab58d3096aca22c7f5fc04ec93ec94c095"
+      }
+    ],
+    "src/video-autolink/candidate.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "d11c9e8b375d1a77daf6f7da2863bc54b27d87dd"
+      }
+    ],
+    "src/video-autolink/cleanup.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "c6061fb4c74dcf09a1234ff16f947410ae1b754c"
+      }
+    ],
+    "src/video-autolink/commands.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "a4bf08e220a853523b01c8204df41f55cda14ef4"
+      }
+    ],
+    "src/video-autolink/generation-schema.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "ae507a97a2aa2243225ab57cd9c9169b40ccd160"
+      }
+    ],
+    "src/video-autolink/http.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "922673ef9e8aabfdd83e17aeb4dec472311c5609"
+      }
+    ],
+    "src/video-autolink/jobs.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "779059639c9c712b20f29b90c37023fe1dcc77f7"
+      }
+    ],
+    "src/video-autolink/native-source.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "bf6938f986847fe9abdaa5891209f6a5eaff5542"
+      }
+    ],
+    "src/video-autolink/provider.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "56cd459822fb39b07a63c4c05c5096c7ac338873"
+      }
+    ],
+    "src/video-autolink/retention.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "cb74d1c527ef9c53840c1d66a57f66dda17a51fb"
+      }
+    ],
+    "src/video-autolink/review.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "5097819a9ef83a96e0b647bd6568b9f5a6f7794c"
+      }
+    ],
+    "src/video-autolink/runtime.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "80da9356b77f0971ad1a2eca56cef2f13bac133a"
+      }
+    ],
+    "src/video-autolink/source-commands.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "7ce35e3db680bf1ef518d3a05c35b1781df1e89c"
+      }
+    ],
+    "src/video-autolink/transcript.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "274df0336cbc7bfbdc926a519fbbe9020e0cec20"
+      }
+    ],
+    "src/video-autolink/workflow.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "2035d61062d619dcbfba303570f07d60f71fdb4a"
+      }
+    ],
+    "src/worker.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "113d00ade315c5b2c91d0d8b3b468cf98e5871f5"
+      }
+    ],
+    "tests/academy-runtime.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "fc91390a10c1fd0a6025401b08120e39672c2dfb"
+      }
+    ],
+    "tests/course-reader-entry.test.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "dace0ee27967c3c7727bf6070f5e600c90e1596c"
+      }
+    ],
+    "tests/fixture.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "78a5ee7664b4c51500229200950b924c41eb081c"
+      }
+    ],
+    "tests/fixtures/video-autolink-proposed.sql": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "efa8abca7c5cd3310acc520dab24287342456466"
+      }
+    ],
+    "tests/native-portal-browser.test.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "4be912b2bec35a4e26c9372ad6b0febfea0f2ef3"
+      }
+    ],
+    "tests/private-playlist-reference-ui.test.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "bd9639bcce5708eb0ec423db6fdabb81cf0a2ce2"
+      }
+    ],
+    "tests/video-autolink-commands.test.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "9368bf64feec40e2b06c9c6a4cdf3213d013a3f0"
+      }
+    ],
+    "tests/video-autolink-foundation.test.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "2215c391efbd8dbe1a8e37aca72bd3789756bf5e"
+      }
+    ],
+    "tests/video-autolink-http.test.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "c0306c7d8d0166909bd05b287cc5d14d44ba2980"
+      }
+    ],
+    "tests/video-autolink-job-fixture.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "73b6752be8579e1eb6633483788f341622a5b1c0"
+      }
+    ],
+    "tests/video-autolink-jobs.test.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "afc0835c69c9b16f2a79691b845246cd72ad259c"
+      }
+    ],
+    "tests/video-autolink-native-source.test.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "1f1d21874b44d44b547fdd89c189dfc4f02a94e1"
+      }
+    ],
+    "tests/video-autolink-paired-source.test.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "7943db2798b28453c571e837fd6b1aa7eae2e48f"
+      }
+    ],
+    "tests/video-autolink-provider.test.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "a64b2140789611fc17dc918009e737339d147dc1"
+      }
+    ],
+    "tests/video-autolink-review.test.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "5e542bf7845f180d9e9d1381eda38f453663d8df"
+      }
+    ],
+    "tests/video-autolink-source-attachment.test.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "14a3c87a3387e0573211bf4765a74b04268f08f0"
+      }
+    ],
+    "tests/video-autolink-workflow-runtime.test.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "c099b4c85023ac16ac3cfd393ae3a8fa99d37b77"
+      }
+    ],
+    "tools/video-autolink-ui-acceptance.mjs": [
+      {
+        "pr": 5,
+        "head": "f0003881bc9cc4c63a2b02dc2a7f8727d9d7e73e",
+        "blob": "6edf611f27252bd9954dad6f8baa6fc67de60e20"
+      }
+    ]
+  },
+  "preservedControls": [
+    "tools/approved-deployment.mjs",
+    "tools/cloud-release-check.mjs",
+    ".github/workflows/paired-release.yml",
+    "wrangler.production.jsonc"
+  ],
+  "hostedOperations": 0,
+  "existingStoresChanged": false,
+  "deployable": false
+}

@@ -1,0 +1,43 @@
+name: Freeze unreleased UI integration source only
+on:
+  push:
+    branches: [validation/ui-integration-20261107]
+    paths:
+      - .github/workflows/ui-integration-freeze.yml
+      - tools/ui-integration-freeze.mjs
+permissions:
+  contents: write
+defaults:
+  run:
+    shell: bash
+concurrency:
+  group: ui-integration-source-${{ github.repository }}
+  cancel-in-progress: false
+jobs:
+  freeze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18.0"
+      - name: Install source build dependencies only
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REPOSITORY" = "MaktabForlife/Academy" ]; then npm ci --prefix backend --no-audit --no-fund; else npm ci --no-audit --no-fund; fi
+      - name: Freeze this exact unreleased source and retain it on the validation branch only
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          WRANGLER_SEND_METRICS: "false"
+        run: node tools/ui-integration-freeze.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: ui-integration-freeze-${{ github.run_id }}
+          path: ${{ runner.temp }}/ui-integration-freeze/
+          if-no-files-found: error
+          retention-days: 30

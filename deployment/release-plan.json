@@ -1,8 +1,9 @@
 {
   "schema": 1,
-  "request": "jwt-feature-deployment-controls-20261106",
-  "kind": "configuration",
-  "target": "none",
+  "request": "ui-integration-validation-20261107",
+  "kind": "component",
+  "target": "development",
   "contains_jwt": false,
-  "database_changes": false
+  "database_changes": false,
+  "version": "109.27"
 }

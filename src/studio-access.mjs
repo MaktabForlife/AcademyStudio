@@ -1,3 +1,5 @@
+import {videoCommand,videoPublicError} from './video-autolink/http.mjs';
+import {videoTransportEnabled,VIDEO_ENVELOPE_BYTES} from './video-autolink/source-commands.mjs';
 import {coursePlaylistRead,coursePlaylistSave,coursePlaylistContentSave,coursePlaylistPublish} from './course-playlist-workflow.mjs';
 import {reviewPlaylistReferences,savePlaylistReferences} from './private-playlist-reference.mjs';
 import {cardOptions,uploadCover,previewCover} from './playlist-cards.mjs';
@@ -16,8 +18,9 @@ const revisionSQL='COALESCE((SELECT revision FROM access_revisions WHERE offerin
 const revision=async(store,offer)=>(await store.first('SELECT revision FROM access_revisions WHERE offering_id=?',[offer]))?.revision||0;
 
 // Called only by the signed Academy server proxy. No browser actor/role is accepted.
-export async function studioAccess(request,env,store,fetcher,{coverOnly=false}={}){
- const input=await signedInput(request,env,{limit:coverOnly?1_000_000:262144}),proof=input.proof,now=Date.now();
+export async function studioAccess(request,env,store,fetcher,{coverOnly=false,processingOnly=false}={}){
+ if(processingOnly&&!videoTransportEnabled(env))throw videoPublicError({status:404,code:'PROCESSOR_DISABLED'});
+ const input=await signedInput(request,env,{limit:processingOnly?VIDEO_ENVELOPE_BYTES:coverOnly?1_000_000:262144}),proof=input.proof,now=Date.now();
  if(coverOnly&&input.command?.action!=='mou-playlist-cover-upload')throw fail('Use the artwork upload action.');
  if(!coverOnly&&input.command?.action==='mou-playlist-cover-upload')throw fail('Use the dedicated artwork upload route.');
  if(!proof||proof.verifiedAt<now-60_000||proof.verifiedAt>now+1000||proof.expiresAt<=now||proof.expiresAt>now+60_000)throw fail('Refresh your Academy Admin session.',401,'ADMIN_STATUS_EXPIRED');
@@ -30,7 +33,8 @@ export async function studioAccess(request,env,store,fetcher,{coverOnly=false}={
  await store.run('INSERT INTO sessions VALUES(?,?,?,?,0,?) ON CONFLICT(token_hash) DO UPDATE SET expires_at=excluded.expires_at WHERE sessions.revoked=0 AND sessions.epoch=excluded.epoch',[tokenHash,accountId,integer(proof.epoch),proof.expiresAt,proof.sourceRef]);
  const actor=await store.actor(tokenHash);if(actor.account_id!==accountId||actor.epoch!==proof.epoch||actor.source_ref!==proof.sourceRef)throw fail('Your administrator account changed.',401);
  const offer=id(input.offeringId),command=input.command||{};if(!command.action?.startsWith('handover-'))await store.scope(actor,offer,{admin:true,readOnly:readAccessAction(command.action)});let result;
- if(command.action==='existing-playlist-review')result=await reviewPlaylistReferences(env,store,actor,offer,command);
+ if(processingOnly)result=await videoCommand(env,store,actor,offer,command,fetcher);
+ else if(command.action==='existing-playlist-review')result=await reviewPlaylistReferences(env,store,actor,offer,command);
  else if(['course-playlists','course-playlist-detail','course-playlist-options','course-playlist-candidates','course-playlist-recording'].includes(command.action))result=await coursePlaylistRead(env,store,actor,offer,command,fetcher);
  else if(command.action==='existing-playlist-save')result=await savePlaylistReferences(env,store,actor,offer,command);
  else if(command.action==='course-playlist-save')result=await coursePlaylistSave(env,store,actor,offer,command,fetcher);
@@ -61,7 +65,7 @@ export async function studioAccess(request,env,store,fetcher,{coverOnly=false}={
  else if(command.action?.startsWith('handover-'))result=await handover(store,actor,offer,command);
  else throw fail('Unknown access action.');
  return {...result,acknowledge};
- }catch(error){error.acknowledge=acknowledge;throw error;}
+ }catch(error){error.acknowledge=acknowledge;throw processingOnly?videoPublicError(error):error;}
 }
 
 export async function readAccess(store,actor,offer,input){
