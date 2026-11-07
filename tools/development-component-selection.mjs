@@ -59,3 +59,26 @@ export function preflightPair({academyView,studioView,academyNative,requiresSame
 }
 
 export function assertRetainedVersionState(before,after){assert.deepEqual(after,before,'RETAINED_V10925_STATE_CHANGED');return true;}
+
+export function assertSelectionBinding(selected,{repository,prNumber,sourceSha},selectionRegistry=registry){
+ assertRegistry(selectionRegistry);
+ const item=selectionRegistry.components.find(x=>x.repository===repository&&x.pr===Number(prNumber));assert(item,'UNSELECTED_COMPONENT');
+ assert.equal(selected.repository,repository,'SELECTION_REPO_CHANGED');assert.equal(selected.pr,Number(prNumber),'SELECTION_PR_CHANGED');assert.equal(selected.actualSourceSha,sourceSha,'SELECTION_SOURCE_CHANGED');
+ assert.deepEqual(selected.counterpart,item.counterpart,'COUNTERPART_BINDING_CHANGED');assert.deepEqual(selected.checker,selectionRegistry.checker,'CHECKER_BINDING_CHANGED');
+ assert.equal(selected.version,selectionRegistry.version,'SELECTION_VERSION_CHANGED');assert.equal(selected.requiresSameTab,item.requiresSameTab,'CAPABILITY_CHANGED');
+ assert.equal(selected.registrySHA256,digest(JSON.stringify(selectionRegistry)),'REGISTRY_BINDING_CHANGED');
+ assert.equal(selected.sourcePlan.request,item.request);assert.equal(selected.sourcePlan.kind,'component');assert.equal(selected.sourcePlan.target,'development');assert.equal(selected.sourcePlan.contains_jwt,false);assert.equal(selected.sourcePlan.database_changes,false);
+ if(selected.sourcePlan.version!==undefined)assert.equal(selected.sourcePlan.version,selectionRegistry.version);
+ return true;
+}
+export function assertSourcePreservation({side,changes,readOriginal,readCurrent}){
+ const versionFiles=side==='Academy'?['version.json','js/version.json','backend/tools/academy-site.mjs','backend/src/academy/d1/worker.js']:[];
+ for(const path of changes){
+  if(path.startsWith('release/v109.27/')||['release/current.json',...(side==='AcademyStudio'?['release/manifest.json']:[])].includes(path))continue;
+  assert(versionFiles.includes(path),'NONPACKAGE_SOURCE_CHANGED');
+  const before=readOriginal(path),after=readCurrent(path);
+  if(path.endsWith('version.json')){const a=JSON.parse(before),b=JSON.parse(after);assert.equal(a.version,'109.25');assert.equal(b.version,'109.27');a.version='109.27';assert.deepEqual(b,a,'VERSION_METADATA_CHANGED');}
+  else{const needle=path.endsWith('academy-site.mjs')?"siteVersion='109.25'":"version:'109.25'";assert.equal(before.split(needle).length,2);assert.equal(after,before.replace(needle,needle.replace('109.25','109.27')),'VERSION_CODE_CHANGED');}
+ }
+ return true;
+}

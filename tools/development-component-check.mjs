@@ -4,7 +4,7 @@ import {readFileSync,writeFileSync,mkdirSync,existsSync} from 'node:fs';
 import {resolve,join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {execFileSync} from 'node:child_process';
-import {registry,digest,selectComponent,assertContext,assertSafeEnvironment,preflightPair,assertRetainedVersionState} from './development-component-selection.mjs';
+import {registry,digest,selectComponent,assertContext,assertSafeEnvironment,preflightPair,assertRetainedVersionState,assertSelectionBinding,assertSourcePreservation} from './development-component-selection.mjs';
 import {githubClient} from './approved-deployment.mjs';
 const control=resolve(new URL('..',import.meta.url).pathname);
 const root=resolve(process.env.GITHUB_WORKSPACE||'.'),out=resolve(process.env.RUNNER_TEMP||'/invalid','development-component-check');
@@ -34,6 +34,8 @@ function controlGuard(){
 }
 function guards(selected){
  assertContext(context());assertSafeEnvironment(process.env);controlGuard();
+ const sourceSha=context().proposalOnly?process.env.COMPONENT_EXPECTED_SOURCE:context().eventPR.head.sha;
+ assertSelectionBinding(selected,{repository:process.env.COMPONENT_REPO,prNumber:Number(process.env.COMPONENT_PR),sourceSha});
  assert.equal(git(resolve(root,'checker'),'rev-parse','HEAD'),selected.checker.sha,'CHECKER_SOURCE_CHANGED');
  assert.equal(git(resolve(root,'checker'),'status','--porcelain'),'','CHECKER_DIRTY');
  const refs=roleRefs(selected);
@@ -131,7 +133,11 @@ async function main(){
   state.state='FROZEN_CHECK_PACKAGES_NOT_SOURCE_COMMITS';save(state);return;
  }
  assert.equal(state.state,'FROZEN_CHECK_PACKAGES_NOT_SOURCE_COMMITS','PACKAGE_REQUIRED');
- for(const side of ['Academy','AcademyStudio']){assert.equal(git(work(side),'rev-parse','HEAD'),state.packages[side].generatedPackageSha,'PACKAGE_SOURCE_CHANGED');assert.equal(git(work(side),'status','--porcelain'),'','PACKAGE_DIRTY');}
+ for(const side of ['Academy','AcademyStudio']){
+  const dir=work(side),original=roleRefs(selected)[side];assert.equal(git(dir,'rev-parse','HEAD'),state.packages[side].generatedPackageSha,'PACKAGE_SOURCE_CHANGED');assert.equal(git(dir,'status','--porcelain'),'','PACKAGE_DIRTY');
+  const changes=git(dir,'diff','--name-only',original+'..HEAD').split('\n').filter(Boolean);
+  assertSourcePreservation({side,changes,readOriginal:path=>git(dir,'show',original+':'+path)+'\n',readCurrent:path=>readFileSync(join(dir,path),'utf8')});
+ }
  if(phase==='check'){
   execFileSync(process.execPath,[resolve(root,'checker/tools/cloud-release-check.mjs'),'check'],{cwd:root,env:process.env,stdio:'inherit'});
   return;

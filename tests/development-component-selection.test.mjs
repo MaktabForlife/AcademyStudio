@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {registry,assertRegistry,selectComponent,assertContext,assertSafeEnvironment,preflightPair,assertRetainedVersionState} from '../tools/development-component-selection.mjs';
+import {registry,assertRegistry,selectComponent,assertContext,assertSafeEnvironment,preflightPair,assertRetainedVersionState,assertSelectionBinding,assertSourcePreservation} from '../tools/development-component-selection.mjs';
 const item=registry.components[0],sha='a'.repeat(40),repo=item.repository;
 const fixture=()=>({repository:repo,prNumber:5,sourceSha:sha,pr:{number:5,state:'open',merged:false,base:{ref:'studio_dev',repo:{full_name:repo}},head:{sha,repo:{full_name:repo}}},plan:{schema:1,request:item.request,kind:'component',target:'development',contains_jwt:false,database_changes:false},files:[{filename:'deployment/release-plan.json'},{filename:'public/course-media.mjs'}]});
 test('selected Development component records actual source and literal counterpart without approval',()=>{
@@ -35,4 +35,16 @@ test('missing same-tab dependency fails, while exact relative-import translation
 test('historical package preservation records absence and rejects fabricated or changed old trees',()=>{
  assertRetainedVersionState(null,null);assertRetainedVersionState('a'.repeat(40),'a'.repeat(40));
  for(const [before,after]of [[null,'a'.repeat(40)],['a'.repeat(40),null],['a'.repeat(40),'b'.repeat(40)]])assert.throws(()=>assertRetainedVersionState(before,after),/RETAINED_V10925_STATE_CHANGED/);
+});
+
+test('stored evidence cannot redirect literal checker/counterpart/source/version bindings',()=>{
+ const value=selectComponent(fixture()),context={repository:repo,prNumber:5,sourceSha:sha};assertSelectionBinding(value,context);
+ for(const change of [x=>x.counterpart.sha='b'.repeat(40),x=>x.checker.sha='b'.repeat(40),x=>x.actualSourceSha='b'.repeat(40),x=>x.repository='MaktabForlife/Academy',x=>x.pr=6,x=>x.version='109.28',x=>x.registrySHA256='b'.repeat(64),x=>x.sourcePlan.target='production']){const bad=structuredClone(value);change(bad);assert.throws(()=>assertSelectionBinding(bad,context));}
+});
+test('generated source remains the actual app source apart from explicit package/version transformations',()=>{
+ const values={'version.json':JSON.stringify({version:'109.25'}),'backend/src/academy/d1/worker.js':"export const health={version:'109.25',protected:true};\n"};
+ const readOriginal=path=>values[path],readCurrent=path=>path==='version.json'?JSON.stringify({version:'109.27'}):values[path].replace('109.25','109.27');
+ assertSourcePreservation({side:'Academy',changes:['version.json','backend/src/academy/d1/worker.js','release/v109.27/public/a.js'],readOriginal,readCurrent});
+ assert.throws(()=>assertSourcePreservation({side:'AcademyStudio',changes:['src/worker.mjs'],readOriginal,readCurrent}),/NONPACKAGE_SOURCE_CHANGED/);
+ assert.throws(()=>assertSourcePreservation({side:'Academy',changes:['backend/src/academy/d1/worker.js'],readOriginal,readCurrent:path=>readCurrent(path).replace('protected:true','protected:false')}),/VERSION_CODE_CHANGED/);
 });
