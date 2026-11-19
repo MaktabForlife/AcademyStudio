@@ -1,0 +1,1097 @@
+{
+  "schema": 2,
+  "app": "studio",
+  "sourceCommit": "9a8c117e9279a2b67e62eb044be4da989db4a096",
+  "rules": {
+    "access_handover_cancellations": {
+      "columns": [
+        "offering_id",
+        "transfer_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.source-projection"
+      ]
+    },
+    "access_handovers": {
+      "columns": [
+        "generation",
+        "offering_id",
+        "phase",
+        "revision",
+        "source_version",
+        "transfer_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.source-projection"
+      ]
+    },
+    "accounts": {
+      "columns": [
+        "account_id",
+        "active",
+        "admitted",
+        "epoch",
+        "global_admin"
+      ],
+      "accountColumn": "account_id",
+      "scope": "ACCOUNT",
+      "required": true,
+      "dependencies": [
+        "S.identity"
+      ]
+    },
+    "asset_owners": {
+      "columns": [
+        "asset_id",
+        "offering_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.resource-publication"
+      ]
+    },
+    "attachments": {
+      "columns": [
+        "asset_id",
+        "attachment_id",
+        "audience",
+        "cohort",
+        "lesson_date",
+        "lesson_id",
+        "offering_id",
+        "published",
+        "website_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.resource-publication"
+      ]
+    },
+    "completed_course_registrations": {
+      "columns": [
+        "offering_id",
+        "registration_id",
+        "website_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.paid-staff"
+      ]
+    },
+    "course_access_models": {
+      "columns": [
+        "access_model",
+        "offering_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.paid-staff"
+      ]
+    },
+    "course_playlist_content": {
+      "columns": [
+        "kind",
+        "playlist_id",
+        "reference_id",
+        "snapshot_json",
+        "stage"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.resource-publication"
+      ]
+    },
+    "course_playlist_placements": {
+      "columns": [
+        "activity_key",
+        "class_id",
+        "offering_id",
+        "playlist_id",
+        "stage"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.resource-publication"
+      ]
+    },
+    "course_playlist_release_guards": {
+      "columns": [
+        "playlist_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.resource-publication"
+      ]
+    },
+    "course_playlist_workflows": {
+      "columns": [
+        "playlist_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.resource-publication"
+      ]
+    },
+    "course_policy_revisions": {
+      "columns": [
+        "offering_id",
+        "revision"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.resource-publication"
+      ]
+    },
+    "course_policy_state": {
+      "columns": [
+        "revision"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.resource-publication"
+      ]
+    },
+    "course_publications": {
+      "columns": [
+        "access_model",
+        "activity_key",
+        "offering_id",
+        "publication_id",
+        "registration_id",
+        "run_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.resource-publication"
+      ]
+    },
+    "handoffs": {
+      "columns": [
+        "account_id",
+        "epoch",
+        "expires_at",
+        "source_ref",
+        "state"
+      ],
+      "accountColumn": "account_id",
+      "scope": "ACCOUNT",
+      "required": false,
+      "dependencies": [
+        "S.identity"
+      ]
+    },
+    "mou_playlist_date_writes": {
+      "columns": [
+        "playlist_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.resource-publication"
+      ]
+    },
+    "mou_playlist_item_parents": {
+      "columns": [
+        "attachment_id",
+        "playlist_id",
+        "website_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.resource-publication"
+      ]
+    },
+    "mou_playlist_items": {
+      "columns": [
+        "attachment_id",
+        "playlist_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.resource-publication"
+      ]
+    },
+    "mou_playlist_only_media": {
+      "columns": [
+        "attachment_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.resource-publication"
+      ]
+    },
+    "mou_playlist_only_websites": {
+      "columns": [
+        "website_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.resource-publication"
+      ]
+    },
+    "mou_playlist_retained": {
+      "columns": [
+        "account_id",
+        "kind",
+        "offering_id",
+        "playlist_id",
+        "source_month"
+      ],
+      "accountColumn": "account_id",
+      "scope": "ACCOUNT",
+      "required": false,
+      "dependencies": [
+        "S.resource-publication"
+      ]
+    },
+    "mou_playlists": {
+      "columns": [
+        "offering_id",
+        "playlist_id",
+        "revision",
+        "website_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.resource-publication"
+      ]
+    },
+    "offerings": {
+      "columns": [
+        "active",
+        "kind",
+        "offering_id",
+        "revision"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": true,
+      "dependencies": [
+        "S.paid-staff"
+      ]
+    },
+    "paid_months": {
+      "columns": [
+        "account_id",
+        "cohort",
+        "month",
+        "offering_id"
+      ],
+      "accountColumn": "account_id",
+      "scope": "ACCOUNT",
+      "required": false,
+      "dependencies": [
+        "S.paid-staff"
+      ]
+    },
+    "participation": {
+      "columns": [
+        "account_id",
+        "cohort",
+        "enrolled",
+        "live",
+        "offering_id",
+        "purchased"
+      ],
+      "accountColumn": "account_id",
+      "scope": "ACCOUNT",
+      "required": true,
+      "dependencies": [
+        "S.paid-staff"
+      ]
+    },
+    "playlist_source_websites": {
+      "columns": [
+        "playlist_id",
+        "website_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.resource-publication"
+      ]
+    },
+    "programme_offerings": {
+      "columns": [
+        "access_model",
+        "offering_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.source-projection"
+      ]
+    },
+    "programme_subjects": {
+      "columns": [
+        "enabled",
+        "offering_id",
+        "website_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.source-projection"
+      ]
+    },
+    "publication_heads": {
+      "columns": [
+        "revision"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.resource-publication"
+      ]
+    },
+    "published_assets": {
+      "columns": [
+        "asset_id",
+        "website_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.resource-publication"
+      ]
+    },
+    "refresh_claims": {
+      "columns": [
+        "account_id",
+        "claim_id",
+        "expires_at"
+      ],
+      "accountColumn": "account_id",
+      "scope": "ACCOUNT",
+      "required": false,
+      "dependencies": [
+        "S.identity"
+      ]
+    },
+    "sessions": {
+      "columns": [
+        "account_id",
+        "epoch",
+        "expires_at",
+        "revoked",
+        "source_ref",
+        "token_hash"
+      ],
+      "accountColumn": "account_id",
+      "scope": "ACCOUNT",
+      "required": true,
+      "dependencies": [
+        "S.identity"
+      ]
+    },
+    "source_access_master_fences": {
+      "columns": [
+        "account_id",
+        "active",
+        "admitted",
+        "epoch",
+        "global_admin",
+        "offering_id"
+      ],
+      "accountColumn": "account_id",
+      "scope": "ACCOUNT",
+      "required": false,
+      "dependencies": [
+        "S.source-projection"
+      ]
+    },
+    "source_access_people": {
+      "columns": [
+        "account_id",
+        "course",
+        "generation",
+        "has_allocation",
+        "offering_id",
+        "ready",
+        "windows_json"
+      ],
+      "accountColumn": "account_id",
+      "scope": "ACCOUNT",
+      "required": false,
+      "dependencies": [
+        "S.source-projection"
+      ]
+    },
+    "source_access_rights_snapshots": {
+      "columns": [
+        "account_id",
+        "offering_id"
+      ],
+      "accountColumn": "account_id",
+      "scope": "ACCOUNT",
+      "required": false,
+      "dependencies": [
+        "S.source-projection"
+      ]
+    },
+    "source_access_scopes": {
+      "columns": [
+        "authority",
+        "classes_json",
+        "enabled",
+        "generation",
+        "live_enabled",
+        "offering_id",
+        "timezone"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.source-projection"
+      ]
+    },
+    "source_access_websites": {
+      "columns": [
+        "enabled",
+        "offering_id",
+        "website_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.source-projection"
+      ]
+    },
+    "source_session_audiences": {
+      "columns": [
+        "class_ids_json",
+        "session_id",
+        "teacher_ids_json"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.source-projection"
+      ]
+    },
+    "source_session_details": {
+      "columns": [
+        "classes_json",
+        "session_id",
+        "timezone"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.source-projection"
+      ]
+    },
+    "source_session_revocations": {
+      "columns": [
+        "revoked_at",
+        "source_ref"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.identity"
+      ]
+    },
+    "staff": {
+      "columns": [
+        "account_id",
+        "can_create_account",
+        "offering_id",
+        "role"
+      ],
+      "accountColumn": "account_id",
+      "scope": "ACCOUNT",
+      "required": true,
+      "dependencies": [
+        "S.paid-staff"
+      ]
+    },
+    "surah_grants": {
+      "columns": [
+        "account_id",
+        "website_id"
+      ],
+      "accountColumn": "account_id",
+      "scope": "ACCOUNT",
+      "required": false,
+      "dependencies": [
+        "S.paid-staff"
+      ]
+    },
+    "timetable": {
+      "columns": [
+        "cancelled",
+        "offering_id",
+        "revision",
+        "session_id",
+        "starts_at"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.source-projection"
+      ]
+    },
+    "uploads": {
+      "columns": [
+        "asset_id",
+        "offering_id",
+        "state",
+        "upload_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.resource-publication"
+      ]
+    },
+    "website_months": {
+      "columns": [
+        "account_id",
+        "month",
+        "offering_id"
+      ],
+      "accountColumn": "account_id",
+      "scope": "ACCOUNT",
+      "required": false,
+      "dependencies": [
+        "S.paid-staff"
+      ]
+    },
+    "websites": {
+      "columns": [
+        "completion_date",
+        "completion_month",
+        "enabled",
+        "offering_id",
+        "published_key",
+        "revision",
+        "website_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.resource-publication"
+      ]
+    },
+    "media_supporting_files": {
+      "columns": [
+        "recording_attachment_id",
+        "support_attachment_id"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": false,
+      "dependencies": [
+        "S.resource-publication"
+      ]
+    }
+  },
+  "schemaColumns": {
+    "playlist_source_websites": [
+      "playlist_id",
+      "website_id"
+    ],
+    "course_playlist_workflows": [
+      "content_published_revision",
+      "content_revision",
+      "description_draft",
+      "description_published",
+      "playlist_id"
+    ],
+    "course_playlist_placements": [
+      "activity_key",
+      "class_id",
+      "class_name",
+      "offering_id",
+      "playlist_id",
+      "stage",
+      "title"
+    ],
+    "course_playlist_content": [
+      "kind",
+      "playlist_id",
+      "position",
+      "reference_id",
+      "snapshot_json",
+      "stage"
+    ],
+    "course_playlist_release_guards": [
+      "playlist_id"
+    ],
+    "access_revisions": [
+      "offering_id",
+      "revision"
+    ],
+    "access_members": [
+      "account_id",
+      "offering_id"
+    ],
+    "access_handovers": [
+      "checked",
+      "created_at",
+      "cursor",
+      "generation",
+      "offering_id",
+      "phase",
+      "revision",
+      "source_version",
+      "transfer_id"
+    ],
+    "access_handover_cancellations": [
+      "cancelled_at",
+      "offering_id",
+      "transfer_id"
+    ],
+    "source_session_revocations": [
+      "revoked_at",
+      "source_ref"
+    ],
+    "source_access_master_fences": [
+      "account_id",
+      "active",
+      "admitted",
+      "epoch",
+      "global_admin",
+      "offering_id"
+    ],
+    "source_access_rights_snapshots": [
+      "account_id",
+      "offering_id",
+      "payload_hash"
+    ],
+    "accounts": [
+      "account_id",
+      "active",
+      "admitted",
+      "display_name",
+      "epoch",
+      "global_admin",
+      "verified_at"
+    ],
+    "sessions": [
+      "account_id",
+      "epoch",
+      "expires_at",
+      "revoked",
+      "source_ref",
+      "token_hash"
+    ],
+    "refresh_claims": [
+      "account_id",
+      "claim_id",
+      "expires_at"
+    ],
+    "handoffs": [
+      "account_id",
+      "challenge",
+      "code_hash",
+      "epoch",
+      "expires_at",
+      "source_ref",
+      "state",
+      "used"
+    ],
+    "offerings": [
+      "active",
+      "kind",
+      "offering_id",
+      "revision",
+      "title"
+    ],
+    "participation": [
+      "account_id",
+      "cohort",
+      "enrolled",
+      "live",
+      "offering_id",
+      "purchased"
+    ],
+    "staff": [
+      "account_id",
+      "can_create_account",
+      "offering_id",
+      "role"
+    ],
+    "paid_months": [
+      "account_id",
+      "cohort",
+      "month",
+      "offering_id",
+      "reason"
+    ],
+    "websites": [
+      "completion_date",
+      "completion_month",
+      "draft_key",
+      "enabled",
+      "offering_id",
+      "published_key",
+      "revision",
+      "title",
+      "website_id"
+    ],
+    "website_history": [
+      "action",
+      "actor_id",
+      "created_at",
+      "object_key",
+      "revision",
+      "website_id"
+    ],
+    "published_assets": [
+      "asset_id",
+      "website_id"
+    ],
+    "surah_grants": [
+      "account_id",
+      "reason",
+      "website_id"
+    ],
+    "objects": [
+      "asset_id",
+      "byte_size",
+      "filename",
+      "mime_type",
+      "object_key",
+      "sha256",
+      "youtube_id"
+    ],
+    "attachments": [
+      "asset_id",
+      "attachment_id",
+      "audience",
+      "cohort",
+      "lesson_date",
+      "lesson_id",
+      "offering_id",
+      "published",
+      "title",
+      "website_id"
+    ],
+    "asset_owners": [
+      "asset_id",
+      "offering_id"
+    ],
+    "uploads": [
+      "asset_id",
+      "created_at",
+      "filename",
+      "object_key",
+      "offering_id",
+      "state",
+      "upload_id"
+    ],
+    "timetable": [
+      "cancelled",
+      "ends_at",
+      "offering_id",
+      "revision",
+      "session_id",
+      "starts_at",
+      "title",
+      "zoom_url"
+    ],
+    "cards": [
+      "description",
+      "display_label",
+      "offering_id",
+      "revision",
+      "title",
+      "visible"
+    ],
+    "announcements": [
+      "announcement_id",
+      "text",
+      "visible"
+    ],
+    "operations": [
+      "actor_id",
+      "created_at",
+      "operation_id",
+      "payload_hash",
+      "result_json"
+    ],
+    "stream_heads": [
+      "payload_hash",
+      "stream",
+      "version"
+    ],
+    "guards": [
+      "accepted",
+      "guard_id"
+    ],
+    "enrolment_requests": [
+      "created_at",
+      "linked_account_id",
+      "note",
+      "offering_id",
+      "request_id",
+      "requester_id",
+      "state"
+    ],
+    "provisioning": [
+      "account_id",
+      "actor_id",
+      "attempts",
+      "command_json",
+      "last_error",
+      "login_path",
+      "next_attempt",
+      "offering_id",
+      "operation_id",
+      "payload_hash",
+      "state"
+    ],
+    "audit": [
+      "action",
+      "actor_id",
+      "details_json",
+      "event_id",
+      "occurred_at",
+      "scope"
+    ],
+    "publication_heads": [
+      "object_key",
+      "revision",
+      "scope"
+    ],
+    "circles_navigation": [
+      "account_id",
+      "epoch",
+      "programmes_json",
+      "verified_at"
+    ],
+    "recording_playlist_positions": [
+      "attachment_id",
+      "playlist_id",
+      "position"
+    ],
+    "course_publications": [
+      "access_model",
+      "activity_key",
+      "created_at",
+      "offering_id",
+      "publication_id",
+      "registration_id",
+      "run_id"
+    ],
+    "course_access_models": [
+      "access_model",
+      "offering_id"
+    ],
+    "media_attributions": [
+      "attachment_id",
+      "draft_json",
+      "published_json",
+      "revision"
+    ],
+    "media_supporting_files": [
+      "recording_attachment_id",
+      "support_attachment_id"
+    ],
+    "course_policy_revisions": [
+      "offering_id",
+      "revision"
+    ],
+    "course_policy_state": [
+      "revision",
+      "singleton"
+    ],
+    "mou_playlists": [
+      "created_at",
+      "offering_id",
+      "playlist_id",
+      "published_count",
+      "recording_count",
+      "revision",
+      "website_id"
+    ],
+    "mou_playlist_date_writes": [
+      "playlist_id"
+    ],
+    "mou_playlist_items": [
+      "attachment_id",
+      "playlist_id"
+    ],
+    "mou_playlist_item_parents": [
+      "attachment_id",
+      "playlist_id",
+      "website_id"
+    ],
+    "mou_playlist_only_media": [
+      "attachment_id"
+    ],
+    "mou_playlist_only_websites": [
+      "website_id"
+    ],
+    "mou_playlist_retained": [
+      "account_id",
+      "kind",
+      "offering_id",
+      "playlist_id",
+      "source_month"
+    ],
+    "programme_offerings": [
+      "access_model",
+      "offering_id",
+      "programme_key"
+    ],
+    "programme_subjects": [
+      "display_key",
+      "enabled",
+      "offering_id",
+      "website_id"
+    ],
+    "source_session_details": [
+      "classes_json",
+      "session_id",
+      "timezone"
+    ],
+    "website_recording_support": [
+      "edition",
+      "object_key",
+      "website_id"
+    ],
+    "playlist_cover_assets": [
+      "asset_id",
+      "content_key",
+      "mime_type",
+      "offering_id",
+      "playlist_id",
+      "sha256",
+      "size"
+    ],
+    "playlist_card_designs": [
+      "draft_json",
+      "first_published_at",
+      "image_required",
+      "playlist_id",
+      "published_json",
+      "published_title",
+      "teacher_ids_json"
+    ],
+    "display_meta": [
+      "revision",
+      "singleton"
+    ],
+    "display_revisions": [
+      "offering_id",
+      "revision"
+    ],
+    "completed_course_registrations": [
+      "offering_id",
+      "package_sha256",
+      "registration_id",
+      "website_id"
+    ],
+    "recording_companions": [
+      "attachment_id",
+      "draft_key",
+      "duration_seconds",
+      "index_json",
+      "published_key",
+      "revision",
+      "source_revision"
+    ],
+    "source_access_scopes": [
+      "authority",
+      "classes_json",
+      "enabled",
+      "generation",
+      "live_enabled",
+      "offering_id",
+      "timezone",
+      "version"
+    ],
+    "source_access_people": [
+      "account_id",
+      "course",
+      "generation",
+      "has_allocation",
+      "offering_id",
+      "ready",
+      "verified_at",
+      "version",
+      "windows_json"
+    ],
+    "source_access_websites": [
+      "enabled",
+      "offering_id",
+      "website_id"
+    ],
+    "website_months": [
+      "account_id",
+      "month",
+      "offering_id"
+    ],
+    "source_session_audiences": [
+      "class_ids_json",
+      "session_id",
+      "teacher_ids_json"
+    ],
+    "programme_subjects_baqarah": [
+      "display_key",
+      "enabled",
+      "offering_id",
+      "website_id"
+    ]
+  },
+  "acceptedSetup": "Core setup_head_state is the accepted Admin definition dependency; unaccepted Admin/private draft writes have no active capture.",
+  "unknownAuthority": "New fields cannot enter the allowlisted rights serializer without registry/trigger update. Installer rejects missing declared fields/required tables; no blind IF EXISTS skip.",
+  "provenance": "Derived from selected native source ownership and milestone 1 dependency registry; no user records.",
+  "parser": "Balanced CREATE column extraction plus ALTER ADD/RENAME; static selected-source inventory. Actual installed-schema comparison is mandatory before later application.",
+  "reviewCorrections": "Reader-derived explicit live-deny, FK/audience and legacy mapping exceptions override keyword/physical-owner heuristics. Registry must be reviewed against actual readers whenever source changes."
+}
