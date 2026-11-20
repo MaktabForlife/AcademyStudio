@@ -1,3 +1,4 @@
+import {readStudioSourceAuthority} from '../../src/v111-source-authority.mjs';
 import {Store} from '../../src/database.mjs';
 import {liveAccess,academyAuthority} from '../../src/access.mjs';
 import {mediaGate} from '../../src/media.mjs';
@@ -22,23 +23,44 @@ async function localVector(db,refs){
 const bounded=rights=>{requireThat(bytes(canonical(rights)).length<=2*1024*1024,'NATIVE_RIGHTS_TOO_LARGE',503);return rights;};
 const rowsBound=rows=>{requireThat(rows.length<=6000,'NATIVE_SCOPE_TOO_LARGE',503);return rows;};
 
+
+const authorityTables={
+ participation:'account_id',staff:'account_id',paid_months:'account_id',website_months:'account_id',surah_grants:'account_id',mou_playlist_retained:'account_id',source_access_people:'account_id',source_access_master_fences:'account_id',circles_navigation:'account_id',
+ source_access_scopes:'offering_id',source_access_websites:'offering_id',access_handovers:'offering_id',programme_offerings:'offering_id',programme_subjects:'offering_id',course_access_models:'offering_id',completed_course_registrations:'offering_id'
+};
+const authorityColumns={
+ studio_course_publication_holds:['offering_id','transfer_id','registration_id','source_owner_epoch','phase'],
+ studio_source_projection_problems:['account_id','offering_id','code','source_owner_epoch','source_revision'],
+ participation:['account_id','offering_id','enrolled','live','purchased','cohort'],staff:['account_id','offering_id','role','can_create_account'],paid_months:['account_id','offering_id','month','cohort'],website_months:['account_id','offering_id','month'],surah_grants:['account_id','website_id'],mou_playlist_retained:['playlist_id','offering_id','account_id','source_month','kind'],
+ source_access_people:['account_id','offering_id','generation','version','verified_at','ready','windows_json','has_allocation','course'],source_access_master_fences:['account_id','offering_id','epoch','active','admitted','global_admin'],circles_navigation:['account_id','epoch','verified_at','programmes_json'],source_access_scopes:['offering_id','authority','enabled','generation','version','live_enabled','timezone','classes_json'],source_access_websites:['website_id','offering_id','enabled'],access_handovers:['offering_id','transfer_id','phase','generation','source_version','revision','cursor','checked','created_at'],programme_offerings:['programme_key','offering_id','access_model'],programme_subjects:['offering_id','display_key','website_id','enabled'],course_access_models:['offering_id','access_model'],completed_course_registrations:['offering_id','registration_id','website_id','package_sha256']
+};
+async function authoritySnapshot(store,identity,offeringIds){
+ const account=await store.first('SELECT account_id,active,admitted,global_admin FROM accounts WHERE account_id=?',[identity.sub]);
+ const tables={};const installed={...authorityTables,...(store.env.UAA_V2_STUDIO_SOURCE_OWNER_EPOCH?{studio_source_projection_problems:'account_id',studio_course_publication_holds:'hold'}:{})};for(const [table,scope] of Object.entries(installed)){
+  const actual=(await store.all('PRAGMA table_info("'+table+'")')).map(c=>c.name),columns=authorityColumns[table].filter(c=>actual.includes(c));requireThat(columns.length&&columns.every(c=>/^[a-z_][a-z0-9_]*$/i.test(c)),'NATIVE_AUTHORITY_SCHEMA_REQUIRED',503);
+  const rows=rowsBound(await store.all('SELECT '+columns.map(c=>'"'+c+'"').join(',')+' FROM "'+table+'" WHERE '+(scope==='hold'?"phase<>'RELEASED'":scope==='account_id'?'account_id=?':'offering_id IN(SELECT value FROM json_each(?))')+' LIMIT 6001',scope==='hold'?[]:[scope==='account_id'?identity.sub:JSON.stringify(offeringIds)]));
+  tables[table]={columns,rows};
+ }
+ return {schema:1,identity:account,tables};
+}
+
 export class StudioNativeAdapter {
  constructor({env,dependencies,clock=()=>Math.floor(Date.now()/1000)}){
   requireThat(env?.DB?.withSession&&typeof clock==='function','NATIVE_STUDIO_BINDING_REQUIRED',503);
   this.env=env;this.db=env.DB.withSession('first-primary');this.dependencies=references(dependencies);this.clock=clock;
  }
  async identity(sub){
-  validId(sub);const row=await this.db.prepare('SELECT account_id,active,admitted,epoch,global_admin,verified_at FROM accounts WHERE account_id=?').bind(sub).first();
+  validId(sub);const row=await this.db.prepare('SELECT account_id,display_name,active,admitted,epoch,global_admin,verified_at FROM accounts WHERE account_id=?').bind(sub).first();
   requireThat(row&&row.active===1&&row.admitted===1,'STUDIO_ACCOUNT_INACTIVE',401);
   requireThat(safeInt(row.epoch,1)&&[0,1].includes(row.global_admin),'NATIVE_STUDIO_IDENTITY_INVALID',503);
-  return Object.freeze({sub:row.account_id,sourceCredentialEpoch:row.epoch,globalAdmin:row.global_admin===1,sourceContactAtMs:row.verified_at});
+  return Object.freeze({sub:row.account_id,displayName:row.display_name,sourceCredentialEpoch:row.epoch,globalAdmin:row.global_admin===1,sourceContactAtMs:row.verified_at});
  }
  identityGuard(identity){
   return {sql:'SELECT 1 FROM accounts WHERE account_id=? AND active=1 AND admitted=1 AND epoch=? AND global_admin=?',
    args:[identity.sub,identity.sourceCredentialEpoch,Number(identity.globalAdmin)]};
  }
  async scopeInputs(store,actor,offer){
-  validId(offer);
+  validId(offer);if(this.env.UAA_V2_STUDIO_SOURCE_OWNER_EPOCH)requireThat(!await store.first("SELECT 1 FROM studio_course_publication_holds WHERE offering_id=? AND phase<>'RELEASED'",[offer]),'COURSE_PUBLICATION_PENDING',503);if(this.env.UAA_V2_STUDIO_SOURCE_OWNER_EPOCH)requireThat(!await store.first('SELECT 1 FROM studio_source_projection_problems WHERE account_id=? AND offering_id=?',[actor.account_id,offer]),'SOURCE_SCOPE_PROJECTION_BLOCKED',403);
   // Same native scope join used by Store.scope. These are inputs, not a new permission algorithm.
   const scope=await store.first("SELECT o.*,h.offering_id completed_course,(SELECT programme_key FROM programme_offerings mp WHERE mp.offering_id=o.offering_id) programme_key,p.enrolled,p.live,p.purchased,p.cohort,s.role,(SELECT access_model FROM course_access_models m WHERE m.offering_id=o.offering_id) access_model,s.can_create_account FROM offerings o LEFT JOIN participation p ON p.offering_id=o.offering_id AND p.account_id=? LEFT JOIN completed_course_registrations h USING(offering_id) LEFT JOIN staff s ON s.offering_id=o.offering_id AND s.account_id=? WHERE o.offering_id=? AND o.active=1",[actor.account_id,actor.account_id,offer]);
   requireThat(scope,'STUDIO_OFFERING_UNAVAILABLE',404);
@@ -82,10 +104,11 @@ export class StudioNativeAdapter {
    // Source parent is provenance from the already validated local family/proof, never browser input.
    const actor={account_id:identity.sub,global_admin:Number(identity.globalAdmin),verified_at:identity.sourceContactAtMs,source_ref:sourceParentRef||null};
    const scopes=[];for(const offer of offeringIds)scopes.push(await this.scopeInputs(store,actor,offer));
+   const nativeAuthority=await authoritySnapshot(store,identity,offeringIds);const source=this.env.UAA_V2_STUDIO_SOURCE_OWNER_EPOCH?await readStudioSourceAuthority({db:this.db,env:this.env,binding:{sub,ce:sourceCredentialEpoch},now:vat}):null;
    const after=await localVector(this.db,this.dependencies),current=await this.identity(identity.sub);
    if(canonical(before.rows)!==canonical(after.rows)||canonical(identity)!==canonical(current))continue;
    const checkedAt=this.clock();requireThat(safeInt(checkedAt)&&checkedAt>=vat&&checkedAt<vat+900,'NATIVE_VALIDATION_EXPIRED',503);
-   return {app:'studio',sub:identity.sub,sourceCredentialEpoch,rights:bounded({globalAdmin:identity.globalAdmin,scopes}),sourceProvenance:{contactAtMs:identity.sourceContactAtMs,freshContact:false},ownerVector:after.ownerVector,vectorGuards:after.vectorGuards,pv:after.pv,vat,primaryCheckedAt:checkedAt,timedUntil:Number.MAX_SAFE_INTEGER};
+   return {app:'studio',sub:identity.sub,sourceCredentialEpoch,rights:bounded({globalAdmin:identity.globalAdmin,scopes,nativeAuthority,...(source?{academy:source.rights,sourceAuthority:source.head}:{})}),sourceProvenance:{contactAtMs:identity.sourceContactAtMs,freshContact:false},ownerVector:after.ownerVector,vectorGuards:after.vectorGuards,pv:after.pv,vat,primaryCheckedAt:checkedAt,timedUntil:source?source.timedUntil:Number.MAX_SAFE_INTEGER};
   }
   reject('NATIVE_AUTHORITY_CHANGED_DURING_CAPTURE',503);
  }

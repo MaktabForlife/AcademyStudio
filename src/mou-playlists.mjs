@@ -23,7 +23,7 @@ export function checkedPlaylistCloseDate(value,definition,now=Date.now()){
 }
 export async function playlistDefinition(store,offer){
  store.playlistDefinitions??=new Map();if(store.playlistDefinitions.has(offer))return store.playlistDefinitions.get(offer);
- const row=await store.first("SELECT o.kind,p.programme_key,s.timezone FROM offerings o LEFT JOIN programme_offerings p USING(offering_id) LEFT JOIN source_access_scopes s USING(offering_id) WHERE o.offering_id=?",[offer]);
+ const row=await store.authorityFirst("SELECT o.kind,p.programme_key,s.timezone FROM offerings o LEFT JOIN programme_offerings p USING(offering_id) LEFT JOIN source_access_scopes s USING(offering_id) WHERE o.offering_id=?",[offer]);
  if(!row||!['COURSE','TAFSEER'].includes(row.kind))throw fail('Choose a Studio Course, Tafseer or MOU programme.',403);
  if(row.kind==='TAFSEER'&&!row.timezone)throw fail('Refresh the native programme timezone.',409);
  const definition={...row,accessModel:row.kind==='COURSE'?'COURSE':'MONTHLY',label:row.kind==='COURSE'?'Course playlists':row.programme_key==='mothers'?'MOU playlists':'Surah playlists',currentMonth:row.timezone?programmeMonth(Date.now(),row.timezone):null};
@@ -143,33 +143,33 @@ export function playlistEntitlementSQL({paidOnly=false,playlist='p',month}={}){
  OR EXISTS(SELECT 1 FROM mou_playlist_retained r WHERE r.playlist_id=${playlist}.playlist_id AND r.account_id=? AND (r.kind='PAID' AND EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=r.account_id AND m.offering_id=r.offering_id AND m.month=r.source_month)${paidOnly?'':" OR r.kind='WEBSITE' AND EXISTS(SELECT 1 FROM website_months m WHERE m.account_id=r.account_id AND m.offering_id=r.offering_id AND m.month=r.source_month)"})))`;
 }
 export async function playlistMediaAccess(store,actor,row){
- if((await playlistDefinition(store,row.offering_id)).accessModel==='COURSE')return Boolean(await store.first(`SELECT 1 FROM mou_playlist_items i JOIN mou_playlists p USING(playlist_id) JOIN websites w ON w.website_id=p.website_id WHERE (i.attachment_id=? OR i.attachment_id=(SELECT recording_attachment_id FROM media_supporting_files WHERE support_attachment_id=?)) AND p.offering_id=? AND w.enabled=1 AND w.published_key IS NOT NULL AND (EXISTS(SELECT 1 FROM participation r WHERE r.account_id=? AND r.offering_id=p.offering_id AND r.purchased=1) OR EXISTS(SELECT 1 FROM course_access_models c WHERE c.offering_id=p.offering_id AND c.access_model='FREE')) LIMIT 1`,[row.attachment_id,row.attachment_id,row.offering_id,actor.account_id]));
+ if((await playlistDefinition(store,row.offering_id)).accessModel==='COURSE')return Boolean(await store.authorityFirst(`SELECT 1 FROM mou_playlist_items i JOIN mou_playlists p USING(playlist_id) JOIN websites w ON w.website_id=p.website_id WHERE (i.attachment_id=? OR i.attachment_id=(SELECT recording_attachment_id FROM media_supporting_files WHERE support_attachment_id=?)) AND p.offering_id=? AND w.enabled=1 AND w.published_key IS NOT NULL AND (EXISTS(SELECT 1 FROM participation r WHERE r.account_id=? AND r.offering_id=p.offering_id AND r.purchased=1) OR EXISTS(SELECT 1 FROM course_access_models c WHERE c.offering_id=p.offering_id AND c.access_model='FREE')) LIMIT 1`,[row.attachment_id,row.attachment_id,row.offering_id,actor.account_id]));
  const month=await effectiveMonth(store,row.offering_id);
- const found=await store.first(`SELECT 1 FROM mou_playlist_items i JOIN mou_playlists p USING(playlist_id) JOIN websites w ON w.website_id=p.website_id
+ const found=await store.authorityFirst(`SELECT 1 FROM mou_playlist_items i JOIN mou_playlists p USING(playlist_id) JOIN websites w ON w.website_id=p.website_id
  WHERE (i.attachment_id=? OR i.attachment_id=(SELECT recording_attachment_id FROM media_supporting_files WHERE support_attachment_id=?))
  AND p.offering_id=? AND w.enabled=1 AND w.published_key IS NOT NULL AND ${playlistEntitlementSQL({paidOnly:true,month})} LIMIT 1`,[row.attachment_id,row.attachment_id,row.offering_id,actor.account_id,actor.account_id]);return Boolean(found);
 }
 export async function playlistTextAccess(store,actor,websiteId,offer){
  const month=await effectiveMonth(store,offer);
- return Boolean(await store.first(`SELECT 1 FROM mou_playlists p JOIN websites w ON w.website_id=p.website_id WHERE p.website_id=? AND ${playlistEntitlementSQL({month})}`,[websiteId,actor.account_id,actor.account_id,actor.account_id]));
+ return Boolean(await store.authorityFirst(`SELECT 1 FROM mou_playlists p JOIN websites w ON w.website_id=p.website_id WHERE p.website_id=? AND ${playlistEntitlementSQL({month})}`,[websiteId,actor.account_id,actor.account_id,actor.account_id]));
 }
 export async function playlistParentTextAccess(store,actor,websiteId,offer){
  const month=await effectiveMonth(store,offer);
- return Boolean(await store.first(`SELECT 1 FROM attachments a JOIN mou_playlist_items i USING(attachment_id) JOIN mou_playlists p USING(playlist_id) JOIN websites w ON w.website_id=p.website_id WHERE a.website_id=? AND w.enabled=1 AND w.published_key IS NOT NULL AND ${playlistEntitlementSQL({month})} LIMIT 1`,[websiteId,actor.account_id,actor.account_id,actor.account_id]));
+ return Boolean(await store.authorityFirst(`SELECT 1 FROM attachments a JOIN mou_playlist_items i USING(attachment_id) JOIN mou_playlists p USING(playlist_id) JOIN websites w ON w.website_id=p.website_id WHERE a.website_id=? AND w.enabled=1 AND w.published_key IS NOT NULL AND ${playlistEntitlementSQL({month})} LIMIT 1`,[websiteId,actor.account_id,actor.account_id,actor.account_id]));
 }
 export async function checkedPlaylist(store,offer,playlistId){
  const row=await playlistRow(store,offer,id(playlistId));if(!row)throw fail('Choose a registered playlist.',409,'PLAYLIST_REQUIRED');return row;
 }
 export async function playlistRecordingAccess(store,actor,playlistId,offer){
- if((await playlistDefinition(store,offer)).accessModel==='COURSE')return Boolean(await store.first("SELECT 1 FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.playlist_id=? AND p.offering_id=? AND w.enabled=1 AND w.published_key IS NOT NULL AND (EXISTS(SELECT 1 FROM participation r WHERE r.account_id=? AND r.offering_id=p.offering_id AND r.purchased=1) OR EXISTS(SELECT 1 FROM course_access_models c WHERE c.offering_id=p.offering_id AND c.access_model='FREE'))",[playlistId,offer,actor.account_id]));
+ if((await playlistDefinition(store,offer)).accessModel==='COURSE')return Boolean(await store.authorityFirst("SELECT 1 FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.playlist_id=? AND p.offering_id=? AND w.enabled=1 AND w.published_key IS NOT NULL AND (EXISTS(SELECT 1 FROM participation r WHERE r.account_id=? AND r.offering_id=p.offering_id AND r.purchased=1) OR EXISTS(SELECT 1 FROM course_access_models c WHERE c.offering_id=p.offering_id AND c.access_model='FREE'))",[playlistId,offer,actor.account_id]));
  const month=await effectiveMonth(store,offer);
- return Boolean(await store.first(`SELECT 1 FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.playlist_id=? AND w.enabled=1 AND w.published_key IS NOT NULL AND ${playlistEntitlementSQL({paidOnly:true,month})}`,[playlistId,actor.account_id,actor.account_id]));
+ return Boolean(await store.authorityFirst(`SELECT 1 FROM mou_playlists p JOIN websites w USING(website_id) WHERE p.playlist_id=? AND w.enabled=1 AND w.published_key IS NOT NULL AND ${playlistEntitlementSQL({paidOnly:true,month})}`,[playlistId,actor.account_id,actor.account_id]));
 }
 export async function learnerPlaylists(store,actor,offer,{staff=false,canEdit=false}={}){
  const definition=await playlistDefinition(store,offer),course=definition.accessModel==='COURSE',month=course?null:await effectiveMonth(store,offer);
  const paid=course?"EXISTS(SELECT 1 FROM participation r WHERE r.account_id=? AND r.offering_id=p.offering_id AND r.purchased=1) OR EXISTS(SELECT 1 FROM course_access_models c WHERE c.offering_id=p.offering_id AND c.access_model='FREE')":playlistEntitlementSQL({paidOnly:true,month});
  const read=course?paid:`(${playlistEntitlementSQL({month})} OR EXISTS(SELECT 1 FROM surah_grants g WHERE g.account_id=? AND g.website_id=p.website_id))`;
- const rows=await store.all(`SELECT p.playlist_id,p.published_count,w.website_id,COALESCE(c.published_title,w.title) title,c.published_json,w.completion_date,(${paid}) recordings_access,(${read}) text_access FROM mou_playlists p JOIN websites w USING(website_id) LEFT JOIN playlist_card_designs c USING(playlist_id) WHERE p.offering_id=? AND w.enabled=1 AND w.published_key IS NOT NULL ORDER BY p.playlist_id LIMIT 101`,[...Array(course?2:6).fill(actor.account_id),offer]);
+ const rows=await store.authorityAll(`SELECT p.playlist_id,p.published_count,w.website_id,COALESCE(c.published_title,w.title) title,c.published_json,w.completion_date,(${paid}) recordings_access,(${read}) text_access FROM mou_playlists p JOIN websites w USING(website_id) LEFT JOIN playlist_card_designs c USING(playlist_id) WHERE p.offering_id=? AND w.enabled=1 AND w.published_key IS NOT NULL ORDER BY p.playlist_id LIMIT 101`,[...Array(course?2:6).fill(actor.account_id),offer]);
  if(rows.length>100)throw fail('Review the playlist catalogue.',409);
  return rows.filter(r=>staff||r.recordings_access||r.text_access).map(r=>({id:r.playlist_id,websiteId:r.website_id,title:r.title,card:cardDTO(r.published_json,{published:true,origin:store.env.WEBSITE_ORIGIN}),canEdit,...(canEdit?{editorHref:'/builder/?website='+encodeURIComponent(r.website_id)}:{}),closeDate:r.completion_date,state:r.completion_date?'CLOSED':'OPEN',recordings:r.published_count,canListen:Boolean(staff||r.recordings_access),canRead:Boolean(staff||r.text_access),href:'/studio/?website='+encodeURIComponent(r.website_id)}));
 }
@@ -178,7 +178,7 @@ export async function playlistReadingLessons(store,actor,website){
  const month=await effectiveMonth(store,website.offering_id);
  // Seek this exact native parent first, including when other entitled playlists
  // in the SAME programme have thousands of members on different websites.
- const rows=await store.all(`SELECT a.lesson_id FROM mou_playlist_item_parents ip
+ const rows=await store.authorityAll(`SELECT a.lesson_id FROM mou_playlist_item_parents ip
  CROSS JOIN mou_playlists p ON p.playlist_id=ip.playlist_id
  CROSS JOIN websites w ON w.website_id=p.website_id
  CROSS JOIN mou_playlist_items i ON i.playlist_id=ip.playlist_id AND i.attachment_id=ip.attachment_id
@@ -198,20 +198,20 @@ export function assignPlaylist(store,playlist,row,{exclusive=false,supportIds=[]
 // Seek only this account's monthly offerings; timezone is a signed native fact.
 // No global account, website or media scan and no per-card authority round-trip.
 export async function playlistWebsiteCandidates(store,actor,after=''){
- const scopes=await store.all(`SELECT s.offering_id,s.timezone FROM source_access_scopes s JOIN offerings o USING(offering_id)
+ const scopes=await store.authorityAll(`SELECT s.offering_id,s.timezone FROM source_access_scopes s JOIN offerings o USING(offering_id)
  WHERE s.offering_id IN(SELECT offering_id FROM paid_months WHERE account_id=? UNION SELECT offering_id FROM website_months WHERE account_id=?)
  AND o.kind='TAFSEER' AND EXISTS(SELECT 1 FROM mou_playlists p WHERE p.offering_id=s.offering_id) LIMIT 33`,[actor.account_id,actor.account_id]);
  if(scopes.length>32)throw fail('Choose a narrower programme catalogue.',409);
  if(!scopes.length)return [];
  const months=scopes.map(s=>({offeringId:s.offering_id,month:programmeMonth(Date.now(),s.timezone)}));
- const rows=await store.all(`SELECT w.website_id FROM json_each(?) j CROSS JOIN mou_playlists p ON p.offering_id=json_extract(j.value,'$.offeringId') CROSS JOIN websites w ON w.website_id=p.website_id
+ const rows=await store.authorityAll(`SELECT w.website_id FROM json_each(?) j CROSS JOIN mou_playlists p ON p.offering_id=json_extract(j.value,'$.offeringId') CROSS JOIN websites w ON w.website_id=p.website_id
  WHERE w.website_id>? AND w.enabled=1 AND w.published_key IS NOT NULL AND ${playlistEntitlementSQL({month:"COALESCE(w.completion_month,json_extract(j.value,'$.month'))"})} ORDER BY w.website_id LIMIT 51`,[JSON.stringify(months),after,actor.account_id,actor.account_id,actor.account_id]);
  return rows.map(r=>r.website_id);
 }
 export async function cataloguePlaylistRights(store,actor,rows){
  const selected=rows.filter(r=>r.playlist_id&&r.kind==='TAFSEER').map(r=>({id:r.playlist_id,month:programmeMonth(Date.now(),r.timezone)}));
  if(!selected.length)return new Map();
- const rights=await store.all(`SELECT p.website_id,${playlistEntitlementSQL({month:"COALESCE(w.completion_month,json_extract(j.value,'$.month'))"})} allowed FROM json_each(?) j JOIN mou_playlists p ON p.playlist_id=json_extract(j.value,'$.id') JOIN websites w USING(website_id)`,[actor.account_id,actor.account_id,actor.account_id,JSON.stringify(selected)]);
+ const rights=await store.authorityAll(`SELECT p.website_id,${playlistEntitlementSQL({month:"COALESCE(w.completion_month,json_extract(j.value,'$.month'))"})} allowed FROM json_each(?) j JOIN mou_playlists p ON p.playlist_id=json_extract(j.value,'$.id') JOIN websites w USING(website_id)`,[actor.account_id,actor.account_id,actor.account_id,JSON.stringify(selected)]);
  return new Map(rights.map(r=>[r.website_id,Boolean(r.allowed)]));
 }
 

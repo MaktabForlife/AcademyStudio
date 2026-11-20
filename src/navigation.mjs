@@ -1,3 +1,4 @@
+import {sourceAuthorityFresh} from './v111-native-context.mjs';
 import {mouDefinition,studioMouVisible} from './programme-policy.mjs';
 import {fail,id,boundedAge} from './protocol.mjs';
 import {publicCatalogue,catalogueAccess} from './circles.mjs';
@@ -7,8 +8,8 @@ export function checkedProgrammes(value){
  return value.programmes;
 }
 export async function programmeSnapshot(store,actor){
- const row=await store.first('SELECT epoch,verified_at,programmes_json FROM circles_navigation WHERE account_id=?',[actor.account_id]);
- if(!row||row.epoch!==actor.epoch||row.verified_at<Date.now()-boundedAge(store.env))throw fail('Confirm your programme access to continue.',409,'ACCESS_REFRESH_REQUIRED');
+ const row=await store.authorityFirst('SELECT epoch,verified_at,programmes_json FROM circles_navigation WHERE account_id=?',[actor.account_id]);
+ if(!row||row.epoch!==actor.epoch||!sourceAuthorityFresh(store,actor,row.verified_at,boundedAge(store.env)))throw fail('Confirm your programme access to continue.',409,'ACCESS_REFRESH_REQUIRED');
  const programmes=checkedProgrammes({programmes:JSON.parse(row.programmes_json)}),mou=await mouDefinition(store);
  if(mou?.authority==='WEBSITE'){const current=programmes.filter(k=>k!=='mothers');if(await studioMouVisible(store,actor,mou))current.push('mothers');return current;}
  return programmes;
@@ -33,5 +34,5 @@ export async function circlesNavigation(env,store,actor,{catalogue,rights:checke
  // Surface existing Global Admin reader access separately from actual purchases.
  // Reuse the already checked local rights/policy result; never grant or buy here.
  const adminCourses=items.filter(i=>adminPaid.has(i.websiteId)).map(i=>({key:i.key,label:i.title,href:'/studio/?website='+encodeURIComponent(id(i.websiteId)),cover:i.cover,recordings:i.recordings??null,accessLabel:'Admin access',accessState:rights.websites.find(r=>r.websiteId===i.websiteId)?.subscriptionStatus||'required'}));
- return {academia:['alimiyah','reboot','arabic-intensive'].filter(k=>programmes.includes(k)).map(key=>({key,label:programmeLabels[key]})),mothers:programmes.includes('mothers'),hifz:programmes.includes('hifz')?'https://hifz.maktab4life.org/':null,tafseer:'/studio/?view=collections&collection=tafseer',shortCourses:items.filter(i=>permitted.has(i.websiteId)).map(i=>({label:i.title,href:'/studio/?website='+encodeURIComponent(id(i.websiteId))})),purchasedCourses,adminCourses};
+ return {academia:['alimiyah','reboot','arabic-intensive'].filter(k=>programmes.includes(k)).map(key=>({key,label:programmeLabels[key]})),mothers:programmes.includes('mothers'),hifz:programmes.includes('hifz')?(env.UAA_V2_ENABLED==='1'?'https://mahadarwa-hifz.ummabbadacademy.app/':'https://hifz.maktab4life.org/'):null,tafseer:'/studio/?view=collections&collection=tafseer',shortCourses:items.filter(i=>permitted.has(i.websiteId)).map(i=>({label:i.title,href:'/studio/?website='+encodeURIComponent(id(i.websiteId))})),purchasedCourses,adminCourses};
 }

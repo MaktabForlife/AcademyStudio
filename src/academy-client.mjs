@@ -1,6 +1,11 @@
+import {v2Context} from './v111-native-context.mjs';
 import {fail,signedHeaders,bodyJSON,safeToken} from './protocol.mjs';
 import {receive} from './integration.mjs';
 export async function academyCommand(env,store,path,input,fetcher){
+ const local=v2Context(store);if(local){
+  if(typeof local.runtime.domainCommand!=='function')throw fail('This Academy business connection is awaiting its current service protocol.',503,'V2_NATIVE_COMMAND_REQUIRED');
+  const {sourceRef,...facts}=input;return local.runtime.domainCommand(local.cap,{command:path,input:facts,...(facts.operationId?{operationId:facts.operationId}:{})});
+ }
  const origin=new URL(env.ACADEMY_API_ORIGIN||env.ACADEMY_ORIGIN);if(origin.protocol!=='https:'||origin.origin!==(env.ACADEMY_API_ORIGIN||env.ACADEMY_ORIGIN))throw fail('Academy connection is unavailable.',503);
  for(let page=0;page<4;page++){
  const signed=await signedHeaders(env.WEBSITE_TO_ACADEMY_SECRET,path,{...input,issuedAt:Date.now()});

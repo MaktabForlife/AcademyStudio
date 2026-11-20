@@ -1,3 +1,6 @@
+import {installStudioPrivateUI} from './v111-private-ui.mjs';
+import {navigateStudioAdmission} from './v111-session.mjs';
+import {studioSession,studioResultContext,configureStudioAuth} from './api.mjs';
 import {installPageHistory} from './shared/page-history.mjs';
 import {pinEntry} from './shared/pin-entry.mjs';
 import {protectAccountHistory} from './shared/account-history.mjs';
@@ -20,6 +23,7 @@ const dialog=document.createElement('dialog');dialog.id='circles-sign-in';dialog
 dialog.innerHTML=`<button type="button" class="circles-sign-in-close" aria-label="Close sign-in">×</button><p class="eyebrow" id="circles-sign-in-area">Your Academy account</p><h2 id="circles-sign-in-title">Ahlan wa Sahlan</h2><p id="circles-sign-in-intro">Log in with your existing Academy account.</p><section id="circles-remembered-accounts" aria-label="Remembered accounts"></section><form id="circles-sign-in-form"><label>Academy account ID<input name="uniqueid" autocomplete="username" maxlength="160" required></label><label>PIN<input name="pin" type="password" inputmode="numeric" autocomplete="off" readonly pattern="[0-9]{4}" maxlength="4" required></label><label id="circles-confirm-pin" hidden>Confirm your Academy PIN<input name="pinConfirmation" type="password" inputmode="numeric" autocomplete="off" readonly pattern="[0-9]{4}" maxlength="4"></label><label class="circles-remember-choice"><input type="checkbox" name="rememberId" checked>Remember my ID on this browser</label><button type="submit" class="btn">Log in</button></form><p id="circles-sign-in-status" role="status" aria-live="polite"></p>`;
 document.body.append(dialog);
 const element=id=>document.getElementById(id),form=element('circles-sign-in-form'),message=element('circles-sign-in-status'),renderBlocks=circleBlockNavigation(document),renderCourses=circlesCourseRow(document),refinePublicHome=publicHome(document);
+const privateUI=installStudioPrivateUI({session:studioSession,resultContext:studioResultContext,selectors:['#circles-dashboard','#programmes.circles-dashboard-courses','.circles-account-menu','[data-circles-dashboard-dialog]']});
 const pins=pinEntry(form),pageHistory=installPageHistory();let historyReady=false;
 installHeaderDates();
 const initialEntry=window.AcademyCirclesEntry||{},initialWorkspace=initialEntry.workspace||new URLSearchParams(location.search).get('workspace');
@@ -76,17 +80,18 @@ async function loadNavigation(){
 }
 const ready=(async()=>{
  const boot=await takeDashboardBootstrap(initialWorkspace).catch(error=>{if(error.status!==401)throw error;return null;});
- config=boot?.configuration||await api('/api/config');identity.account=boot?.account||null;
+ config=boot?.configuration||await api('/api/config');await configureStudioAuth(config);identity.account=boot?.account||null;
  if(boot){navigation=boot.navigation;if(boot.errors?.navigation)showHomeMessage('Your programme links could not be loaded. Please try Refresh.');refreshHeader();await dashboard.load(boot.dashboard?.mode||dashboardWorkspace(initialWorkspace)||undefined,false,boot.dashboard?.selectedDate,boot.dashboard,boot.errors?.dashboard);}
  else{clearDashboardView(dashboardViewStorage());refreshHeader();}
+ if(boot)privateUI.checked(boot);
  window.AcademyCirclesHomeEntry?.complete();
 })();ready.then(()=>{historyReady=true;pageHistory.update(identity.account);}).catch(()=>window.AcademyCirclesHomeEntry?.fail());
 function returnToCircles(){if(dialog.open)dialog.close();refreshHeader();const card=selected==='general'?element('learning-circles'):document.querySelector(`.hub-panel[data-home-area="${selected}"]`);if(card){if(selected==='general')window.scrollTo({top:0,behavior:'smooth'});else card.scrollIntoView({behavior:'smooth',block:'center'});if(!card.hasAttribute('tabindex'))card.tabIndex=-1;card.focus({preventScroll:true});}}
-async function begin(area,{switchUser=false}={}){const opening=++attempt;selected=accessArea(area);message.textContent='';try{await ready;if(opening!==attempt)return;if(identity.account&&!switchUser){if(publicView)setPublicView(false);returnToCircles();return;}switching=switchUser;form.reset();pins.clear();form.elements.rememberId.checked=true;element('circles-sign-in-title').textContent=switching?'Switch user':'Ahlan wa Sahlan';element('circles-sign-in-intro').textContent=switching?'Choose an account and enter its PIN. This switches all Circles tabs in this browser.':'Log in with your existing Academy account.';form.querySelector('[type=submit]').textContent=switching?'Switch user':'Log in';renderRemembered();element('circles-sign-in-area').textContent=labels[selected];if(!dialog.open)dialog.showModal();}catch{if(!dialog.open)dialog.showModal();message.textContent='Sign-in is temporarily unavailable. Please try again.';}}
+async function begin(area,{switchUser=false}={}){const opening=++attempt;selected=accessArea(area);message.textContent='';try{await ready;if(opening!==attempt)return;if(config?.authVersion===2){if(identity.account&&!switchUser){if(publicView)setPublicView(false);returnToCircles();return;}await configureStudioAuth(config);return navigateStudioAdmission(studioSession(),{returnTo:location.pathname+location.search});}if(identity.account&&!switchUser){if(publicView)setPublicView(false);returnToCircles();return;}switching=switchUser;form.reset();pins.clear();form.elements.rememberId.checked=true;element('circles-sign-in-title').textContent=switching?'Switch user':'Ahlan wa Sahlan';element('circles-sign-in-intro').textContent=switching?'Choose an account and enter its PIN. This switches all Circles tabs in this browser.':'Log in with your existing Academy account.';form.querySelector('[type=submit]').textContent=switching?'Switch user':'Log in';renderRemembered();element('circles-sign-in-area').textContent=labels[selected];if(!dialog.open)dialog.showModal();}catch{if(config?.authVersion===2||studioSession()){showHomeMessage('Academy sign-in is temporarily unavailable. Please try again.');return;}if(!dialog.open)dialog.showModal();message.textContent='Sign-in is temporarily unavailable. Please try again.';}}
 dialog.querySelector('.circles-sign-in-close').onclick=()=>dialog.close();
 dialog.addEventListener('close',()=>{attempt++;switching=false;form.reset();pins.clear();delete form.dataset.setup;element('circles-confirm-pin').hidden=true;form.elements.pinConfirmation.required=false;message.textContent='';});
 form.addEventListener('submit',async event=>{
- event.preventDefault();if(!pins.validate())return;const button=form.querySelector('[type="submit"]');if(button.disabled)return;
+ event.preventDefault();if(config?.authVersion===2||studioSession()){pins.clear();await configureStudioAuth(config);await navigateStudioAdmission(studioSession(),{returnTo:location.pathname+location.search});return;}if(!pins.validate())return;const button=form.querySelector('[type="submit"]');if(button.disabled)return;
  const opening=++attempt,loginId=form.elements.uniqueid.value.trim(),remember=form.elements.rememberId.checked,credential=pins.take();button.disabled=true;message.textContent='Signing in…';
  try{
   config||=await api('/api/config');

@@ -1,3 +1,4 @@
+import {hasNativeParent} from './v111-native-context.mjs';
 import {publicationIndex} from '../public/shared/learner-companion.mjs';
 import {companionChanges} from './recording-companions.mjs';
 import {fail,id,text,integer,date,sha256,bodyJSON} from './protocol.mjs';
@@ -17,7 +18,7 @@ export function teacherIds(value){
  const ids=value.map(id);if(new Set(ids.map(v=>v.toLowerCase())).size!==ids.length)throw fail('Choose each Teacher once.');return ids;
 }
 export async function mediaTeachers(env,store,actor,offer,selected,fetcher,{readOnly=false}={}){
- await mediaAdmin(store,actor,offer,{readOnly});if(!actor.source_ref)throw fail('Refresh the native Academy session before choosing a Teacher.',401);
+ await mediaAdmin(store,actor,offer,{readOnly});if(!hasNativeParent(store,actor))throw fail('Refresh the native Academy session before choosing a Teacher.',401);
  const ids=selected===undefined?undefined:teacherIds(selected);
  store.nativeMediaTeacherProofs??=new Map();const proofKey=JSON.stringify([actor.token_hash,actor.source_ref,offer]);
  let result=store.nativeMediaTeacherProofs.get(proofKey);if(!result){result=await academyCommand(env,store,'/internal/website/media-teachers',{sourceRef:actor.source_ref,offeringId:offer,purpose:'ADMIN_MEDIA',...(ids?{teacherIds:ids}:{})},fetcher);store.nativeMediaTeacherProofs.set(proofKey,result);}

@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "release": "V111-milestone2",
+  "release": "V111-milestone3",
   "app": "studio",
   "env": "production",
   "publicOrigin": "https://worshipuponbaseera.ummabbadacademy.app",
@@ -13,5 +13,9 @@
     "defaultInactivityMinutes": 90
   },
   "deploymentApproval": "REQUIRED",
-  "providerAlias": "ummabbadacademy.maktab4life.org"
+  "providerAlias": "ummabbadacademy.maktab4life.org",
+  "snapshotSchema": 3,
+  "contractAmendments": [
+    "R7-A1"
+  ]
 }

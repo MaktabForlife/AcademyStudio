@@ -1,3 +1,4 @@
+import {v2Enabled} from './v111-mode.mjs';
 import {connected} from './parallel-worker.mjs';
 import {json} from './protocol.mjs';
 import {publicCirclesRoute} from './public-circles-routes.mjs';
@@ -28,6 +29,7 @@ export async function launch(request,env,ctx){
  if(response.headers.get('Content-Type')?.includes('text/html')){
   response.headers.set('Cache-Control','no-store');
   if(publicHTML)response=new HTMLRewriter().on('head',{element(element){element.append('<link rel="canonical" href="'+origins.website+url.pathname+'">',{html:true});}}).transform(response);
+  if(v2Enabled(env))response=new HTMLRewriter().on('head',{element(element){element.append('<meta name="uaa-auth-version" content="2"><meta name="uaa-app" content="studio">',{html:true});}}).transform(response);
  }
  return response;
 }

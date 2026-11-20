@@ -26,7 +26,10 @@ async function actorProof(request,env,store,{join=false}={}){
  return {input,actor,async recheck(){check(await load());}};
 }
 export async function hubSummary(request,env,store){
- const {input,actor,recheck}=await actorProof(request,env,store),catalogue=await publicCatalogue(env);
+ const {input,actor,recheck}=await actorProof(request,env,store);return executeHubSummary(env,store,actor,input,recheck);
+}
+export async function executeHubSummary(env,store,actor,input,recheck=async()=>{}){
+ const catalogue=await publicCatalogue(env);
  const published=catalogue.items.filter(i=>!i.pending&&i.websiteId),ids=[...new Set(published.map(i=>i.websiteId))];
  if(ids.length>50)throw fail('The published hub catalogue needs review.',503,'HUB_CATALOGUE_LIMIT');
  const selected=input.action==='access'?(input.websiteIds||[]):ids;
@@ -39,7 +42,10 @@ export async function hubSummary(request,env,store){
  return {navigation,rights,websites,coursePolicyEpoch:rights.coursePolicyEpoch,checkedAt:Date.now()};
 }
 export async function hubJoin(request,env,store){
- const {input,actor,recheck}=await actorProof(request,env,store,{join:true}),scope=await store.scope(actor,input.offeringId);
+ const {input,actor,recheck}=await actorProof(request,env,store,{join:true});return executeHubJoin(env,store,actor,input,recheck);
+}
+export async function executeHubJoin(env,store,actor,input,recheck=async()=>{}){
+ const scope=await store.scope(actor,input.offeringId);
  const result=await offeringJoin(store,actor,input.offeringId,scope,{sessionId:input.lessonSessionId});
  await recheck();return result;
 }

@@ -1,3 +1,4 @@
+import {hasNativeParent} from './v111-native-context.mjs';
 import {fail,id,text,integer} from './protocol.mjs';
 import {reviewPlaylistReferences} from './private-playlist-reference.mjs';
 import {academyCommand} from './academy-client.mjs';
@@ -15,7 +16,7 @@ const rowFor=(store,offer,key)=>store.first(`SELECT p.*,w.title,w.draft_key,w.pu
 const metadata=(store,key,stage)=>store.all('SELECT activity_key activityKey,offering_id offeringId,class_id classId,title,class_name className FROM course_playlist_placements WHERE playlist_id=? AND stage=? ORDER BY activity_key,class_id',[key,stage]);
 const entries=(store,key,stage)=>store.all('SELECT kind,reference_id referenceId,position,snapshot_json FROM course_playlist_content WHERE playlist_id=? AND stage=? ORDER BY position',[key,stage]).then(rows=>rows.map(r=>({...r,snapshot:JSON.parse(r.snapshot_json),snapshot_json:undefined})));
 async function locations(env,store,actor,offer,input,fetcher,{readOnly=false}={}){
- await scope(store,actor,offer,readOnly);if(!actor.source_ref)throw fail('Reopen your native Academy Admin session.',401);
+ await scope(store,actor,offer,readOnly);if(!hasNativeParent(store,actor))throw fail('Reopen your native Academy Admin session.',401);
  const result=await academyCommand(env,store,'/internal/website/course-playlist-placements',{sourceRef:actor.source_ref,offeringId:offer,purpose:'ADMIN_MEDIA',...input},fetcher);
  if(result.schema!=='COURSE_PLAYLIST_PLACEMENTS_V1'||result.offeringId!==offer||!Array.isArray(result.locations)||result.locations.length>50||!Array.isArray(result.placements)||result.placements.length>20||Math.abs(Date.now()-result.checkedAt)>60000)throw fail('Refresh the permitted playlist locations.',503);
  await scope(store,await store.actor(actor.token_hash),offer,readOnly);return result;

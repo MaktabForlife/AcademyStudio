@@ -1,13 +1,14 @@
+import {hasNativeParent,sourceAuthorityFresh} from './v111-native-context.mjs';
 import {isHubActor} from './hub-actor.mjs';
 import {fail,id,integer,flag,text,month,date,boundedAge,sha256} from './protocol.mjs';
 export const academyAuthority=env=>env.AUTHORITY_MODE==='ACADEMY';
 export const freeCourse=scope=>scope?.kind==='COURSE'&&scope.access_model==='FREE';
 export async function accessGate(store,actor,offeringId,{admin=false,live=false,readOnly=false}={}){
- if(!academyAuthority(store.env))return null;admin=admin||Boolean(actor.global_admin);
+ if(!academyAuthority(store.env))return null;if(store.env.UAA_V2_STUDIO_SOURCE_OWNER_EPOCH&&await store.authorityFirst("SELECT 1 FROM studio_course_publication_holds WHERE offering_id=? AND phase<>'RELEASED'",[offeringId]))throw fail('The accepted Course publication is still completing its ownership handover.',503,'COURSE_PUBLICATION_PENDING');if(store.env.UAA_V2_STUDIO_SOURCE_OWNER_EPOCH&&await store.authorityFirst('SELECT code FROM studio_source_projection_problems WHERE account_id=? AND offering_id=?',[actor.account_id,offeringId]))throw fail('This offering needs its native mapping reviewed.',403,'SOURCE_SCOPE_PROJECTION_BLOCKED');admin=admin||Boolean(actor.global_admin);
  // Reuse factual rows only inside this read request. Every caller still checks
  // its own live/Admin age and conditions; writes always read fresh and retain
  // their final atomic guard. Store writes discard this request-local memo.
- const first=(sql,args)=>readOnly&&store.memo?store.memo('scope-fact:'+JSON.stringify([sql,args]),()=>store.first(sql,args)):store.first(sql,args);
+ const first=(sql,args)=>readOnly&&store.memo?store.memo('scope-fact:'+JSON.stringify([sql,args]),()=>store.authorityFirst(sql,args)):store.authorityFirst(sql,args);
  const row=await first(`SELECT s.*,o.kind,m.access_model,p.generation person_generation,p.verified_at,p.ready,p.windows_json,p.has_allocation,p.course FROM source_access_scopes s JOIN offerings o USING(offering_id) LEFT JOIN course_access_models m USING(offering_id) LEFT JOIN source_access_people p ON p.offering_id=s.offering_id AND p.account_id=? WHERE s.offering_id=?`,[actor.account_id,offeringId]);
  const free=freeCourse(row)&&!admin;
  // A received master-account change takes precedence over every cached proof,
@@ -20,12 +21,12 @@ export async function accessGate(store,actor,offeringId,{admin=false,live=false,
   // Studio owns acquired rights; Academy still owns class windows/lifecycle.
   if(!live&&!admin)return {...row,studio:true};
  }
- if(!actor.source_ref&&!isHubActor(actor))throw fail('Sign in through Academy for parallel access.',401,'SIGN_IN_REQUIRED');
+ if(!hasNativeParent(store,actor)&&!isHubActor(actor))throw fail('Sign in through Academy for parallel access.',401,'SIGN_IN_REQUIRED');
  const liveAge=Math.max(30,Math.min(86400,Number(store.env.LIVE_ACCESS_MAX_AGE_SECONDS)||boundedAge(store.env)/1000))*1000,maxAge=live?Math.min(liveAge,boundedAge(store.env,admin&&!readOnly)):boundedAge(store.env,admin&&!readOnly);
  if(row&&!row.enabled)throw fail('This offering is unavailable in Academy.',403,'SOURCE_SCOPE_UNAVAILABLE');
  if(live&&row?.live_enabled===0)throw fail('Live entry is closed for this offering.',403,'JOIN_CLOSED');
  if(free)return row.authority==='WEBSITE'?{...row,studio:true}:row;
- if(!row?.ready||row.person_generation!==row.generation||row.verified_at<Date.now()-maxAge)throw Object.assign(fail('Academy access needs to be confirmed.',409,'ACCESS_REFRESH_REQUIRED'),{offeringId});return row?.authority==='WEBSITE'?{...row,studio:true}:row;
+ if(!row?.ready||row.person_generation!==row.generation||!sourceAuthorityFresh(store,actor,row.verified_at,maxAge))throw Object.assign(fail('Academy access needs to be confirmed.',409,'ACCESS_REFRESH_REQUIRED'),{offeringId});return row?.authority==='WEBSITE'?{...row,studio:true}:row;
 }
 export async function rejectAuthorityWrite(store,offeringId){
  if(!academyAuthority(store.env))return;
@@ -40,8 +41,8 @@ export function liveAccess(row,scope,now=Date.now()){
 export async function sourceWebsiteGate(store,actor,website,{readOnly=true}={}){
  const scope=await accessGate(store,actor,website.offering_id,{admin:Boolean(website.role),readOnly});
  if(scope&&website.kind==='TAFSEER'){
-  const programme=await store.first("SELECT 1 FROM programme_offerings WHERE programme_key='mothers' AND offering_id=?",[website.offering_id]);
-  const mapped=programme?await store.first('SELECT enabled FROM programme_subjects WHERE offering_id=? AND website_id=? UNION ALL SELECT 1 enabled FROM mou_playlists WHERE offering_id=? AND website_id=? LIMIT 1',[website.offering_id,website.website_id,website.offering_id,website.website_id]):await store.first('SELECT enabled FROM source_access_websites WHERE offering_id=? AND website_id=? UNION ALL SELECT 1 enabled FROM mou_playlists WHERE offering_id=? AND website_id=? LIMIT 1',[website.offering_id,website.website_id,website.offering_id,website.website_id]);
+  const programme=await store.authorityFirst("SELECT 1 FROM programme_offerings WHERE programme_key='mothers' AND offering_id=?",[website.offering_id]);
+  const mapped=programme?await store.authorityFirst('SELECT enabled FROM programme_subjects WHERE offering_id=? AND website_id=? UNION ALL SELECT 1 enabled FROM mou_playlists WHERE offering_id=? AND website_id=? LIMIT 1',[website.offering_id,website.website_id,website.offering_id,website.website_id]):await store.authorityFirst('SELECT enabled FROM source_access_websites WHERE offering_id=? AND website_id=? UNION ALL SELECT 1 enabled FROM mou_playlists WHERE offering_id=? AND website_id=? LIMIT 1',[website.offering_id,website.website_id,website.offering_id,website.website_id]);
   if(!mapped?.enabled)throw fail('This programme subject is unavailable.',403);
  }return scope;
 }
@@ -91,7 +92,7 @@ export async function joinAudience(store,actor,offeringId,session,scope){
  const source=await accessGate(store,actor,offeringId,{live:true});if(!source)return;
  if(actor.global_admin||scope.role==='ADMIN')return;
  const audience=await store.first('SELECT * FROM source_session_audiences WHERE session_id=?',[session.session_id]);if(!audience)throw fail('Academy session audience has not been confirmed.',403,'JOIN_AUDIENCE');
- if(freeCourse(scope)&&JSON.parse(audience.class_ids_json).length&&(!source.ready||source.person_generation!==source.generation||source.verified_at<Date.now()-boundedAge(store.env)))throw Object.assign(fail('Confirm the current class allocation for this session.',409,'ACCESS_REFRESH_REQUIRED'),{offeringId});
+ if(freeCourse(scope)&&JSON.parse(audience.class_ids_json).length&&(!source.ready||source.person_generation!==source.generation||!sourceAuthorityFresh(store,actor,source.verified_at,boundedAge(store.env))))throw Object.assign(fail('Confirm the current class allocation for this session.',409,'ACCESS_REFRESH_REQUIRED'),{offeringId});
  if(permittedSessionAudience(actor,scope,source,audience,session))return;
  throw fail('This session belongs to another Academy audience.',403,'JOIN_AUDIENCE');
 }

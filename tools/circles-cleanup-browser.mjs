@@ -1,7 +1,9 @@
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
-import {chromium} from '/Users/hbnaidu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
+import {pathToFileURL} from 'node:url';
+const browserModule=process.env.PLAYWRIGHT_MODULE||'playwright';
+const {chromium}=await import(browserModule.startsWith('.')||browserModule.startsWith('/')||/^[A-Za-z]:[\\/]/.test(browserModule)?pathToFileURL(resolve(browserModule)).href:browserModule);
 import assert from 'node:assert/strict';
 import {publicCirclesRoute} from '../src/public-circles-routes.mjs';
 const root=resolve(import.meta.dirname,'..'),candidate=resolve(process.argv[2]||resolve(root,'local-content/circles-cleanup-3/public')),out=resolve(process.argv[3]||resolve(root,'../../outputs/circles-only-studio-cleanup-20261102/browser'));
@@ -26,8 +28,8 @@ async function server(folder,compat){const s=createServer(async(req,res)=>{const
  }
  let path=u.pathname;if(path.endsWith('/'))path+='index.html';const file=resolve(folder,'.'+path);if(!file.startsWith(folder+'/'))throw Error('Outside fixture');res.setHeader('content-type',mime[extname(file)]||'application/octet-stream');res.end(await readFile(file));
  }catch(error){missing.push(u.pathname);res.writeHead(404);res.end();}});await new Promise(r=>s.listen(0,'127.0.0.1',r));return {server:s,url:'http://127.0.0.1:'+s.address().port};}
-const current=await server(candidate,true),old=await server(resolve(root,'../AcademyStudio-media-dashboard-release-10911/local-content/release-10911/public'),false);
-const browser=await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true});
+const current=await server(candidate,true),old=await server(resolve(process.env.CIRCLES_BASELINE_PUBLIC_ROOT||resolve(root,'../AcademyStudio-media-dashboard-release-10911/local-content/release-10911/public')),false);
+const browser=await chromium.launch({...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{}),headless:true});
 async function page(account){const context=await browser.newContext({reducedMotion:'reduce',extraHTTPHeaders:account?{'X-Fixture-Account':account}:{}});await context.route('**/*',route=>{const u=new URL(route.request().url());return u.hostname==='127.0.0.1'||['data:','blob:'].includes(u.protocol)?route.continue():route.abort();});const p=await context.newPage();p.on('pageerror',e=>errors.push(e.message));return {context,page:p};}
 const boxes=async p=>p.evaluate(()=>Object.fromEntries(['.hub-orb','[data-home-area=hifz]','[data-home-area=tafseer]','[data-home-area=academy]','[data-home-area=arabic-adventures]'].map(sel=>{const r=document.querySelector('#animated-hub '+sel).getBoundingClientRect();return [sel,{x:r.x,y:r.y,w:r.width,h:r.height}];})));
 try{

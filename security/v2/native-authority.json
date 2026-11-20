@@ -637,6 +637,56 @@
       "dependencies": [
         "S.resource-publication"
       ]
+    },
+    "studio_source_authority": {
+      "columns": [
+        "account_id",
+        "scope",
+        "ce",
+        "source_owner_epoch",
+        "source_revision",
+        "payload_digest",
+        "payload_ref",
+        "source_guards_json",
+        "timed_until",
+        "receipt_json"
+      ],
+      "accountColumn": "account_id",
+      "scope": "ACCOUNT",
+      "required": false,
+      "dependencies": [
+        "S.source-projection"
+      ]
+    },
+    "studio_source_projection_problems": {
+      "columns": [
+        "account_id",
+        "offering_id",
+        "code",
+        "source_owner_epoch",
+        "source_revision"
+      ],
+      "accountColumn": "account_id",
+      "scope": "ACCOUNT",
+      "required": false,
+      "dependencies": [
+        "S.source-projection"
+      ]
+    },
+    "studio_course_publication_holds": {
+      "columns": [
+        "offering_id",
+        "transfer_id",
+        "registration_id",
+        "source_owner_epoch",
+        "phase"
+      ],
+      "accountColumn": null,
+      "scope": "GLOBAL",
+      "required": true,
+      "dependencies": [
+        "S.native-source-publication"
+      ]
     }
   },
   "schemaColumns": {
@@ -1087,6 +1137,32 @@
       "enabled",
       "offering_id",
       "website_id"
+    ],
+    "studio_source_authority": [
+      "account_id",
+      "scope",
+      "ce",
+      "source_owner_epoch",
+      "source_revision",
+      "payload_digest",
+      "payload_ref",
+      "source_guards_json",
+      "timed_until",
+      "receipt_json"
+    ],
+    "studio_source_projection_problems": [
+      "account_id",
+      "offering_id",
+      "code",
+      "source_owner_epoch",
+      "source_revision"
+    ],
+    "studio_course_publication_holds": [
+      "offering_id",
+      "transfer_id",
+      "registration_id",
+      "source_owner_epoch",
+      "phase"
     ]
   },
   "acceptedSetup": "Core setup_head_state is the accepted Admin definition dependency; unaccepted Admin/private draft writes have no active capture.",

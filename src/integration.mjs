@@ -1,3 +1,4 @@
+import {assertAuthorityPeer} from './v111-source-authority-protocol.mjs';
 import {dashboardContextStatements} from './dashboard-context.mjs';
 import {checkedProgrammes} from './navigation.mjs';
 import {accessStatements,fenceAccess} from './access.mjs';
@@ -8,18 +9,21 @@ export async function signedInput(request,env,{limit=262144}={}){
  let data;try{data=JSON.parse(payload);}catch{throw fail('Invalid Academy delivery.');}
  if(!data||Math.abs(Date.now()-integer(data.issuedAt))>300_000)throw fail('This delivery signature has expired.',401);return data;
 }
-const accountStatements=(store,a,{insertOnly=false}={})=>{
+export const accountStatements=(store,a,{insertOnly=false}={})=>{
  const checked=integer(a.verifiedAt);if(checked>Date.now()+30_000)throw fail('Account confirmation has a future timestamp.',409);
  return [store.statement(`INSERT INTO accounts VALUES(?,?,?,?,?,?,?) ON CONFLICT(account_id) ${insertOnly?'DO NOTHING':`DO UPDATE SET display_name=excluded.display_name,
   active=excluded.active,admitted=excluded.admitted,epoch=excluded.epoch,verified_at=excluded.verified_at,global_admin=excluded.global_admin
   WHERE excluded.epoch>=accounts.epoch`}`,[id(a.accountId),text(a.displayName),flag(a.active),flag(a.admitted),integer(a.epoch),checked,flag(a.globalAdmin||false)])];
 };
 export async function receive(request,env,store){
- const data=await signedInput(request,env),event=data.event;id(data.operationId);id(data.stream);integer(data.version,1);if(!event)throw fail('Missing delivery.');
+ return receiveDelivery(await signedInput(request,env),env,store);
+}
+async function receiveDelivery(data,env,store,{ledgerStream=data.stream}={}){
+ const event=data.event;id(data.operationId);id(data.stream);integer(data.version,1);if(!event)throw fail('Missing delivery.');
  if(['access','access-scope'].includes(event.type)){const offer=id(event.offeringId||event.offering?.id),account=event.type==='access'?id(event.account?.accountId).toLowerCase():'';if(data.stream!=='access:'+await sha256(JSON.stringify([offer,account])))throw fail('Invalid authoritative access stream.');}
  const hash=await sha256(JSON.stringify({stream:data.stream,version:data.version,event}));
  const receipt=await store.replay('ACADEMY',data.operationId,hash);if(receipt){if(data.superseded===true&&event.type.startsWith('access'))await fenceAccess(store,event,data.version);return receipt;}
- const old=await store.first('SELECT version,payload_hash FROM stream_heads WHERE stream=?',[data.stream]);
+ const old=await store.first('SELECT version,payload_hash FROM stream_heads WHERE stream=?',[ledgerStream]);
  if(data.version===(old?.version||0)&&hash===old?.payload_hash)return {accepted:true,version:data.version,replayed:true};
  if(data.version!==(old?.version||0)+1)throw fail('Deliver the missing version first.',409,'DELIVERY_GAP');
  const statements=[];let extraSQL='1',extraArgs=[];
@@ -70,8 +74,8 @@ export async function receive(request,env,store){
   if(data.stream!=='session:'+event.sourceRef)throw fail('Invalid session stream.');statements.push(store.statement('INSERT INTO source_session_revocations VALUES(?,?) ON CONFLICT(source_ref) DO NOTHING',[id(event.sourceRef),Date.now()]),store.statement('UPDATE sessions SET revoked=1 WHERE source_ref=?',[id(event.sourceRef)]));
  }else throw fail('Unknown Academy delivery type.');
  const guardId=crypto.randomUUID(),result={accepted:true,version:data.version,...(event.type==='timetable'?{changedOffering:event.offering.id}:{})};
- const guard=store.statement(`INSERT INTO guards VALUES(?,(COALESCE((SELECT version FROM stream_heads WHERE stream=?),0)=?) AND (${extraSQL}))`,[guardId,data.stream,data.version-1,...extraArgs]);
- try{await store.batch([guard,...statements,store.statement('INSERT INTO stream_heads VALUES(?,?,?) ON CONFLICT(stream) DO UPDATE SET version=excluded.version,payload_hash=excluded.payload_hash',[data.stream,data.version,hash]),store.statement('INSERT INTO operations VALUES(?,?,?,?,?)',[data.operationId,'ACADEMY',hash,JSON.stringify(result),Date.now()]),store.statement('DELETE FROM guards WHERE guard_id=?',[guardId])]);}
+ const guard=store.statement(`INSERT INTO guards VALUES(?,(COALESCE((SELECT version FROM stream_heads WHERE stream=?),0)=?) AND (${extraSQL}))`,[guardId,ledgerStream,data.version-1,...extraArgs]);
+ try{await store.batch([guard,...statements,store.statement('INSERT INTO stream_heads VALUES(?,?,?) ON CONFLICT(stream) DO UPDATE SET version=excluded.version,payload_hash=excluded.payload_hash',[ledgerStream,data.version,hash]),store.statement('INSERT INTO operations VALUES(?,?,?,?,?)',[data.operationId,'ACADEMY',hash,JSON.stringify(result),Date.now()]),store.statement('DELETE FROM guards WHERE guard_id=?',[guardId])]);}
  catch(error){const saved=await store.replay('ACADEMY',data.operationId,hash);if(saved)return saved;throw fail('Delivery conflicts with a newer state.',409,'DELIVERY_CONFLICT');}return result;
 }
 export async function exchange(input,env,store){
@@ -87,3 +91,5 @@ export async function exchange(input,env,store){
  ]);}catch{throw fail('This sign-in link has expired or was used.',401);}
  return {cookie:cookie(token,7*86400),accountId:handoff.account_id};
 }
+
+export async function receiveNativeBusinessEvent(peer,data,env,store){assertAuthorityPeer(peer);if(peer.sourceApp!=='academy'||peer.targetApp!=='studio'||!['timetable','navigation-invalidated'].includes(data?.event?.type)||!String(data.operationId).startsWith('v2-business:'))throw fail('This authenticated operation carries no Academy login or permission authority.',403,'V2_BUSINESS_EVENT_REQUIRED');return receiveDelivery(data,env,store,{ledgerStream:'v2-native-business:'+data.stream});}

@@ -1,3 +1,4 @@
+import {createStudioSession,navigateStudioAdmission} from './v111-session.mjs';
 const KEY='m4l_studio_native_connect_v1',MAX_AGE=60_000,token=value=>typeof value==='string'&&/^[A-Za-z0-9_-]{43}$/.test(value);
 export function checkedOrigin(value){
  let url;try{url=new URL(value);}catch{throw Error('The Academy connection is not configured.');}
@@ -27,6 +28,12 @@ export async function connectAcademy({win=window,storage=win.sessionStorage,fetc
  const reply=await fetcher('/api/config',{credentials:'same-origin',cache:'no-store'});if(!reply.ok)throw Error('The Academy connection is unavailable. Try again.');
  const config=await reply.json(),portalOrigin=checkedOrigin(config.academyPortalOrigin);
  if(portalOrigin===origin)throw Error('The Academy connection is not configured.');
+ if(config.authVersion===2){
+  if(hasFragment)throw Error('This older connection is no longer accepted. Reopen Studio from Academy.');
+  const requested=new URLSearchParams(win.location.search);if([...requested.keys()].some(k=>k!=='target')||requested.getAll('target').length>1)throw Error('Choose one Studio destination.');
+  const target=checkedTarget(requested.get('target')||'/studio/',origin),session=await createStudioSession(config,{origin,fetch:fetcher,sessionStorage:storage,crypto:webCrypto,clock});
+  return navigateStudioAdmission(session,{returnTo:target,win});
+ }
  if(hasFragment){
   if(fragment.size!==2||fragment.getAll('code').length!==1||fragment.getAll('state').length!==1||!token(fragment.get('code'))||!token(fragment.get('state')))throw Error('This connection is invalid. Open your learning again.');
   let saved;try{saved=JSON.parse(storage.getItem(KEY));}catch{throw Error('This connection expired. Open your learning again.');}

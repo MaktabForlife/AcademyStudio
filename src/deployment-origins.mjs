@@ -1,3 +1,4 @@
+import {v2Enabled,studioV2Origin,academyV2Origin} from './v111-mode.mjs';
 // Explicit deployment configuration only. Request Host, Origin and forwarding
 // headers never select trusted origins or an upstream.
 export const legacyHosting=Object.freeze({
@@ -23,5 +24,6 @@ export function hostingOrigins(env={}){
  if(!Array.isArray(aliases)||aliases.length>8)throw invalid('website aliases');
  aliases=aliases.map(value=>exactOrigin(value,'website alias'));
  if(new Set(aliases).size!==aliases.length||aliases.includes(website))throw invalid('website aliases');
+ if(v2Enabled(env)&&(website!==studioV2Origin||academy!==academyV2Origin||academyPortal!==academyV2Origin||aliases.length))throw invalid('V2 canonical app');
  return {website,studioBackend,academy,academyPortal,aliases};
 }

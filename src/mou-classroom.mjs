@@ -1,3 +1,4 @@
+import {nativeAuthorityFresh,localLeaseUntil} from './v111-native-context.mjs';
 import {privateViewTag,privateUnchanged,privateNotModified,privateReply} from './read-cache.mjs';
 import {mouSubjects} from '../public/shared/mou-subjects.mjs';
 import {comingSoonLabel} from '../public/shared/course-notices.mjs';
@@ -19,20 +20,20 @@ export async function mouClassroom(store,actor,{request}={}){
  let tag=null,liveChecked=false;
  if(request){
   if(definition.live_enabled&&(staff||scope.live_entitled)){await accessGate(store,actor,offer,{live:true,admin:staff,readOnly:true});liveChecked=true;}
-  const ended=await store.first('SELECT ends_at FROM timetable INDEXED BY timetable_public_offering WHERE offering_id=? AND cancelled=0 AND starts_at>=? AND ends_at<=? ORDER BY ends_at DESC LIMIT 1',[offer,now-86400_000,now]);
-  tag=await privateViewTag(request,store,actor,offer,{definition,scope,source,verifiedAt:actor.verified_at,expiresAt:actor.expires_at,adminFresh:actor.verified_at>=now-boundedAge(store.env,true),ended:ended?.ends_at||0});
+  const ended=await store.authorityFirst('SELECT ends_at FROM timetable INDEXED BY timetable_public_offering WHERE offering_id=? AND cancelled=0 AND starts_at>=? AND ends_at<=? ORDER BY ends_at DESC LIMIT 1',[offer,now-86400_000,now]);
+  tag=await privateViewTag(request,store,actor,offer,{definition,scope,source,verifiedAt:actor.verified_at,expiresAt:actor.expires_at,adminFresh:nativeAuthorityFresh(store,actor,{sensitive:true,now}),ended:ended?.ends_at||0});
   if(privateUnchanged(request,tag))return privateNotModified(tag);
  }
  const finish=value=>tag?privateReply(value,tag):value;
- const months=await store.first(`SELECT EXISTS(SELECT 1 FROM paid_months WHERE account_id=? AND offering_id=? AND month=? UNION ALL SELECT 1 FROM website_months WHERE account_id=? AND offering_id=? AND month=?) current_month,EXISTS(SELECT 1 FROM paid_months WHERE account_id=? AND offering_id=? UNION ALL SELECT 1 FROM website_months WHERE account_id=? AND offering_id=?) retained`,[actor.account_id,offer,month,actor.account_id,offer,month,actor.account_id,offer,actor.account_id,offer]);
+ const months=await store.authorityFirst(`SELECT EXISTS(SELECT 1 FROM paid_months WHERE account_id=? AND offering_id=? AND month=? UNION ALL SELECT 1 FROM website_months WHERE account_id=? AND offering_id=? AND month=?) current_month,EXISTS(SELECT 1 FROM paid_months WHERE account_id=? AND offering_id=? UNION ALL SELECT 1 FROM website_months WHERE account_id=? AND offering_id=?) retained`,[actor.account_id,offer,month,actor.account_id,offer,month,actor.account_id,offer,actor.account_id,offer]);
  result.programme={...result.programme,offeringId:offer,authority:definition.authority==='WEBSITE'?'STUDIO':'ACADEMY',state:staff||scope.live?'ACTIVE':'MATERIALS_ONLY'};
  result.monthly={state:'CONNECTED',month,hasCurrentMonth:Boolean(months.current_month),hasRetainedMonths:Boolean(months.retained)};
  result.playlists=await learnerPlaylists(store,actor,offer,{staff,canEdit:Boolean(actor.global_admin||scope.role==='ADMIN')});
  const canManage=Boolean(actor.global_admin||scope.role==='ADMIN');
- result.management={canManage,requiresAuthorityRefresh:canManage&&actor.verified_at<now-boundedAge(store.env,true),authority:'ACADEMY_PROXY',offeringId:offer};
+ result.management={canManage,requiresAuthorityRefresh:canManage&&!nativeAuthorityFresh(store,actor,{sensitive:true,now}),authority:'ACADEMY_PROXY',offeringId:offer};
  // One bounded binding/permission query for the approved catalogue. No per-card
  // websiteAccess or per-topic queries. A card never confers material rights.
- const bindings=await store.all(`SELECT b.display_key,w.website_id,w.enabled,w.published_key,w.completion_month,
+ const bindings=await store.authorityAll(`SELECT b.display_key,w.website_id,w.enabled,w.published_key,w.completion_month,
  EXISTS(SELECT 1 FROM attachments x WHERE x.website_id=w.website_id AND x.offering_id=w.offering_id AND x.audience='RECORDING' AND x.published=1
  AND (?=1 OR EXISTS(SELECT 1 FROM paid_months m WHERE m.account_id=? AND m.offering_id=x.offering_id AND m.month=substr(x.lesson_date,1,7) AND m.cohort=x.cohort))) has_recordings,
  EXISTS(SELECT 1 FROM surah_grants g WHERE g.account_id=? AND g.website_id=w.website_id) text_grant
@@ -41,20 +42,20 @@ export async function mouClassroom(store,actor,{request}={}){
  for(const binding of bindings){
   const index=subjects.findIndex(s=>s.key===binding.display_key);if(index<0)continue;
   const permitted=staff||binding.has_recordings||binding.text_grant||Boolean(months.retained);if(!permitted)continue;
-  const published=Boolean(binding.enabled&&binding.published_key),canEdit=canManage&&actor.verified_at>=now-boundedAge(store.env,true);
+  const published=Boolean(binding.enabled&&binding.published_key),canEdit=canManage&&nativeAuthorityFresh(store,actor,{sensitive:true,now});
   result.subjects[index]={...subjects[index],state:published?'PUBLISHED':'PREPARING',availabilityLabel:null,website:{id:binding.website_id,title:subjects[index].title,completionMonth:binding.completion_month,canOpen:published,canEdit,...(published?{href:'/studio/?website='+encodeURIComponent(binding.website_id)}:{}),...(canEdit?{editorHref:'/builder/?website='+encodeURIComponent(binding.website_id)}:{})}};
  }
  result.materialsConnected=result.subjects.some(s=>s.website?.canOpen)||result.playlists.length>0;
  if(!definition.live_enabled||!staff&&!scope.live_entitled){result.timetable.state='LIVE_ACCESS_REQUIRED';return finish(result);}
  if(!liveChecked)await accessGate(store,actor,offer,{live:true,admin:staff,readOnly:true});
- const snapshot=await store.first('SELECT version FROM stream_heads WHERE stream=?',['timetable:'+offer]);
+ const snapshot=await store.authorityFirst('SELECT version FROM stream_heads WHERE stream=?',['timetable:'+offer]);
  if(!snapshot){result.timetable.state='PENDING';return finish(result);}
- const sessions=await store.all(`SELECT t.session_id,t.title,t.starts_at,t.ends_at,t.cancelled,t.zoom_url IS NOT NULL has_zoom,a.class_ids_json,a.teacher_ids_json,d.timezone,d.classes_json,
+ const sessions=await store.authorityAll(`SELECT t.session_id,t.title,t.starts_at,t.ends_at,t.cancelled,t.zoom_url IS NOT NULL has_zoom,a.class_ids_json,a.teacher_ids_json,d.timezone,d.classes_json,
  (SELECT json_group_array(n.display_name) FROM json_each(a.teacher_ids_json) j JOIN accounts n ON n.account_id=j.value) teacher_labels
  FROM timetable t INDEXED BY timetable_public_offering LEFT JOIN source_session_audiences a USING(session_id) LEFT JOIN source_session_details d USING(session_id)
  WHERE t.offering_id=? AND t.cancelled=0 AND t.ends_at>? AND t.starts_at>=? ORDER BY t.starts_at,t.session_id LIMIT 50`,[offer,now,now-86400_000]);
  const maxAge=Math.min(Math.max(30,Math.min(86400,Number(store.env.LIVE_ACCESS_MAX_AGE_SECONDS)||boundedAge(store.env)/1000))*1000,boundedAge(store.env));
- const eligibleUntil=Math.min(actor.expires_at,actor.verified_at+boundedAge(store.env),source.verified_at+maxAge);
+ const eligibleUntil=localLeaseUntil(store,actor)??Math.min(actor.expires_at,actor.verified_at+boundedAge(store.env),source.verified_at+maxAge);
  // List only this actor's real audience. Eligibility is time-independent, but
  // expires with the proof; a browser timer cannot turn a denied gate into true.
  result.timetable.sessions=sessions.filter(s=>permittedSessionAudience(actor,scope,source,s,s)).map(s=>{
@@ -70,7 +71,7 @@ export async function bindMouSubject(store,actor,offer,input,options={}){
  const scope=await store.scope(actor,offer,{admin:true}),definition=await mouDefinition(store);
  if(scope.programme_key!=='mothers'||definition?.offering_id!==offer||definition.authority!=='WEBSITE'||definition.phase!=='COMMITTED')throw fail('Complete the independent MOU handover before binding a subject.',409,'MOU_HANDOVER_REQUIRED');
  if(!mouSubjects.some(s=>s.key===input.displayKey))throw fail('Choose an approved MOU subject identity.');
- const websiteId=id(input.websiteId),enabled=flag(input.enabled),website=await store.first('SELECT offering_id,completion_date,completion_month FROM websites WHERE website_id=?',[websiteId]);
+ const websiteId=id(input.websiteId),enabled=flag(input.enabled),website=await store.authorityFirst('SELECT offering_id,completion_date,completion_month FROM websites WHERE website_id=?',[websiteId]);
  if(website?.offering_id!==offer)throw fail('Choose an existing native website in this MOU programme.',403,'MOU_SUBJECT_SCOPE');
  if(website.completion_date&&date(website.completion_date).slice(0,7)!==website.completion_month)throw fail('Review the saved subject completion date.',409,'MOU_SUBJECT_REVIEW_REQUIRED');
  if(input.createOnly)options={...options,expectedSQL:`(${options.expectedSQL||'1'}) AND NOT EXISTS(SELECT 1 FROM programme_subjects WHERE offering_id=? AND display_key=?)`,expectedArgs:[...(options.expectedArgs||[]),offer,input.displayKey]};

@@ -1,3 +1,4 @@
+import {v2Context,nativeSessionKey,localLeaseUntil} from './v111-native-context.mjs';
 import {coursePolicyEpoch} from './course-policy.mjs';
 import {json,sha256} from './protocol.mjs';
 import {programmeMonth} from './mou-playlists.mjs';
@@ -5,8 +6,8 @@ import {programmeMonth} from './mou-playlists.mjs';
 // These tags are validators, never bearer permissions. Callers must complete
 // the unchanged current actor/content gates before considering a cached reply.
 export async function accountView(actor,store){
- return {accountId:actor.account_id,displayName:actor.display_name,globalAdmin:Boolean(actor.global_admin),verifiedAt:actor.verified_at,
-  cacheVersion:store.env.RELEASE_VERSION||'local',cacheSession:await sha256('private-view-v1:'+actor.token_hash+':'+actor.epoch),sessionExpiresAt:actor.expires_at,
+ const local=v2Context(store,actor),profile=local?await store.first('SELECT display_name FROM accounts WHERE account_id=?',[actor.account_id]):null;if(local)store.metrics.profileBusinessQueries=(store.metrics.profileBusinessQueries||0)+1;return {...(local?{authVersion:2,validationDeadlineMs:localLeaseUntil(store,actor),originalExpiresAtMs:local.cap.binding.s_exp*1000}:{}),accountId:actor.account_id,displayName:profile?.display_name??actor.display_name,globalAdmin:Boolean(actor.global_admin),verifiedAt:actor.verified_at,
+  cacheVersion:store.env.RELEASE_VERSION||'local',cacheSession:await sha256('private-view-v1:'+nativeSessionKey(store,actor)+':'+actor.epoch),sessionExpiresAt:actor.expires_at,
   coursePolicyEpoch:await coursePolicyEpoch(store)};
 }
 export async function privateViewTag(request,store,actor,offeringId,extra){
@@ -15,7 +16,7 @@ export async function privateViewTag(request,store,actor,offeringId,extra){
   LEFT JOIN display_revisions v USING(offering_id) LEFT JOIN course_policy_revisions p USING(offering_id)
   LEFT JOIN source_access_scopes s USING(offering_id) WHERE o.offering_id=?`,[offeringId]);
  const month=head?.timezone?programmeMonth(Date.now(),head.timezone):null,url=new URL(request.url);
- return '"pv1-'+await sha256(JSON.stringify([store.env.RELEASE_VERSION||'local',actor.account_id,actor.epoch,actor.token_hash,actor.verified_at,actor.expires_at,actor.global_admin,actor.display_name,url.pathname,url.search,head,month,extra]))+'"';
+ return '"pv1-'+await sha256(JSON.stringify([store.env.RELEASE_VERSION||'local',actor.account_id,actor.epoch,nativeSessionKey(store,actor),actor.verified_at,actor.expires_at,actor.global_admin,actor.display_name,url.pathname,url.search,head,month,extra]))+'"';
 }
 export const privateUnchanged=(request,tag)=>request.headers.get('If-None-Match')===tag;
 export function privateReply(value,tag){return json(value,200,{ETag:tag});}

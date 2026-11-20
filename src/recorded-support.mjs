@@ -86,7 +86,7 @@ export async function recordingScopedDocument(env,store,actor,website,document){
  const support=await recordedSupport(env,store,website);
  // One bounded indexed month/lesson query per website response. No Source calls
  // or per-reading permission queries; recording-only lessons remain in media.
- const rows=await store.all(`SELECT x.lesson_id FROM paid_months m CROSS JOIN attachments x INDEXED BY attachments_month
+ const rows=await store.authorityAll(`SELECT x.lesson_id FROM paid_months m CROSS JOIN attachments x INDEXED BY attachments_month
   WHERE m.account_id=? AND m.offering_id=? AND x.offering_id=m.offering_id AND substr(x.lesson_date,1,7)=+m.month AND x.cohort=m.cohort AND x.website_id=? AND x.audience='RECORDING' AND x.published=1 AND NOT EXISTS(SELECT 1 FROM mou_playlist_only_media pm WHERE pm.attachment_id=x.attachment_id) LIMIT 401`,[actor.account_id,website.offering_id,website.website_id]);
  if(rows.length>400)throw fail('This website needs a narrower recorded-lesson view.',409,'RECORDING_SCOPE_LIMIT');
  const allowed=new Set([...rows.map(r=>r.lesson_id),...await playlistReadingLessons(store,actor,website)]),sections=new Map((support?.sections||[]).map(s=>[pair(s.readingId,s.sectionId),s]));
