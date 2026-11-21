@@ -13,7 +13,7 @@ import {startReaderView,readerHasLiveSessions} from './shared/reader-startup.mjs
 import {protectAccountHistory} from './shared/account-history.mjs';
 import {createMouClassroom,renderMouClassroom} from './shared/mou-classroom.mjs';
 import {openAcademyFromCircles} from './shared/circles-sign-in.mjs';
-import {applicationPath as websiteApplicationPath,collectionKind,studioSignInReturnPath} from './shared/circles-routes.mjs';
+import {applicationPath as websiteApplicationPath,collectionKind,studioDashboardEntry,studioSignInReturnPath} from './shared/circles-routes.mjs';
 const appPath=websiteApplicationPath(document);
 import {circlesCatalogue} from './shared/circles-catalogue.mjs';
 import {replaceTafseerArtwork,tafseerDisplayCourse,tafseerCourseCover} from './shared/tafseer-cover.mjs';
@@ -39,7 +39,7 @@ const recordingEditor=recordingTextEditor({api,identity,getCurrent:()=>current,o
 const playlistEditor=playlistMetadataEditor({api,identity,getCurrent:()=>current,onPublished:async()=>{if(current)await openWebsite(current.websiteId);}});
 const pins=pinEntry($('sign-in-form'));
 installHeaderDates({programme:true});
-function openSignIn(){pins.clear();if(config?.authVersion===2||studioSession()||document.querySelector('meta[name="uaa-auth-version"][content="2"]')){void Promise.resolve(config||api('/api/config')).then(value=>{config=value;return configureStudioAuth(value);}).then(()=>navigateStudioAdmission(studioSession(),{returnTo:studioSignInReturnPath(location.search)})).catch(error=>status(error.message));return;}$('sign-in-dialog').showModal();}
+function openSignIn(){pins.clear();if(config?.authVersion===2||studioSession()||document.querySelector('meta[name="uaa-auth-version"][content="2"]')){return Promise.resolve(config||api('/api/config')).then(value=>{config=value;return configureStudioAuth(value);}).then(()=>navigateStudioAdmission(studioSession(),{returnTo:studioSignInReturnPath(location.search)})).catch(error=>status(error.message));return;}$('sign-in-dialog').showModal();}
 $('sign-in-dialog').addEventListener('close',()=>{pins.clear();$('sign-in-status').textContent='';});
 const removeReaderToolbars=()=>document.querySelectorAll('[data-reader-toolbar]').forEach(node=>node.remove());
 const canLeaveWorkspace=()=>recordingEditor.canLeave()&&playlistEditor.canLeave()&&textEditor.canLeave()&&(!$('administration')||$('administration').hidden||!adminModule?.canLeave||adminModule.canLeave());
@@ -221,6 +221,17 @@ document.addEventListener('click',async event=>{if(event.target.closest('[data-i
 $('device-import').onchange=async event=>{try{const file=event.target.files[0];if(!file)return;if(file.size>1_000_000)throw Error('Choose a learning export smaller than 1 MB.');const data=JSON.parse(await file.text());const imported=importDeviceLearning(data,{accountId:identity.account.accountId,websiteId:current.websiteId,document:current.document,current:ui});Object.assign(ui,imported);remember();draw();status('Device learning imported. Existing reflection answers were kept.');}catch(error){status(error.message);}finally{event.target.value='';}};
 document.addEventListener('visibilitychange',async()=>{if(document.visibilityState==='visible'&&identity.account){try{const me=await api('/api/me');if(me.accountId!==identity.account.accountId){clear();changed(me);status('Your account changed. Reopen your learning.');}}catch(error){status(error.message);}}});
 await startReaderView({main:$('main'),status:$('status'),async load(){
+ const dashboardEntry=appPath===location.pathname&&studioDashboardEntry(location.search);
+ if(dashboardEntry&&document.querySelector('meta[name="uaa-auth-version"][content="2"]')){
+  history.replaceState(history.state,'',dashboardEntry);
+  config=await api('/api/config');
+  const session=await configureStudioAuth(config);
+  const current=await session.bootstrap();
+  if(['SIGNED_OUT','LOCKED','ADMITTED_LOCKED'].includes(current.state)){
+   status('Continuing through Academy…');
+   return openSignIn();
+  }
+ }
  const params=new URLSearchParams(location.search),website=params.get('website'),mothers=params.get('classroom')==='mothers';
  if(website||mothers){
   const query=new URLSearchParams(website?{website,...(!['sessions','materials'].includes(parseSeriesRoute(location.hash).route)?{media:'1'}:{}),...(params.get('edition')==='published'?{edition:'published'}:{})}:{classroom:'mothers'});

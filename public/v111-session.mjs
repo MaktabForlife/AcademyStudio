@@ -10,7 +10,9 @@ export async function createStudioSession(config,{factory,origin=globalThis.loca
 }
 export async function navigateStudioAdmission(session,{returnTo='/studio/',win=globalThis.window}={}){
  if(!session||typeof session.beginAdmission!=='function')throw missing();
- const value=await session.beginAdmission({returnTo}),href=typeof value==='string'?value:value?.navigateUrl;
+ const locked=['LOCKED','ADMITTED_LOCKED'].includes(session.getState?.()?.state);
+ const value=locked?await session.beginUnlock({returnTo}):await session.beginAdmission({returnTo});
+ const href=typeof value==='string'?value:value?.navigateUrl;
  let destination;try{destination=new URL(href);}catch{throw missing();}
  if(destination.origin!==academyOrigin||destination.protocol!=='https:'||destination.username||destination.password)throw missing();
  win.location.assign(destination.href);return {connecting:true};

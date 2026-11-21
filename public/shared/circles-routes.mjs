@@ -9,4 +9,10 @@ const studioProgrammeQueries=new Set([
  '?view=collections&collection=courses'
 ]);
 export const studioSignInReturnPath=search=>applicationPath()+(studioProgrammeQueries.has(search)?search:'');
+export function studioDashboardEntry(search){
+ const suffix='&academy-entry=1';
+ if(!search.endsWith(suffix))return null;
+ const query=search.slice(0,-suffix.length);
+ return studioProgrammeQueries.has(query)?applicationPath()+query:null;
+}
 export const collectionKind=value=>value==='courses'?'COURSE':'TAFSEER';
