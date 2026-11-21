@@ -2,6 +2,7 @@ import registry from './native-authority.json' with {type:'json'};
 import {ORIGINS,profileConfig} from './tokens.mjs';
 import {strictJSON,requireThat,ascii,safeInt,unb64u,bytes,canonical} from './codec.mjs';
 import {dependencyScope} from './issuance-floors.mjs';
+import {defaultReturnPaths} from './return-routes.mjs';
 
 const parse=(value,code,maxBytes=65536)=>{try{requireThat(typeof value==='string',code,503);return strictJSON(value,{maxBytes});}catch{requireThat(false,code,503);}};
 async function ecKey(jwk,privateKey){
@@ -88,6 +89,6 @@ export async function loadRuntimeConfiguration(env,app){
  requireThat(dependencies.size===(raw.foreignDependencies||[]).length,'DEPENDENCY_REGISTRY_CONFLICT',503);
  const db=app==='academy'?env.ACADEMY_DB:env.DB,bucket=env.AUTH_CACHE;
  requireThat(db?.withSession&&bucket?.get&&bucket?.put,'V2_OWNING_BINDINGS_REQUIRED',503);
- return {raw,config,db,bucket,registry,nativeTables,dependenciesFor,dependencies,apiKeys,apiSigningKey,apiKid:api.currentKid,handoffKeys,handoffSigningKey,handoffKid:handoff.currentKid,csrf,draft,serviceKeys,prefix:'auth-private/v2/'+raw.env+'/'+app+'/'+raw.generation+'/',callbacks:Object.fromEntries(Object.entries(ORIGINS).map(([name,origin])=>[name,{origin,callbacks:name==='academy'?[]:[origin+'/auth/v2/admission/callback',origin+'/auth/v2/unlock/callback'],returns:(raw.returns?.[name]||[origin+'/'])}]))};
+ return {raw,config,db,bucket,registry,nativeTables,dependenciesFor,dependencies,apiKeys,apiSigningKey,apiKid:api.currentKid,handoffKeys,handoffSigningKey,handoffKid:handoff.currentKid,csrf,draft,serviceKeys,prefix:'auth-private/v2/'+raw.env+'/'+app+'/'+raw.generation+'/',callbacks:Object.fromEntries(Object.entries(ORIGINS).map(([name,origin])=>[name,{origin,callbacks:name==='academy'?[]:[origin+'/auth/v2/admission/callback',origin+'/auth/v2/unlock/callback'],returns:(raw.returns?.[name]||defaultReturnPaths(name).map(path=>origin+path))}]))};
 }
 export const runtimeConfigurationBoundary=Object.freeze({source:'Configuration is server-installed and bound to exact owner/origin/native manifest; request headers never select keys, namespaces or dependencies.',activation:'The committed source manifests stay disabled. Tests may explicitly select a disposable local runtime; no import installs schema or activates hosted state.'});

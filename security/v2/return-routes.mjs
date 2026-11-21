@@ -1,4 +1,14 @@
-import {requireThat} from './codec.mjs';
+const studioProgrammeReturns=Object.freeze([
+ '/studio/',
+ '/studio/?view=collections&collection=tafseer',
+ '/studio/?classroom=mothers',
+ '/studio/?view=collections&collection=courses'
+]);
+
+export function defaultReturnPaths(app){
+ return app==='studio'?['/',...studioProgrammeReturns]:['/'];
+}
+
 export function allowedReturn(registry,app,value){
  const list=registry[app]?.returns;if(!Array.isArray(list)||typeof value!=='string')return false;
  let u;try{u=new URL(value);}catch{return false;}

@@ -13,7 +13,7 @@ import {startReaderView,readerHasLiveSessions} from './shared/reader-startup.mjs
 import {protectAccountHistory} from './shared/account-history.mjs';
 import {createMouClassroom,renderMouClassroom} from './shared/mou-classroom.mjs';
 import {openAcademyFromCircles} from './shared/circles-sign-in.mjs';
-import {applicationPath as websiteApplicationPath,collectionKind} from './shared/circles-routes.mjs';
+import {applicationPath as websiteApplicationPath,collectionKind,studioSignInReturnPath} from './shared/circles-routes.mjs';
 const appPath=websiteApplicationPath(document);
 import {circlesCatalogue} from './shared/circles-catalogue.mjs';
 import {replaceTafseerArtwork,tafseerDisplayCourse,tafseerCourseCover} from './shared/tafseer-cover.mjs';
@@ -39,7 +39,7 @@ const recordingEditor=recordingTextEditor({api,identity,getCurrent:()=>current,o
 const playlistEditor=playlistMetadataEditor({api,identity,getCurrent:()=>current,onPublished:async()=>{if(current)await openWebsite(current.websiteId);}});
 const pins=pinEntry($('sign-in-form'));
 installHeaderDates({programme:true});
-function openSignIn(){pins.clear();if(config?.authVersion===2||studioSession()||document.querySelector('meta[name="uaa-auth-version"][content="2"]')){void Promise.resolve(config||api('/api/config')).then(value=>{config=value;return configureStudioAuth(value);}).then(()=>navigateStudioAdmission(studioSession(),{returnTo:appPath})).catch(error=>status(error.message));return;}$('sign-in-dialog').showModal();}
+function openSignIn(){pins.clear();if(config?.authVersion===2||studioSession()||document.querySelector('meta[name="uaa-auth-version"][content="2"]')){void Promise.resolve(config||api('/api/config')).then(value=>{config=value;return configureStudioAuth(value);}).then(()=>navigateStudioAdmission(studioSession(),{returnTo:studioSignInReturnPath(location.search)})).catch(error=>status(error.message));return;}$('sign-in-dialog').showModal();}
 $('sign-in-dialog').addEventListener('close',()=>{pins.clear();$('sign-in-status').textContent='';});
 const removeReaderToolbars=()=>document.querySelectorAll('[data-reader-toolbar]').forEach(node=>node.remove());
 const canLeaveWorkspace=()=>recordingEditor.canLeave()&&playlistEditor.canLeave()&&textEditor.canLeave()&&(!$('administration')||$('administration').hidden||!adminModule?.canLeave||adminModule.canLeave());
