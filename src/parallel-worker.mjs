@@ -1,8 +1,10 @@
+import {heldForV111Cutover,offlineSecurityRequest,cutoverUnavailable} from '../security/v2/cutover-state.mjs';
 import {v2Enabled} from './v111-mode.mjs';
 // Real-account parallel deployment; never imports temporary preview identities.
 import {handle} from './worker.mjs';
 import {json} from './protocol.mjs';
 export async function connected(request,env,ctx){
+ if(heldForV111Cutover(env)&&!offlineSecurityRequest(request,env,'studio'))return cutoverUnavailable();
  if(v2Enabled(env))return (await import('./v111-worker.mjs')).studioV2(request,env,ctx);
  if(env.ENVIRONMENT!=='parallel'||env.AUTHORITY_MODE!=='ACADEMY'||env.PREVIEW_LOGIN_ENABLED==='1'||!/^https:\/\//.test(env.ACADEMY_ORIGIN||'')||!/^https:\/\//.test(env.ACADEMY_API_ORIGIN||'')||env.ACADEMY_ORIGIN==='https://academy.invalid')return json({success:false,error:'The real parallel configuration is required.'},503);
  if(env.PLATFORM_ENABLED==='1'&&[env.ACADEMY_TO_WEBSITE_SECRET,env.WEBSITE_TO_ACADEMY_SECRET].some(s=>typeof s!=='string'||s.length<32))return json({success:false,error:'The Academy connection is not configured.'},503);

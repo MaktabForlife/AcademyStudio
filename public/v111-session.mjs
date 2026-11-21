@@ -16,6 +16,108 @@ export async function navigateStudioAdmission(session,{returnTo='/studio/',win=g
  win.location.assign(destination.href);return {connecting:true};
 }
 
+const encodeBookmarkProof=bytes=>btoa(String.fromCharCode(...new Uint8Array(bytes))).replaceAll('+','-').replaceAll('/','_').replace(/=+$/,'');
+const bookmarkStorageKey='uaa-studio-bookmark-return-v2';
+
+async function bookmarkPost(fetcher,path,body,csrf){
+ const headers={'Content-Type':'application/json','X-UAA-Request':'2'};
+ if(csrf)headers['X-UAA-CSRF']=csrf;
+ if(body.expectedContext)headers['X-UAA-Expected-Context']=encodeBookmarkProof(new TextEncoder().encode(JSON.stringify(body.expectedContext)));
+ const response=await fetcher(path,{method:'POST',credentials:'same-origin',mode:'same-origin',cache:'no-store',redirect:'error',referrerPolicy:'same-origin',headers,body:JSON.stringify(body)});
+ const dto=await response.json();
+ if(!response.ok||dto.success!==true||dto.contractVersion!==2){
+  const message={
+   ACADEMY_SIGN_IN_REQUIRED:'Sign in to Academy to open this bookmark.',
+   ACCOUNT_SELECTION_REQUIRED:'This bookmark needs an account choice before it can open.',
+   PIN_REQUIRED:'Studio is locked. Unlock your Studio session to continue.',
+   UNREGISTERED_RETURN:'This Studio bookmark is invalid.'
+  }[dto.code]||'Studio could not check this bookmark. Try again.';
+  throw Object.assign(Error(message),{code:dto.code,status:response.status});
+ }
+ return dto;
+}
+
+async function finishBookmarkPost(fetcher,body,csrf){
+ let original;
+ try{
+  const result=await bookmarkPost(fetcher,'/auth/v2/shared-entry',body,csrf);
+  if(result.state==='UNLOCKED')return result;
+  if(result.outcome!=='SUPERSEDED')return result;
+  original=Error('Studio could not confirm this bookmark.');
+ }catch(error){
+  if(error.status&&error.status<500)throw error;
+  original=error;
+ }
+ const {confirmAcademyAccount:_,...observation}=body;
+ const status=await bookmarkPost(fetcher,'/auth/v2/shared-entry/status',observation,csrf);
+ if(status.outcome==='INSTALLED_CURRENT')return status;
+ if(status.outcome==='UNCONFIRMED'&&!body.expectedContext)throw Object.assign(Error('Studio could not confirm the installed session.'),{code:'CHILD_ENTRY_INSTALLATION_UNCONFIRMED'});
+ throw original;
+}
+
+export async function checkStudioBookmark(session,bookmark,{fetcher=globalThis.fetch?.bind(globalThis),crypto=globalThis.crypto,
+ storage=globalThis.sessionStorage,navigate=url=>globalThis.location.assign(url),onAccountChoice,recheckInstallation=true}={}){
+ if(!session||!crypto?.subtle)throw missing();
+ const auth=await session.bootstrap();
+ if(auth.context&&auth.state==='UNLOCKED')await session.ensureFresh({activeWork:false});
+ const expectedContext=session.getContext(),encoder=new TextEncoder();
+ const verifier=encodeBookmarkProof(crypto.getRandomValues(new Uint8Array(32)));
+ const challenge=encodeBookmarkProof(await crypto.subtle.digest('SHA-256',encoder.encode(verifier)));
+ const entry=await bookmarkPost(fetcher,'/auth/v2/shared-entry/start',{destination:{bookmark},challenge,expectedContext});
+ const body={tx:entry.tx,operationId:entry.operationId,expectedContext,verifier};
+ const requestReturn=async mode=>{
+  const state=encodeBookmarkProof(crypto.getRandomValues(new Uint8Array(32)));
+  const stateHash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',encoder.encode(state))),v=>v.toString(16).padStart(2,'0')).join('');
+  const registered=await bookmarkPost(fetcher,'/auth/v2/shared-entry/continue',{...body,stateHash,...(mode==='continue'?{}:{mode})},entry.csrf);
+  if(registered.tx!==body.tx||registered.operationId!==body.operationId||!storage)throw missing();
+  storage.setItem(bookmarkStorageKey,JSON.stringify({body,csrf:entry.csrf,state,bookmark,mode,until:Date.now()+900000}));
+  const target=new URL('/auth/v2/shared-return',academyOrigin);
+  target.searchParams.set('tx',body.tx);target.hash=state;
+  navigate(target.href);
+  return null;
+ };
+ let result;
+ try{result=await finishBookmarkPost(fetcher,body,entry.csrf);}
+ catch(error){
+  if(error.code==='CHILD_ENTRY_INSTALLATION_UNCONFIRMED'&&recheckInstallation){
+   return checkStudioBookmark(session,bookmark,{fetcher,crypto,storage,navigate,onAccountChoice,recheckInstallation:false});
+  }
+  if(error.code==='ACADEMY_SIGN_IN_REQUIRED')return requestReturn('continue');
+  if(!expectedContext&&error.code==='SHARED_ENTRY_RECOVERY_REQUIRED')return requestReturn('renew');
+  if(error.code!=='ACCOUNT_SELECTION_REQUIRED'||!onAccountChoice)throw error;
+  const choice=await onAccountChoice();
+  if(choice==='select')return requestReturn('select');
+  if(choice!=='continue')throw Error('The bookmark is closed.');
+  result=await finishBookmarkPost(fetcher,{...body,confirmAcademyAccount:true},entry.csrf);
+ }
+ if(result.state!=='UNLOCKED'||result.operationId!==entry.operationId||!result.returnTo?.startsWith('/studio/?website='))throw missing();
+ const current=await session.bootstrap();
+ if(current.state!=='UNLOCKED'||!session.checkCurrentContext(result.context))throw missing();
+ return result.returnTo;
+}
+
+export async function resumeStudioBookmark(callback,{fetcher=globalThis.fetch?.bind(globalThis),storage=globalThis.sessionStorage,
+ navigate=url=>globalThis.location.replace(url)}={}){
+ let saved;
+ try{saved=JSON.parse(storage?.getItem(bookmarkStorageKey)||'null');}catch{}
+ if(!saved||saved.until<=Date.now()||saved.body?.tx!==callback.tx||saved.state!==callback.state
+  ||typeof saved.bookmark!=='string'||!saved.bookmark.startsWith('/studio/?website='))throw missing();
+ if(callback.expired||saved.mode==='select'){
+  storage.removeItem(bookmarkStorageKey);
+  navigate(saved.bookmark);return;
+ }
+ let result;
+ try{result=await finishBookmarkPost(fetcher,{...saved.body,returnState:callback.state},saved.csrf);}
+ catch(error){
+  if(error.code!=='CHILD_ENTRY_INSTALLATION_UNCONFIRMED')throw error;
+  storage.removeItem(bookmarkStorageKey);
+  navigate(saved.bookmark);return;
+ }
+ if(result.state!=='UNLOCKED'||result.operationId!==saved.body.operationId||!result.returnTo?.startsWith('/studio/?website='))throw missing();
+ storage.removeItem(bookmarkStorageKey);
+ navigate(result.returnTo);
+}
+
 export async function createStudioEditorRecovery({session,websiteId,capture,baseRevision,isDirty=()=>true,onUnavailable=()=>{},drafts:providedDrafts,draftFactory,resultContext=()=>null}={}){
  if(!session||typeof capture!=='function'||typeof baseRevision!=='function'||typeof websiteId!=='string'||!/^[-A-Za-z0-9_:]{1,180}$/.test(websiteId))throw missing();
  const resource=Object.freeze({type:'studio-website',websiteId}),family=session.getState().context,familyFields=['app','sub','sid','psid','bsid','bv','ce','ae','le'],sameFamily=value=>Boolean(family&&value&&familyFields.every(key=>family[key]===value[key]));if(!family)throw missing();

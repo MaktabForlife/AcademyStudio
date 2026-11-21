@@ -2,7 +2,7 @@
   "$schema": "../node_modules/wrangler/config-schema.json",
   "name": "academy-studio-parallel",
   "account_id": "2b01ca929611669e032703ff19f7098f",
-  "main": "../src/launch-worker.mjs",
+  "main": "../src/launch-deployment.mjs",
   "compatibility_date": "2026-10-28",
   "compatibility_flags": [
     "nodejs_compat"

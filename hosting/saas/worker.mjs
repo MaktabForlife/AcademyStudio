@@ -1,5 +1,5 @@
 import {runChildSecurityTick} from '../../security/v2/child-security-tick.mjs';
-import {heldForV111Cutover, cutoverUnavailable} from '../../security/v2/cutover-state.mjs';
+import {heldForV111Cutover, offlineSecurityRequest, cutoverUnavailable} from '../../security/v2/cutover-state.mjs';
 import {v2Enabled} from '../../src/v111-mode.mjs';
 // Existing Studio application is the SaaS origin. No second authentication service.
 import {launch} from '../../src/launch-worker.mjs';
@@ -7,7 +7,10 @@ import {hostingOrigins,exactOrigin} from '../../src/deployment-origins.mjs';
 import {pagesAsset} from './assets.mjs';
 const error=(message,status)=>new Response(message,{status,headers:{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow, noarchive'}});
 export async function saasWebsite(request,env,ctx,{application=launch,assetFetcher=fetch}={}){
- if(heldForV111Cutover(env))return cutoverUnavailable();
+ if(heldForV111Cutover(env)){
+  if(!offlineSecurityRequest(request,env,'studio'))return cutoverUnavailable();
+  return application(request,env,ctx);
+ }
  let origins,provider,redirects,assetSource;
  try{
   for(const name of ['WEBSITE_ORIGIN','STUDIO_BACKEND_ORIGIN','ACADEMY_ORIGIN','ACADEMY_PORTAL_ORIGIN'])exactOrigin(env[name],name);

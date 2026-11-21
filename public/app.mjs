@@ -1,5 +1,5 @@
 import {installStudioPrivateUI} from './v111-private-ui.mjs';
-import {navigateStudioAdmission} from './v111-session.mjs';
+import {navigateStudioAdmission,checkStudioBookmark} from './v111-session.mjs';
 import {recordingTextEditor} from './shared/recording-text-editor.mjs';
 import {playlistMetadataEditor} from './shared/playlist-metadata-editor.mjs';
 import {ensurePlaylistCardStyles} from './shared/playlist-card.mjs';
@@ -99,11 +99,30 @@ async function loadImages(){const key=generation,images=$('course-reader').query
 async function openWebsite(websiteId,returnLesson,checked=null,checkedError=null){if(!canLeaveWorkspace())return;recordingEditor.clear();playlistEditor.clear();mouClassroomView?.clear();if(isMouRoute())$('learning-cards').replaceChildren();closeMedia();textEditor.clear();beforeEditing=null;removeReaderToolbars();if(!identity.account){const same=new URLSearchParams(location.search).get('website')===websiteId;if(!same)history.pushState(null,'',appPath+'?website='+encodeURIComponent(websiteId));openSignIn();return;}generation++;for(const url of urls)URL.revokeObjectURL(url);urls.clear();const key=generation,requestedEdition=new URLSearchParams(location.search).get('edition');if(checkedError)throw Object.assign(Error(checkedError.message),checkedError);const record=checked||await api('/api/websites/'+encodeURIComponent(websiteId)+(requestedEdition==='published'?'?edition=published':''));if(key!==generation)return;current=record;programmeShell.allowAdmin(record.canEdit===true);assets=new Map(record.assets.map(a=>[a.asset_id,{...a,id:a.asset_id}]));delivery=freshDelivery();delivery.initial=record.initialMedia||null;clearTimeout(joinTimer);let saved={};try{if(!studioSession())saved=JSON.parse(localStorage.getItem(deviceKey())||'{}');}catch{}
  ui={portal:true,route:'home',lessonId:record.document.lessons[0]?.id,readingSize:Math.max(16,Math.min(24,Number(saved.readingSize)||18)),completed:Array.isArray(saved.completed)?saved.completed.filter(id=>record.document.lessons.some(l=>l.id===id)):[],reflections:saved.reflections&&typeof saved.reflections==='object'?saved.reflections:{},sessionsHTML:'<p>Select Sessions to load the published timetable.</p>',nativeMaterialsHTML:'',journalEligible:false};
  const sameWebsite=new URLSearchParams(location.search).get('website')===websiteId;Object.assign(ui,sameWebsite?parseSeriesRoute(location.hash):{route:'home'});
+ if(ui.route==='lesson'&&!record.document.lessons.some(lesson=>lesson.id===ui.lessonId))
+  throw Error('This lesson is unavailable to your account.');
+ let selectedRecording=null;
+ if(ui.route==='recording'){
+  await loadMedia();
+  if(key!==generation)return;
+  selectedRecording=currentSeriesRecordings().find(entry=>entry.id===ui.recordingId&&entry.row);
+  while(!selectedRecording&&delivery.more){
+   const cursor=delivery.media.at(-1)?.attachment_id;
+   await loadMedia({more:true});
+   if(key!==generation)return;
+   selectedRecording=currentSeriesRecordings().find(entry=>entry.id===ui.recordingId&&entry.row);
+   if(delivery.media.at(-1)?.attachment_id===cursor)break;
+  }
+  if(!selectedRecording)throw Error('This recording is unavailable to your account.');
+ }
  const requestedLesson=returnLesson??new URLSearchParams(location.search).get('lesson');if((sameWebsite||returnLesson)&&requestedLesson&&record.document.lessons.some(l=>l.id===requestedLesson)){ui.route='lesson';ui.lessonId=requestedLesson;}
  show('course-reader');history[sameWebsite?'replaceState':'pushState'](null,'',appPath+'?website='+encodeURIComponent(websiteId)+(requestedEdition==='published'?'&edition=published':'')+'#'+seriesRoute(ui.route,ui.route==='recording'?ui.recordingId:ui.route==='lesson'?ui.lessonId:''));status('');draw();privateUI.checked(record);
  const toolbar=document.createElement('nav');toolbar.className='toolbar reader-tools';toolbar.setAttribute('aria-label','Website tools');toolbar.innerHTML='<details><summary>Website tools</summary><div>'+(record.canEdit?'<span class=website-edition>Published edition '+esc(record.publishedVersion?.slice(0,10)||'on file')+'</span>':'')+'<button data-library>Academy Library ↗</button><button data-device-export>Export reading progress & reflections</button><button data-device-import>Import device learning</button></div></details>';$('account-panel').append(toolbar);toolbar.dataset.readerToolbar='';
  if(liveTimetableAvailable())void loadTimetable().then(()=>{if(key===generation)draw();}).catch(error=>status(error.message));
- if(ui.route==='sessions')void sessions();else if(ui.route==='materials')void materials().catch(error=>status(error.message));else void loadMedia().then(async()=>{if(key!==generation)return;draw();if(ui.route==='recording'){const entry=currentSeriesRecordings().find(e=>e.id===ui.recordingId);if(entry?.row)await openMaterial('/api/media/'+entry.row.attachment_id,entry.row.type,entry.title,0,false);}}).catch(error=>status(error.message));
+ if(selectedRecording)await openMaterial('/api/media/'+selectedRecording.row.attachment_id,selectedRecording.row.type,selectedRecording.title,0,false);
+ else if(ui.route==='sessions')void sessions();
+ else if(ui.route==='materials')void materials().catch(error=>status(error.message));
+ else void loadMedia().then(()=>{if(key===generation)draw();}).catch(error=>status(error.message));
 }
 function renderDelivery(){
  if(!current||!delivery||!ui||textEditor.editing)return;
@@ -221,7 +240,25 @@ document.addEventListener('click',async event=>{if(event.target.closest('[data-i
 $('device-import').onchange=async event=>{try{const file=event.target.files[0];if(!file)return;if(file.size>1_000_000)throw Error('Choose a learning export smaller than 1 MB.');const data=JSON.parse(await file.text());const imported=importDeviceLearning(data,{accountId:identity.account.accountId,websiteId:current.websiteId,document:current.document,current:ui});Object.assign(ui,imported);remember();draw();status('Device learning imported. Existing reflection answers were kept.');}catch(error){status(error.message);}finally{event.target.value='';}};
 document.addEventListener('visibilitychange',async()=>{if(document.visibilityState==='visible'&&identity.account){try{const me=await api('/api/me');if(me.accountId!==identity.account.accountId){clear();changed(me);status('Your account changed. Reopen your learning.');}}catch(error){status(error.message);}}});
 await startReaderView({main:$('main'),status:$('status'),async load(){
- const params=new URLSearchParams(location.search),website=params.get('website'),mothers=params.get('classroom')==='mothers';
+ let params=new URLSearchParams(location.search);
+ const fragment=new URLSearchParams(location.hash.slice(1));
+ const protectsSelection=params.has('website')&&(fragment.has('id')||fragment.getAll('view').some(view=>view==='lesson'||view==='recording'));
+ if(protectsSelection&&document.querySelector('meta[name="uaa-auth-version"][content="2"]')){
+  config=await api('/api/config');
+  if(config.sharedBookmarkEntry){
+   const session=await configureStudioAuth(config);
+   const target=await checkStudioBookmark(session,location.pathname+location.search+location.hash,{
+    async onAccountChoice(){
+     const {chooseAcademyAccount}=await import('/auth/v2/shared-entry-client.mjs');
+     return chooseAcademyAccount($('status'));
+    }
+   });
+   if(!target){status('Opening Academy sign-in…');return;}
+   history.replaceState(history.state,'',target);
+   params=new URLSearchParams(location.search);
+  }
+ }
+ const website=params.get('website'),mothers=params.get('classroom')==='mothers';
  if(website||mothers){
   const query=new URLSearchParams(website?{website,...(!['sessions','materials'].includes(parseSeriesRoute(location.hash).route)?{media:'1'}:{}),...(params.get('edition')==='published'?{edition:'published'}:{})}:{classroom:'mothers'});
   const boot=await api('/api/circles/reader-bootstrap?'+query,{optionalSession:!identity.account}).catch(error=>{if(error.status!==401)throw error;return null;});

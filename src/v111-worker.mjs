@@ -1,3 +1,4 @@
+import {childAuthorityRequest,withoutCookies,withoutSetCookie} from '../security/v2/http-cookie-boundary.mjs';
 import {studioAuthorityTarget} from './v111-source-authority.mjs';
 import {Store} from './database.mjs';
 import {handle} from './worker.mjs';
@@ -16,13 +17,22 @@ export function createStudioV2Handler({getRuntime=defaultRuntimeFor,business=han
   let runtime;try{
    const origins=hostingOrigins(env),url=new URL(request.url),path=url.pathname;
    if(url.origin!==studioV2Origin||origins.website!==studioV2Origin)return problem('CANONICAL_ORIGIN_REQUIRED','Open Studio at its configured website address.',421);
-   if(path==='/api/config'&&request.method==='GET')return json({authVersion:2,app:'studio',academyOrigin:origins.academy,academyPortalOrigin:origins.academyPortal,localPreview:false,authorityMode:env.AUTHORITY_MODE||'ACADEMY'});
+   if(path==='/api/config'&&request.method==='GET'){
+    let sharedBookmarkEntry=false;
+    try{sharedBookmarkEntry=Boolean(JSON.parse(env.UAA_V2_CONFIG).sharedChildEntry);}catch{}
+    return json({sharedBookmarkEntry,authVersion:2,app:'studio',academyOrigin:origins.academy,academyPortalOrigin:origins.academyPortal,localPreview:false,authorityMode:env.AUTHORITY_MODE||'ACADEMY'});
+   }
    // Keep old source intact, but never accept its credentials/receivers in V2.
    if((path==='/auth'||path.startsWith('/auth/'))&&!path.startsWith('/auth/v2/'))return problem('V1_AUTH_DISABLED','Reconnect through Academy to use Studio.',410);
    if(path==='/api'||path==='/auth'||path==='/internal')return problem('ROUTE_NOT_FOUND','This action was not found.',404);
-   const guarded=path.startsWith('/auth/v2/')||path.startsWith('/internal/');
-   if(!guarded&&publicAPI(path)&&['GET','HEAD'].includes(request.method))return business(request,env,ctx,fetcher);
-   if(!guarded&&!path.startsWith('/api/'))return business(request,env,ctx,fetcher);
+   const internal=path.startsWith('/internal/'),guarded=path.startsWith('/auth/v2/')||internal;
+   if(!guarded&&(publicAPI(path)&&['GET','HEAD'].includes(request.method)||!path.startsWith('/api/'))){
+    return withoutSetCookie(await business(withoutCookies(request),env,ctx,fetcher));
+   }
+   if(internal&&(request.headers.has('Cookie')||request.headers.has('Origin'))){
+    return problem('SERVICE_TRANSPORT_ONLY','This route accepts signed service requests.',401);
+   }
+   request=childAuthorityRequest(request);
    runtime=await getRuntime(env);const handled=await runtime.handle(request,ctx);if(handled)return handled;
    if(path==='/internal/academy/source-authority/v2')return await studioAuthorityTarget(request,runtime);
    if(path==='/internal/academy/portal/v2')return await (await import('./v111-hub-bridge.mjs')).receiveStudioPortal(request,runtime,{fetcher});

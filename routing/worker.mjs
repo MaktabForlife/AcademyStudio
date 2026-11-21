@@ -1,3 +1,5 @@
+import {withoutCookies} from '../security/v2/http-cookie-boundary.mjs';
+import {ACADEMY_SHARED_COOKIE} from '../security/v2/tokens.mjs';
 // Domain routing in the existing Academy account. Studio remains in its own
 // account with its existing private R2 buckets and D1. No database binding here.
 import {hostingOrigins} from '../src/deployment-origins.mjs';
@@ -21,7 +23,7 @@ export async function routeWebsite(request,fetcher=fetch,env={}){
  // query values. Preserve the browser Origin; Studio's exact-origin CSRF
  // check, host-only session, signatures, revisions and entitlements still apply.
  const upstream=new URL(studio);upstream.pathname=url.pathname;upstream.search=url.search;
- const headers=new Headers(request.headers);headers.delete('Host');
+ const headers=new Headers(withoutCookies(request,ACADEMY_SHARED_COOKIE).headers);headers.delete('Host');
  headers.delete('Forwarded');headers.delete('X-Forwarded-Host');
  headers.set('X-Maktab-Front-Door',new URL(canonical).hostname);
  const forwarded=new Request(upstream.href,new Request(request,{headers,redirect:'manual'}));

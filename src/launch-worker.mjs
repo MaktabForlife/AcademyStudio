@@ -1,3 +1,4 @@
+import {heldForV111Cutover,offlineSecurityRequest,cutoverUnavailable} from '../security/v2/cutover-state.mjs';
 import {v2Enabled} from './v111-mode.mjs';
 import {connected} from './parallel-worker.mjs';
 import {json} from './protocol.mjs';
@@ -7,6 +8,7 @@ import {hostingOrigins} from './deployment-origins.mjs';
 // This entry changes the public address/presentation only. The connected entry
 // retains real Academy identity, signed deliveries and all current access gates.
 export async function launch(request,env,ctx){
+ if(heldForV111Cutover(env)&&!offlineSecurityRequest(request,env,'studio'))return cutoverUnavailable();
  let origins;try{origins=hostingOrigins(env);}catch(error){return json({success:false,error:error.message,code:error.code},503);}
  const url=new URL(request.url);
  if(![origins.website,origins.studioBackend].includes(url.origin))return json({success:false,error:'The website address is not configured.'},503);
