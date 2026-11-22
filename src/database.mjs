@@ -4,7 +4,7 @@ import {v2Context,capturedNativeActor,nativeAuthorityFresh,nativeWriteGuard,nati
 import {accessGate,liveAccess,academyAuthority} from './access.mjs';
 import {fail,sha256,boundedAge,id} from './protocol.mjs';
 export class Store {
- constructor(env){this.env=env;this.db=env.DB.withSession('first-primary');this.scopes=new Map();this.readMemo=new Map();this.metrics={queries:0,rowsRead:0,rowsWritten:0};}
+ constructor(env,db=env.DB.withSession('first-primary')){this.env=env;this.db=db;this.scopes=new Map();this.readMemo=new Map();this.metrics={queries:0,rowsRead:0,rowsWritten:0};}
  memo(key,load){if(!this.readMemo.has(key))this.readMemo.set(key,Promise.resolve().then(load));return this.readMemo.get(key);}
  statement(sql,args=[]){return this.db.prepare(sql).bind(...args);}
  count(result){for(const r of Array.isArray(result)?result:[result]){this.metrics.queries++;this.metrics.rowsRead+=r.meta?.rows_read||0;this.metrics.rowsWritten+=r.meta?.rows_written||0;}return result;}

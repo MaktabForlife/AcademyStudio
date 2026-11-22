@@ -145,7 +145,7 @@ export class StudioNativeAdapter {
   for(let attempt=0;attempt<2;attempt++){
    const before=await localVector(this.db,this.dependencies),identity=await this.identity(sub);
    requireThat(identity.sourceCredentialEpoch===sourceCredentialEpoch,'CREDENTIAL_CHANGED',401);
-   const store=new Store({...this.env,DB:this.db});
+   const store=new Store(this.env,this.db);
    const scopes=await this.captureScopes(store,identity.sub,offeringIds);
    const nativeAuthority=await authoritySnapshot(store,identity,offeringIds);const source=this.env.UAA_V2_STUDIO_SOURCE_OWNER_EPOCH?await readStudioSourceAuthority({db:this.db,env:this.env,binding:{sub,ce:sourceCredentialEpoch},now:vat}):null;
    const after=await localVector(this.db,this.dependencies),current=await this.identity(identity.sub);
@@ -156,12 +156,12 @@ export class StudioNativeAdapter {
   reject('NATIVE_AUTHORITY_CHANGED_DURING_CAPTURE',503);
  }
  async nativeWebsiteInputs({sub,sourceParentRef,websiteId}){
-  const identity=await this.identity(sub),store=new Store({...this.env,DB:this.db});
+  const identity=await this.identity(sub),store=new Store(this.env,this.db);
   const row=await websiteAccess(store,{account_id:identity.sub,global_admin:Number(identity.globalAdmin),verified_at:identity.sourceContactAtMs,source_ref:sourceParentRef||null},websiteId);
   return pick(row,['website_id','offering_id','kind','active','enabled','completion_date','completion_month','revision','published_key','access_model','role','is_playlist','playlist_parent']);
  }
  async nativeMediaInputs({sub,sourceParentRef,attachmentId}){
-  const identity=await this.identity(sub),store=new Store({...this.env,DB:this.db});
+  const identity=await this.identity(sub),store=new Store(this.env,this.db);
   const row=await mediaGate(store,{account_id:identity.sub,global_admin:Number(identity.globalAdmin),verified_at:identity.sourceContactAtMs,source_ref:sourceParentRef||null},attachmentId);
   return pick(row,['attachment_id','offering_id','website_id','asset_id','lesson_id','lesson_date','cohort','audience','published','kind','active','access_model','role','playlist_only','playlist_member']);
  }

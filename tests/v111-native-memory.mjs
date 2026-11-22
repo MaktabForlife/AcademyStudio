@@ -9,7 +9,7 @@ export function nativeMemory({globalAdmin=false,sensitiveAge=0}={}){
   withSession(mode){if(mode!=='first-primary')throw Error('primary required');return this;},
   prepare(sql){
    let args=[];const stmt={sql,bind(...values){args=values;return stmt;},
-    execute(mode){const query=raw.prepare(sql);if(mode==='first')return query.get(...args)||null;if(mode==='all')return {success:true,results:query.all(...args),meta:{}};const result=query.run(...args);return {success:true,results:[],meta:{changes:Number(result.changes)}};},
+    execute(mode){const query=raw.prepare(sql);if(mode==='first')return query.get(...args)||null;if(mode==='all'||query.columns().length)return {success:true,results:query.all(...args),meta:{}};const result=query.run(...args);return {success:true,results:[],meta:{changes:Number(result.changes)}};},
     async first(){return stmt.execute('first');},async all(){return stmt.execute('all');},async run(){return stmt.execute('run');}
    };return stmt;
   },
