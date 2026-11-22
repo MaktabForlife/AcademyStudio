@@ -106,7 +106,9 @@ function showError(status,error){
   SHARED_CHILD_REFRESH_MISSING:'This browser still has a session. Open the programme again after that session expires.',
   ACADEMY_SIGN_IN_REQUIRED:'Academy could not confirm your sign-in. Try again from the dashboard.'
  };
- status.textContent=messages[error.message]||'The programme could not be opened. Try again from Academy.';
+ const diagnostic=/^STUDIO_ENTRY_(VERIFICATION|ACADEMY_AUTHORITY|ACCOUNT_BASELINE|SESSION_CONTEXT|PERMISSION_READ|PERMISSION_CACHE|ISSUANCE_CHECKS|SESSION_COMMIT|SESSION_PUBLICATION|COOKIE_ISSUANCE)_(REQUEST_LIMIT|CONSTRAINT|DATABASE|STORAGE|TYPE_ERROR|UNEXPECTED|AUTHORITY_PENDING)$/.test(error.message);
+ const fallback='The programme could not be opened. Try again from Academy.';
+ status.textContent=messages[error.message]||(diagnostic?fallback+' ('+error.message+')':fallback);
  const link=document.getElementById('academy-link');
  if(link)link.hidden=false;
 }

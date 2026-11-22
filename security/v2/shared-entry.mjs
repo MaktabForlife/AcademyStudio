@@ -208,12 +208,32 @@ export async function observeSharedEntry(runtime,request,body){
 }
 
 export async function completeSharedEntry(runtime,request,body){
+ let phase='VERIFICATION';
+ try{
+  return await completeSharedSession(runtime,request,body,step=>{phase=step;});
+ }catch(error){
+  // The general auth handler continues to return every structured auth error.
+  // For unexpected failures, expose a fixed category and no underlying detail.
+  if(error?.code==='CHILD_AUTHORITY_PENDING')requireThat(false,'STUDIO_ENTRY_'+phase+'_AUTHORITY_PENDING',503);
+  if(typeof error?.code==='string'&&/^[A-Z][A-Z0-9_]{0,80}$/.test(error.code))throw error;
+  const reason=String(error?.message||'');
+  const category=/too many (?:api requests|subrequests)|query limit/i.test(reason)?'REQUEST_LIMIT'
+   :/constraint failed|constraint violation/i.test(reason)?'CONSTRAINT'
+   :/D1_ERROR|SQLITE|no such (?:column|table)/i.test(reason)?'DATABASE'
+   :/\bR2\b|\bbucket\b/i.test(reason)?'STORAGE'
+   :error instanceof TypeError?'TYPE_ERROR':'UNEXPECTED';
+  requireThat(false,'STUDIO_ENTRY_'+phase+'_'+category,503);
+ }
+}
+
+async function completeSharedSession(runtime,request,body,step){
  const {mode,transactions,row,payload}=await checkedSharedEntry(runtime,request,body,{allowConfirmation:true}),store=runtime.store;
  requireThat(payload.returnMode!=='select','OPERATION_SUPERSEDED',409);
  if(row.status==='COMMITTED')return runtime.json({success:true,state:'UNCONFIRMED',outcome:'SUPERSEDED',context:null,operationId:row.operation_id});
  const current=await currentChild(runtime,request);
  if(row.expected_json)requireExpected(current?selector(JSON.parse(current.binding_json),runtime.app):null,JSON.parse(row.expected_json));
  else requireThat(!current,'OPERATION_SUPERSEDED',409);
+ step('ACADEMY_AUTHORITY');
  const app=await runtime.appControl(),verified=await academyIdentity(runtime,request,app,mode);
  let selectedCurrent=null;
  if(current){
@@ -248,6 +268,7 @@ export async function completeSharedEntry(runtime,request,body){
  requireThat(verified,'ACADEMY_SIGN_IN_REQUIRED',401);
  if(!current)await requireNoUnpairedAuthority(runtime,request);
  const {claims,kid}=verified,args=accountArgs(runtime,mode,claims);
+ step('ACCOUNT_BASELINE');
  requireThat(await store.first(readyAccountSQL,...args),'CHILD_AUTHORITY_PENDING',503);
  let mapping;
  try{mapping=await runtime.native.mappingGuard(claims);}
@@ -255,6 +276,7 @@ export async function completeSharedEntry(runtime,request,body){
   if(error.code==='HIFZ_PROFILE_REQUIRED'||error.code==='HIFZ_PROFILE_INACTIVE'||error.code==='STUDIO_ACCOUNT_INACTIVE')requireThat(false,'ACCESS_DENIED',403);
   throw error;
  }
+ step('SESSION_CONTEXT');
  const predecessor=await sharedPredecessor(runtime,claims);
  const {exactParent,prior,priorBarrier}=predecessor;
  const now=runtime.clock(),barrier=admissionBarrier({
@@ -263,7 +285,8 @@ export async function completeSharedEntry(runtime,request,body){
  });
  if(priorBarrier)barrier.idleUntil=Math.min(barrier.idleUntil,priorBarrier.idle_until);
  const provenance={issuer:claims.iss,env:claims.env,kid,sub:claims.sub,psid:claims.psid,bsid:claims.bsid,bv:claims.bv};
- const plan=await childTransition(runtime,{claims,purpose:'admission',installed:null,barrier,now,operationId:row.operation_id,sharedAcademyAdmission:provenance});
+ const plan=await childTransition(runtime,{claims,purpose:'admission',installed:null,barrier,now,operationId:row.operation_id,sharedAcademyAdmission:provenance,step});
+ step('ISSUANCE_CHECKS');
  const guards=[
   transactions.guard(row),
   store.guard("SELECT 1 FROM jwt_v2_http_transactions WHERE tx=? AND payload_json=? AND status='PENDING'",[row.tx,row.payload_json]),
@@ -283,6 +306,7 @@ export async function completeSharedEntry(runtime,request,body){
  const result={...plan.result,operationId:row.operation_id},policy=familyPolicyRegistrationPlan(store,{sid:result.sid,ownerEpoch:plan.projection.policyEpoch,revision:plan.projection.policyRevision,minutes:plan.projection.inactivityMinutes,now});
  const retired=[prior,selectedCurrent].filter(Boolean);
  const retirements=sharedRetirementPlan(store,retired,result.sid,row.operation_id);
+ step('SESSION_COMMIT');
  try{
   await store.batch([
   ...guards.map(pair=>pair[0]),...plan.statements,...policy,...issuance.slice(0,1),...retirements,
@@ -298,12 +322,14 @@ export async function completeSharedEntry(runtime,request,body){
   if(await store.first('SELECT 1 FROM jwt_v2_ceremony_consumed WHERE jti=?',claims.jti))requireThat(false,'OPERATION_SUPERSEDED',409);
   throw error;
  }
+ step('SESSION_PUBLICATION');
  await publishSharedRetirements(runtime,result.sid);
  const publication=await runtime.publishWinningFamily(result.sid,{initial:true});
  requireThat(publication.cachePublication==='READY','CHILD_AUTHORITY_PENDING',503);
  const family=await store.family(result.sid),pair=JSON.parse(family.projection_json).sharedAcademyAdmission;
  const appAfter=await runtime.appControl();
  requireThat(pair?.kid===kid&&family.cr===1&&family.state===barrier.state&&appAfter.sharedAcademyRegistryRevision===app.sharedAcademyRegistryRevision&&!appAfter.withdrawnSharedAcademyKids?.includes(kid)&&await store.first(readyAccountSQL,...args)&&await store.first(mapping.sql,...mapping.args),'CHILD_AUTHORITY_PENDING',503);
+ step('COOKIE_ISSUANCE');
  if(barrier.locked){
   const response=await runtime.cookieResponse(family,plan.credentials.refresh,{...await runtime.stateDTO(family),code:'PIN_REQUIRED',operationId:row.operation_id,returnTo:payload.returnTo,...publication});
   return new Response(response.body,{status:423,headers:response.headers});

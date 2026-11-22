@@ -35,12 +35,14 @@ export async function rotateFamily(runtime,request,body){
  return runtime.cookieResponse(family,refresh,{...await runtime.stateDTO(family),operationId:body.operationId,outcome:'COMMITTED',...publication});
 }
 
-export async function childTransition(runtime,{claims,purpose,installed,barrier,now,operationId,sharedAcademyAdmission=null}){
+export async function childTransition(runtime,{claims,purpose,installed,barrier,now,operationId,sharedAcademyAdmission=null,step}){
  const store=runtime.store,old=purpose==='unlock'?await store.family(claims.sid):null;
  const account=await store.first('SELECT * FROM jwt_v2_accounts WHERE sub=?',claims.sub);
  const le=old?.le??account?.le??0,sid=old?.sid||crypto.randomUUID();
+ step?.('PERMISSION_READ');
  const skeleton={...claims,le,sid},capture=await runtime.nativeCapture(skeleton);
  const binding=initialBinding(runtime,{...claims,le,sid,sv:old?old.sv+1:1,ue:old?old.ue+1:0,capture});
+ step?.('PERMISSION_CACHE');
  const projection=await runtime.buildProjection(binding,capture,{initialIssuance:false,previous:old?JSON.parse(old.projection_json):{}});
  if(sharedAcademyAdmission)projection.sharedAcademyAdmission=sharedAcademyAdmission;
  const deadline=Math.min(binding.vat+900,barrier.idleUntil,claims.s_exp,projection.timedUntil),refresh=opaque(),fp=await fingerprint(refresh,runtime.config);
