@@ -13,8 +13,8 @@ function references(input){
  out.sort((a,b)=>a.id===b.id?(a.scope<b.scope?-1:a.scope>b.scope?1:0):a.id<b.id?-1:1);
  requireThat(out.every((r,i)=>i===0||r.id!==out[i-1].id||r.scope!==out[i-1].scope),'DUPLICATE_NATIVE_DEPENDENCY',503);return out;
 }
-async function localVector(db,refs){
- const rows=(await db.prepare("SELECT json_extract(j.value,'$.id') id,json_extract(j.value,'$.scope') scope,d.owner_epoch,d.revision FROM json_each(?) j LEFT JOIN jwt_v2_dependencies d ON d.id=json_extract(j.value,'$.id') AND d.scope=json_extract(j.value,'$.scope') ORDER BY id,scope").bind(JSON.stringify(refs)).all()).results;
+const vectorSQL="SELECT json_extract(j.value,'$.id') id,json_extract(j.value,'$.scope') scope,d.owner_epoch,d.revision FROM json_each(?) j LEFT JOIN jwt_v2_dependencies d ON d.id=json_extract(j.value,'$.id') AND d.scope=json_extract(j.value,'$.scope') ORDER BY id,scope";
+async function localVector(rows,refs){
  requireThat(rows.length===refs.length&&rows.every(r=>ascii(r.owner_epoch)&&safeInt(r.revision,1)),'NATIVE_DEPENDENCY_UNAVAILABLE',503);
  requireThat(rows.every(r=>refs.some(ref=>ref.id===r.id&&ref.scope===r.scope&&ref.ownerEpoch===r.owner_epoch)),'NATIVE_OWNER_EPOCH_RECONCILIATION_REQUIRED',503);
  const ownerVector=[];for(const r of rows)ownerVector.push([r.id+':'+b64u(await sha256(bytes(r.scope))).slice(0,22),r.owner_epoch,r.revision]);
@@ -105,16 +105,32 @@ function checkedScope(results,sourceBound,academyBound,now){
  };
 }
 
+const identitySQL='SELECT account_id,display_name,active,admitted,epoch,global_admin,verified_at FROM accounts WHERE account_id=?';
+
 export class StudioNativeAdapter {
  constructor({env,dependencies,clock=()=>Math.floor(Date.now()/1000)}){
   requireThat(env?.DB?.withSession&&typeof clock==='function','NATIVE_STUDIO_BINDING_REQUIRED',503);
   this.env=env;this.db=env.DB.withSession('first-primary');this.dependencies=references(dependencies);this.clock=clock;
  }
  async identity(sub){
-  validId(sub);const row=await this.db.prepare('SELECT account_id,display_name,active,admitted,epoch,global_admin,verified_at FROM accounts WHERE account_id=?').bind(sub).first();
+  validId(sub);
+  return this.checkedIdentity(await this.db.prepare(identitySQL).bind(sub).first());
+ }
+ checkedIdentity(row){
   requireThat(row&&row.active===1&&row.admitted===1,'STUDIO_ACCOUNT_INACTIVE',401);
   requireThat(safeInt(row.epoch,1)&&[0,1].includes(row.global_admin),'NATIVE_STUDIO_IDENTITY_INVALID',503);
   return Object.freeze({sub:row.account_id,displayName:row.display_name,sourceCredentialEpoch:row.epoch,globalAdmin:row.global_admin===1,sourceContactAtMs:row.verified_at});
+ }
+ async captureInputs(sub){
+  const session=this.env.DB.withSession('first-primary');
+  const results=await session.batch([
+   session.prepare(vectorSQL).bind(JSON.stringify(this.dependencies)),
+   session.prepare(identitySQL).bind(sub)
+  ]);
+  requireThat(results.length===2&&results.every(result=>result.success===true&&Array.isArray(result.results)),
+   'NATIVE_IDENTITY_BATCH_UNAVAILABLE',503);
+  const [vector,identity]=results;
+  return {vector:await localVector(vector.results,this.dependencies),identity:this.checkedIdentity(identity.results[0])};
  }
  identityGuard(identity){
   return {sql:'SELECT 1 FROM accounts WHERE account_id=? AND active=1 AND admitted=1 AND epoch=? AND global_admin=?',
@@ -143,12 +159,12 @@ export class StudioNativeAdapter {
   offeringIds.forEach(validId);
   const vat=this.clock();requireThat(safeInt(vat),'NATIVE_CLOCK_REQUIRED',503);
   for(let attempt=0;attempt<2;attempt++){
-   const before=await localVector(this.db,this.dependencies),identity=await this.identity(sub);
+   const {vector:before,identity}=await this.captureInputs(sub);
    requireThat(identity.sourceCredentialEpoch===sourceCredentialEpoch,'CREDENTIAL_CHANGED',401);
    const store=new Store(this.env,this.db);
    const scopes=await this.captureScopes(store,identity.sub,offeringIds);
    const nativeAuthority=await authoritySnapshot(store,identity,offeringIds);const source=this.env.UAA_V2_STUDIO_SOURCE_OWNER_EPOCH?await readStudioSourceAuthority({db:this.db,env:this.env,binding:{sub,ce:sourceCredentialEpoch},now:vat}):null;
-   const after=await localVector(this.db,this.dependencies),current=await this.identity(identity.sub);
+   const {vector:after,identity:current}=await this.captureInputs(identity.sub);
    if(canonical(before.rows)!==canonical(after.rows)||canonical(identity)!==canonical(current))continue;
    const checkedAt=this.clock();requireThat(safeInt(checkedAt)&&checkedAt>=vat&&checkedAt<vat+900,'NATIVE_VALIDATION_EXPIRED',503);
    return {app:'studio',sub:identity.sub,sourceCredentialEpoch,rights:bounded({globalAdmin:identity.globalAdmin,scopes,nativeAuthority,...(source?{academy:source.rights,sourceAuthority:source.head}:{})}),sourceProvenance:{contactAtMs:identity.sourceContactAtMs,freshContact:false},ownerVector:after.ownerVector,vectorGuards:after.vectorGuards,pv:after.pv,vat,primaryCheckedAt:checkedAt,timedUntil:source?source.timedUntil:Number.MAX_SAFE_INTEGER};
