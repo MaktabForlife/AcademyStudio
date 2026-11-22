@@ -277,8 +277,9 @@ export async function completeSharedEntry(runtime,request,body){
  ];
  let issuance=[];
  if(barrier.state==='UNLOCKED'){
-  await assertCaptureReceipt({capture:plan.capture,binding:plan.binding,projection:plan.projection,guards:plan.vectorGuards,manifest:store.dependencyManifest(claims.sub),app:runtime.app,env:runtime.config.env,now});
-  issuance=issuanceFloorGuard(store,{binding:plan.binding,projection:plan.projection,vectorGuards:plan.vectorGuards,now});
+  const issuanceNow=runtime.clock();
+  await assertCaptureReceipt({capture:plan.capture,binding:plan.binding,projection:plan.projection,guards:plan.vectorGuards,manifest:store.dependencyManifest(claims.sub),app:runtime.app,env:runtime.config.env,now:issuanceNow});
+  issuance=issuanceFloorGuard(store,{binding:plan.binding,projection:plan.projection,vectorGuards:plan.vectorGuards,now:issuanceNow});
  }
  const result={...plan.result,operationId:row.operation_id},policy=familyPolicyRegistrationPlan(store,{sid:result.sid,ownerEpoch:plan.projection.policyEpoch,revision:plan.projection.policyRevision,minutes:plan.projection.inactivityMinutes,now});
  const retired=[prior,selectedCurrent].filter(Boolean);
