@@ -238,7 +238,27 @@ document.addEventListener('click',async event=>{if(event.target.closest('[data-i
  if(action==='recording'||action==='lesson'||action==='route'){const heading=$('course-reader').querySelector('.rs-episode h1,.rs-list-heading h1,.rs-list-heading h2,.rs-about h1,.sp-lesson-article h1');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}const anchor=$('course-reader').querySelector('.sp-reading-toolbar,.sp-page'),panel=$('companion-player');if(anchor){const offset=window.matchMedia('(max-width:1050px)').matches&&!panel.hidden?panel.getBoundingClientRect().height+12:0;window.scrollTo({top:Math.max(0,anchor.getBoundingClientRect().top+window.scrollY-offset),behavior:'auto'});}}
  }catch(error){if(error.name!=='AbortError')status(error.message);}});
 $('device-import').onchange=async event=>{try{const file=event.target.files[0];if(!file)return;if(file.size>1_000_000)throw Error('Choose a learning export smaller than 1 MB.');const data=JSON.parse(await file.text());const imported=importDeviceLearning(data,{accountId:identity.account.accountId,websiteId:current.websiteId,document:current.document,current:ui});Object.assign(ui,imported);remember();draw();status('Device learning imported. Existing reflection answers were kept.');}catch(error){status(error.message);}finally{event.target.value='';}};
-document.addEventListener('visibilitychange',async()=>{if(document.visibilityState==='visible'&&identity.account){try{const me=await api('/api/me');if(me.accountId!==identity.account.accountId){clear();changed(me);status('Your account changed. Reopen your learning.');}}catch(error){status(error.message);}}});
+const isStudioCollection=()=>appPath==='/studio/'&&new URLSearchParams(location.search).get('view')==='collections'&&!$('my-learning').hidden;
+window.addEventListener('studio-v2-restored',async()=>{
+ if(!identity.account||!privateUI.masked||!isStudioCollection())return;
+ try{
+  await library();
+  if(!privateUI.masked)status('');
+ }catch(error){
+  if(error.name!=='AbortError'&&error.code!=='STALE_BROWSER_RESPONSE')status(error.message);
+ }
+});
+document.addEventListener('visibilitychange',async()=>{
+ if(document.visibilityState!=='visible'||!identity.account||studioSession()&&isStudioCollection())return;
+ try{
+  const me=await api('/api/me');
+  if(identity.account&&me.accountId!==identity.account.accountId){
+   clear();changed(me);status('Your account changed. Reopen your learning.');
+  }
+ }catch(error){
+  if(error.name!=='AbortError'&&error.code!=='STALE_BROWSER_RESPONSE')status(error.message);
+ }
+});
 await startReaderView({main:$('main'),status:$('status'),async load(){
  let params=new URLSearchParams(location.search);
  const fragment=new URLSearchParams(location.hash.slice(1));

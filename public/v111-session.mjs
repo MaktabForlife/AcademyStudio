@@ -149,7 +149,18 @@ export function installStudioLifecycle(session,{win=globalThis.window,doc=global
  if(lifecycleControllers.has(session))return lifecycleControllers.get(session);if(!win?.addEventListener||!doc?.addEventListener)return ()=>{};
  let restoring=null,suspended=false;const listeners=[];
  const listen=(target,type,fn,options)=>{target.addEventListener(type,fn,options);listeners.push(()=>target.removeEventListener(type,fn,options));};
- const hide=()=>{suspended=true;session.pagehide();},show=event=>{if(doc.visibilityState==='hidden'||!suspended&&!event?.persisted)return;suspended=false;if(!restoring)restoring=session.pageshow().catch(()=>{}).finally(()=>{restoring=null;});};
+ const hide=()=>{suspended=true;session.pagehide();};
+ const show=event=>{
+  if(doc.visibilityState==='hidden'||restoring||!suspended&&!event?.persisted)return;
+  suspended=false;
+  restoring=session.pageshow().then(()=>{
+   if(!suspended&&doc.visibilityState!=='hidden'&&session.getState().state==='UNLOCKED')
+    win.dispatchEvent(new Event('studio-v2-restored'));
+  }).catch(()=>{}).finally(()=>{
+   restoring=null;
+   if(suspended)show();
+  });
+ };
  listen(win,'pagehide',hide);listen(win,'pageshow',show);listen(doc,'visibilitychange',()=>doc.visibilityState==='hidden'?hide():show());if(doc.visibilityState==='hidden')hide();
  for(const [event,kind]of [['keydown','keyboard'],['pointerdown','pointer'],['touchstart','touch'],['wheel','scroll']])listen(doc,event,e=>{if(e.isTrusted&&doc.visibilityState!=='hidden'){session.recordActivity({kind});session.scheduleRenewal({activeWork:true});}},{capture:true,passive:true});
  const remove=()=>{listeners.forEach(fn=>fn());lifecycleControllers.delete(session);};lifecycleControllers.set(session,remove);return remove;

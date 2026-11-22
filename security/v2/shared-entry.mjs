@@ -12,14 +12,14 @@ import {issuanceFloorGuard} from './issuance-floors.mjs';
 import {assertCaptureReceipt} from './capture-receipt.mjs';
 import {familyPolicyRegistrationPlan} from './policy.mjs';
 import {serviceFetch} from './http-service.mjs';
+import {accountGate} from './signin-account-proof.mjs';
 import {sharedEntryClientSource} from './shared-entry-client-source.mjs';
 
 const purpose='shared-entry';
 const destinations={tafseer:'/studio/?view=collections&collection=tafseer',mothers:'/studio/?classroom=mothers',courses:'/studio/?view=collections&collection=courses',hifz:'/'};
 
-// This owning projection is installed from verified Academy account and stream
-// evidence during the offline update. Presenting a cookie never writes it.
-import {readyAccountSQL} from './shared-account-baselines.mjs';
+// The current Academy baseline comes from verified account and stream evidence.
+// Presenting a shared access cookie cannot update that baseline.
 export {sharedEntrySchemaSQL} from './shared-account-baselines.mjs';
 
 function configuration(runtime){
@@ -89,14 +89,13 @@ export function validateSharedChildSource(binding,source,mode){
   &&['sub','psid','bsid','bv'].every(field=>source[field]===binding[field])&&typeof source.kid==='string','SESSION_ENDED',401);
 }
 
-function accountArgs(runtime,mode,claims){return [runtime.app,mode.ownerEpoch,claims.sub,claims.ce,claims.ae];}
 
 export async function requireSharedChildRenewal(runtime,family){
  const mode=configuration(runtime),binding=JSON.parse(family.binding_json),source=JSON.parse(family.projection_json).sharedAcademyAdmission;
  validateSharedChildSource(binding,source,mode);
- const app=await runtime.appControl(),args=accountArgs(runtime,mode,binding);
- requireThat(app.sharedAcademyRegistryRevision===runtime.settings.sharedAcademy.revision&&!app.withdrawnSharedAcademyKids?.includes(source.kid)&&await runtime.store.first(readyAccountSQL,...args),'CHILD_AUTHORITY_PENDING',503);
- return {sql:readyAccountSQL,args};
+ const app=await runtime.appControl(),gate=accountGate(runtime,mode,binding);
+ requireThat(app.sharedAcademyRegistryRevision===runtime.settings.sharedAcademy.revision&&!app.withdrawnSharedAcademyKids?.includes(source.kid)&&await runtime.store.first(gate.sql,...gate.args),'CHILD_AUTHORITY_PENDING',503);
+ return gate;
 }
 
 export async function continueSharedBookmark(runtime,request,body){
@@ -247,8 +246,8 @@ export async function completeSharedEntry(runtime,request,body){
  requireThat(!body.confirmAcademyAccount||selectedCurrent,'ACCOUNT_SELECTION_REQUIRED',409);
  requireThat(verified,'ACADEMY_SIGN_IN_REQUIRED',401);
  if(!current)await requireNoUnpairedAuthority(runtime,request);
- const {claims,kid}=verified,args=accountArgs(runtime,mode,claims);
- requireThat(await store.first(readyAccountSQL,...args),'CHILD_AUTHORITY_PENDING',503);
+ const {claims,kid}=verified,gate=accountGate(runtime,mode,claims);
+ requireThat(await store.first(gate.sql,...gate.args),'CHILD_AUTHORITY_PENDING',503);
  let mapping;
  try{mapping=await runtime.native.mappingGuard(claims);}
  catch(error){
@@ -267,7 +266,7 @@ export async function completeSharedEntry(runtime,request,body){
  const guards=[
   transactions.guard(row),
   store.guard("SELECT 1 FROM jwt_v2_http_transactions WHERE tx=? AND payload_json=? AND status='PENDING'",[row.tx,row.payload_json]),
-  store.guard(readyAccountSQL,args),store.guard(mapping.sql,mapping.args),
+  store.guard(gate.sql,gate.args),store.guard(mapping.sql,mapping.args),
   admissionFloorGuard(store,plan.binding),
   store.guard('SELECT 1 WHERE ?>unixepoch() AND ?>unixepoch()',[claims.exp,row.expires_at]),
   ...predecessor.guards,
@@ -304,7 +303,7 @@ export async function completeSharedEntry(runtime,request,body){
  requireThat(publication.cachePublication==='READY','CHILD_AUTHORITY_PENDING',503);
  const family=await store.family(result.sid),pair=JSON.parse(family.projection_json).sharedAcademyAdmission;
  const appAfter=await runtime.appControl();
- requireThat(pair?.kid===kid&&family.cr===1&&family.state===barrier.state&&appAfter.sharedAcademyRegistryRevision===app.sharedAcademyRegistryRevision&&!appAfter.withdrawnSharedAcademyKids?.includes(kid)&&await store.first(readyAccountSQL,...args)&&await store.first(mapping.sql,...mapping.args),'CHILD_AUTHORITY_PENDING',503);
+ requireThat(pair?.kid===kid&&family.cr===1&&family.state===barrier.state&&appAfter.sharedAcademyRegistryRevision===app.sharedAcademyRegistryRevision&&!appAfter.withdrawnSharedAcademyKids?.includes(kid)&&await store.first(gate.sql,...gate.args)&&await store.first(mapping.sql,...mapping.args),'CHILD_AUTHORITY_PENDING',503);
  if(barrier.locked){
   const response=await runtime.cookieResponse(family,plan.credentials.refresh,{...await runtime.stateDTO(family),code:'PIN_REQUIRED',operationId:row.operation_id,returnTo:payload.returnTo,...publication});
   return new Response(response.body,{status:423,headers:response.headers});
