@@ -35,13 +35,74 @@ const authorityColumns={
  source_access_people:['account_id','offering_id','generation','version','verified_at','ready','windows_json','has_allocation','course'],source_access_master_fences:['account_id','offering_id','epoch','active','admitted','global_admin'],circles_navigation:['account_id','epoch','verified_at','programmes_json'],source_access_scopes:['offering_id','authority','enabled','generation','version','live_enabled','timezone','classes_json'],source_access_websites:['website_id','offering_id','enabled'],access_handovers:['offering_id','transfer_id','phase','generation','source_version','revision','cursor','checked','created_at'],programme_offerings:['programme_key','offering_id','access_model'],programme_subjects:['offering_id','display_key','website_id','enabled'],course_access_models:['offering_id','access_model'],completed_course_registrations:['offering_id','registration_id','website_id','package_sha256']
 };
 async function authoritySnapshot(store,identity,offeringIds){
- const account=await store.first('SELECT account_id,active,admitted,global_admin FROM accounts WHERE account_id=?',[identity.sub]);
- const tables={};const installed={...authorityTables,...(store.env.UAA_V2_STUDIO_SOURCE_OWNER_EPOCH?{studio_source_projection_problems:'account_id',studio_course_publication_holds:'hold'}:{})};for(const [table,scope] of Object.entries(installed)){
-  const actual=(await store.all('PRAGMA table_info("'+table+'")')).map(c=>c.name),columns=authorityColumns[table].filter(c=>actual.includes(c));requireThat(columns.length&&columns.every(c=>/^[a-z_][a-z0-9_]*$/i.test(c)),'NATIVE_AUTHORITY_SCHEMA_REQUIRED',503);
-  const rows=rowsBound(await store.all('SELECT '+columns.map(c=>'"'+c+'"').join(',')+' FROM "'+table+'" WHERE '+(scope==='hold'?"phase<>'RELEASED'":scope==='account_id'?'account_id=?':'offering_id IN(SELECT value FROM json_each(?))')+' LIMIT 6001',scope==='hold'?[]:[scope==='account_id'?identity.sub:JSON.stringify(offeringIds)]));
-  tables[table]={columns,rows};
+ const installed={...authorityTables,...(store.env.UAA_V2_STUDIO_SOURCE_OWNER_EPOCH?{studio_source_projection_problems:'account_id',studio_course_publication_holds:'hold'}:{})};
+ const entries=Object.entries(installed),ids=JSON.stringify(offeringIds);
+ const [account,...schemas]=await store.batch([
+  store.statement('SELECT account_id,active,admitted,global_admin FROM accounts WHERE account_id=?',[identity.sub]),
+  ...entries.map(([table])=>store.statement('PRAGMA table_info("'+table+'")'))
+ ]);
+ const columns=entries.map(([table],index)=>{
+  const actual=new Set(schemas[index].results.map(column=>column.name));
+  const selected=authorityColumns[table].filter(column=>actual.has(column));
+  requireThat(selected.length&&selected.every(column=>/^[a-z_][a-z0-9_]*$/i.test(column)),'NATIVE_AUTHORITY_SCHEMA_REQUIRED',503);
+  return selected;
+ });
+ const values=await store.batch(entries.map(([table,scope],index)=>store.statement(
+  'SELECT '+columns[index].map(column=>'"'+column+'"').join(',')+' FROM "'+table+'" WHERE '+
+   (scope==='hold'?"phase<>'RELEASED'":scope==='account_id'?'account_id=?':'offering_id IN(SELECT value FROM json_each(?))')+' LIMIT 6001',
+  scope==='hold'?[]:[scope==='account_id'?identity.sub:ids]
+ )));
+ const tables=Object.fromEntries(entries.map(([table],index)=>[table,{columns:columns[index],rows:rowsBound(values[index].results)}]));
+ return {schema:1,identity:account.results[0]||null,tables};
+}
+
+function scopeQueries(store,account,offer,sourceBound,academyBound){
+ return [
+  store.statement("SELECT o.*,h.offering_id completed_course,(SELECT programme_key FROM programme_offerings mp WHERE mp.offering_id=o.offering_id) programme_key,p.enrolled,p.live,p.purchased,p.cohort,s.role,(SELECT access_model FROM course_access_models m WHERE m.offering_id=o.offering_id) access_model,s.can_create_account FROM offerings o LEFT JOIN participation p ON p.offering_id=o.offering_id AND p.account_id=? LEFT JOIN completed_course_registrations h USING(offering_id) LEFT JOIN staff s ON s.offering_id=o.offering_id AND s.account_id=? WHERE o.offering_id=? AND o.active=1",[account,account,offer]),
+  store.statement('SELECT month,cohort FROM paid_months WHERE account_id=? AND offering_id=? ORDER BY month,cohort LIMIT 6001',[account,offer]),
+  store.statement('SELECT month FROM website_months WHERE account_id=? AND offering_id=? ORDER BY month LIMIT 6001',[account,offer]),
+  store.statement('SELECT g.website_id FROM surah_grants g JOIN websites w USING(website_id) WHERE g.account_id=? AND w.offering_id=? ORDER BY g.website_id LIMIT 6001',[account,offer]),
+  store.statement('SELECT playlist_id,kind,source_month FROM mou_playlist_retained WHERE account_id=? AND offering_id=? ORDER BY playlist_id,source_month LIMIT 6001',[account,offer]),
+  ...(sourceBound?[
+   store.statement("SELECT 1 FROM studio_course_publication_holds WHERE offering_id=? AND phase<>'RELEASED'",[offer]),
+   store.statement('SELECT 1 FROM studio_source_projection_problems WHERE account_id=? AND offering_id=?',[account,offer])
+  ]:[]),
+  ...(academyBound?[
+   store.statement('SELECT s.*,p.generation person_generation,p.verified_at,p.ready,p.windows_json,p.has_allocation,p.course FROM source_access_scopes s LEFT JOIN source_access_people p ON p.offering_id=s.offering_id AND p.account_id=? WHERE s.offering_id=?',[account,offer]),
+   store.statement('SELECT 1 FROM source_access_master_fences WHERE account_id=? AND offering_id=?',[account,offer]),
+   store.statement('SELECT phase FROM access_handovers WHERE offering_id=?',[offer])
+  ]:[])
+ ];
+}
+
+function checkedScope(results,sourceBound,academyBound,now){
+ const [[scope],paid,websiteMonths,surahGrants,mouRetained,...checks]=results.map(result=>result.results);
+ if(sourceBound){
+  requireThat(!checks[0].length,'COURSE_PUBLICATION_PENDING',503);
+  requireThat(!checks[1].length,'SOURCE_SCOPE_PROJECTION_BLOCKED',403);
  }
- return {schema:1,identity:account,tables};
+ requireThat(scope,'STUDIO_OFFERING_UNAVAILABLE',404);
+ let source=null;
+ if(academyBound){
+  const [[entry],fences,[handover]]=sourceBound?checks.slice(2):checks;
+  requireThat(!fences.length,'SOURCE_MASTER_RECONCILIATION_REQUIRED',503);
+  requireThat(entry&&entry.enabled===1,'SOURCE_SCOPE_UNAVAILABLE',403);
+  if(entry.authority==='WEBSITE'){
+   requireThat(handover?.phase==='COMMITTED','HANDOVER_REQUIRED',409);
+  }else{
+   requireThat(entry.authority==='ACADEMY','SOURCE_AUTHORITY_UNKNOWN',503);
+   if(!(scope.kind==='COURSE'&&scope.access_model==='FREE'))requireThat(entry.ready===1&&entry.person_generation===entry.generation,'SOURCE_PROJECTION_NOT_READY',503);
+  }
+  source={...entry,studio:entry.authority==='WEBSITE'};
+ }
+ const nativeScope={...scope,live_entitled:Boolean(scope.live)};
+ const live=liveAccess(source,nativeScope,now);
+ return {
+  ...pick(scope,['offering_id','kind','active','programme_key','enrolled','purchased','cohort','role','can_create_account','access_model']),
+  liveEntitled:Boolean(scope.live),liveNow:!scope.completed_course&&live,completedCourse:Boolean(scope.completed_course),
+  paidMonths:rowsBound(paid),websiteMonths:rowsBound(websiteMonths),surahGrants:rowsBound(surahGrants),mouRetained:rowsBound(mouRetained),
+  source:source?pick(source,['authority','generation','person_generation','enabled','live_enabled','ready','classes_json','windows_json','has_allocation','course','timezone','verified_at']):null
+ };
 }
 
 export class StudioNativeAdapter {
@@ -59,40 +120,24 @@ export class StudioNativeAdapter {
   return {sql:'SELECT 1 FROM accounts WHERE account_id=? AND active=1 AND admitted=1 AND epoch=? AND global_admin=?',
    args:[identity.sub,identity.sourceCredentialEpoch,Number(identity.globalAdmin)]};
  }
- async scopeInputs(store,actor,offer){
-  validId(offer);if(this.env.UAA_V2_STUDIO_SOURCE_OWNER_EPOCH)requireThat(!await store.first("SELECT 1 FROM studio_course_publication_holds WHERE offering_id=? AND phase<>'RELEASED'",[offer]),'COURSE_PUBLICATION_PENDING',503);if(this.env.UAA_V2_STUDIO_SOURCE_OWNER_EPOCH)requireThat(!await store.first('SELECT 1 FROM studio_source_projection_problems WHERE account_id=? AND offering_id=?',[actor.account_id,offer]),'SOURCE_SCOPE_PROJECTION_BLOCKED',403);
-  // Same native scope join used by Store.scope. These are inputs, not a new permission algorithm.
-  const scope=await store.first("SELECT o.*,h.offering_id completed_course,(SELECT programme_key FROM programme_offerings mp WHERE mp.offering_id=o.offering_id) programme_key,p.enrolled,p.live,p.purchased,p.cohort,s.role,(SELECT access_model FROM course_access_models m WHERE m.offering_id=o.offering_id) access_model,s.can_create_account FROM offerings o LEFT JOIN participation p ON p.offering_id=o.offering_id AND p.account_id=? LEFT JOIN completed_course_registrations h USING(offering_id) LEFT JOIN staff s ON s.offering_id=o.offering_id AND s.account_id=? WHERE o.offering_id=? AND o.active=1",[actor.account_id,actor.account_id,offer]);
-  requireThat(scope,'STUDIO_OFFERING_UNAVAILABLE',404);
-  let source=null;
-  if(academyAuthority(this.env)){
-   source=await store.first('SELECT s.*,p.generation person_generation,p.verified_at,p.ready,p.windows_json,p.has_allocation,p.course FROM source_access_scopes s LEFT JOIN source_access_people p ON p.offering_id=s.offering_id AND p.account_id=? WHERE s.offering_id=?',[actor.account_id,offer]);
-   const fence=await store.first('SELECT 1 FROM source_access_master_fences WHERE account_id=? AND offering_id=?',[actor.account_id,offer]);
-   requireThat(!fence,'SOURCE_MASTER_RECONCILIATION_REQUIRED',503);
-   requireThat(source&&source.enabled===1,'SOURCE_SCOPE_UNAVAILABLE',403);
-   if(source.authority==='WEBSITE'){
-    const handover=await store.first('SELECT phase FROM access_handovers WHERE offering_id=?',[offer]);
-    requireThat(handover?.phase==='COMMITTED','HANDOVER_REQUIRED',409);
-   }else{
-    requireThat(source.authority==='ACADEMY','SOURCE_AUTHORITY_UNKNOWN',503);
-    if(!(scope.kind==='COURSE'&&scope.access_model==='FREE'))requireThat(source.ready===1&&source.person_generation===source.generation,'SOURCE_PROJECTION_NOT_READY',503);
+ async captureScopes(store,account,offeringIds){
+  const sourceBound=Boolean(this.env.UAA_V2_STUDIO_SOURCE_OWNER_EPOCH),academyBound=academyAuthority(this.env),scopes=[];
+  // Each D1 batch uses one request from the invocation budget. Keep each batch
+  // small while handling the full offering list without one request per scope.
+  const batchSize=32;
+  for(let index=0;index<offeringIds.length;index+=batchSize){
+   const queries=offeringIds.slice(index,index+batchSize).map(offer=>scopeQueries(store,account,offer,sourceBound,academyBound));
+   const results=await store.batch(queries);
+   let offset=0;
+   for(const query of queries){
+    const end=offset+query.length;
+    scopes.push(checkedScope(results.slice(offset,end),sourceBound,academyBound,this.clock()*1000));
+    offset=end;
    }
-   source={...source,studio:source.authority==='WEBSITE'};
   }
-  const nativeScope={...scope,live_entitled:Boolean(scope.live)};
-  let live=liveAccess(source,nativeScope,this.clock()*1000);if(scope.completed_course)live=false;
-  const paid=rowsBound(await store.all('SELECT month,cohort FROM paid_months WHERE account_id=? AND offering_id=? ORDER BY month,cohort LIMIT 6001',[actor.account_id,offer]));
-  const websiteMonths=rowsBound(await store.all('SELECT month FROM website_months WHERE account_id=? AND offering_id=? ORDER BY month LIMIT 6001',[actor.account_id,offer]));
-  const surahs=rowsBound(await store.all('SELECT g.website_id FROM surah_grants g JOIN websites w USING(website_id) WHERE g.account_id=? AND w.offering_id=? ORDER BY g.website_id LIMIT 6001',[actor.account_id,offer]));
-  const retained=rowsBound(await store.all('SELECT playlist_id,kind,source_month FROM mou_playlist_retained WHERE account_id=? AND offering_id=? ORDER BY playlist_id,kind,source_month LIMIT 6001',[actor.account_id,offer]));
-  return {
-   ...pick(scope,['offering_id','kind','active','programme_key','enrolled','purchased','cohort','role','can_create_account','access_model']),
-   liveEntitled:Boolean(scope.live),liveNow:live,completedCourse:Boolean(scope.completed_course),
-   paidMonths:paid,websiteMonths,surahGrants:surahs,mouRetained:retained,
-   source:source?pick(source,['authority','generation','person_generation','enabled','live_enabled','ready','classes_json','windows_json','has_allocation','course','timezone','verified_at']):null
-  };
+  return scopes;
  }
- async capture({sub,sourceCredentialEpoch,sourceParentRef,offeringIds=[]}){
+ async capture({sub,sourceCredentialEpoch,offeringIds=[]}){
   validId(sub);requireThat(safeInt(sourceCredentialEpoch,1),'SOURCE_CREDENTIAL_EPOCH_REQUIRED',503);
   requireThat(Array.isArray(offeringIds)&&offeringIds.length<=200&&new Set(offeringIds).size===offeringIds.length,'INVALID_NATIVE_SCOPE',400);
   offeringIds.forEach(validId);
@@ -101,9 +146,7 @@ export class StudioNativeAdapter {
    const before=await localVector(this.db,this.dependencies),identity=await this.identity(sub);
    requireThat(identity.sourceCredentialEpoch===sourceCredentialEpoch,'CREDENTIAL_CHANGED',401);
    const store=new Store({...this.env,DB:this.db});
-   // Source parent is provenance from the already validated local family/proof, never browser input.
-   const actor={account_id:identity.sub,global_admin:Number(identity.globalAdmin),verified_at:identity.sourceContactAtMs,source_ref:sourceParentRef||null};
-   const scopes=[];for(const offer of offeringIds)scopes.push(await this.scopeInputs(store,actor,offer));
+   const scopes=await this.captureScopes(store,identity.sub,offeringIds);
    const nativeAuthority=await authoritySnapshot(store,identity,offeringIds);const source=this.env.UAA_V2_STUDIO_SOURCE_OWNER_EPOCH?await readStudioSourceAuthority({db:this.db,env:this.env,binding:{sub,ce:sourceCredentialEpoch},now:vat}):null;
    const after=await localVector(this.db,this.dependencies),current=await this.identity(identity.sub);
    if(canonical(before.rows)!==canonical(after.rows)||canonical(identity)!==canonical(current))continue;
