@@ -9,10 +9,23 @@ export function hasSharedPredecessor(store,claims){
  return store.first('SELECT 1 FROM ('+currentFamilySQL+') WHERE '+active,claims.psid,claims.bsid,claims.bv,claims.sub);
 }
 
-export async function sharedPredecessor(runtime,claims){
+function predecessorQueries(claims){
+ const exactParent=[claims.psid,claims.bsid,claims.bv,claims.sub];
+ return [[currentFamilySQL,...exactParent],[barrierSQL,...exactParent]];
+}
+
+export async function readSharedPreflight(store,claims,gate,mappingQuery){
+ const [[ready],[identity],[prior],[priorBarrier],[account]]=await store.readBatch([
+  [gate.sql,...gate.args],mappingQuery,...predecessorQueries(claims),
+  ['SELECT * FROM jwt_v2_accounts WHERE sub=?',claims.sub]
+ ]);
+ return {ready,identity,prior,priorBarrier,account};
+}
+
+export async function sharedPredecessor(runtime,claims,preflight){
  const store=runtime.store,exactParent=[claims.psid,claims.bsid,claims.bv,claims.sub];
- const prior=await store.first(currentFamilySQL,...exactParent);
- const priorBarrier=await store.first(barrierSQL,...exactParent);
+ const [[prior],[priorBarrier]]=preflight?
+  [[preflight.prior],[preflight.priorBarrier]]:await store.readBatch(predecessorQueries(claims));
  if(!prior){
   requireThat(!priorBarrier,'SHARED_ENTRY_RECOVERY_REQUIRED',409);
   const guards=[

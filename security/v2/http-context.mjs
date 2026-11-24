@@ -30,24 +30,72 @@ export class HTTPIntents {
  constructor({store,config,csrf,clock}){Object.assign(this,{store,config,csrf,clock});}
  async proof(meta){const key=this.csrf.keys.get(meta.csrf_kid);requireThat(key,'CSRF_KEY_UNAVAILABLE',503);return b64u(await hmac(key,csrfPacket(this.config,meta.purpose,JSON.parse(meta.context_json),meta.intent_id,meta.csrf_expires)));}
  async issue(family,purpose){
-  requireThat(PURPOSES.has(purpose),'INVALID_AUTH_PURPOSE',400);const now=this.clock();
+  const [result]=await this.issueMany(family,[purpose]);
+  return result;
+ }
+ issuedReads(sid,generation,purposes){
+  return purposes.map(purpose=>[
+   "SELECT i.*,h.purpose,h.context_json,h.csrf_expires,h.csrf_kid FROM jwt_v2_intents i JOIN jwt_v2_http_intents h USING(intent_id) WHERE i.sid=? AND i.kind=? AND i.generation=? AND i.state='ISSUED'",
+   sid,purpose,generation
+  ]);
+ }
+ async issueMany(family,purposes,{emptyRead=null}={}){
+  requireThat(purposes.length>0&&new Set(purposes).size===purposes.length&&purposes.every(purpose=>PURPOSES.has(purpose)),'INVALID_AUTH_PURPOSE',400);
+  const now=this.clock();
   requireThat(family&&now<family.s_exp&&!['REVOKED','EXPIRED'].includes(family.state),'SESSION_ENDED',401);
-  const context=selector(JSON.parse(family.binding_json),this.config.app),kind=purpose;
-  let old=await this.store.first("SELECT i.*,h.purpose,h.context_json,h.csrf_expires,h.csrf_kid FROM jwt_v2_intents i JOIN jwt_v2_http_intents h USING(intent_id) WHERE i.sid=? AND i.kind=? AND i.generation=? AND i.state='ISSUED'",family.sid,kind,family.fingerprint_generation);
-  if(old&&now<old.csrf_expires&&old.binding_json===family.binding_json)return this.dto(old);
-  const id=crypto.randomUUID(),expires=purpose==='business'?Math.min(family.deadline,family.idle_until,family.s_exp):Math.min(now+300,family.s_exp),meta={intent_id:id,purpose,context_json:canonical(context),csrf_expires:expires,csrf_kid:this.csrf.currentKid};
-  requireThat(expires>now,'ACCESS_REFRESH_REQUIRED',401);
-  const proof=await this.proof(meta),csrfHash=await digest(proof);
-  const [guard,clear]=this.store.guard("SELECT 1 FROM jwt_v2_families WHERE sid=? AND binding_json=? AND fingerprint_generation=? AND state NOT IN('REVOKED','EXPIRED') AND s_exp>?",[family.sid,family.binding_json,family.fingerprint_generation,now]);
-  try{await this.store.batch([guard,
-   this.store.stmt("UPDATE jwt_v2_intents SET state='CANCELLED',superseding_operation=? WHERE sid=? AND kind=? AND generation=? AND state='ISSUED'",id,family.sid,kind,family.fingerprint_generation),
-   this.store.stmt("INSERT INTO jwt_v2_intents(intent_id,sid,kind,binding_json,csrf_hash,generation,state,expires_at) VALUES(?,?,?,?,?,?,'ISSUED',?)",id,family.sid,kind,family.binding_json,csrfHash,family.fingerprint_generation,expires),
-   this.store.stmt('INSERT INTO jwt_v2_http_intents VALUES(?,?,?,?,?)',id,purpose,meta.context_json,expires,meta.csrf_kid),clear
-  ]);}catch(error){
-   old=await this.store.first("SELECT i.*,h.purpose,h.context_json,h.csrf_expires,h.csrf_kid FROM jwt_v2_intents i JOIN jwt_v2_http_intents h USING(intent_id) WHERE i.sid=? AND i.kind=? AND i.generation=? AND i.state='ISSUED'",family.sid,kind,family.fingerprint_generation);
-   if(old&&old.binding_json===family.binding_json&&now<old.csrf_expires)return this.dto(old);throw error;
+  const context=selector(JSON.parse(family.binding_json),this.config.app);
+  const queries=this.issuedReads(family.sid,family.fingerprint_generation,purposes);
+  const read=async()=> (await this.store.readBatch(queries)).map(rows=>rows[0]);
+  const reusable=(row,checkedAt=now)=>row&&checkedAt<row.csrf_expires&&row.binding_json===family.binding_json;
+  const canUseEmpty=emptyRead?.family===family&&family.state==='UNLOCKED'&&family.cr===1&&family.authority_ready===1&&
+   family.fingerprint_generation===1&&now<Math.min(family.deadline,family.idle_until)&&
+   purposes.length===2&&purposes[0]==='refresh'&&purposes[1]==='business';
+  const current=canUseEmpty?[undefined,undefined]:await read(),statements=[];
+  for(const [index,purpose] of purposes.entries()){
+   if(reusable(current[index]))continue;
+   const id=crypto.randomUUID(),expires=purpose==='business'?Math.min(family.deadline,family.idle_until,family.s_exp):Math.min(now+300,family.s_exp);
+   requireThat(expires>now,'ACCESS_REFRESH_REQUIRED',401);
+   const meta={intent_id:id,purpose,context_json:canonical(context),csrf_expires:expires,csrf_kid:this.csrf.currentKid};
+   const csrfHash=await digest(await this.proof(meta));
+   statements.push(
+    this.store.stmt("UPDATE jwt_v2_intents SET state='CANCELLED',superseding_operation=? WHERE sid=? AND kind=? AND generation=? AND state='ISSUED'",id,family.sid,purpose,family.fingerprint_generation),
+    this.store.stmt("INSERT INTO jwt_v2_intents(intent_id,sid,kind,binding_json,csrf_hash,generation,state,expires_at) VALUES(?,?,?,?,?,?,'ISSUED',?)",id,family.sid,purpose,family.binding_json,csrfHash,family.fingerprint_generation,expires),
+    this.store.stmt('INSERT INTO jwt_v2_http_intents VALUES(?,?,?,?,?)',id,purpose,meta.context_json,expires,meta.csrf_kid)
+   );
+   current[index]={...meta,kind:purpose,generation:family.fingerprint_generation};
   }
-  return this.dto({...meta,kind,generation:family.fingerprint_generation});
+  if(statements.length){
+   let condition="SELECT 1 FROM jwt_v2_families f WHERE f.sid=? AND f.binding_json=? AND f.fingerprint_generation=? AND f.state NOT IN('REVOKED','EXPIRED') AND f.s_exp>?";
+   const args=[family.sid,family.binding_json,family.fingerprint_generation,now];
+   if(canUseEmpty){
+    condition+=" AND f.cr=? AND f.state='UNLOCKED' AND f.authority_ready=1"+
+     " AND f.s_exp=? AND f.deadline=? AND f.idle_until=? AND min(f.s_exp,f.deadline,f.idle_until)>unixepoch()"+
+     " AND NOT EXISTS(SELECT 1 FROM jwt_v2_intents i JOIN jwt_v2_http_intents h USING(intent_id)"+
+     " WHERE i.sid=f.sid AND i.generation=f.fingerprint_generation AND i.kind IN('refresh','business')"+
+     " AND i.state='ISSUED' AND i.binding_json=f.binding_json AND h.csrf_expires>unixepoch())";
+    args.push(family.cr,family.s_exp,family.deadline,family.idle_until);
+   }
+   const [guard,clear]=this.store.guard(condition,args);
+   try{await this.store.batch([guard,...statements,clear]);}
+   catch(error){
+    if(canUseEmpty){
+     // A failed reply may follow a committed write. Reuse only the durable pair
+     // and the exact observed family when both are still current.
+     const [[win],...sets]=await this.store.readBatch([
+      ['SELECT * FROM jwt_v2_families WHERE sid=?',family.sid],...queries
+     ]);
+     const checkedAt=this.clock(),latest=sets.map(rows=>rows[0]);
+     if(!win||!['binding_json','fingerprint_generation','cr','state','authority_ready','s_exp','deadline','idle_until']
+       .every(key=>win[key]===family[key])||
+       checkedAt>=Math.min(win.s_exp,win.deadline,win.idle_until)||!latest.every(row=>reusable(row,checkedAt)))throw error;
+     return Promise.all(latest.map(row=>this.dto(row)));
+    }
+    const latest=await read();
+    if(!latest.every(row=>reusable(row)))throw error;
+    return Promise.all(latest.map(row=>this.dto(row)));
+   }
+  }
+  return Promise.all(current.map(row=>this.dto(row)));
  }
  async dto(row){
   let proof=await this.proof(row);

@@ -24,6 +24,7 @@ export async function rotateFamily(runtime,request,body){
  requireThat(f.state==='UNLOCKED','PIN_REQUIRED',423);
  requireThat(typeof body.qualifyingActivity==='boolean','ACTIVITY_CLASSIFICATION_REQUIRED',400);
  const sharedChildGuard=runtime.settings.raw.sharedChildEntry?await (await import('./shared-entry.mjs')).requireSharedChildRenewal(runtime,f):null;
+ await runtime.requireCurrentStudioPublication(original,{cr:f.cr,state:f.state});
  const capture=await runtime.nativeCapture(original),next={...original,sv:original.sv+1,pv:capture.pv,vat:capture.vat};
  const now=runtime.clock(),idleUntil=Math.min(f.s_exp,(body.qualifyingActivity?now:f.last_refresh)+f.policy_minutes*60);
  const projection=await runtime.buildProjection(next,capture,{previous:JSON.parse(f.projection_json)});
@@ -35,16 +36,20 @@ export async function rotateFamily(runtime,request,body){
  return runtime.cookieResponse(family,refresh,{...await runtime.stateDTO(family),operationId:body.operationId,outcome:'COMMITTED',...publication});
 }
 
-export async function childTransition(runtime,{claims,purpose,installed,barrier,now,operationId,sharedAcademyAdmission=null}){
+export async function childTransition(runtime,{claims,purpose,installed,barrier,now,operationId,sharedAcademyAdmission=null,programme=null,admissionAccount,batchSetup=false,batchClosing=false}){
  const store=runtime.store,old=purpose==='unlock'?await store.family(claims.sid):null;
- const account=await store.first('SELECT * FROM jwt_v2_accounts WHERE sub=?',claims.sub);
+ const account=admissionAccount?admissionAccount.row:await store.first('SELECT * FROM jwt_v2_accounts WHERE sub=?',claims.sub);
  const le=old?.le??account?.le??0,sid=old?.sid||crypto.randomUUID();
- const skeleton={...claims,le,sid},capture=await runtime.nativeCapture(skeleton);
+ const skeleton={...claims,le,sid},capture=await runtime.nativeCapture(skeleton,{programme,batchSetup,batchClosing});
  const binding=initialBinding(runtime,{...claims,le,sid,sv:old?old.sv+1:1,ue:old?old.ue+1:0,capture});
  const projection=await runtime.buildProjection(binding,capture,{initialIssuance:false,previous:old?JSON.parse(old.projection_json):{}});
  if(sharedAcademyAdmission)projection.sharedAcademyAdmission=sharedAcademyAdmission;
  const deadline=Math.min(binding.vat+900,barrier.idleUntil,claims.s_exp,projection.timedUntil),refresh=opaque(),fp=await fingerprint(refresh,runtime.config);
- const [ag,ac]=store.guard("SELECT 1 WHERE NOT EXISTS(SELECT 1 FROM jwt_v2_accounts WHERE sub=? AND (ce>? OR (ce=? AND ae>?) OR active=0))",[claims.sub,claims.ce,claims.ce,claims.ae]);
+ const accountCondition=admissionAccount?' OR le<>?':'';
+ const [ag,ac]=store.guard(
+  "SELECT 1 WHERE NOT EXISTS(SELECT 1 FROM jwt_v2_accounts WHERE sub=? AND (ce>? OR (ce=? AND ae>?) OR active=0"+accountCondition+"))",
+  [claims.sub,claims.ce,claims.ce,claims.ae,...(admissionAccount?[le]:[])]
+ );
  const [pg,pc]=store.guard("SELECT 1 WHERE NOT EXISTS(SELECT 1 FROM jwt_v2_parents WHERE psid=? AND (sub<>? OR bsid<>? OR bv<>? OR ce<>? OR ae<>? OR s_iat<>? OR s_exp<>? OR state IN('REVOKED','EXPIRED')))",[claims.psid,claims.sub,claims.bsid,claims.bv,claims.ce,claims.ae,claims.s_iat,claims.s_exp]);
  const [bg,bc]=store.guard("SELECT 1 WHERE NOT EXISTS(SELECT 1 FROM jwt_v2_browsers WHERE bsid=? AND (bv>? OR cancelled_through>=?))",[claims.bsid,claims.bv,claims.bv]);
  const statements=[ag,pg,bg,

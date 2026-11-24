@@ -68,7 +68,7 @@ export class SecurityCache {
   requireThat(typeof object.etag==='string'&&object.etag.length>0,'SECURITY_ETAG_REQUIRED',503);
   return {value,etag:object.etag};
  }
- async publish(suffix,buildCommitted){
+ async publish(suffix,buildCommitted,{initial=false}={}){
   const key=this.key(suffix),life=await this.store.lifecycle(key);
   requireThat(life&&['SEED','ACTIVE'].includes(life.state)&&life.seed_observed===1&&life.generation===this.generation,'SECURITY_OBJECT_FENCED',503);
   const object=await this.bucket.get(key);
@@ -83,8 +83,21 @@ export class SecurityCache {
   const committed=await buildCommitted();
   controlShape(suffix,committed,this.prefix);
   requireThat(safeInt(committed.cr,1)&&committed.cr>=life.semantic_revision,'STALE_PUBLISHER',409);
-  if(suffix.startsWith('security/session/')){
-   const primary=await this.store.family(suffix.slice('security/session/'.length));
+  const isSession=suffix.startsWith('security/session/');
+  const groupInitial=initial&&isSession&&current.state==='SEED'&&committed.cr===1;
+  let beforeWriteLifecycle;
+  if(isSession){
+   const sid=suffix.slice('security/session/'.length);
+   let primary;
+   if(groupInitial){
+    // Both reads follow the R2 observation and precede the conditional write.
+    const [[family],[latest]]=await this.store.readBatch([
+     ['SELECT * FROM jwt_v2_families WHERE sid=?',sid],
+     ['SELECT * FROM jwt_v2_objects WHERE object_key=?',key]
+    ]);
+    primary=family;
+    beforeWriteLifecycle=latest;
+   }else primary=await this.store.family(sid);
    requireThat(primary&&primary.cr===committed.cr&&primary.binding_json===canonical(committed.binding)&&primary.state===committed.localState&&primary.deadline===committed.validationDeadline&&primary.idle_until===committed.idleUntil&&Boolean(primary.authority_ready)===committed.authorityReady,'UNCOMMITTED_SECURITY_PROJECTION',409);
    if(committed.localState==='UNLOCKED'&&committed.authorityReady){
     const saved=JSON.parse(primary.projection_json);
@@ -107,7 +120,7 @@ export class SecurityCache {
   if(suffix.startsWith('control/'))await assertCommittedControl(this.store,suffix,committed);
   const candidate={...committed,schema:2,generation:this.generation,incarnation:life.incarnation,state:'ACTIVE',publicationNonce:crypto.randomUUID()};
   const encoded=canonical(candidate);requireThat(bytes(encoded).length<=MAX_CONTROL_BYTES,'CONTROL_PARTITION_REQUIRED',503);
-   const latest=await this.store.lifecycle(key);requireThat(latest&&['SEED','ACTIVE'].includes(latest.state)&&latest.incarnation===life.incarnation&&latest.generation===life.generation,'SECURITY_OBJECT_FENCED',503);
+   const latest=groupInitial?beforeWriteLifecycle:await this.store.lifecycle(key);requireThat(latest&&['SEED','ACTIVE'].includes(latest.state)&&latest.incarnation===life.incarnation&&latest.generation===life.generation,'SECURITY_OBJECT_FENCED',503);
   this.metrics.conditionalWrites++;
   const written=await this.bucket.put(key,encoded,{onlyIf:{etagMatches:object.etag},httpMetadata:{contentType:'application/json',cacheControl:'private, no-store'}});
   requireThat(written,'PUBLICATION_RETRY',409);
@@ -118,7 +131,7 @@ export class SecurityCache {
   requireThat(verified.sid===sessionKey,'SECURITY_SELECTOR_MISMATCH');
   const app=(await this.read('control/app')).value;
   requireThat(!app.withdrawnKids.includes(verified.kid),'UNTRUSTED_KEY');
-  const session=(await this.read('security/session/'+sessionKey)).value;
+  const {value:session,etag}=await this.read('security/session/'+sessionKey);
   requireThat(app.app===config.app&&app.env===config.env&&session.app===config.app&&session.env===config.env,'WRONG_SECURITY_NAMESPACE');
   if(sharedChildEntry){
    const {validateSharedChildSource}=await import('./shared-entry.mjs');
@@ -149,7 +162,8 @@ export class SecurityCache {
    rights=immutable(strictJSON(raw,{maxBytes:2*1024*1024}));requireThat(rights&&typeof rights==='object','INVALID_RIGHTS_PAYLOAD',503);verifiedPayloads.set(rights,memoKey);rightsMemo.set(memoKey,rights);
   }
   // Memoised bytes do not confer a lease: controls and deadlines were checked above on every request.
-  return {binding:session.binding,rights,deadline:Math.min(session.validationDeadline,session.idleUntil,session.timedUntil,session.s_exp)};
+  const sessionPublication={cr:session.cr,incarnation:session.incarnation,nonce:session.publicationNonce,etag};
+  return {binding:session.binding,rights,sessionPublication,deadline:Math.min(session.validationDeadline,session.idleUntil,session.timedUntil,session.s_exp)};
  }
 }
 export async function coherentCapture({readFence,readVector,loadRights,committedLease,now}){

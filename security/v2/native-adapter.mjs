@@ -1,4 +1,4 @@
-import {readStudioSourceAuthority} from '../../src/v111-source-authority.mjs';
+import {readStudioSourceAuthority,studioSourceAuthorityReads,checkedStudioSourceAuthority} from '../../src/v111-source-authority.mjs';
 import {Store} from '../../src/database.mjs';
 import {liveAccess,academyAuthority} from '../../src/access.mjs';
 import {mediaGate} from '../../src/media.mjs';
@@ -13,10 +13,27 @@ function references(input){
  out.sort((a,b)=>a.id===b.id?(a.scope<b.scope?-1:a.scope>b.scope?1:0):a.id<b.id?-1:1);
  requireThat(out.every((r,i)=>i===0||r.id!==out[i-1].id||r.scope!==out[i-1].scope),'DUPLICATE_NATIVE_DEPENDENCY',503);return out;
 }
-const vectorSQL="SELECT json_extract(j.value,'$.id') id,json_extract(j.value,'$.scope') scope,d.owner_epoch,d.revision FROM json_each(?) j LEFT JOIN jwt_v2_dependencies d ON d.id=json_extract(j.value,'$.id') AND d.scope=json_extract(j.value,'$.scope') ORDER BY id,scope";
+const pointVectorSQL='(SELECT json_array(id,scope,owner_epoch,revision) FROM jwt_v2_dependencies WHERE id=? AND scope=?)';
+const vectorChunkSize=32;
+function vectorStatements(session,refs){
+ const statements=[];
+ for(let offset=0;offset<refs.length;offset+=vectorChunkSize){
+  const chunk=refs.slice(offset,offset+vectorChunkSize);
+  const columns=chunk.map((_,index)=>pointVectorSQL+' AS v'+index);
+  statements.push(session.prepare('SELECT '+columns.join(',')).bind(...chunk.flatMap(r=>[r.id,r.scope])));
+ }
+ return statements;
+}
+// Keep the byte order of SQLite's BINARY collation for equal dependency IDs.
+function compareScope(left,right){
+ const a=bytes(left),b=bytes(right);
+ for(let i=0;i<Math.min(a.length,b.length);i++)if(a[i]!==b[i])return a[i]-b[i];
+ return a.length-b.length;
+}
 async function localVector(rows,refs){
  requireThat(rows.length===refs.length&&rows.every(r=>ascii(r.owner_epoch)&&safeInt(r.revision,1)),'NATIVE_DEPENDENCY_UNAVAILABLE',503);
  requireThat(rows.every(r=>refs.some(ref=>ref.id===r.id&&ref.scope===r.scope&&ref.ownerEpoch===r.owner_epoch)),'NATIVE_OWNER_EPOCH_RECONCILIATION_REQUIRED',503);
+ rows.sort((a,b)=>a.id===b.id?compareScope(a.scope,b.scope):a.id<b.id?-1:1);
  const ownerVector=[];for(const r of rows)ownerVector.push([r.id+':'+b64u(await sha256(bytes(r.scope))).slice(0,22),r.owner_epoch,r.revision]);
  return {rows,ownerVector,vectorGuards:rows.map(r=>[r.id,r.scope,r.owner_epoch,r.revision]),pv:await vectorDigest(ownerVector)};
 }
@@ -34,9 +51,17 @@ const authorityColumns={
  participation:['account_id','offering_id','enrolled','live','purchased','cohort'],staff:['account_id','offering_id','role','can_create_account'],paid_months:['account_id','offering_id','month','cohort'],website_months:['account_id','offering_id','month'],surah_grants:['account_id','website_id'],mou_playlist_retained:['playlist_id','offering_id','account_id','source_month','kind'],
  source_access_people:['account_id','offering_id','generation','version','verified_at','ready','windows_json','has_allocation','course'],source_access_master_fences:['account_id','offering_id','epoch','active','admitted','global_admin'],circles_navigation:['account_id','epoch','verified_at','programmes_json'],source_access_scopes:['offering_id','authority','enabled','generation','version','live_enabled','timezone','classes_json'],source_access_websites:['website_id','offering_id','enabled'],access_handovers:['offering_id','transfer_id','phase','generation','source_version','revision','cursor','checked','created_at'],programme_offerings:['programme_key','offering_id','access_model'],programme_subjects:['offering_id','display_key','website_id','enabled'],course_access_models:['offering_id','access_model'],completed_course_registrations:['offering_id','registration_id','website_id','package_sha256']
 };
-async function authoritySnapshot(store,identity,offeringIds){
+async function authoritySnapshot(store,identity,offeringIds,programme){
  const installed={...authorityTables,...(store.env.UAA_V2_STUDIO_SOURCE_OWNER_EPOCH?{studio_source_projection_problems:'account_id',studio_course_publication_holds:'hold'}:{})};
  const entries=Object.entries(installed),ids=JSON.stringify(offeringIds);
+ let offeringFilter='offering_id IN(SELECT value FROM json_each(?))',offeringArgs=[ids];
+ // Short unscoped captures can seek the same selected IDs without expanding a JSON list per query.
+ if(!programme&&offeringIds.length<=64){
+  offeringArgs=offeringIds;
+  if(!offeringIds.length)offeringFilter='0';
+  else if(offeringIds.length===1)offeringFilter='offering_id=?';
+  else offeringFilter='offering_id IN('+offeringIds.map(()=>'?').join(',')+')';
+ }
  const [account,...schemas]=await store.batch([
   store.statement('SELECT account_id,active,admitted,global_admin FROM accounts WHERE account_id=?',[identity.sub]),
   ...entries.map(([table])=>store.statement('PRAGMA table_info("'+table+'")'))
@@ -47,11 +72,20 @@ async function authoritySnapshot(store,identity,offeringIds){
   requireThat(selected.length&&selected.every(column=>/^[a-z_][a-z0-9_]*$/i.test(column)),'NATIVE_AUTHORITY_SCHEMA_REQUIRED',503);
   return selected;
  });
- const values=await store.batch(entries.map(([table,scope],index)=>store.statement(
-  'SELECT '+columns[index].map(column=>'"'+column+'"').join(',')+' FROM "'+table+'" WHERE '+
-   (scope==='hold'?"phase<>'RELEASED'":scope==='account_id'?'account_id=?':'offering_id IN(SELECT value FROM json_each(?))')+' LIMIT 6001',
-  scope==='hold'?[]:[scope==='account_id'?identity.sub:ids]
- )));
+ const values=await store.batch(entries.map(([table,scope],index)=>{
+  let where=scope==='hold'?"phase<>'RELEASED'":scope==='account_id'?'account_id=?':offeringFilter;
+  const args=scope==='hold'?[]:scope==='account_id'?[identity.sub]:offeringArgs;
+  if(programme&&scope==='account_id'){
+   if(table==='surah_grants'){
+    where+=' AND website_id IN(SELECT website_id FROM websites WHERE offering_id IN(SELECT value FROM json_each(?)))';
+    args.push(ids);
+   }else if(columns[index].includes('offering_id')){
+    where+=' AND offering_id IN(SELECT value FROM json_each(?))';
+    args.push(ids);
+   }
+  }
+  return store.statement('SELECT '+columns[index].map(column=>'"'+column+'"').join(',')+' FROM "'+table+'" WHERE '+where+' LIMIT 6001',args);
+ }));
  const tables=Object.fromEntries(entries.map(([table],index)=>[table,{columns:columns[index],rows:rowsBound(values[index].results)}]));
  return {schema:1,identity:account.results[0]||null,tables};
 }
@@ -112,25 +146,36 @@ export class StudioNativeAdapter {
   requireThat(env?.DB?.withSession&&typeof clock==='function','NATIVE_STUDIO_BINDING_REQUIRED',503);
   this.env=env;this.db=env.DB.withSession('first-primary');this.dependencies=references(dependencies);this.clock=clock;
  }
- async identity(sub){
+ identityQuery(sub){
   validId(sub);
-  return this.checkedIdentity(await this.db.prepare(identitySQL).bind(sub).first());
+  return [identitySQL,sub];
+ }
+ async identity(sub){
+  const [sql,...args]=this.identityQuery(sub);
+  return this.checkedIdentity(await this.db.prepare(sql).bind(...args).first());
  }
  checkedIdentity(row){
   requireThat(row&&row.active===1&&row.admitted===1,'STUDIO_ACCOUNT_INACTIVE',401);
   requireThat(safeInt(row.epoch,1)&&[0,1].includes(row.global_admin),'NATIVE_STUDIO_IDENTITY_INVALID',503);
   return Object.freeze({sub:row.account_id,displayName:row.display_name,sourceCredentialEpoch:row.epoch,globalAdmin:row.global_admin===1,sourceContactAtMs:row.verified_at});
  }
- async captureInputs(sub){
-  const session=this.env.DB.withSession('first-primary');
-  const results=await session.batch([
-   session.prepare(vectorSQL).bind(JSON.stringify(this.dependencies)),
-   session.prepare(identitySQL).bind(sub)
-  ]);
-  requireThat(results.length===2&&results.every(result=>result.success===true&&Array.isArray(result.results)),
+ async captureInputs(sub,session,sourceContext=null){
+  const sourceReads=sourceContext?studioSourceAuthorityReads(session,sub):[];
+  const statements=[...vectorStatements(session,this.dependencies),session.prepare(identitySQL).bind(sub)];
+  const batch=await session.batch([...sourceReads,...statements]);
+  const source=sourceContext?await checkedStudioSourceAuthority(sourceContext,batch.slice(0,sourceReads.length)):null;
+  const results=batch.slice(sourceReads.length);
+  requireThat(results.length===statements.length&&results.every(result=>result.success===true&&Array.isArray(result.results)),
    'NATIVE_IDENTITY_BATCH_UNAVAILABLE',503);
-  const [vector,identity]=results;
-  return {vector:await localVector(vector.results,this.dependencies),identity:this.checkedIdentity(identity.results[0])};
+  const identity=results.at(-1);
+  const vector=this.dependencies.map((_,index)=>{
+   const row=results[Math.floor(index/vectorChunkSize)].results[0];
+   const value=row?.['v'+(index%vectorChunkSize)];
+   requireThat(typeof value==='string','NATIVE_DEPENDENCY_UNAVAILABLE',503);
+   const [id,scope,owner_epoch,revision]=JSON.parse(value);
+   return {id,scope,owner_epoch,revision};
+  });
+  return {vector:await localVector(vector,this.dependencies),identity:this.checkedIdentity(identity.results[0]),source};
  }
  identityGuard(identity){
   return {sql:'SELECT 1 FROM accounts WHERE account_id=? AND active=1 AND admitted=1 AND epoch=? AND global_admin=?',
@@ -153,21 +198,27 @@ export class StudioNativeAdapter {
   }
   return scopes;
  }
- async capture({sub,sourceCredentialEpoch,offeringIds=[]}){
+ async capture({sub,sourceCredentialEpoch,offeringIds=[],programme=null,findOfferings=null,batchClosing=false}){
   validId(sub);requireThat(safeInt(sourceCredentialEpoch,1),'SOURCE_CREDENTIAL_EPOCH_REQUIRED',503);
   requireThat(Array.isArray(offeringIds)&&offeringIds.length<=200&&new Set(offeringIds).size===offeringIds.length,'INVALID_NATIVE_SCOPE',400);
   offeringIds.forEach(validId);
   const vat=this.clock();requireThat(safeInt(vat),'NATIVE_CLOCK_REQUIRED',503);
   for(let attempt=0;attempt<2;attempt++){
-   const {vector:before,identity}=await this.captureInputs(sub);
+   const session=this.env.DB.withSession('first-primary');
+   const {vector:before,identity}=await this.captureInputs(sub,session);
    requireThat(identity.sourceCredentialEpoch===sourceCredentialEpoch,'CREDENTIAL_CHANGED',401);
-   const store=new Store(this.env,this.db);
-   const scopes=await this.captureScopes(store,identity.sub,offeringIds);
-   const nativeAuthority=await authoritySnapshot(store,identity,offeringIds);const source=this.env.UAA_V2_STUDIO_SOURCE_OWNER_EPOCH?await readStudioSourceAuthority({db:this.db,env:this.env,binding:{sub,ce:sourceCredentialEpoch},now:vat}):null;
-   const {vector:after,identity:current}=await this.captureInputs(identity.sub);
+   const store=new Store(this.env,session);
+   const selected=findOfferings?(await findOfferings(session,identity)).map(row=>row.offering_id):offeringIds;
+   requireThat(selected.length<=200,'STUDIO_NATIVE_SCOPE_BOUND_EXCEEDED',503);
+   const scopes=await this.captureScopes(store,identity.sub,selected);
+   const nativeAuthority=await authoritySnapshot(store,identity,selected,programme);
+   const sourceContext=this.env.UAA_V2_STUDIO_SOURCE_OWNER_EPOCH?{env:this.env,binding:{sub,ce:sourceCredentialEpoch},now:vat}:null;
+   const separate=sourceContext&&!batchClosing?await readStudioSourceAuthority({db:session,...sourceContext}):null;
+   const {vector:after,identity:current,source:grouped}=await this.captureInputs(identity.sub,session,batchClosing?sourceContext:null);
+   const source=grouped??separate;
    if(canonical(before.rows)!==canonical(after.rows)||canonical(identity)!==canonical(current))continue;
    const checkedAt=this.clock();requireThat(safeInt(checkedAt)&&checkedAt>=vat&&checkedAt<vat+900,'NATIVE_VALIDATION_EXPIRED',503);
-   return {app:'studio',sub:identity.sub,sourceCredentialEpoch,rights:bounded({globalAdmin:identity.globalAdmin,scopes,nativeAuthority,...(source?{academy:source.rights,sourceAuthority:source.head}:{})}),sourceProvenance:{contactAtMs:identity.sourceContactAtMs,freshContact:false},ownerVector:after.ownerVector,vectorGuards:after.vectorGuards,pv:after.pv,vat,primaryCheckedAt:checkedAt,timedUntil:source?source.timedUntil:Number.MAX_SAFE_INTEGER};
+   return {app:'studio',sub:identity.sub,sourceCredentialEpoch,rights:bounded({globalAdmin:identity.globalAdmin,scopes,nativeAuthority,...(programme?{programme}:{}),...(source?{academy:source.rights,sourceAuthority:source.head}:{})}),sourceProvenance:{contactAtMs:identity.sourceContactAtMs,freshContact:false},ownerVector:after.ownerVector,vectorGuards:after.vectorGuards,pv:after.pv,vat,primaryCheckedAt:checkedAt,timedUntil:source?source.timedUntil:Number.MAX_SAFE_INTEGER};
   }
   reject('NATIVE_AUTHORITY_CHANGED_DURING_CAPTURE',503);
  }

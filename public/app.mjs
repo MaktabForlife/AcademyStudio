@@ -82,6 +82,8 @@ async function library(checked=null){
  async function loadPublished(more=false){
   if(pages.busy||!isCurrent())return;pages.busy=true;
   try{const after=more?pages.websites.at(-1)?.website_id:null,query=new URLSearchParams({published:'1'});if(after)query.set('after',after);for(const name of ['placement','placementOffering','class'])if(locationQuery.has(name))query.set(name,locationQuery.get(name));
+   const collection=locationQuery.get('collection');
+   if(!placed&&(collection==='tafseer'||collection==='courses'))query.set('collection',collection);
    const response=await api('/api/websites?'+query);if(!isCurrent())return;
    const next=publishedPlaylistRows(response.playlists);pages.playlists=[...new Map([...pages.playlists,...next].map(row=>[row.id,row])).values()];pages.websites=[...new Map([...pages.websites,...response.websites].map(row=>[row.website_id,row])).values()];pages.more=response.more===true&&Boolean(pages.websites.at(-1)?.website_id);
    presentPublishedPlaylists(root,{...pages,known:catalogueItems,onMore:()=>loadPublished(true).catch(error=>{if(isCurrent())status(error.message);})});privateUI.checked(response);
@@ -208,7 +210,16 @@ document.addEventListener('click',event=>{
  const participantsTable=event.target.closest('[data-participants-table]');if(participantsTable){event.preventDefault();if(!canLeaveWorkspace()||!identity.account||config?.isolatedPreview)return;managementHandoff?.close();managementHandoff=openAcademyFromCircles({academyOrigin:config.academyOrigin,request:api,dashboard:{mode:'admin',tool:'participants',offeringId:participantsTable.dataset.participantsTable},onError:status});return;}
  if(event.target.closest('[data-academy-management]')){event.preventDefault();if(!canLeaveWorkspace())return;if(!identity.account){openSignIn();return;}if(config?.isolatedPreview){status('Academy management is disconnected in this preview.');return;}managementHandoff?.close();managementHandoff=openAcademyFromCircles({academyOrigin:config.academyOrigin,request:api,dashboard:{mode:'admin',tool:'home'},onError:status});return;}
  const collections=event.target.closest('[data-home-collections]');if(collections&&!event.metaKey&&!event.ctrlKey){event.preventDefault();void library().catch(e=>status(e.message));return;}
- const tab=event.target.closest('[data-circles-tab]');if(tab){$('my-learning').querySelector('h1').textContent=tab.dataset.circlesTab==='COURSE'?'Courses':'Tafseer and Tadabbur';document.title=(tab.dataset.circlesTab==='COURSE'?'Courses':'Tafseer')+' · Umm Abbad Academy';const params=new URLSearchParams(location.search);params.set('view','collections');params.set('collection',tab.dataset.circlesTab==='COURSE'?'courses':'tafseer');history.pushState(null,'',appPath+'?'+params);const root=tab.closest('.connected-circles');for(const node of root.querySelectorAll('[data-circles-section]'))node.hidden=node.dataset.circlesSection!==tab.dataset.circlesTab;for(const node of root.querySelectorAll('[data-circles-tab]'))node.setAttribute('aria-current',node===tab?'page':'false');}
+ const tab=event.target.closest('[data-circles-tab]');
+ if(tab){
+  event.preventDefault();
+  const params=new URLSearchParams(location.search),collection=tab.dataset.circlesTab==='COURSE'?'courses':'tafseer';
+  if(params.get('view')==='collections'&&params.get('collection')===collection)return;
+  params.set('view','collections');params.set('collection',collection);
+  history.pushState(null,'',appPath+'?'+params);
+  void library().catch(error=>status(error.message));
+  return;
+ }
  const link=event.target.closest('a[data-circles-website]');if(link&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey&&event.button===0){event.preventDefault();void openWebsite(link.dataset.circlesWebsite).catch(e=>status(e.message));}
 });
 document.addEventListener('input',event=>{if(!textEditor.editing&&current&&event.target.hasAttribute('data-sp-note')){ui.reflections[event.target.dataset.spNote]=event.target.value;remember();}});

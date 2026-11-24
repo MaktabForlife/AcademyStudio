@@ -64,17 +64,72 @@ export async function appliedDependencyPlan(store,{target,scopeSub=null,dependen
  ];
 }
 
+const maxIndexedVector=64;
+const vectorProbeWidth=8;
+const dependencyColumns=['id','scope','owner_epoch','revision'];
+
+function indexedVectorCondition(count){
+ const groups=[];
+ for(let start=0;start<count;start+=vectorProbeWidth){
+  const checks=[];
+  for(let index=start;index<Math.min(start+vectorProbeWidth,count);index++){
+   const match=dependencyColumns.map((name,field)=>
+    "d."+name+"=json_extract(i.guards,'$["+index+"]["+field+"]')"
+   ).join(' AND ');
+   checks.push('EXISTS(SELECT 1 FROM jwt_v2_dependencies d WHERE '+match+')');
+  }
+  // Only bounded numeric offsets are interpolated. Tuple values stay bound.
+  groups.push("json_array("+checks.join(',')+")='"+JSON.stringify(checks.map(()=>1))+"'");
+ }
+ return groups.join('\n AND ');
+}
+
 // Returns the same [assertion, clear] shape as PrimaryStore.guard. Place the
 // assertion in the owning family transaction, after valid unlock/barrier changes
 // when that operation intentionally unlocks a context; no warm request SQL.
-export function issuanceFloorGuard(store,{binding,projection,vectorGuards,existingSid=null,state='UNLOCKED',now,dependencyRegistry=store.dependencyRegistry||new Map()}){
+export function issuanceFloorGuard(store,{binding,projection,vectorGuards,existingSid=null,state='UNLOCKED',now,indexedVector=false,dependencyRegistry=store.dependencyRegistry||new Map()}){
  validOwner(store);
  requireThat(binding&&projection&&canonical(projection.binding)===canonical(binding)&&binding.env===store.env&&uuid(binding.sid)&&safeInt(now)&&['UNLOCKED','ADMITTED_LOCKED'].includes(state),'INVALID_ISSUANCE_FLOOR_CONTEXT',503);
  requireThat(existingSid===null||existingSid===binding.sid,'INVALID_EXISTING_FAMILY_SELECTOR',503);
  requireThat(ascii(projection.policyEpoch)&&safeInt(projection.policyRevision,1)&&safeInt(projection.inactivityMinutes,15)&&projection.inactivityMinutes<=200&&Array.isArray(projection.deniedActions)&&projection.deniedActions.every(a=>ascii(a))&&Array.isArray(vectorGuards)&&vectorGuards.length>0,'ISSUANCE_READINESS_REQUIRED',503);
  const registry=[...(dependencyRegistry instanceof Map?dependencyRegistry:new Map()).entries()].map(([id,r])=>({id,ownerApp:r.ownerApp,ownerEpoch:r.epoch,recipients:r.recipients||[]}));
+ // Key the exact identity tuple as a JSON-path-safe hex string.
+ const nativeKey=`hex(json_array(json_extract(r.target_json,'$.id'),
+  CASE WHEN r.scope_sub IS NULL THEN 'GLOBAL' ELSE 'ACCOUNT:'||r.scope_sub END,json_extract(r.target_json,'$.ownerEpoch')))`;
+ // Use the same exact tuple map only for a receipt-validated fresh entry.
+ const foreignTupleMissing=indexedVector
+  ?"coalesce(json_extract((SELECT by_identity FROM captured_revisions),'$.'||hex(json_array("+
+   "json_extract(n.value,'$[0]'),json_extract(n.value,'$[1]'),json_extract(n.value,'$[2]'))))=json_extract(n.value,'$[3]'),0)=0"
+  :"NOT EXISTS(SELECT 1 FROM json_each(i.guards) v WHERE json_extract(v.value,'$[0]')=json_extract(n.value,'$[0]') AND json_extract(v.value,'$[1]')=json_extract(n.value,'$[1]') AND json_extract(v.value,'$[2]')=json_extract(n.value,'$[2]') AND json_extract(v.value,'$[3]')=json_extract(n.value,'$[3]'))";
+ const vectorCondition=indexedVector&&vectorGuards.length<=maxIndexedVector
+  ?indexedVectorCondition(vectorGuards.length)
+  :"NOT EXISTS(SELECT 1 FROM json_each(i.guards) v LEFT JOIN jwt_v2_dependencies d ON d.id=json_extract(v.value,'$[0]') AND d.scope=json_extract(v.value,'$[1]') WHERE d.id IS NULL OR d.owner_epoch<>json_extract(v.value,'$[2]') OR d.revision<>json_extract(v.value,'$[3]'))";
+ // Each well-typed tuple is already checked against the owning primary by the
+ // exact point-vector predicate in this statement. Membership in that vector
+ // proves a matching receipt tuple still has that same current local revision.
+ const reuseCurrentVector=indexedVector&&vectorGuards.length<=maxIndexedVector&&vectorGuards.every(tuple=>
+  Array.isArray(tuple)&&tuple.length===4&&tuple.slice(0,3).every(value=>typeof value==='string')&&safeInt(tuple[3],1));
+ const currentReceiptTuple=reuseCurrentVector?'':" LEFT JOIN jwt_v2_dependencies d ON d.id=json_extract(n.value,'$[0]') AND d.scope=json_extract(n.value,'$[1]')";
+ const staleReceiptTuple=reuseCurrentVector?'':"d.id IS NULL OR d.owner_epoch<>json_extract(n.value,'$[2]') OR d.revision<>json_extract(n.value,'$[3]') OR ";
+ // A JSON object needs two SQL function arguments per tuple. Keep the
+ // direct builder below the SQLite function-argument limit.
+ const directRevisionMap=reuseCurrentVector&&vectorGuards.length<=60&&
+  new Set(vectorGuards.map(tuple=>canonical(tuple.slice(0,3)))).size===vectorGuards.length;
+ const revisionMapSQL=directRevisionMap
+  ?'SELECT json_object('+vectorGuards.map((_,index)=>{
+    const field=position=>"json_extract(i.guards,'$["+index+"]["+position+"]')";
+    return 'hex(json_array('+[0,1,2].map(field).join(',')+')),'+field(3);
+   }).join(',')+') FROM input i'
+  :String.raw`SELECT json_group_object(hex(identity),revision) FROM (
+   SELECT json_array(json_extract(v.value,'$[0]'),json_extract(v.value,'$[1]'),json_extract(v.value,'$[2]')) identity,
+    max(json_extract(v.value,'$[3]')) revision
+   FROM input i,json_each(i.guards) v GROUP BY identity
+  )`;
  const sql=String.raw`WITH RECURSIVE
  input AS(SELECT ? binding,? projection,? guards,? app,? env,? sid,? family_state,? now,? registry),
+ captured_revisions(by_identity) AS MATERIALIZED(
+  ${revisionMapSQL}
+ ),
  policy_chain(owner_epoch,depth) AS(
   SELECT h.owner_epoch,0 FROM jwt_v2_policy_heads h,input i WHERE h.app=i.app AND h.env=i.env
   UNION ALL
@@ -82,7 +137,7 @@ export function issuanceFloorGuard(store,{binding,projection,vectorGuards,existi
    WHERE c.depth<15 AND previous.sealed_through=e.predecessor_final_revision AND previous.coherent_through>=e.predecessor_final_revision
  )
  SELECT 1 FROM input i WHERE
- NOT EXISTS(SELECT 1 FROM json_each(i.guards) v LEFT JOIN jwt_v2_dependencies d ON d.id=json_extract(v.value,'$[0]') AND d.scope=json_extract(v.value,'$[1]') WHERE d.id IS NULL OR d.owner_epoch<>json_extract(v.value,'$[2]') OR d.revision<>json_extract(v.value,'$[3]'))
+ ${vectorCondition}
  AND EXISTS(SELECT 1 FROM jwt_v2_policy_heads h JOIN jwt_v2_policy_epochs e ON e.owner_epoch=h.owner_epoch JOIN jwt_v2_policy_history p ON p.owner_epoch=e.owner_epoch AND p.revision=e.highest_seen
   WHERE h.app=i.app AND h.env=i.env AND e.owner_epoch=json_extract(i.projection,'$.policyEpoch') AND e.highest_seen=json_extract(i.projection,'$.policyRevision') AND e.coherent_through=e.highest_seen AND e.sealed_through IS NULL AND p.minutes=json_extract(i.projection,'$.inactivityMinutes'))
  AND (i.sid IS NULL OR EXISTS(SELECT 1 FROM jwt_v2_family_policy fp JOIN jwt_v2_families f ON f.sid=fp.sid
@@ -96,13 +151,13 @@ export function issuanceFloorGuard(store,{binding,projection,vectorGuards,existi
     json_type(r.target_json,'$.id')='text' AND json_type(r.target_json,'$.ownerEpoch')='text' AND json_type(r.target_json,'$.revision')='integer' AND json_extract(r.target_json,'$.revision')>=1
     AND json_type(r.target_json,'$.deniedActions')='array' AND json_extract(r.target_json,'$.effect') IN('DENY','INVALIDATE')
     AND ((json_extract(r.target_json,'$.effect')='INVALIDATE' AND json_array_length(r.target_json,'$.deniedActions')=0) OR (json_extract(r.target_json,'$.effect')='DENY' AND json_array_length(r.target_json,'$.deniedActions')>0))
-    AND (EXISTS(SELECT 1 FROM json_each(i.guards) known WHERE json_extract(known.value,'$[0]')=json_extract(r.target_json,'$.id') AND substr(json_extract(known.value,'$[0]'),1,length(i.app)+8)=i.app||':native:' AND json_extract(known.value,'$[1]')=CASE WHEN r.scope_sub IS NULL THEN 'GLOBAL' ELSE 'ACCOUNT:'||r.scope_sub END AND json_extract(known.value,'$[2]')=json_extract(r.target_json,'$.ownerEpoch')) OR EXISTS(SELECT 1 FROM json_each(i.registry) known WHERE json_extract(known.value,'$.id')=json_extract(r.target_json,'$.id') AND json_extract(known.value,'$.ownerApp')='academy' AND json_extract(known.value,'$.ownerEpoch')=json_extract(r.target_json,'$.ownerEpoch') AND EXISTS(SELECT 1 FROM json_each(known.value,'$.recipients') recipient WHERE recipient.value=i.app)))
+    AND ((substr(json_extract(r.target_json,'$.id'),1,length(i.app)+8)=i.app||':native:' AND json_extract((SELECT by_identity FROM captured_revisions),'$.'||${nativeKey}) IS NOT NULL) OR EXISTS(SELECT 1 FROM json_each(i.registry) known WHERE json_extract(known.value,'$.id')=json_extract(r.target_json,'$.id') AND json_extract(known.value,'$.ownerApp')='academy' AND json_extract(known.value,'$.ownerEpoch')=json_extract(r.target_json,'$.ownerEpoch') AND EXISTS(SELECT 1 FROM json_each(known.value,'$.recipients') recipient WHERE recipient.value=i.app)))
     AND (
      (json_extract(r.target_json,'$.effect')='DENY' AND NOT EXISTS(SELECT 1 FROM json_each(r.target_json,'$.deniedActions') a WHERE a.type<>'text' OR NOT EXISTS(SELECT 1 FROM json_each(i.projection,'$.deniedActions') proposed WHERE proposed.value=a.value)))
-     OR EXISTS(SELECT 1 FROM json_each(i.guards) v WHERE json_extract(v.value,'$[0]')=json_extract(r.target_json,'$.id') AND substr(json_extract(v.value,'$[0]'),1,length(i.app)+8)=i.app||':native:' AND json_extract(v.value,'$[1]')=CASE WHEN r.scope_sub IS NULL THEN 'GLOBAL' ELSE 'ACCOUNT:'||r.scope_sub END AND json_extract(v.value,'$[2]')=json_extract(r.target_json,'$.ownerEpoch') AND json_extract(v.value,'$[3]')>=json_extract(r.target_json,'$.revision')
-      AND (json_extract(r.target_json,'$.effect')='INVALIDATE' OR json_extract(v.value,'$[3]')>json_extract(r.target_json,'$.revision')))
+     OR (substr(json_extract(r.target_json,'$.id'),1,length(i.app)+8)=i.app||':native:' AND json_extract((SELECT by_identity FROM captured_revisions),'$.'||${nativeKey}) >= json_extract(r.target_json,'$.revision')
+      AND (json_extract(r.target_json,'$.effect')='INVALIDATE' OR json_extract((SELECT by_identity FROM captured_revisions),'$.'||${nativeKey}) > json_extract(r.target_json,'$.revision')))
      OR EXISTS(SELECT 1 FROM jwt_v2_applied_dependencies a WHERE a.dependency=json_extract(r.target_json,'$.id') AND a.scope=CASE WHEN r.scope_sub IS NULL THEN 'GLOBAL' ELSE 'ACCOUNT:'||r.scope_sub END AND a.owner_app='academy' AND a.owner_epoch=json_extract(r.target_json,'$.ownerEpoch') AND a.revision>=json_extract(r.target_json,'$.revision') AND json_array_length(a.native_vector_json)>0
-      AND NOT EXISTS(SELECT 1 FROM json_each(a.native_vector_json) n LEFT JOIN jwt_v2_dependencies d ON d.id=json_extract(n.value,'$[0]') AND d.scope=json_extract(n.value,'$[1]') WHERE d.id IS NULL OR d.owner_epoch<>json_extract(n.value,'$[2]') OR d.revision<>json_extract(n.value,'$[3]') OR NOT EXISTS(SELECT 1 FROM json_each(i.guards) v WHERE json_extract(v.value,'$[0]')=json_extract(n.value,'$[0]') AND json_extract(v.value,'$[1]')=json_extract(n.value,'$[1]') AND json_extract(v.value,'$[2]')=json_extract(n.value,'$[2]') AND json_extract(v.value,'$[3]')=json_extract(n.value,'$[3]'))))
+      AND NOT EXISTS(SELECT 1 FROM json_each(a.native_vector_json) n${currentReceiptTuple} WHERE ${staleReceiptTuple}${foreignTupleMissing}))
     )
    WHEN 'policy' THEN json_type(r.target_json,'$.revision')='integer' AND json_type(r.target_json,'$.inactivityMinutes')='integer' AND json_extract(r.target_json,'$.policyId')='session-inactivity' AND EXISTS(SELECT 1 FROM policy_chain c JOIN jwt_v2_policy_epochs e ON e.owner_epoch=c.owner_epoch JOIN jwt_v2_policy_history h ON h.owner_epoch=e.owner_epoch WHERE h.owner_epoch=json_extract(r.target_json,'$.ownerEpoch') AND h.revision=json_extract(r.target_json,'$.revision') AND h.minutes=json_extract(r.target_json,'$.inactivityMinutes') AND e.coherent_through>=h.revision)
    WHEN 'key' THEN json_type(r.target_json,'$.registryRevision')='integer' AND CASE json_extract(r.target_json,'$.purpose')

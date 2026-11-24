@@ -1,3 +1,4 @@
+import {programmeForReturn} from '../../src/v111-programme-scope.mjs';
 import {studioBookmark} from './shared-bookmark.mjs';
 import {canonical,digest,equal,exact,requireThat,safeInt,strictJSON,unb64u} from './codec.mjs';
 import {allowedReturn} from './return-routes.mjs';
@@ -5,9 +6,9 @@ import {expectedContext,requireExpected,selector} from './http-context.mjs';
 import {HTTPTransactions} from './http-transactions.mjs';
 import {admissionBarrier,s256,digestState} from './ceremonies.mjs';
 import {childTransition} from './http-families.mjs';
-import {sharedPredecessor,sharedRetirementPlan,publishSharedRetirements,isSharedRetired,hasSharedPredecessor} from './shared-entry-recovery.mjs';
+import {readSharedPreflight,sharedPredecessor,sharedRetirementPlan,publishSharedRetirements,isSharedRetired,hasSharedPredecessor} from './shared-entry-recovery.mjs';
 import {readCookies,readSharedAcademyAccess,verifyToken} from './tokens.mjs';
-import {admissionFloorGuard} from './publication.mjs';
+import {sharedAcademyAdmissionFloorGuard} from './publication.mjs';
 import {issuanceFloorGuard} from './issuance-floors.mjs';
 import {assertCaptureReceipt} from './capture-receipt.mjs';
 import {familyPolicyRegistrationPlan} from './policy.mjs';
@@ -247,14 +248,16 @@ export async function completeSharedEntry(runtime,request,body){
  requireThat(verified,'ACADEMY_SIGN_IN_REQUIRED',401);
  if(!current)await requireNoUnpairedAuthority(runtime,request);
  const {claims,kid}=verified,gate=accountGate(runtime,mode,claims);
- requireThat(await store.first(gate.sql,...gate.args),'CHILD_AUTHORITY_PENDING',503);
+ const mappingPlan=runtime.native.mappingPreflight?.(claims);
+ const preflight=mappingPlan?await readSharedPreflight(store,claims,gate,mappingPlan.query):null;
+ requireThat(preflight?preflight.ready:await store.first(gate.sql,...gate.args),'CHILD_AUTHORITY_PENDING',503);
  let mapping;
- try{mapping=await runtime.native.mappingGuard(claims);}
+ try{mapping=preflight?mappingPlan.guard(preflight.identity):await runtime.native.mappingGuard(claims);}
  catch(error){
   if(error.code==='HIFZ_PROFILE_REQUIRED'||error.code==='HIFZ_PROFILE_INACTIVE'||error.code==='STUDIO_ACCOUNT_INACTIVE')requireThat(false,'ACCESS_DENIED',403);
   throw error;
  }
- const predecessor=await sharedPredecessor(runtime,claims);
+ const predecessor=await sharedPredecessor(runtime,claims,preflight);
  const {exactParent,prior,priorBarrier}=predecessor;
  const now=runtime.clock(),barrier=admissionBarrier({
   existing:priorBarrier&&{lastRefresh:priorBarrier.last_refresh,idleUntil:priorBarrier.idle_until,locked:Boolean(priorBarrier.locked)},
@@ -262,23 +265,26 @@ export async function completeSharedEntry(runtime,request,body){
  });
  if(priorBarrier)barrier.idleUntil=Math.min(barrier.idleUntil,priorBarrier.idle_until);
  const provenance={issuer:claims.iss,env:claims.env,kid,sub:claims.sub,psid:claims.psid,bsid:claims.bsid,bv:claims.bv};
- const plan=await childTransition(runtime,{claims,purpose:'admission',installed:null,barrier,now,operationId:row.operation_id,sharedAcademyAdmission:provenance});
+ const plan=await childTransition(runtime,{claims,purpose:'admission',installed:null,barrier,now,operationId:row.operation_id,sharedAcademyAdmission:provenance,batchSetup:barrier.state==='UNLOCKED'&&!prior&&!selectedCurrent,batchClosing:barrier.state==='UNLOCKED'&&!prior&&!selectedCurrent,admissionAccount:preflight?{row:preflight.account}:undefined,programme:runtime.env.STUDIO_SCOPED_SESSION_RIGHTS==='1'?programmeForReturn(payload.returnTo):null});
  const guards=[
-  transactions.guard(row),
-  store.guard("SELECT 1 FROM jwt_v2_http_transactions WHERE tx=? AND payload_json=? AND status='PENDING'",[row.tx,row.payload_json]),
+  store.guard(
+   "SELECT 1 FROM jwt_v2_http_transactions WHERE tx=? AND operation_id=? AND status='PENDING' AND payload_json=? AND expires_at>? AND ?>unixepoch() AND ?>unixepoch()",
+   [row.tx,row.operation_id,row.payload_json,runtime.clock(),claims.exp,row.expires_at]
+  ),
   store.guard(gate.sql,gate.args),store.guard(mapping.sql,mapping.args),
-  admissionFloorGuard(store,plan.binding),
-  store.guard('SELECT 1 WHERE ?>unixepoch() AND ?>unixepoch()',[claims.exp,row.expires_at]),
+  sharedAcademyAdmissionFloorGuard(store,plan.binding,kid),
   ...predecessor.guards,
   ...(selectedCurrent?[store.guard("SELECT 1 FROM jwt_v2_families WHERE sid=? AND cr=? AND state='UNLOCKED'",[selectedCurrent.sid,selectedCurrent.cr])]:[]),
   store.guard("SELECT 1 FROM jwt_v2_control_targets WHERE app=? AND env=? AND suffix='control/app' AND cr=? AND json_extract(projection_json,'$.sharedAcademyRegistryRevision')=? AND NOT EXISTS(SELECT 1 FROM json_each(projection_json,'$.withdrawnSharedAcademyKids') WHERE value=?)",[runtime.app,runtime.config.env,app.cr,app.sharedAcademyRegistryRevision,kid]),
-  store.guard("SELECT 1 WHERE NOT EXISTS(SELECT 1 FROM jwt_v2_restrictions WHERE json_extract(target_json,'$.type')='key' AND json_extract(target_json,'$.purpose')='academy-shared-access' AND json_extract(target_json,'$.kid')=?)",[kid]),
  ];
  let issuance=[];
  if(barrier.state==='UNLOCKED'){
   const issuanceNow=runtime.clock();
   await assertCaptureReceipt({capture:plan.capture,binding:plan.binding,projection:plan.projection,guards:plan.vectorGuards,manifest:store.dependencyManifest(claims.sub),app:runtime.app,env:runtime.config.env,now:issuanceNow});
-  issuance=issuanceFloorGuard(store,{binding:plan.binding,projection:plan.projection,vectorGuards:plan.vectorGuards,now:issuanceNow});
+  issuance=issuanceFloorGuard(store,{
+   binding:plan.binding,projection:plan.projection,vectorGuards:plan.vectorGuards,now:issuanceNow,
+   indexedVector:!prior&&!selectedCurrent
+  });
  }
  const result={...plan.result,operationId:row.operation_id},policy=familyPolicyRegistrationPlan(store,{sid:result.sid,ownerEpoch:plan.projection.policyEpoch,revision:plan.projection.policyRevision,minutes:plan.projection.inactivityMinutes,now});
  const retired=[prior,selectedCurrent].filter(Boolean);
@@ -298,17 +304,26 @@ export async function completeSharedEntry(runtime,request,body){
   if(await store.first('SELECT 1 FROM jwt_v2_ceremony_consumed WHERE jti=?',claims.jti))requireThat(false,'OPERATION_SUPERSEDED',409);
   throw error;
  }
- await publishSharedRetirements(runtime,result.sid);
+ if(retired.length)await publishSharedRetirements(runtime,result.sid);
  const publication=await runtime.publishWinningFamily(result.sid,{initial:true});
  requireThat(publication.cachePublication==='READY','CHILD_AUTHORITY_PENDING',503);
- const family=await store.family(result.sid),pair=JSON.parse(family.projection_json).sharedAcademyAdmission;
  const appAfter=await runtime.appControl();
- requireThat(pair?.kid===kid&&family.cr===1&&family.state===barrier.state&&appAfter.sharedAcademyRegistryRevision===app.sharedAcademyRegistryRevision&&!appAfter.withdrawnSharedAcademyKids?.includes(kid)&&await store.first(gate.sql,...gate.args)&&await store.first(mapping.sql,...mapping.args),'CHILD_AUTHORITY_PENDING',503);
+ const prefetchIntents=barrier.state==='UNLOCKED'&&retired.length===0;
+ const [[family],[ready],[mapped],...intentRows]=await store.readBatch([
+  ['SELECT * FROM jwt_v2_families WHERE sid=?',result.sid],
+  [gate.sql,...gate.args],
+  [mapping.sql,...mapping.args],
+  ...(prefetchIntents?runtime.intents.issuedReads(result.sid,1,['refresh','business']):[])
+ ]);
+ const emptyRead=prefetchIntents&&intentRows.length===2&&intentRows.every(rows=>rows.length===0)
+  ?{family}:null;
+ const pair=family&&JSON.parse(family.projection_json).sharedAcademyAdmission;
+ requireThat(pair?.kid===kid&&family.cr===1&&family.state===barrier.state&&appAfter.sharedAcademyRegistryRevision===app.sharedAcademyRegistryRevision&&!appAfter.withdrawnSharedAcademyKids?.includes(kid)&&ready&&mapped,'CHILD_AUTHORITY_PENDING',503);
  if(barrier.locked){
   const response=await runtime.cookieResponse(family,plan.credentials.refresh,{...await runtime.stateDTO(family),code:'PIN_REQUIRED',operationId:row.operation_id,returnTo:payload.returnTo,...publication});
   return new Response(response.body,{status:423,headers:response.headers});
  }
- return runtime.cookieResponse(family,plan.credentials.refresh,{...await runtime.stateDTO(family),operationId:row.operation_id,outcome:'COMMITTED',returnTo:payload.returnTo,...publication});
+ return runtime.cookieResponse(family,plan.credentials.refresh,{...await runtime.stateDTO(family,{emptyRead}),operationId:row.operation_id,outcome:'COMMITTED',returnTo:payload.returnTo,...publication});
 }
 
 export function sharedEntryPage(runtime,request){

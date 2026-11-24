@@ -25,17 +25,28 @@ export class AppRuntime {
   Object.defineProperty(this,'ceremonies',{get:async()=>{const {academyCeremonies}=await import('./http-pin.mjs');return academyCeremonies(this);}});
   this.intents=new HTTPIntents({store:this.store,config:this.config,csrf:settings.csrf,clock});this.rightsMemo=new RightsMemo();
  }
- async ensureDependencies(sub){
+ dependencySeeds(sub){
   const refs=this.settings.dependenciesFor(sub);
-  // Initial counters describe the current scoped native facts, including empty
-  // tables. Native writers race through the same captured primary transaction.
-  // Unknown/absent optional tables are never present in the installed manifest.
-  await this.store.batch(refs.map(r=>this.store.stmt('INSERT INTO jwt_v2_dependencies(id,scope,owner_epoch,revision) VALUES(?,?,?,1) ON CONFLICT(id,scope) DO NOTHING',r.id,r.scope,r.ownerEpoch)));
+  // Initial counters describe current facts, including empty native tables.
+  const statements=refs.map(r=>this.store.stmt('INSERT INTO jwt_v2_dependencies(id,scope,owner_epoch,revision) VALUES(?,?,?,1) ON CONFLICT(id,scope) DO NOTHING',r.id,r.scope,r.ownerEpoch));
+  return {refs,statements};
+ }
+ async ensureDependencies(sub){
+  const {refs,statements}=this.dependencySeeds(sub);
+  await this.store.batch(statements);
   return refs;
  }
- async nativeCapture(binding){
-  await this.ensureDependencies(binding.sub);
-  const capture=await this.native.capture({binding});
+ async nativeCapture(binding,{programme=null,batchSetup=false,batchClosing=false}={}){
+  const repairQuery=batchSetup?this.native.projectionRepairQuery?.(binding):null;
+  let needsRepair;
+  if(repairQuery){
+   const {statements}=this.dependencySeeds(binding.sub);
+   const results=await this.store.batch([...statements,this.store.stmt(...repairQuery)]);
+   const result=results.at(-1);
+   requireThat(result?.success===true&&Array.isArray(result.results),'NATIVE_CAPTURE_SETUP_UNAVAILABLE',503);
+   needsRepair=result.results.length>0;
+  }else await this.ensureDependencies(binding.sub);
+  const capture=await this.native.capture({binding,programme,needsRepair,batchClosing});
   requireThat(capture.sub===binding.sub&&(capture.credentialEpoch??capture.sourceCredentialEpoch)===binding.ce,'NATIVE_CAPTURE_BINDING_CONFLICT',409);return capture;
  }
  async appControl(){return (await this.cache.read('control/app')).value;}
@@ -66,7 +77,7 @@ export class AppRuntime {
   const saved=JSON.parse(f.projection_json);
   const enforcedTargets=compactFloors([...(saved.enforcedTargets||[]),...restrictions.map(r=>JSON.parse(r.target_json))]);
   if(!life){requireThat(initial&&f.sv===1&&f.fingerprint_generation===1&&f.cr===1,'SECURITY_INITIAL_PUBLICATION_REQUIRED',503);await this.cache.seed(suffix);}
-  return this.cache.publish(suffix,async()=>({...saved,enforcedTargets,app:this.app,env:this.config.env,cr:f.cr,binding:parseBinding(f),localState:f.state,authorityReady:Boolean(f.authority_ready),validationDeadline:f.deadline,idleUntil:f.idle_until,lastRefresh:f.last_refresh,s_exp:f.s_exp,inactivityMinutes:f.policy_minutes}));
+  return this.cache.publish(suffix,async()=>({...saved,enforcedTargets,app:this.app,env:this.config.env,cr:f.cr,binding:parseBinding(f),localState:f.state,authorityReady:Boolean(f.authority_ready),validationDeadline:f.deadline,idleUntil:f.idle_until,lastRefresh:f.last_refresh,s_exp:f.s_exp,inactivityMinutes:f.policy_minutes}),{initial});
  }
  async pendingPublication(sid){const life=await this.store.lifecycle(this.cache.key('security/session/'+sid)),f=await this.store.family(sid);return Boolean(life&&f&&(life.state==='SEED'||life.semantic_revision<f.cr));}
  async publishWinningFamily(sid,{initial=false}={}){try{await this.publishFamily(sid,{initial});return {cachePublication:'READY'};}catch(error){if(error.code&&!['SECURITY_TRANSPORT_UNAVAILABLE','PUBLICATION_RETRY','SECURITY_SEED_UNCONFIRMED'].includes(error.code))throw error;return {cachePublication:'PENDING'};}}
@@ -98,6 +109,22 @@ export class AppRuntime {
   }
   reject('SESSION_ENDED',401);
  }
+ // A verified cache object does not outlive a committed owner-local restriction.
+ async requireCurrentStudioPublication(binding,{cr,state,observed}){
+  if(this.app!=='studio'||!this.settings.raw.sharedChildEntry)return;
+  const current=await this.store.first(
+   'SELECT f.state,f.cr,f.binding_json,f.authority_ready,o.state AS publication_state,o.semantic_revision,o.receipt_json '+
+   'FROM jwt_v2_families f LEFT JOIN jwt_v2_objects o ON o.object_key=? WHERE f.sid=?',
+   this.cache.key('security/session/'+binding.sid),binding.sid);
+  requireThat(current&&!['REVOKED','EXPIRED'].includes(current.state),'SESSION_ENDED',401);
+  requireThat(current.state===state&&current.cr===cr&&current.binding_json===canonical(binding)
+   &&(!observed||current.authority_ready===1),'SECURITY_PUBLICATION_PENDING',503);
+  const receipt=current.receipt_json&&JSON.parse(current.receipt_json);
+  requireThat(current.publication_state==='ACTIVE'&&current.semantic_revision===cr
+   &&receipt?.cr===cr&&receipt.generation===this.cache.generation,'SECURITY_PUBLICATION_PENDING',503);
+  if(observed)requireThat(receipt.incarnation===observed.incarnation&&receipt.nonce===observed.nonce
+   &&receipt.etag===observed.etag,'SECURITY_PUBLICATION_PENDING',503);
+ }
  async authorise(request,{action='read',resourceKeys=[],authPurpose=null,operationId=null}={}){
   requireThat(safeActions.has(action)&&new URL(request.url).origin===this.config.origin,'WRONG_PUBLIC_ORIGIN',403);
   const cookies=readCookies(request.headers.get('Cookie'),this.app);requireThat(cookies.access,'ACCESS_REFRESH_REQUIRED',401);
@@ -110,6 +137,11 @@ export class AppRuntime {
    if(transportPending||['SECURITY_PUBLICATION_PENDING','SECURITY_BINDING_CHANGED','INVALID_VALIDATION_TIME','INVALID_LEASE','LEASE_EXPIRED','SESSION_NOT_UNLOCKED','PERMISSIONS_REFRESH_REQUIRED','SECURITY_RECONCILIATION_REQUIRED','ACCESS_DENIED'].includes(error.code)){const {recoverPendingAuthority}=await import('./runtime-pending.mjs');verified=await recoverPendingAuthority(this,{token:cookies.access,sid,resourceKeys,action});}
    else if(!['SECURITY_TRANSPORT_UNAVAILABLE','RIGHTS_PAYLOAD_UNAVAILABLE','RIGHTS_PAYLOAD_CORRUPT','RIGHTS_PAYLOAD_TRANSPORT_UNAVAILABLE'].includes(error.code))throw error;
    else {const {recoverRuntimeAuthority}=await import('./runtime-fallback.mjs');verified=await recoverRuntimeAuthority(this,{token:cookies.access,sid,resourceKeys,action,error});}
+  }
+  if(this.app==='studio'&&this.settings.raw.sharedChildEntry){
+   const observed=verified.sessionPublication;
+   requireThat(observed,'SECURITY_PUBLICATION_PENDING',503);
+   await this.requireCurrentStudioPublication(verified.binding,{cr:observed.cr,state:'UNLOCKED',observed});
   }
   requireThat(this.clock()<Math.min(verified.deadline,verified.binding.s_exp),'LEASE_EXPIRED',401);
   const context=selector(verified.binding,this.app),expected=expectedContext(request);
@@ -124,6 +156,28 @@ export class AppRuntime {
   if(unsafe||action==='write'||action==='sensitive')requireThat(csrfValid,'BUSINESS_CSRF_REQUIRED',403);
   const cap=Object.freeze({binding:Object.freeze({...verified.binding}),rights:verified.rights,deadline:verified.deadline,context:Object.freeze(context)});
   capabilities.set(cap,{runtime:this,csrfValid,action,kid:accessKid(cookies.access),request});return cap;
+ }
+ async programmeCapability(cap,programme,offeringId=null){
+  const meta=this.assertCapability(cap);
+  if(!cap.rights.programme||cap.rights.programme===programme)return cap;
+  const {binding}=cap;
+  const key='studio-scope:'+canonical([binding.sid,binding.pv,binding.vat,programme,offeringId]);
+  let loaded=this.rightsMemo.get(key);
+  if(!loaded||this.clock()>=loaded.deadline){
+   const capture=await this.native.capture({binding,programme,offeringId});
+   requireThat(capture.sub===binding.sub&&capture.sourceCredentialEpoch===binding.ce&&capture.pv===binding.pv,
+    'PERMISSIONS_REFRESH_REQUIRED',401);
+   const current=await this.authorise(meta.request,{action:meta.action});
+   requireThat(canonical(current.binding)===canonical(binding),'OPERATION_SUPERSEDED',409);
+   loaded={rights:capture.rights,deadline:Math.min(cap.deadline,current.deadline,capture.timedUntil)};
+   this.rightsMemo.set(key,loaded);
+  }
+  this.assertCapability(cap);
+  const deadline=Math.min(cap.deadline,loaded.deadline);
+  requireThat(this.clock()<deadline,'LEASE_EXPIRED',401);
+  const scoped=Object.freeze({...cap,deadline,rights:loaded.rights});
+  capabilities.set(scoped,meta);
+  return scoped;
  }
  assertCapability(cap){
   const meta=capabilities.get(cap);requireThat(meta?.runtime===this&&this.clock()<Math.min(cap.deadline,cap.binding.s_exp),'V2_CAPABILITY_EXPIRED',401);return meta;
@@ -156,13 +210,14 @@ export class AppRuntime {
   for(const row of rows){const projection=await this.publishFamily(row.sid);await markSessionCovered(this.store,{workId,sid:row.sid,projection,controlKey:this.cache.key('security/session/'+row.sid),now:this.clock()});}
   return worksetApplied(this.store,workId);
  }
- async stateDTO(family,{purpose='refresh'}={}){
+ async stateDTO(family,{purpose='refresh',emptyRead=null}={}){
   family=await this.observeState(family);
   const now=this.clock(),context=selector(parseBinding(family),this.app),terminal=['REVOKED','EXPIRED'].includes(family.state)||now>=family.s_exp;
   if(terminal)return {contractVersion:2,success:false,state:'ENDED',serverNowMs:now*1000,context:null};
   const state=family.state==='ADMITTED_LOCKED'?'ADMITTED_LOCKED':now>=family.idle_until||family.state!=='UNLOCKED'?'LOCKED':'UNLOCKED';
-  const auth=await this.intents.issue(family,purpose);
-  const business=state==='UNLOCKED'&&now<Math.min(family.deadline,family.idle_until,family.s_exp)?await this.intents.issue(family,'business'):null;
+  const canIssueBusiness=state==='UNLOCKED'&&now<Math.min(family.deadline,family.idle_until,family.s_exp);
+  const [auth,additional]=await this.intents.issueMany(family,canIssueBusiness&&purpose!=='business'?[purpose,'business']:[purpose],{emptyRead});
+  const business=canIssueBusiness?(purpose==='business'?auth:additional):null;
   return {contractVersion:2,success:true,serverNowMs:now*1000,state,authorityReady:Boolean(family.authority_ready),replacementRequired:state==='UNLOCKED'&&!family.authority_ready,context,expectedContext:context,env:this.config.env,draftGeneration:1,originalExpiresAtMs:family.s_exp*1000,idleUntilMs:family.idle_until*1000,validatedAtMs:family.vat*1000,validationDeadlineMs:family.deadline*1000,...auth,...(business?{csrfByPurpose:{business:business.csrf},businessIntent:business.intent}: {})};
  }
  async cookieResponse(family,refresh,value){
@@ -173,9 +228,12 @@ export class AppRuntime {
    await requireSharedChildRenewal(this,family);
   }
   let app;if(value.cachePublication==='PENDING'){const {validateWinningPair}=await import('./runtime-pending.mjs');const eligible=await validateWinningPair(this,{family,refresh});family=eligible.family;app=eligible.app;}else app=await this.appControl();const now=this.clock(),binding=parseBinding(family),saved=JSON.parse(family.projection_json);
-  if(family.state==='ADMITTED_LOCKED'){const response=this.json(value);response.headers.append('Set-Cookie',refreshOnlyCookie({app:this.app,refresh,now,originalExpires:family.s_exp}));return response;}
+  if(family.state==='ADMITTED_LOCKED'){
+   await this.requireCurrentStudioPublication(binding,{cr:family.cr,state:family.state});
+   const response=this.json(value);response.headers.append('Set-Cookie',refreshOnlyCookie({app:this.app,refresh,now,originalExpires:family.s_exp}));return response;}
   requireThat(family.state==='UNLOCKED'&&family.authority_ready===1&&now<Math.min(family.deadline,family.idle_until,saved.timedUntil,family.s_exp)&&!app.withdrawnKids.includes(this.settings.apiKid),'TOKEN_ISSUANCE_UNAVAILABLE',503);
   const access=await issueToken({...binding,iat:now,exp:family.deadline,jti:crypto.randomUUID()},{config:this.config,key:this.settings.apiSigningKey,kid:this.settings.apiKid,now,idleUntil:family.idle_until,timedUntil:saved.timedUntil,initial:saved.initialIssuance===true});
+  await this.requireCurrentStudioPublication(binding,{cr:family.cr,state:family.state});
   const response=this.json(value);
   for(const cookie of cookiePair({app:this.app,access,refresh,now,accessExpires:family.deadline,originalExpires:family.s_exp}))response.headers.append('Set-Cookie',cookie);
   return response;

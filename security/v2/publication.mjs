@@ -101,15 +101,26 @@ export async function worksetApplied(store,workId){
  requireThat(await store.first('SELECT 1 FROM jwt_v2_worksets WHERE work_id=?',workId),'PUBLICATION_WORK_UNKNOWN',409);
  return false;
 }
-export function admissionFloorCondition(binding){
+function admissionFloorPredicate(binding){
  // Every newly created/renewed SID is checked against durable restrictions, including after the workset watermark.
- return {sql:"SELECT 1 WHERE NOT EXISTS(SELECT 1 FROM jwt_v2_restrictions r WHERE "+
+ return {sql:
  "(json_extract(r.target_json,'$.type')='accountCutoff' AND json_extract(r.target_json,'$.sub')=? AND (?<json_extract(r.target_json,'$.maxCe') OR (?=json_extract(r.target_json,'$.maxCe') AND ?<=json_extract(r.target_json,'$.maxAe')))) OR "+
  "(json_extract(r.target_json,'$.type')='credentialEpoch' AND json_extract(r.target_json,'$.sub')=? AND ?<json_extract(r.target_json,'$.newCe')) OR "+
  "(json_extract(r.target_json,'$.type')='browser' AND json_extract(r.target_json,'$.bsid')=? AND ?<=json_extract(r.target_json,'$.maxBv')) OR "+
  "(json_extract(r.target_json,'$.type')='localEpoch' AND json_extract(r.target_json,'$.sub')=? AND json_extract(r.target_json,'$.ce')=? AND json_extract(r.target_json,'$.ae')=? AND ?<=json_extract(r.target_json,'$.maxLe')) OR "+
- "(json_extract(r.target_json,'$.type')='parent' AND json_extract(r.target_json,'$.psid')=? AND json_extract(r.target_json,'$.bsid')=? AND json_extract(r.target_json,'$.bv')=? AND json_extract(r.target_json,'$.ce')=? AND json_extract(r.target_json,'$.ae')=?))",
+ "(json_extract(r.target_json,'$.type')='parent' AND json_extract(r.target_json,'$.psid')=? AND json_extract(r.target_json,'$.bsid')=? AND json_extract(r.target_json,'$.bv')=? AND json_extract(r.target_json,'$.ce')=? AND json_extract(r.target_json,'$.ae')=?)",
  args:[binding.sub,binding.ce,binding.ce,binding.ae,binding.sub,binding.ce,binding.bsid,binding.bv,binding.sub,binding.ce,binding.ae,binding.le,binding.psid,binding.bsid,binding.bv,binding.ce,binding.ae]};
+}
+
+export function admissionFloorCondition(binding){
+ const {sql,args}=admissionFloorPredicate(binding);
+ return {sql:'SELECT 1 WHERE NOT EXISTS(SELECT 1 FROM jwt_v2_restrictions r WHERE '+sql+')',args};
+}
+
+export function sharedAcademyAdmissionFloorGuard(store,binding,kid){
+ const {sql,args}=admissionFloorPredicate(binding);
+ const key="(json_extract(r.target_json,'$.type')='key' AND json_extract(r.target_json,'$.purpose')='academy-shared-access' AND json_extract(r.target_json,'$.kid')=?)";
+ return store.guard('SELECT 1 WHERE NOT EXISTS(SELECT 1 FROM jwt_v2_restrictions r WHERE '+sql+' OR '+key+')',[...args,kid]);
 }
 
 export function admissionFloorGuard(store,binding){const p=admissionFloorCondition(binding);return store.guard(p.sql,p.args);}
@@ -124,4 +135,49 @@ export async function markControlCovered(store,{workId,controlKey,projection}){
  else if(target.type==='key')requireThat(coversKeyWithdrawal(projection,target),'APP_KEY_NOT_WITHDRAWN',409);
  else requireThat(projection.authorityReady===false||projection.enforcedTargets?.some(t=>canonical(t)===canonical(target)),'CONTROL_TARGET_NOT_COVERED',409);
  await store.stmt('UPDATE jwt_v2_control_publications SET covered=1 WHERE work_id=? AND object_key=?',workId,controlKey).run();
+}
+
+export function isVoluntaryAccountCutoff(target){
+ return target?.type==='accountCutoff'&&target.reason==='VOLUNTARY_LOGOUT';
+}
+
+export function isLocalLogoutCutoff(target,app,workId){
+ return target?.type==='localEpoch'&&['studio','hifz'].includes(app)&&target.app===app&&workId.startsWith('local-report-');
+}
+
+export async function markLogoutSessionCovered(store,{workId,sid,target,projection,now,localLogout=false}){
+ requireThat(isVoluntaryAccountCutoff(target)||localLogout&&isLocalLogoutCutoff(target,store.app,workId),
+  'INVALID_LOGOUT_TARGET',409);
+ const targetJSON=canonical(target);
+ const expires=projection===undefined||now>=projection.s_exp;
+ const work="EXISTS(SELECT 1 FROM jwt_v2_worksets w WHERE w.work_id=p.work_id AND w.target_json=? AND w.scope_sub=?)";
+ let statement;
+ if(expires){
+  statement=store.stmt(
+   "UPDATE jwt_v2_publications AS p SET covered_by_expiry=1 WHERE p.work_id=? AND p.sid=? AND "+work+
+   " AND EXISTS(SELECT 1 FROM jwt_v2_families f WHERE f.sid=p.sid AND f.s_exp<=?) RETURNING sid",
+   workId,sid,targetJSON,target.sub,now);
+ }else{
+  requireThat(projection.state==='ACTIVE'&&projection.localState==='REVOKED'&&projection.binding?.sid===sid&&
+   projection.enforcedTargets?.some(floor=>coversFloor(floor,target)),'TARGET_PREDICATE_NOT_COVERED',409);
+  const key=store.controlKey('security/session/'+sid);
+  const objectDigest=await digest(projection);
+  // Compare the receipt and current family in the write that marks coverage.
+  // No optimistic read or guard row needs to survive a second transaction.
+  statement=store.stmt(
+   "UPDATE jwt_v2_publications AS p SET published_cr=? WHERE p.work_id=? AND p.sid=? AND p.expected_cr<=? AND "+work+
+   " AND EXISTS(SELECT 1 FROM jwt_v2_families f JOIN jwt_v2_objects o ON o.object_key=? "+
+   "WHERE f.sid=p.sid AND f.s_exp>? AND f.s_exp=? AND f.cr=? AND f.binding_json=? "+
+   "AND f.state='REVOKED' AND f.authority_ready=? AND o.state='ACTIVE' AND o.incarnation=? AND o.generation=? "+
+   "AND json_extract(o.receipt_json,'$.digest')=? AND json_extract(o.receipt_json,'$.nonce')=? "+
+   "AND json_extract(o.receipt_json,'$.incarnation')=? AND json_extract(o.receipt_json,'$.generation')=? "+
+   "AND json_extract(o.receipt_json,'$.cr')=?) RETURNING sid",
+   projection.cr,workId,sid,projection.cr,targetJSON,target.sub,key,now,projection.s_exp,
+   projection.cr,canonical(projection.binding),Number(projection.authorityReady),projection.incarnation,projection.generation,
+   objectDigest,projection.publicationNonce,projection.incarnation,projection.generation,projection.cr);
+ }
+ // Use the owning store batch so Academy retains the split-state write fence.
+ const results=await store.batch([statement]);
+ const result=results[store.academyFence?1:0];
+ requireThat(result?.results?.[0]?.sid===sid,'LOGOUT_PUBLICATION_NOT_COVERED',409);
 }

@@ -1,3 +1,4 @@
+import {programmeForProtectedRead} from './v111-programme-scope.mjs';
 import {childAuthorityRequest,withoutCookies,withoutSetCookie} from '../security/v2/http-cookie-boundary.mjs';
 import {studioAuthorityTarget} from './v111-source-authority.mjs';
 import {Store} from './database.mjs';
@@ -39,7 +40,12 @@ export function createStudioV2Handler({getRuntime=defaultRuntimeFor,business=han
    if(path.startsWith('/internal/')&&!path.startsWith('/internal/auth/v2/'))return problem('V1_INTERNAL_DISABLED','This connection requires the current authenticated service protocol.',410);
    if(guarded)return problem('ROUTE_NOT_FOUND','This security action was not found.',404);
    const action=/^\/api\/media\//.test(path)?'media':['GET','HEAD'].includes(request.method)?'read':path.includes('/admin/')||path.includes('/upload')||path.includes('/publish')?'sensitive':'write';
-   const cap=await runtime.authorise(request,{action}),store=bindV2Store(new Store(env),runtime,cap),actor=await store.actor();
+   let cap=await runtime.authorise(request,{action});
+   if(cap.rights.programme&&path!=='/api/me'){
+    const scope=['read','media'].includes(action)?await programmeForProtectedRead(url,env.DB):null;
+    cap=await runtime.programmeCapability(cap,scope?.programme??null,scope?.offeringId??null);
+   }
+   const store=bindV2Store(new Store(env),runtime,cap),actor=await store.actor();
    const response=await business(request,env,ctx,fetcher,{store,actor});return runtime.decorate(response,cap);
   }catch(error){return failure(error);}
  };
