@@ -35,6 +35,10 @@
     "STUDIO_PROVIDER_ORIGIN": "https://ummabbadacademy.maktab4life.org",
     "STUDIO_REDIRECT_ORIGINS": "[\"https://www.maktab4life.org\"]"
   },
+  "durable_objects": {
+    "bindings": [{ "name": "UAA_LOGOUT_DISPATCH", "class_name": "StudioLogoutDispatcher" }]
+  },
+  "migrations": [{ "tag": "v1111-logout-dispatch", "new_sqlite_classes": ["StudioLogoutDispatcher"] }],
   "d1_databases": [
     {
       "binding": "DB",

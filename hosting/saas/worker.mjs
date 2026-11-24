@@ -1,3 +1,4 @@
+export {StudioLogoutDispatcher} from '../../security/v2/child-logout-dispatch.mjs';
 import {runChildSecurityTick} from '../../security/v2/child-security-tick.mjs';
 import {heldForV111Cutover, offlineSecurityRequest, cutoverUnavailable} from '../../security/v2/cutover-state.mjs';
 import {v2Enabled} from '../../src/v111-mode.mjs';
